@@ -192,9 +192,20 @@ pub async fn login_start(
     )
     .await?;
     let mut packets = Vec::new();
+    let mut threshold = None;
     while let Some(frame) = conn.recv().await? {
-        let packet = ClientboundLogin::decode(&frame, version)?;
-        let done = !matches!(packet, ClientboundLogin::SetCompression(_));
+        let body = match threshold {
+            Some(t) => krol_protocol::compression::decompress(&frame, t)?,
+            None => frame,
+        };
+        let packet = ClientboundLogin::decode(&body, version)?;
+        let done = match packet {
+            ClientboundLogin::SetCompression(t) => {
+                threshold = usize::try_from(t).ok();
+                false
+            }
+            _ => true,
+        };
         packets.push(packet);
         if done {
             break;

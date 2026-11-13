@@ -1,0 +1,25 @@
+description = "Offline-mode login: Set Compression, Login Success with the offline UUID"
+subsystem = "login"
+
+[setup]
+properties = { online-mode = "false" }
+
+[[steps]]
+id = "login_47"
+action = "login_start"
+protocol = 47
+name = "Notch"
+
+[[steps]]
+id = "login_47_second_player"
+action = "login_start"
+protocol = 47
+name = "jeb_"
+
+[observe]
+log = true
+log_ignore_prefixes = [
+    # World loading is not implemented yet in krol (M3); keep this scenario about login.
+    "Preparing ",
+    "Saving",
+]

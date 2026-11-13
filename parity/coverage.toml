@@ -64,7 +64,7 @@ scenarios = ["login/version_reject"]
 [[feature]]
 id = "login.offline"
 description = "Offline-mode login: UUID derivation, Login Success"
-scenarios = []
+scenarios = ["login/offline"]
 
 [[feature]]
 id = "login.online"
@@ -74,7 +74,7 @@ scenarios = []
 [[feature]]
 id = "login.compression"
 description = "Set Compression and compressed framing (protocol 47)"
-scenarios = []
+scenarios = ["login/offline"]
 
 # --- Play --------------------------------------------------------------------------
 
