@@ -363,8 +363,8 @@ The parity harness arrives in M1 on purpose: every later milestone is developed 
 | M0 | Done: workspace, CI, `cargo-deny`, `krol-java` (Random, StrictMath.log, String.hashCode, modified UTF-8, MathHelper, Hashtable/HashMap order, Properties, Gson writer/parser — all JVM-verified via `crates/krol-java/tools/JavaVectors.java`), `krol-nbt` |
 | M1 | Done: status (modern + legacy) for 47 and 5, `server.properties`, EULA, vanilla logging, parity runner (`run`, `record`, `diff`, `coverage`). Not yet: `fuzz`, `worldgen`, `plugins` commands, the vanilla Java agent for RNG pinning |
 | M2 | Done: offline/online login, encryption, compression, ops/whitelist/bans. Missing: `usercache.json`, duplicate-login handling |
-| M3 | In progress: 20 TPS game thread, joining an existing world (byte-identical join sequence vs vanilla), chunk streaming, keep-alive, time, chat, disconnect/shutdown with vanilla logs and saving. Missing: movement validation, commands, playerdata parity, protocol-5 play translation |
-| Goldens | Recorded from vanilla 1.8.8 on Java 8 (Windows). 9/9 scenarios pass. Re-record with `KROL_VANILLA_JAR=reference/minecraft_server.1.8.8.jar KROL_JAVA=<java 8> cargo xtask parity record --rerecord` after changing scenarios or normalization |
+| M3 | Mostly done: 20 TPS game thread, joining existing worlds (byte-identical join sequence), vanilla chunk tracking and chunk lifecycle (ticked/terrain/light population), movement handling (teleport confirm, moved too quickly, floating, illegal position), chat, weather cycle, autosave, the command system with ~25 commands implemented and all 58 listed. Missing: collision physics ("moved wrongly"), permission levels, profile-lookup commands (op/ban/whitelist add), usercache.json, inventories, protocol-5 play translation |
+| Goldens | Recorded from vanilla 1.8.8 on Java 8 (Windows). 12/12 scenarios pass. Re-record with `KROL_VANILLA_JAR=reference/minecraft_server.1.8.8.jar KROL_JAVA=<java 8> cargo xtask parity record --rerecord` after changing scenarios or normalization |
 
 Without an existing world (generation is M6) players are disconnected after login with
 "krol: no world is loaded".
