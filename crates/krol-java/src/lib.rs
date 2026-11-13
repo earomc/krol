@@ -11,12 +11,14 @@
 
 #![deny(missing_docs)]
 
+mod hashtable;
 pub mod math;
 pub mod modified_utf8;
 mod random;
 mod strict_math;
 mod string;
 
+pub use hashtable::JavaHashtable;
 pub use random::JavaRandom;
 pub use strict_math::strict_log;
 pub use string::java_string_hash;
