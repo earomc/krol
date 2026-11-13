@@ -516,9 +516,93 @@ pub enum ClientboundPlay {
         new_diameter: f64,
         speed: i64,
         portal_teleport_boundary: i32,
+        warning_distance: i32,
         warning_time: i32,
-        warning_blocks: i32,
     },
+    /// `0x37` (statistic name, value) pairs
+    Statistics(Vec<(String, i32)>),
+    /// `0x1C`
+    EntityMetadata {
+        entity_id: i32,
+        metadata: Vec<Metadata>,
+    },
+    /// `0x20` (key, base value) without modifiers
+    EntityProperties {
+        entity_id: i32,
+        properties: Vec<(String, f64)>,
+    },
+}
+
+/// One entity metadata entry (protocol 47 types).
+#[derive(Debug, Clone, PartialEq)]
+pub enum MetadataValue {
+    /// Type 0.
+    Byte(i8),
+    /// Type 1.
+    Short(i16),
+    /// Type 2.
+    Int(i32),
+    /// Type 3.
+    Float(f32),
+    /// Type 4.
+    String(String),
+    /// Type 5.
+    Item(Option<ItemStack>),
+    /// Type 6.
+    Position(i32, i32, i32),
+    /// Type 7.
+    Rotation(f32, f32, f32),
+}
+
+/// An entity metadata entry: index (0–31) and value.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Metadata {
+    /// Metadata index.
+    pub index: u8,
+    /// Value.
+    pub value: MetadataValue,
+}
+
+fn write_metadata(w: &mut PacketWriter, entries: &[Metadata]) -> Result<(), EncodeError> {
+    for m in entries {
+        let ty = match m.value {
+            MetadataValue::Byte(_) => 0,
+            MetadataValue::Short(_) => 1,
+            MetadataValue::Int(_) => 2,
+            MetadataValue::Float(_) => 3,
+            MetadataValue::String(_) => 4,
+            MetadataValue::Item(_) => 5,
+            MetadataValue::Position(..) => 6,
+            MetadataValue::Rotation(..) => 7,
+        };
+        w.u8((ty << 5) | (m.index & 31));
+        match &m.value {
+            MetadataValue::Byte(v) => {
+                w.i8(*v);
+            }
+            MetadataValue::Short(v) => {
+                w.i16(*v);
+            }
+            MetadataValue::Int(v) => {
+                w.i32(*v);
+            }
+            MetadataValue::Float(v) => {
+                w.f32(*v);
+            }
+            MetadataValue::String(v) => {
+                w.string(v)?;
+            }
+            MetadataValue::Item(v) => ItemStack::write(w, v.as_ref())?,
+            MetadataValue::Position(x, y, z) => {
+                w.i32(*x).i32(*y).i32(*z);
+            }
+            MetadataValue::Rotation(x, y, z) => {
+                w.f32(*x).f32(*y).f32(*z);
+            }
+        }
+    }
+    w.u8(0x7f);
+    Ok(())
 }
 
 impl ClientboundPlay {
@@ -546,6 +630,9 @@ impl ClientboundPlay {
             Self::Disconnect(_) => 0x40,
             Self::ServerDifficulty { .. } => 0x41,
             Self::WorldBorderInit { .. } => 0x44,
+            Self::Statistics(_) => 0x37,
+            Self::EntityMetadata { .. } => 0x1c,
+            Self::EntityProperties { .. } => 0x20,
         }
     }
 
@@ -671,8 +758,8 @@ impl ClientboundPlay {
                 new_diameter,
                 speed,
                 portal_teleport_boundary,
+                warning_distance,
                 warning_time,
-                warning_blocks,
             } => {
                 w.varint(3)
                     .f64(*x)
@@ -681,8 +768,30 @@ impl ClientboundPlay {
                     .f64(*new_diameter)
                     .varlong(*speed)
                     .varint(*portal_teleport_boundary)
-                    .varint(*warning_time)
-                    .varint(*warning_blocks);
+                    .varint(*warning_distance)
+                    .varint(*warning_time);
+            }
+            Self::Statistics(stats) => {
+                w.varint(stats.len() as i32);
+                for (name, value) in stats {
+                    w.string(name)?.varint(*value);
+                }
+            }
+            Self::EntityMetadata {
+                entity_id,
+                metadata,
+            } => {
+                w.varint(*entity_id);
+                write_metadata(&mut w, metadata)?;
+            }
+            Self::EntityProperties {
+                entity_id,
+                properties,
+            } => {
+                w.varint(*entity_id).i32(properties.len() as i32);
+                for (key, value) in properties {
+                    w.string(key)?.f64(*value).varint(0);
+                }
             }
         }
         Ok(w.into_bytes())
@@ -890,17 +999,79 @@ mod tests {
             new_diameter: 6.0e7,
             speed: 0,
             portal_teleport_boundary: 29_999_984,
+            warning_distance: 5,
             warning_time: 15,
-            warning_blocks: 5,
         };
-        let bytes = border.encode(V).unwrap();
-        assert_eq!(&bytes[..2], &[0x44, 0x03]);
+        // Bytes recorded from vanilla 1.8.8 (parity/golden/play/join_flat.json).
+        assert_eq!(
+            hex(&border.encode(V).unwrap()[1..]),
+            "0300000000000000000000000000000000418c9c3800000000418c9c380000000000f086a70e050f"
+        );
         assert_eq!(
             ClientboundPlay::Disconnect("\"x\"".into())
                 .encode(V)
                 .unwrap(),
             [0x40, 3, b'"', b'x', b'"']
         );
+    }
+
+    fn hex(b: &[u8]) -> String {
+        b.iter().map(|x| format!("{x:02x}")).collect()
+    }
+
+    /// Player metadata and properties exactly as vanilla 1.8.8 sent them on join.
+    #[test]
+    fn vanilla_join_entity_packets() {
+        use MetadataValue::*;
+        let md = |index, value| Metadata { index, value };
+        let meta = ClientboundPlay::EntityMetadata {
+            entity_id: 0,
+            metadata: vec![
+                md(0, Byte(0)),
+                md(1, Short(300)),
+                md(2, String(std::string::String::new())),
+                md(3, Byte(0)),
+                md(4, Byte(0)),
+                md(6, Float(20.0)),
+                md(7, Int(0)),
+                md(8, Byte(0)),
+                md(9, Byte(0)),
+                md(10, Byte(0x7f)),
+                md(16, Byte(0)),
+                md(17, Float(0.0)),
+                md(18, Int(0)),
+            ],
+        };
+        assert_eq!(
+            hex(&meta.encode(V).unwrap()[1..]),
+            "00000021012c8200030004006641a000004700000000080009000a7f1000710000000052000000007f"
+        );
+        let props = ClientboundPlay::EntityProperties {
+            entity_id: 0,
+            properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32))],
+        };
+        assert_eq!(
+            hex(&props.encode(V).unwrap()[1..]),
+            "00000000011567656e657269632e6d6f76656d656e7453706565643fb99999a000000000"
+        );
+        assert_eq!(
+            hex(&ClientboundPlay::Statistics(vec![]).encode(V).unwrap()[1..]),
+            "00"
+        );
+        let items = ClientboundPlay::WindowItems {
+            window: 0,
+            items: vec![None; 45],
+        };
+        assert_eq!(
+            hex(&items.encode(V).unwrap()[1..]),
+            format!("00002d{}", "ffff".repeat(45))
+        );
+        let health = ClientboundPlay::UpdateHealth {
+            health: 20.0,
+            food: 20,
+            saturation: 5.0,
+        };
+        assert_eq!(hex(&health.encode(V).unwrap()[1..]), "41a000001440a00000");
     }
 
     #[test]
