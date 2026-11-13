@@ -72,6 +72,10 @@ pub fn prepare_dir(dir: &Path, setup: &Setup, parity_root: &Path) -> Result<u16>
             .with_context(|| format!("copying world fixture {world}"))?;
     }
     for (dest, src) in &setup.files {
+        // Git does not keep empty directories (e.g. a fixture's playerdata/).
+        if let Some(parent) = dir.join(dest).parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::copy(parity_root.join(src), dir.join(dest))
             .with_context(|| format!("copying fixture {src}"))?;
     }
