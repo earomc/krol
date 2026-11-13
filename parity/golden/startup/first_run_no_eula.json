@@ -1,0 +1,25 @@
+{
+  "recorded_with": "vanilla 1.8.8",
+  "observations": {
+    "started": false,
+    "log": [
+      "[Server thread/INFO]: Starting minecraft server version 1.8.8",
+      "[Server thread/INFO]: Loading properties",
+      "[Server thread/WARN]: server.properties does not exist",
+      "[Server thread/INFO]: Generating new properties file",
+      "[Server thread/WARN]: Failed to load eula.txt",
+      "[Server thread/INFO]: You need to agree to the EULA in order to run the server. Go to eula.txt for more info.",
+      "[Server thread/INFO]: Stopping server",
+      "[Server Shutdown Thread/INFO]: Stopping server"
+    ],
+    "file:eula.txt": [
+      "#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://account.mojang.com/documents/minecraft_eula).",
+      "#<date>",
+      "eula=false"
+    ],
+    "file:server.properties": [
+      "#Minecraft server properties",
+      "#<date>"
+    ]
+  }
+}

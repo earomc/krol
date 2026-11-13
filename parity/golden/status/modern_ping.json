@@ -1,0 +1,38 @@
+{
+  "recorded_with": "vanilla 1.8.8",
+  "observations": {
+    "started": true,
+    "status_47": {
+      "raw": "{\"description\":\"Hello \\u003ckrol\\u003e \\u0026 \\u003dfriends\\u003d\",\"players\":{\"max\":7,\"online\":0},\"version\":{\"name\":\"1.8.8\",\"protocol\":47}}",
+      "parsed": {
+        "description": "Hello <krol> & =friends=",
+        "players": {
+          "max": 7,
+          "online": 0
+        },
+        "version": {
+          "name": "1.8.8",
+          "protocol": 47
+        }
+      },
+      "pong": 123456789,
+      "closed_after_pong": true
+    },
+    "status_5": {
+      "raw": "{\"description\":\"Hello \\u003ckrol\\u003e \\u0026 \\u003dfriends\\u003d\",\"players\":{\"max\":7,\"online\":0},\"version\":{\"name\":\"1.8.8\",\"protocol\":47}}",
+      "parsed": {
+        "description": "Hello <krol> & =friends=",
+        "players": {
+          "max": 7,
+          "online": 0
+        },
+        "version": {
+          "name": "1.8.8",
+          "protocol": 47
+        }
+      },
+      "pong": -1,
+      "closed_after_pong": true
+    }
+  }
+}

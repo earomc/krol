@@ -4,6 +4,11 @@ subsystem = "status"
 [setup]
 properties = { motd = "Hello <krol> & =friends=", max-players = "7" }
 
+# Vanilla's status has no player data until its first tick (~50 ms after "Done").
+[[steps]]
+action = "wait"
+ms = 1000
+
 [[steps]]
 id = "status_47"
 action = "status_ping"

@@ -1,0 +1,29 @@
+{
+  "recorded_with": "vanilla 1.8.8",
+  "observations": {
+    "started": true,
+    "banned": [
+      {
+        "type": "disconnect",
+        "reason": "\"You are banned from this server!\\nReason: Parity test ban\""
+      }
+    ],
+    "not_whitelisted": [
+      {
+        "type": "disconnect",
+        "reason": "\"You are not white-listed on this server!\""
+      }
+    ],
+    "whitelisted": [
+      {
+        "type": "set_compression",
+        "threshold": 256
+      },
+      {
+        "type": "success",
+        "uuid": "a762f560-4fce-3236-812a-b80efff0b62b",
+        "username": "jeb_"
+      }
+    ]
+  }
+}

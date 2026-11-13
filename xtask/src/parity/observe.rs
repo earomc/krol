@@ -22,8 +22,14 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
             .enable_all()
             .build()?;
         for step in &scenario.steps {
+            if let Step::Wait { ms } = step {
+                std::thread::sleep(std::time::Duration::from_millis(*ms));
+                continue;
+            }
             let value = runtime.block_on(run_step(step, server.addr));
-            obs.insert(step.id().to_owned(), value);
+            if let Some(id) = step.id() {
+                obs.insert(id.to_owned(), value);
+            }
         }
     }
 
@@ -71,6 +77,7 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
                 Err(e) => json!({ "error": e.to_string() }),
             }
         }
+        Step::Wait { .. } => Value::Null,
         Step::LoginStart { protocol, name, .. } => {
             match krol_testbot::login_start(addr, *protocol, name).await {
                 Ok(packets) => Value::Array(packets.iter().map(login_packet_json).collect()),
@@ -105,6 +112,10 @@ fn normalize_log(lines: &[String], observe: &Observe) -> Value {
     let out: Vec<Value> = lines
         .iter()
         .filter_map(|line| {
+            // JVM stack frames are implementation details of vanilla, not behavior.
+            if line.starts_with("	at ") || (line.starts_with("	... ") && line.ends_with(" more")) {
+                return None;
+            }
             // "[HH:MM:SS] [thread/LEVEL]: msg" -> "[thread/LEVEL]: msg"
             let line = match line.strip_prefix('[') {
                 Some(rest) if rest.len() > 9 && rest.as_bytes()[8] == b']' => {

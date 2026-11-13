@@ -68,6 +68,9 @@ pub enum Step {
         protocol: i32,
         name: String,
     },
+    /// Sleeps; produces no observation. Use to step past timing-dependent windows
+    /// (e.g. vanilla's status has no player data before the first tick).
+    Wait { ms: u64 },
 }
 
 fn one() -> i64 {
@@ -75,9 +78,12 @@ fn one() -> i64 {
 }
 
 impl Step {
-    pub fn id(&self) -> &str {
+    pub fn id(&self) -> Option<&str> {
         match self {
-            Step::StatusPing { id, .. } | Step::Raw { id, .. } | Step::LoginStart { id, .. } => id,
+            Step::StatusPing { id, .. } | Step::Raw { id, .. } | Step::LoginStart { id, .. } => {
+                Some(id)
+            }
+            Step::Wait { .. } => None,
         }
     }
 }
