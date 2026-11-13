@@ -10,8 +10,9 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::time::Instant;
 
+use krol_server::auth::{SESSION_SERVER, ServerKeyPair};
 use krol_server::config::{PropertyManager, ServerProperties, eula};
-use krol_server::net::{NetShared, handle_connection};
+use krol_server::net::{NetConfig, NetShared, handle_connection};
 use krol_server::status::{StatusResponse, load_favicon};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
@@ -62,8 +63,17 @@ async fn run() {
     }
     let props = ServerProperties::read(&mut pm);
     info!("Default game type: {}", game_type_name(props.gamemode));
-    // TODO(M2): generate the RSA key pair used for online-mode encryption.
     info!("Generating keypair");
+    let keys = match ServerKeyPair::generate() {
+        Ok(k) => k,
+        Err(e) => {
+            tracing::error!(
+                "Key pair generation failed!
+{e}"
+            );
+            return;
+        }
+    };
 
     let host = if props.server_ip.is_empty() {
         "*"
@@ -102,13 +112,23 @@ async fn run() {
 
     let started = Instant::now();
     // TODO(M3): load worlds ("Preparing level ..." / "Preparing start region ...").
-    let shared = NetShared::new(StatusResponse {
-        motd: props.motd.clone(),
-        max_players: props.max_players,
-        online_players: 0,
-        sample: Vec::new(),
-        favicon: load_favicon(Path::new("server-icon.png")),
-    });
+    let shared = NetShared::new(
+        NetConfig {
+            online_mode: props.online_mode,
+            compression_threshold: props.network_compression_threshold,
+            max_players: props.max_players,
+            session_server: std::env::var("KROL_SESSION_SERVER")
+                .unwrap_or_else(|_| SESSION_SERVER.to_owned()),
+            keys,
+        },
+        StatusResponse {
+            motd: props.motd.clone(),
+            max_players: props.max_players,
+            online_players: 0,
+            sample: Vec::new(),
+            favicon: load_favicon(Path::new("server-icon.png")),
+        },
+    );
     info!(
         "Done ({:.3}s)! For help, type \"help\" or \"?\"",
         started.elapsed().as_secs_f64()
@@ -118,11 +138,11 @@ async fn run() {
     loop {
         tokio::select! {
             accepted = listener.accept() => match accepted {
-                Ok((socket, _addr)) => {
+                Ok((socket, addr)) => {
                     let _ = socket.set_nodelay(true);
                     let shared = shared.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = handle_connection(socket, shared).await {
+                        if let Err(e) = handle_connection(socket, addr, shared).await {
                             tracing::debug!("connection closed: {e}");
                         }
                     });

@@ -8,6 +8,7 @@ use sha1::Sha1;
 use thiserror::Error;
 
 /// The server's RSA key pair, generated at startup ("Generating keypair").
+#[derive(Clone)]
 pub struct ServerKeyPair {
     private: PrivateKey,
     public_der: Vec<u8>,
