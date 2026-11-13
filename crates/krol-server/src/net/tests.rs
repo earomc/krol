@@ -30,6 +30,10 @@ fn shared_with(online_mode: bool, session_server: &str, max_players: i32) -> Arc
             sample: vec![],
             favicon: None,
         },
+        crate::userlist::UserLists::load(
+            &std::env::temp_dir().join("krol-net-tests-nonexistent"),
+            false,
+        ),
     )
 }
 

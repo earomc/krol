@@ -14,6 +14,7 @@ use krol_server::auth::{SESSION_SERVER, ServerKeyPair};
 use krol_server::config::{PropertyManager, ServerProperties, eula};
 use krol_server::net::{NetConfig, NetShared, handle_connection};
 use krol_server::status::{StatusResponse, load_favicon};
+use krol_server::userlist::UserLists;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
@@ -128,6 +129,7 @@ async fn run() {
             sample: Vec::new(),
             favicon: load_favicon(Path::new("server-icon.png")),
         },
+        UserLists::load(Path::new("."), props.white_list),
     );
     info!(
         "Done ({:.3}s)! For help, type \"help\" or \"?\"",

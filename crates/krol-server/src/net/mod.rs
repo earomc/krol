@@ -26,6 +26,7 @@ use tracing::debug;
 
 use crate::auth::ServerKeyPair;
 use crate::status::StatusResponse;
+use crate::userlist::UserLists;
 use connection::{Connection, READ_CHUNK};
 
 pub use login::LOGIN_TIMEOUT;
@@ -57,6 +58,8 @@ pub struct NetShared {
     pub status: RwLock<StatusResponse>,
     /// The live player count (the legacy ping and login checks read it directly).
     pub online_players: AtomicI32,
+    /// Operators, whitelist and bans.
+    pub user_lists: std::sync::Mutex<UserLists>,
     /// Counter for "User Authenticator #N" thread names.
     authenticator_ids: AtomicU32,
     /// Source of stand-in identity hash codes for logged Java objects.
@@ -65,9 +68,10 @@ pub struct NetShared {
 
 impl NetShared {
     /// Creates shared state.
-    pub fn new(config: NetConfig, status: StatusResponse) -> Arc<Self> {
+    pub fn new(config: NetConfig, status: StatusResponse, user_lists: UserLists) -> Arc<Self> {
         Arc::new(Self {
             config,
+            user_lists: std::sync::Mutex::new(user_lists),
             online_players: AtomicI32::new(status.online_players),
             status: RwLock::new(status),
             authenticator_ids: AtomicU32::new(0),

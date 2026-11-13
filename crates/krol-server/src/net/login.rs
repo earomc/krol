@@ -266,9 +266,18 @@ async fn login<S: AsyncRead + AsyncWrite + Unpin>(
     }
 
     // Vanilla `tryAcceptPlayer` / `allowUserToConnect`.
-    // TODO(M2): bans, IP bans and the whitelist once their JSON files are implemented.
-    if shared.online_players.load(Ordering::Relaxed) >= shared.config.max_players {
-        return close_connection(conn, ctx, version, "The server is full!", "Server thread").await;
+    let refusal = shared
+        .user_lists
+        .lock()
+        .map_err(|_| std::io::Error::other("user lists poisoned"))?
+        .allow_user_to_connect(
+            profile.id,
+            ctx.peer,
+            shared.online_players.load(Ordering::Relaxed),
+            shared.config.max_players,
+        );
+    if let Some(reason) = refusal {
+        return close_connection(conn, ctx, version, &reason, "Server thread").await;
     }
     if let Ok(threshold) = usize::try_from(shared.config.compression_threshold)
         && version == ProtocolVersion::V47
