@@ -138,6 +138,10 @@ pub struct Observe {
     /// both sides, for lines whose presence legitimately differs.
     #[serde(default)]
     pub log_ignore_prefixes: Vec<String>,
+    /// Block positions read from the saved world (`world/region`) after shutdown,
+    /// reported as `id:meta`.
+    #[serde(default)]
+    pub blocks: Vec<[i32; 3]>,
     /// Observation paths excluded from comparison (known, documented deviations), e.g.
     /// `status_5.parsed.version`. Each entry should carry a comment in the TOML saying why.
     #[serde(default)]

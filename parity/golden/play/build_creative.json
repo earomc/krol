@@ -169,19 +169,19 @@
           "packet": "block_change"
         },
         {
-          "hex": "096469672e73746f6e65fffff17400000024fffff26c3f80000032",
+          "hex": "096469672e73746f6e65fffff15c00000024fffff26c3f80000032",
           "packet": "sound_effect"
         },
         {
-          "hex": "ffff8b800ffffe4d20",
+          "hex": "ffff8ac00ffffe4d10",
           "packet": "block_change"
         },
         {
-          "hex": "ffff8b8013fffe4d10",
+          "hex": "ffff8ac013fffe4d10",
           "packet": "block_change"
         },
         {
-          "hex": "ffff8b8013fffe4d10",
+          "hex": "ffff8ac013fffe4d10",
           "packet": "block_change"
         }
       ],
@@ -669,6 +669,13 @@
       "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
       "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ],
+    "blocks": {
+      "-469,3,-435": "1:0",
+      "-469,4,-435": "1:0",
+      "-468,3,-435": "0:0",
+      "-469,2,-435": "3:0",
+      "-465,0,-435": "7:0"
+    },
     "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat": {
       "AbsorptionAmount": "0f",
       "Air": "300s",
@@ -737,7 +744,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": -549811648,
+      "XpSeed": -1422916989,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",

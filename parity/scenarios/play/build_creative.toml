@@ -1,4 +1,6 @@
 description = "Creative mode: break blocks, take stone from the creative inventory, place it"
+# Placements avoid covering grass: grass under an opaque block turns into dirt on a
+# random block tick (M5), which is nondeterministic.
 subsystem = "play"
 
 [setup]
@@ -20,12 +22,13 @@ chat = [
     "@1100 !dig -468 3 -435 1",
     "@1400 !creative 36 1 64 0",
     "@1700 !place -469 2 -435 1",
-    "@2000 !place -466 3 -435 1",
+    "@2000 !place -469 3 -435 1",
     "@2300 !dig -465 0 -435 1",
 ]
 
 [observe]
 log = true
+blocks = [[-469, 3, -435], [-469, 4, -435], [-468, 3, -435], [-469, 2, -435], [-465, 0, -435]]
 files = ["world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat"]
 ignore = [
     # Vanilla replaces a stored XpSeed of 0 with an unseeded random value on load.
