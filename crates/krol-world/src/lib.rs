@@ -6,5 +6,6 @@
 #![deny(missing_docs)]
 
 pub mod chunk;
+pub mod items;
 pub mod level;
 pub mod region;
