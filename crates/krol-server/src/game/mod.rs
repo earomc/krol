@@ -302,7 +302,11 @@ impl Game {
         let radius = self.config.view_distance;
         self.tick_active_chunks(radius);
         for i in 0..self.players.len() {
-            self.tick_player(i, radius);
+            // Vanilla accepts logins in the network phase at the end of a tick, so a new
+            // player's first update happens on the following tick (after its packets).
+            if self.players[i].joined_tick != self.tick_count {
+                self.tick_player(i, radius);
+            }
         }
         for line in commands {
             self.console_command(&line);
@@ -611,6 +615,7 @@ impl Game {
             managed_pos: (0.0, 0.0),
             movement: Default::default(),
             new_watches: Vec::new(),
+            joined_tick: self.tick_count,
             stats: stats::Stats::load(&self.level.dir, profile_id),
             xp_dirty: false,
             score_dirty: false,

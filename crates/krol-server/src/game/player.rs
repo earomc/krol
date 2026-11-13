@@ -56,6 +56,8 @@ pub struct Player {
     pub movement: Movement,
     /// Chunks watched since the game last loaded them.
     pub new_watches: Vec<(i32, i32)>,
+    /// The tick in which the player joined.
+    pub joined_tick: u64,
     /// Statistics (`stats/<uuid>.json`).
     pub stats: super::stats::Stats,
     /// Experience changed since the last Set Experience packet.
