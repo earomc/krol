@@ -364,7 +364,7 @@ The parity harness arrives in M1 on purpose: every later milestone is developed 
 | M1 | Done: status (modern + legacy) for 47 and 5, `server.properties`, EULA, vanilla logging, parity runner (`run`, `record`, `diff`, `coverage`). Not yet: `fuzz`, `worldgen`, `plugins` commands, the vanilla Java agent for RNG pinning |
 | M2 | Done: offline/online login, encryption, compression, ops/whitelist/bans. Missing: `usercache.json`, duplicate-login handling |
 | M3 | Started: `krol-world` has Anvil regions, chunk sections and `level.dat`/`session.lock`. Next: tick loop, play-state packets (47 + 5 translation), joining an existing world |
-| Goldens | None recorded yet — `cargo xtask parity record` needs `KROL_VANILLA_JAR`; until then scenarios report `no_golden` |
+| Goldens | Recorded from vanilla 1.8.8 on Java 8 (Windows). 7/8 scenarios pass; `login/offline` waits on M3. Re-record with `KROL_VANILLA_JAR=reference/minecraft_server.1.8.8.jar KROL_JAVA=<java 8> cargo xtask parity record --rerecord` after changing scenarios or normalization |
 
 Login currently ends with a temporary play-state disconnect ("krol: play is not
 implemented yet") until M3 lands.
