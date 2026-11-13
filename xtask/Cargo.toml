@@ -8,6 +8,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+krol-nbt = { path = "../crates/krol-nbt" }
 krol-protocol = { path = "../crates/krol-protocol" }
 krol-testbot = { path = "../crates/krol-testbot" }
 anyhow = "1"

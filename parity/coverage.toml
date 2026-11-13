@@ -121,7 +121,7 @@ scenarios = ["play/join_flat"]
 [[feature]]
 id = "world.playerdata"
 description = "playerdata/<uuid>.dat written like vanilla"
-scenarios = []
+scenarios = ["play/join_flat"]
 
 [[feature]]
 id = "worldgen.overworld"

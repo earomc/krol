@@ -616,6 +616,79 @@
       "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
       "[Server thread/INFO]: Saving chunks for level 'world'/The End",
       "[Server Shutdown Thread/INFO]: Stopping server"
-    ]
+    ],
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat": {
+      "AbsorptionAmount": "0f",
+      "Air": "300s",
+      "Attributes": [
+        {
+          "Base": "20d",
+          "Name": "generic.maxHealth"
+        },
+        {
+          "Base": "0d",
+          "Name": "generic.knockbackResistance"
+        },
+        {
+          "Base": "0.10000000149011612d",
+          "Name": "generic.movementSpeed"
+        },
+        {
+          "Base": "1d",
+          "Name": "generic.attackDamage"
+        }
+      ],
+      "DeathTime": "0s",
+      "Dimension": 0,
+      "EnderItems": [],
+      "FallDistance": "0f",
+      "Fire": "-20s",
+      "HealF": "20f",
+      "Health": "20s",
+      "HurtByTimestamp": 0,
+      "HurtTime": "0s",
+      "Inventory": [],
+      "Invulnerable": "0b",
+      "Motion": [
+        "0d",
+        "-0.0784000015258789d",
+        "0d"
+      ],
+      "OnGround": "1b",
+      "PortalCooldown": 0,
+      "Pos": [
+        "-471.5d",
+        "4d",
+        "-434.5d"
+      ],
+      "Rotation": [
+        "0f",
+        "0f"
+      ],
+      "Score": 0,
+      "SelectedItemSlot": 0,
+      "SleepTimer": "0s",
+      "Sleeping": "0b",
+      "UUIDLeast": "-6767082312774862209L",
+      "UUIDMost": "-5401272232702037695L",
+      "XpLevel": 0,
+      "XpP": "0f",
+      "XpSeed": 0,
+      "XpTotal": 0,
+      "abilities": {
+        "flySpeed": "0.05f",
+        "flying": "0b",
+        "instabuild": "0b",
+        "invulnerable": "0b",
+        "mayBuild": "0b",
+        "mayfly": "0b",
+        "walkSpeed": "0.1f"
+      },
+      "foodExhaustionLevel": "0f",
+      "foodLevel": 20,
+      "foodSaturationLevel": "5f",
+      "foodTickTimer": 0,
+      "playerGameType": 2
+    }
   }
 }

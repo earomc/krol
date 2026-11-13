@@ -39,6 +39,7 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
     }
     for file in &scenario.observe.files {
         let value = match std::fs::read(dir.join(file)) {
+            Ok(bytes) if file.ends_with(".dat") => nbt_file_json(&bytes),
             Ok(bytes) => normalize_file(file, &String::from_utf8_lossy(&bytes)),
             Err(_) => Value::Null,
         };
@@ -219,6 +220,42 @@ fn normalize_file(name: &str, text: &str) -> Value {
         })
         .collect();
     Value::Array(lines)
+}
+
+/// A gzip NBT file as JSON with sorted compound keys (vanilla writes compounds in
+/// `HashMap` order, which carries no meaning). Values are tagged with their NBT type.
+fn nbt_file_json(bytes: &[u8]) -> Value {
+    match krol_nbt::read_gzip(bytes) {
+        Ok((_, root)) => compound_json(&root),
+        Err(e) => json!({ "error": e.to_string() }),
+    }
+}
+
+fn compound_json(c: &krol_nbt::Compound) -> Value {
+    let mut entries: Vec<(&String, &krol_nbt::Tag)> = c.iter().collect();
+    entries.sort_by(|a, b| a.0.cmp(b.0));
+    let mut map = serde_json::Map::new();
+    for (k, v) in entries {
+        map.insert(k.clone(), tag_json(v));
+    }
+    Value::Object(map)
+}
+
+fn tag_json(t: &krol_nbt::Tag) -> Value {
+    use krol_nbt::Tag;
+    match t {
+        Tag::Byte(v) => json!(format!("{v}b")),
+        Tag::Short(v) => json!(format!("{v}s")),
+        Tag::Int(v) => json!(v),
+        Tag::Long(v) => json!(format!("{v}L")),
+        Tag::Float(v) => json!(format!("{v}f")),
+        Tag::Double(v) => json!(format!("{v}d")),
+        Tag::ByteArray(a) => json!(format!("<{} bytes>", a.len())),
+        Tag::String(s) => json!(s),
+        Tag::List(l) => Value::Array(l.iter().map(tag_json).collect()),
+        Tag::Compound(c) => compound_json(c),
+        Tag::IntArray(a) => json!(a),
+    }
 }
 
 fn decode_hex(hex: &str) -> Vec<u8> {
