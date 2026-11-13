@@ -120,6 +120,8 @@ pub struct GameConfig {
     pub difficulty: i32,
     /// `hardcore`.
     pub hardcore: bool,
+    /// `allow-flight`.
+    pub allow_flight: bool,
 }
 
 /// Handle to the running game thread.
@@ -456,9 +458,10 @@ impl Game {
             skin_parts: 0,
             ticks: 0,
             last_keep_alive: 0,
-            sent_chunks: Default::default(),
+            watching: Default::default(),
             chunk_queue: Default::default(),
-            tracking_center: (0, 0),
+            managed_pos: (0.0, 0.0),
+            movement: Default::default(),
             chat_spam: 0,
             data,
         };
@@ -514,15 +517,9 @@ impl Game {
 
         let radius = self.config.view_distance;
         let player = &mut self.players[new_index];
-        player.update_tracked_chunks(radius);
-        player.send(ClientboundPlay::PositionLook {
-            x: player.pos.0,
-            y: player.pos.1,
-            z: player.pos.2,
-            yaw: player.rotation.0,
-            pitch: player.rotation.1,
-            flags: 0,
-        });
+        player.start_watching(radius);
+        let (pos, rot) = (player.pos, player.rotation);
+        Self::set_player_location(player, pos, rot);
 
         // updateTimeAndWeatherForPlayer
         let data = &self.level.data.data;
@@ -614,30 +611,28 @@ impl Game {
             player.chat_spam -= 1;
         }
 
-        // Chunk streaming.
-        let (cx, cz) = player.chunk_pos();
-        let (tx, tz) = player.tracking_center;
-        if (cx - tx).abs() > 0 || (cz - tz).abs() > 0 {
-            for (ux, uz) in player.update_tracked_chunks(radius) {
-                player.send(ClientboundPlay::ChunkData {
-                    column: ChunkColumn {
-                        x: ux,
-                        z: uz,
-                        mask: 0,
-                        data: vec![0; 256],
-                    },
-                    full: true,
-                });
+        player.movement.network_ticks += 1;
+
+        // Chunk streaming (vanilla: EntityPlayerMP.onUpdate): up to 10 queued chunks per
+        // tick; a single chunk goes as Chunk Data, several as Map Chunk Bulk.
+        let _ = radius;
+        // Like vanilla's iterator: take up to 10 sendable chunks, leave the rest queued.
+        let mut batch: Vec<(i32, i32)> = Vec::new();
+        let mut k = 0;
+        while batch.len() < CHUNKS_PER_TICK && k < self.players[i].chunk_queue.len() {
+            let c = self.players[i].chunk_queue[k];
+            if self.level.overworld.is_sendable(c.0, c.1) {
+                self.players[i].chunk_queue.remove(k);
+                batch.push(c);
+            } else {
+                k += 1;
             }
         }
-        let batch: Vec<(i32, i32)> = (0..CHUNKS_PER_TICK)
-            .map_while(|_| self.players[i].chunk_queue.pop_front())
-            .collect();
         if batch.is_empty() {
             return;
         }
         let sky = self.level.overworld.has_sky;
-        let columns = batch
+        let mut columns: Vec<ChunkColumn> = batch
             .iter()
             .map(|&(x, z)| {
                 let (mask, data) = self
@@ -649,30 +644,163 @@ impl Game {
             })
             .collect();
         let player = &mut self.players[i];
-        player.sent_chunks.extend(batch);
-        player.send(ClientboundPlay::MapChunkBulk {
-            sky_light: sky,
-            columns,
+        if columns.len() == 1 {
+            player.send(ClientboundPlay::ChunkData {
+                column: columns.remove(0),
+                full: true,
+            });
+        } else {
+            player.send(ClientboundPlay::MapChunkBulk {
+                sky_light: sky,
+                columns,
+            });
+        }
+    }
+
+    /// Vanilla `setPlayerLocation`: teleport and wait for the client to confirm.
+    fn set_player_location(player: &mut Player, pos: (f64, f64, f64), rot: (f32, f32)) {
+        player.movement.has_moved = false;
+        player.movement.last_pos = pos;
+        player.pos = pos;
+        player.rotation = rot;
+        player.send(ClientboundPlay::PositionLook {
+            x: pos.0,
+            y: pos.1,
+            z: pos.2,
+            yaw: rot.0,
+            pitch: rot.1,
+            flags: 0,
         });
+    }
+
+    /// Vanilla `NetHandlerPlayServer.processPlayer` for C03 to C06.
+    ///
+    /// Known deviation: vanilla moves the bounding box through the world (`moveEntity`)
+    /// and reports "moved wrongly!" or undoes moves into blocks; krol does not model
+    /// collision yet (M5) and accepts those moves.
+    fn process_movement(
+        &mut self,
+        i: usize,
+        position: Option<(f64, f64, f64)>,
+        rotation: Option<(f32, f32)>,
+        on_ground: bool,
+    ) {
+        let radius = self.config.view_distance;
+        let allow_flight = self.config.allow_flight;
+        let player = &mut self.players[i];
+        let mut position = position;
+        if let Some(p) = position {
+            let m = &mut player.movement;
+            let d = (p.0 - m.last_pos.0, p.1 - m.last_pos.1, p.2 - m.last_pos.2);
+            if !m.has_moved && d.0 * d.0 + d.1 * d.1 + d.2 * d.2 < 0.25 {
+                m.has_moved = true;
+            }
+        }
+        if !player.movement.has_moved {
+            if player.movement.network_ticks - player.movement.last_move_tick > 20 {
+                let (pos, rot) = (player.movement.last_pos, player.rotation);
+                Self::set_player_location(player, pos, rot);
+            }
+            return;
+        }
+        player.movement.last_move_tick = player.movement.network_ticks;
+        player.movement.last_pos = player.pos;
+        if position.is_some_and(|p| p.1 == -999.0) {
+            position = None;
+        }
+        if let Some(p) = position
+            && (p.0.abs() > 3.0e7 || p.2.abs() > 3.0e7)
+        {
+            self.kick(i, "Illegal position");
+            return;
+        }
+        let player = &mut self.players[i];
+        let target = position.unwrap_or(player.pos);
+        let rot = rotation.unwrap_or(player.rotation);
+        let d = (
+            target.0 - player.pos.0,
+            target.1 - player.pos.1,
+            target.2 - player.pos.2,
+        );
+        // TODO(M5): subtract the squared motion (vanilla: `d15 - d14 > 100`).
+        if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 > 100.0 {
+            let (dx, dy, dz) = (
+                krol_java::fmt::java_double(d.0),
+                krol_java::fmt::java_double(d.1),
+                krol_java::fmt::java_double(d.2),
+            );
+            // Vanilla quirk: the same three numbers are printed twice.
+            tracing::warn!(
+                "{} moved too quickly! {dx},{dy},{dz} ({dx}, {dy}, {dz})",
+                player.profile.name
+            );
+            let last = player.movement.last_pos;
+            let rot = player.rotation;
+            Self::set_player_location(player, last, rot);
+            return;
+        }
+        player.pos = target;
+        player.rotation = rot;
+        player.on_ground = on_ground;
+        let gamemode = player.gamemode;
+        let (x, y, z) = player.pos;
+
+        // Floating check (vanilla: checkBlockCollision on the box grown by 1/16 and
+        // extended 0.55 down; any non-air block counts).
+        let flying_allowed = allow_flight || gamemode == 1 || gamemode == 3;
+        let floor = krol_java::math::floor_f64;
+        let mut touching = false;
+        'scan: for bx in floor(x - 0.3625)..floor(x + 0.3625 + 1.0) {
+            for by in floor(y - 0.6125)..floor(y + 1.8625 + 1.0) {
+                for bz in floor(z - 0.3625)..floor(z + 0.3625 + 1.0) {
+                    if self.level.overworld.block(bx, by, bz) != 0 {
+                        touching = true;
+                        break 'scan;
+                    }
+                }
+            }
+        }
+        let player = &mut self.players[i];
+        if !flying_allowed && !touching {
+            if d.1 >= -0.03125 {
+                player.movement.floating_ticks += 1;
+                if player.movement.floating_ticks > 80 {
+                    tracing::warn!("{} was kicked for floating too long!", player.profile.name);
+                    self.kick(i, "Flying is not enabled on this server");
+                    return;
+                }
+            }
+        } else {
+            player.movement.floating_ticks = 0;
+        }
+
+        let unload = self.players[i].update_watching(radius);
+        let sky = self.level.overworld.has_sky;
+        for (ux, uz) in unload {
+            let (_, data) = self.level.overworld.chunk(ux, uz).packet_data(true, 0, sky);
+            self.players[i].send(ClientboundPlay::ChunkData {
+                column: ChunkColumn {
+                    x: ux,
+                    z: uz,
+                    mask: 0,
+                    data,
+                },
+                full: true,
+            });
+        }
     }
 
     fn handle_packet(&mut self, i: usize, packet: ServerboundPlay) {
         match packet {
             ServerboundPlay::Chat { message } => self.chat(i, &message),
             ServerboundPlay::Position { x, y, z, on_ground } => {
-                let p = &mut self.players[i];
-                p.pos = (x, y, z);
-                p.on_ground = on_ground;
+                self.process_movement(i, Some((x, y, z)), None, on_ground);
             }
             ServerboundPlay::Look {
                 yaw,
                 pitch,
                 on_ground,
-            } => {
-                let p = &mut self.players[i];
-                p.rotation = (yaw, pitch);
-                p.on_ground = on_ground;
-            }
+            } => self.process_movement(i, None, Some((yaw, pitch)), on_ground),
             ServerboundPlay::PositionLook {
                 x,
                 y,
@@ -680,13 +808,10 @@ impl Game {
                 yaw,
                 pitch,
                 on_ground,
-            } => {
-                let p = &mut self.players[i];
-                p.pos = (x, y, z);
-                p.rotation = (yaw, pitch);
-                p.on_ground = on_ground;
+            } => self.process_movement(i, Some((x, y, z)), Some((yaw, pitch)), on_ground),
+            ServerboundPlay::Player { on_ground } => {
+                self.process_movement(i, None, None, on_ground);
             }
-            ServerboundPlay::Player { on_ground } => self.players[i].on_ground = on_ground,
             ServerboundPlay::ClientSettings { skin_parts, .. } => {
                 self.players[i].skin_parts = skin_parts;
             }

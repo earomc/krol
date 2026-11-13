@@ -45,12 +45,15 @@ pub struct Player {
     pub ticks: u64,
     /// Network tick of the last keep-alive sent.
     pub last_keep_alive: u64,
-    /// Chunks the client has received.
-    pub sent_chunks: HashSet<(i32, i32)>,
-    /// Chunks waiting to be sent, nearest first.
+    /// Chunks the player watches (vanilla: `PlayerInstance.playersWatchingChunk`); a
+    /// chunk is watched from the moment it is queued, before it is sent.
+    pub watching: HashSet<(i32, i32)>,
+    /// Watched chunks not yet sent, in vanilla's spiral order (`loadedChunks`).
     pub chunk_queue: VecDeque<(i32, i32)>,
-    /// The chunk the tracking area is centered on.
-    pub tracking_center: (i32, i32),
+    /// Position the watched area was last computed for (`managedPosX/Z`).
+    pub managed_pos: (f64, f64),
+    /// Movement state (vanilla: `NetHandlerPlayServer` fields).
+    pub movement: Movement,
     /// Chat spam counter (vanilla: `chatSpamThresholdCount`).
     pub chat_spam: i32,
     /// Raw player data, kept to preserve fields krol does not model yet.
@@ -63,41 +66,98 @@ impl Player {
         let _ = self.out.send(Outgoing::Packet(packet));
     }
 
-    /// Chunk coordinates the player stands in.
-    pub fn chunk_pos(&self) -> (i32, i32) {
-        (
-            krol_java::math::floor_f64(self.pos.0) >> 4,
-            krol_java::math::floor_f64(self.pos.2) >> 4,
-        )
+    /// Vanilla quirk: `PlayerManager` finds the player's chunk with `(int) pos >> 4`
+    /// (truncation toward zero, then shift), not `floor(pos) >> 4`.
+    fn managed_chunk(x: f64, z: f64) -> (i32, i32) {
+        ((x as i32) >> 4, (z as i32) >> 4)
     }
 
-    /// Recomputes the set of chunks in view (a square of `radius` around the player)
-    /// and queues missing ones nearest-first. Returns chunks to unload.
-    pub fn update_tracked_chunks(&mut self, radius: i32) -> Vec<(i32, i32)> {
-        let (cx, cz) = self.chunk_pos();
-        self.tracking_center = (cx, cz);
-        let in_view = |(x, z): (i32, i32)| (x - cx).abs() <= radius && (z - cz).abs() <= radius;
-        let unload: Vec<(i32, i32)> = self
-            .sent_chunks
-            .iter()
-            .copied()
-            .filter(|&c| !in_view(c))
-            .collect();
-        for c in &unload {
-            self.sent_chunks.remove(c);
-        }
-        self.chunk_queue.retain(|&c| in_view(c));
-        let mut wanted: Vec<(i32, i32)> = Vec::new();
+    /// Vanilla `PlayerManager.addPlayer`: watch every chunk within `radius`.
+    pub fn start_watching(&mut self, radius: i32) {
+        let (cx, cz) = Self::managed_chunk(self.pos.0, self.pos.2);
+        self.managed_pos = (self.pos.0, self.pos.2);
         for x in cx - radius..=cx + radius {
             for z in cz - radius..=cz + radius {
-                if !self.sent_chunks.contains(&(x, z)) && !self.chunk_queue.contains(&(x, z)) {
-                    wanted.push((x, z));
+                self.watch((x, z));
+            }
+        }
+        self.filter_chunk_queue(radius);
+    }
+
+    fn watch(&mut self, c: (i32, i32)) {
+        if self.watching.insert(c) {
+            self.chunk_queue.push_back(c);
+        }
+    }
+
+    /// Vanilla `PlayerManager.updateMountedMovingPlayer`: after moving at least 8 blocks
+    /// from the managed position, watch newly covered chunks and stop watching the rest.
+    /// Returns the chunks to unload (vanilla sends an unload for every watched chunk it
+    /// drops, even if it was never sent).
+    pub fn update_watching(&mut self, radius: i32) -> Vec<(i32, i32)> {
+        let dx = self.managed_pos.0 - self.pos.0;
+        let dz = self.managed_pos.1 - self.pos.2;
+        if dx * dx + dz * dz < 64.0 {
+            return Vec::new();
+        }
+        let (i, j) = Self::managed_chunk(self.pos.0, self.pos.2);
+        let (k, l) = Self::managed_chunk(self.managed_pos.0, self.managed_pos.1);
+        let (di, dj) = (i - k, j - l);
+        if di == 0 && dj == 0 {
+            return Vec::new();
+        }
+        let overlaps =
+            |x: i32, z: i32, cx: i32, cz: i32| (x - cx).abs() <= radius && (z - cz).abs() <= radius;
+        let mut unload = Vec::new();
+        for x in i - radius..=i + radius {
+            for z in j - radius..=j + radius {
+                if !overlaps(x, z, k, l) {
+                    self.watch((x, z));
+                }
+                let old = (x - di, z - dj);
+                if !overlaps(old.0, old.1, i, j) && self.watching.remove(&old) {
+                    self.chunk_queue.retain(|&c| c != old);
+                    unload.push(old);
                 }
             }
         }
-        wanted.sort_by_key(|&(x, z)| (x - cx) * (x - cx) + (z - cz) * (z - cz));
-        self.chunk_queue.extend(wanted);
+        self.filter_chunk_queue(radius);
+        self.managed_pos = (self.pos.0, self.pos.2);
         unload
+    }
+
+    /// Vanilla `PlayerManager.filterChunkLoadQueue`: reorder the send queue as a spiral
+    /// around the player's chunk.
+    fn filter_chunk_queue(&mut self, radius: i32) {
+        const DIRS: [(i32, i32); 4] = [(1, 0), (0, 1), (-1, 0), (0, -1)];
+        let pending: HashSet<(i32, i32)> = self.chunk_queue.drain(..).collect();
+        let (k, l) = Self::managed_chunk(self.pos.0, self.pos.2);
+        let push = |queue: &mut VecDeque<(i32, i32)>, c: (i32, i32)| {
+            if pending.contains(&c) {
+                queue.push_back(c);
+            }
+        };
+        let mut queue = VecDeque::with_capacity(pending.len());
+        push(&mut queue, (k, l));
+        let (mut dir, mut ox, mut oz) = (0usize, 0, 0);
+        for len in 1..=radius * 2 {
+            for _ in 0..2 {
+                let (ddx, ddz) = DIRS[dir % 4];
+                dir += 1;
+                for _ in 0..len {
+                    ox += ddx;
+                    oz += ddz;
+                    push(&mut queue, (k + ox, l + oz));
+                }
+            }
+        }
+        dir %= 4;
+        for _ in 0..radius * 2 {
+            ox += DIRS[dir].0;
+            oz += DIRS[dir].1;
+            push(&mut queue, (k + ox, l + oz));
+        }
+        self.chunk_queue = queue;
     }
 
     /// Writes the player's data to `<world>/playerdata/<uuid>.dat` (vanilla:
@@ -149,6 +209,21 @@ fn floats(values: &[f32]) -> Tag {
         l.push(Tag::Float(*v)).expect("homogeneous");
     }
     Tag::List(l)
+}
+
+/// Movement bookkeeping from vanilla's `NetHandlerPlayServer`.
+#[derive(Debug, Clone, Default)]
+pub struct Movement {
+    /// Whether the client confirmed the last teleport (`hasMoved`).
+    pub has_moved: bool,
+    /// Last accepted position (`lastPosX/Y/Z`).
+    pub last_pos: (f64, f64, f64),
+    /// Network ticks (`networkTickCount`).
+    pub network_ticks: u64,
+    /// Network tick of the last accepted movement (`field_175090_f`).
+    pub last_move_tick: u64,
+    /// Ticks spent floating (`floatingTickCount`).
+    pub floating_ticks: u32,
 }
 
 /// Loads `<world>/playerdata/<uuid>.dat`, if present and readable.

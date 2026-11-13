@@ -25,6 +25,8 @@ pub struct World {
 struct LoadedChunk {
     chunk: Chunk,
     modified: bool,
+    /// Loaded from disk (as opposed to a placeholder for a chunk vanilla would generate).
+    from_disk: bool,
 }
 
 impl World {
@@ -83,20 +85,29 @@ impl World {
                         None
                     }
                 });
-            let chunk = loaded.unwrap_or_else(|| {
-                let mut c = Chunk::empty(cx, cz);
-                c.terrain_populated = true;
-                c
-            });
+            let from_disk = loaded.is_some();
+            let chunk = loaded.unwrap_or_else(|| Chunk::empty(cx, cz));
             self.chunks.insert(
                 (cx, cz),
                 LoadedChunk {
                     chunk,
                     modified: false,
+                    from_disk,
                 },
             );
         }
         &self.chunks[&(cx, cz)].chunk
+    }
+
+    /// Whether vanilla would send this chunk to players (`Chunk.isPopulated`).
+    ///
+    /// Vanilla only sends populated chunks, populating chunks (and generating missing
+    /// ones) as their neighbours load. krol cannot generate or populate yet (M6): it
+    /// sends every chunk stored on disk and holds back missing ones. This matches vanilla
+    /// inside a generated world but not at the edge of the generated area.
+    pub fn is_sendable(&mut self, cx: i32, cz: i32) -> bool {
+        self.chunk(cx, cz);
+        self.chunks[&(cx, cz)].from_disk
     }
 
     /// Mutable access to a chunk; marks it modified.
