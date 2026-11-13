@@ -6,6 +6,7 @@
 #![deny(missing_docs)]
 
 pub mod auth;
+pub mod chat;
 pub mod config;
 pub mod net;
 pub mod status;
