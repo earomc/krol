@@ -233,7 +233,43 @@ fn normalize_text(line: &str) -> String {
     s
 }
 
+/// Replaces `yyyy-MM-dd HH:mm:ss +zzzz` timestamps (ban/usercache dates) with `<date>`.
+fn normalize_dates(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    let digit = |j: usize, n: usize| j + n <= b.len() && b[j..j + n].iter().all(u8::is_ascii_digit);
+    while i < b.len() {
+        let is_date = digit(i, 4)
+            && b.get(i + 4) == Some(&b'-')
+            && digit(i + 5, 2)
+            && b.get(i + 7) == Some(&b'-')
+            && digit(i + 8, 2)
+            && b.get(i + 10) == Some(&b' ')
+            && digit(i + 11, 2)
+            && b.get(i + 13) == Some(&b':')
+            && digit(i + 14, 2)
+            && b.get(i + 16) == Some(&b':')
+            && digit(i + 17, 2)
+            && b.get(i + 19) == Some(&b' ')
+            && matches!(b.get(i + 20), Some(b'+' | b'-'))
+            && digit(i + 21, 4);
+        if is_date {
+            out.push_str("<date>");
+            i += 25;
+        } else {
+            let ch = s[i..].chars().next().unwrap_or(' ');
+            out.push(ch);
+            i += ch.len_utf8();
+        }
+    }
+    out
+}
+
 fn normalize_file(name: &str, text: &str) -> Value {
+    if name.ends_with(".json") {
+        return Value::String(normalize_dates(text));
+    }
     let is_properties = name.ends_with(".properties") || name.ends_with("eula.txt");
     let lines: Vec<Value> = text
         .lines()

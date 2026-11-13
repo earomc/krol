@@ -9,6 +9,8 @@ pub mod auth;
 pub mod chat;
 pub mod config;
 pub mod game;
+pub mod lang;
 pub mod net;
 pub mod status;
+pub mod usercache;
 pub mod userlist;

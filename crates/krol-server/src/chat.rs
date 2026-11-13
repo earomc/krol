@@ -256,34 +256,9 @@ impl Component {
     }
 }
 
-/// en_US strings for the keys the server itself renders in logs.
+/// en_US rendering of a translation key (see [`crate::lang`]).
 fn format_translation(key: &str, args: &[String]) -> String {
-    let template = match key {
-        "chat.type.text" => "<%s> %s",
-        "chat.type.emote" => "* %s %s",
-        "chat.type.announcement" => "[%s] %s",
-        "multiplayer.player.joined" => "%s joined the game",
-        "multiplayer.player.left" => "%s left the game",
-        "disconnect.timeout" => "Timed out",
-        "disconnect.endOfStream" => "End of stream",
-        "disconnect.genericReason" => "%s",
-        "multiplayer.disconnect.server_shutdown" => "Server closed",
-        "commands.message.display.outgoing" => "You whisper to %s: %s",
-        "commands.message.display.incoming" => "%s whispers to you: %s",
-        "gameMode.changed" => "Your game mode has been updated",
-        // Unknown keys render as the key itself, like vanilla's fallback.
-        _ => return key.to_owned(),
-    };
-    let mut out = String::new();
-    let mut args = args.iter();
-    let mut rest = template;
-    while let Some(i) = rest.find("%s") {
-        out.push_str(&rest[..i]);
-        out.push_str(args.next().map_or("", String::as_str));
-        rest = &rest[i + 2..];
-    }
-    out.push_str(rest);
-    out
+    crate::lang::format(key, args)
 }
 
 #[cfg(test)]

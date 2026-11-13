@@ -121,6 +121,8 @@ pub struct GameConfig {
     pub difficulty: i32,
     /// `allow-flight`.
     pub allow_flight: bool,
+    /// `op-permission-level`.
+    pub op_permission_level: i32,
 }
 
 /// Handle to the running game thread.
@@ -165,6 +167,8 @@ struct Game {
     tick_count: u64,
     last_status_refresh: Option<Instant>,
     stopping: bool,
+    /// `usercache.json`.
+    user_cache: crate::usercache::UserCache,
     /// Players disconnected by the server, removed (with logs) in the next network tick.
     pending_removals: Vec<(u64, Component)>,
     /// `save-on` / `save-off`.
@@ -203,6 +207,7 @@ pub fn start(
         last_status_refresh: None,
         stopping: false,
         pending_removals: Vec::new(),
+        user_cache: crate::usercache::UserCache::load("usercache.json"),
         saving_enabled: true,
         weather_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
@@ -547,6 +552,7 @@ impl Game {
         version: ProtocolVersion,
         out: UnboundedSender<Outgoing>,
     ) {
+        self.user_cache.add(profile.id, &profile.name);
         let stored = load_player_data(&self.level.dir, profile.id);
         let gamemode = match &stored {
             Some(d) if !self.config.force_gamemode && d.contains_key("playerGameType") => {

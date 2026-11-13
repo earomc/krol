@@ -43,7 +43,8 @@ pub struct PlayObservation {
 /// - answers Player Position And Look with a matching serverbound position,
 /// - then sends a Player (on ground) packet every 50 ms, like a client tick.
 ///
-/// Optional `chat` lines are sent once the position is known, 500 ms apart. Optional
+/// Optional `chat` lines are sent once the position is known, 500 ms apart; a line
+/// written `@<ms> <text>` is instead sent `<ms>` after the position was received. Optional
 /// `moves` (offsets from the first server-given position) replace the idle Player
 /// packet, one Position packet per tick, after which the bot idles again.
 ///
@@ -85,7 +86,20 @@ pub async fn play_session(
     let mut positioned = false;
     let mut origin: Option<(f64, f64, f64)> = None;
     let mut next_move = 0usize;
-    let mut pending_chat: Vec<String> = chat.iter().rev().cloned().collect();
+    let mut pending_chat: Vec<String> = chat
+        .iter()
+        .filter(|c| !c.starts_with('@'))
+        .rev()
+        .cloned()
+        .collect();
+    let mut timed_chat: Vec<(u64, String)> = chat
+        .iter()
+        .filter_map(|c| {
+            let (at, text) = c.strip_prefix('@')?.split_once(' ')?;
+            Some((at.parse().ok()?, text.to_owned()))
+        })
+        .collect();
+    let mut positioned_at: Option<Instant> = None;
     let mut next_chat = start;
 
     loop {
@@ -105,6 +119,18 @@ pub async fn play_session(
                     if Instant::now() >= next_chat && let Some(message) = pending_chat.pop() {
                         send_play(&mut conn, &ServerboundPlay::Chat { message }).await?;
                         next_chat = Instant::now() + Duration::from_millis(500);
+                    }
+                    if let Some(at) = positioned_at {
+                        let elapsed = at.elapsed().as_millis() as u64;
+                        let due: Vec<String> = timed_chat
+                            .iter()
+                            .filter(|(ms, _)| *ms <= elapsed)
+                            .map(|(_, t)| t.clone())
+                            .collect();
+                        timed_chat.retain(|(ms, _)| *ms > elapsed);
+                        for message in due {
+                            send_play(&mut conn, &ServerboundPlay::Chat { message }).await?;
+                        }
                     }
                 }
             }
@@ -138,6 +164,7 @@ pub async fn play_session(
                             x: *x, y: *y, z: *z, yaw: *yaw, pitch: *pitch, on_ground: false,
                         }).await?;
                         positioned = true;
+                        positioned_at.get_or_insert_with(Instant::now);
                         origin.get_or_insert((*x, *y, *z));
                         next_chat = Instant::now() + Duration::from_millis(500);
                     }

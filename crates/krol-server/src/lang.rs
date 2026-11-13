@@ -1,0 +1,159 @@
+//! The en_US strings the server renders itself (console log lines). Clients receive
+//! translation keys and render them in their own language.
+
+/// The en_US text for `key`, or `None` if krol does not know it.
+pub fn en_us(key: &str) -> Option<&'static str> {
+    Some(match key {
+        // Chat and connection messages.
+        "chat.type.text" => "<%s> %s",
+        "chat.type.emote" => "* %s %s",
+        "chat.type.announcement" => "[%s] %s",
+        "chat.type.admin" => "[%s: %s]",
+        "multiplayer.player.joined" => "%s joined the game",
+        "multiplayer.player.left" => "%s left the game",
+        "disconnect.timeout" => "Timed out",
+        "disconnect.endOfStream" => "End of stream",
+        "disconnect.genericReason" => "%s",
+        "disconnect.spam" => "Kicked for spamming",
+        "multiplayer.disconnect.server_shutdown" => "Server closed",
+        "gameMode.changed" => "Your game mode has been updated",
+        "gameMode.survival" => "Survival Mode",
+        "gameMode.creative" => "Creative Mode",
+        "gameMode.adventure" => "Adventure Mode",
+        "gameMode.spectator" => "Spectator Mode",
+        "options.difficulty.peaceful" => "Peaceful",
+        "options.difficulty.easy" => "Easy",
+        "options.difficulty.normal" => "Normal",
+        "options.difficulty.hard" => "Hard",
+        // Generic command messages.
+        "commands.generic.usage" => "Usage: %s",
+        "commands.generic.notFound" => "Unknown command. Try /help for a list of commands",
+        "commands.generic.permission" => "You do not have permission to use this command",
+        "commands.generic.num.invalid" => "'%s' is not a valid number",
+        "commands.generic.num.tooBig" => {
+            "The number you have entered (%s) is too big, it must be at most %s"
+        }
+        "commands.generic.num.tooSmall" => {
+            "The number you have entered (%s) is too small, it must be at least %s"
+        }
+        "commands.generic.player.notFound" => "That player cannot be found",
+        "commands.generic.player.unspecified" => {
+            "You must specify which player you wish to perform this action on."
+        }
+        "commands.generic.entity.invalidUuid" => "The entity UUID provided is in an invalid format",
+        "commands.generic.entity.notFound" => "Entity '%s' cannot be found",
+        // Command results.
+        "commands.help.header" => "--- Showing help page %s of %s (/help <page>) ---",
+        "commands.help.footer" => {
+            "Tip: Use the <tab> key while typing a command to auto-complete the command or its arguments"
+        }
+        "commands.players.list" => "There are %s/%s players online:",
+        "commands.time.set" => "Set the time to %s",
+        "commands.time.added" => "Added %s to the time",
+        "commands.time.query" => "Time is %s",
+        "commands.weather.clear" => "Changing to clear weather",
+        "commands.weather.rain" => "Changing to rainy weather",
+        "commands.weather.thunder" => "Changing to rain and thunder",
+        "commands.downfall.success" => "Toggled downfall",
+        "commands.difficulty.success" => "Set game difficulty to %s",
+        "commands.defaultgamemode.success" => "The world's default game mode is now %s",
+        "commands.seed.success" => "Seed: %s",
+        "commands.gamerule.success" => "Game rule has been updated",
+        "commands.gamerule.norule" => "No game rule called '%s' is available",
+        "commands.save.disabled" => "Turned off world auto-saving",
+        "commands.save.enabled" => "Turned on world auto-saving",
+        "commands.save-off.alreadyOff" => "Saving is already turned off",
+        "commands.save-on.alreadyOn" => "Saving is already turned on",
+        "commands.save.start" => "Saving...",
+        "commands.save.success" => "Saved the world",
+        "commands.banlist.players" => "There are %s total banned players:",
+        "commands.banlist.ips" => "There are %s total banned IP addresses:",
+        "commands.whitelist.list" => "There are %s (out of %s seen) whitelisted players:",
+        "commands.whitelist.enabled" => "Turned on the whitelist",
+        "commands.whitelist.disabled" => "Turned off the whitelist",
+        "commands.whitelist.reloaded" => "Reloaded the whitelist",
+        "commands.whitelist.add.success" => "Added %s to the whitelist",
+        "commands.whitelist.add.failed" => "Could not add %s to the whitelist",
+        "commands.whitelist.remove.success" => "Removed %s from the whitelist",
+        "commands.whitelist.remove.failed" => "Could not remove %s from the whitelist",
+        "commands.op.success" => "Opped %s",
+        "commands.op.failed" => "Could not op %s",
+        "commands.deop.success" => "De-opped %s",
+        "commands.deop.failed" => "Could not de-op %s",
+        "commands.ban.success" => "Banned player %s",
+        "commands.ban.failed" => "Could not ban player %s",
+        "commands.unban.success" => "Unbanned player %s",
+        "commands.unban.failed" => "Could not unban player %s",
+        "commands.banip.success" => "Banned IP address %s",
+        "commands.banip.success.players" => "Banned IP address %s belonging to %s",
+        "commands.banip.invalid" => {
+            "You have entered an invalid IP address or a player that is not online"
+        }
+        "commands.unbanip.success" => "Unbanned IP address %s",
+        "commands.unbanip.invalid" => "You have entered an invalid IP address",
+        "commands.setidletimeout.success" => "Successfully set the idle timeout to %s minutes.",
+        "commands.setworldspawn.success" => "Set the world spawn point to (%s, %s, %s)",
+        "commands.kick.success" => "Kicked %s from the game",
+        "commands.kick.success.reason" => "Kicked %s from the game: '%s'",
+        "commands.stop.start" => "Stopping the server",
+        "commands.message.sameTarget" => "You can't send a private message to yourself!",
+        "commands.message.display.outgoing" => "You whisper to %s: %s",
+        "commands.message.display.incoming" => "%s whispers to you: %s",
+        "commands.gamemode.success.self" => "Set own game mode to %s",
+        "commands.gamemode.success.other" => "Set %s's game mode to %s",
+        "commands.xp.success" => "Given %s experience to %s",
+        "commands.xp.success.levels" => "Given %s levels to %s",
+        "commands.xp.success.negative.levels" => "Taken %s levels from %s",
+        "commands.tp.success.coordinates" => "Teleported %s to %s, %s, %s",
+        _ => return crate::game::commands::usage_text(key),
+    })
+}
+
+/// Formats `key` with `args` like Java's `String.format` with `%s` placeholders (and
+/// `%1$s`-style positional ones); unknown keys render as the key itself, as vanilla
+/// does.
+pub fn format(key: &str, args: &[String]) -> String {
+    let Some(template) = en_us(key) else {
+        return key.to_owned();
+    };
+    let mut out = String::new();
+    let mut next = 0;
+    let mut rest = template;
+    while let Some(i) = rest.find('%') {
+        out.push_str(&rest[..i]);
+        let after = &rest[i + 1..];
+        if let Some(r) = after.strip_prefix('s') {
+            out.push_str(args.get(next).map_or("", String::as_str));
+            next += 1;
+            rest = r;
+        } else if let Some((n, r)) = after.split_once("$s")
+            && let Ok(index) = n.parse::<usize>()
+        {
+            out.push_str(args.get(index - 1).map_or("", String::as_str));
+            rest = r;
+        } else if let Some(r) = after.strip_prefix('%') {
+            out.push('%');
+            rest = r;
+        } else {
+            out.push('%');
+            rest = after;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formats() {
+        assert_eq!(format("chat.type.text", &["a".into(), "b".into()]), "<a> b");
+        assert_eq!(
+            format("commands.time.usage", &[]),
+            "/time <set|add|query> <value>"
+        );
+        assert_eq!(format("no.such.key", &[]), "no.such.key");
+    }
+}

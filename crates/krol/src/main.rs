@@ -169,6 +169,7 @@ async fn run() -> Option<GameHandle> {
                 force_gamemode: props.force_gamemode,
                 difficulty: props.difficulty,
                 allow_flight: props.allow_flight,
+                op_permission_level: props.op_permission_level,
             },
             pm,
             shared.clone(),
