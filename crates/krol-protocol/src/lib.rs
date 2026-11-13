@@ -9,12 +9,14 @@
 //!   error behavior,
 //! - [`frame`]: VarInt length-prefixed framing,
 //! - [`compression`]: protocol-47 packet compression,
+//! - [`cipher`]: AES/CFB-8 connection encryption,
 //! - [`legacy`]: the pre-Netty (`0xFE`) server list ping,
 //! - [`packets`]: typed packets per connection state.
 
 #![deny(missing_docs)]
 
 pub mod buf;
+pub mod cipher;
 pub mod compression;
 mod error;
 pub mod frame;

@@ -9,6 +9,7 @@ rust-version.workspace = true
 
 [dependencies]
 krol-nbt = { path = "../krol-nbt" }
+aes = "0.8"
 flate2.workspace = true
 thiserror.workspace = true
 
