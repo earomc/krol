@@ -90,6 +90,26 @@ impl Component {
         }
     }
 
+    /// Vanilla `getChatComponentFromNthArg`: an empty text component whose siblings are
+    /// the words, with `" "` siblings between them.
+    pub fn from_words(words: &[&str]) -> Self {
+        let mut c = Self::text("");
+        for (i, w) in words.iter().enumerate() {
+            if i > 0 {
+                c.extra.push(Self::text(" "));
+            }
+            c.extra.push(Self::text(*w));
+        }
+        c
+    }
+
+    /// Sets italic (builder style).
+    #[must_use]
+    pub fn italic(mut self) -> Self {
+        self.style.italic = Some(true);
+        self
+    }
+
     /// Sets the color (builder style).
     #[must_use]
     pub fn color(mut self, color: &'static str) -> Self {
@@ -248,6 +268,9 @@ fn format_translation(key: &str, args: &[String]) -> String {
         "disconnect.endOfStream" => "End of stream",
         "disconnect.genericReason" => "%s",
         "multiplayer.disconnect.server_shutdown" => "Server closed",
+        "commands.message.display.outgoing" => "You whisper to %s: %s",
+        "commands.message.display.incoming" => "%s whispers to you: %s",
+        "gameMode.changed" => "Your game mode has been updated",
         // Unknown keys render as the key itself, like vanilla's fallback.
         _ => return key.to_owned(),
     };

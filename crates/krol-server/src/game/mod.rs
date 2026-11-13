@@ -165,6 +165,8 @@ struct Game {
     tick_count: u64,
     last_status_refresh: Option<Instant>,
     stopping: bool,
+    /// Players disconnected by the server, removed (with logs) in the next network tick.
+    pending_removals: Vec<(u64, Component)>,
     /// `save-on` / `save-off`.
     saving_enabled: bool,
     /// The world's unseeded `Random` (weather durations).
@@ -200,6 +202,7 @@ pub fn start(
         tick_count: 0,
         last_status_refresh: None,
         stopping: false,
+        pending_removals: Vec::new(),
         saving_enabled: true,
         weather_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
@@ -271,6 +274,13 @@ impl Game {
                 Err(TryRecvError::Empty) => break,
             }
         }
+        // Vanilla NetworkSystem.networkTick: connections closed by the server are
+        // handled after the packets.
+        for (conn_id, reason) in std::mem::take(&mut self.pending_removals) {
+            if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
+                self.remove_player(i, &reason);
+            }
+        }
 
         self.refresh_status();
         self.tick_weather();
@@ -284,6 +294,7 @@ impl Game {
             self.level.save_quietly();
         }
         let radius = self.config.view_distance;
+        self.tick_active_chunks(radius);
         for i in 0..self.players.len() {
             self.tick_player(i, radius);
         }
@@ -450,6 +461,10 @@ impl Game {
                 }
             }
             GameEvent::Disconnected { conn_id, reason } => {
+                // A kick already scheduled its own removal with the kick reason.
+                if self.pending_removals.iter().any(|(c, _)| *c == conn_id) {
+                    return;
+                }
                 if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
                     self.remove_player(i, &reason.component());
                 }
@@ -458,17 +473,24 @@ impl Game {
         }
     }
 
-    fn broadcast_chat(&self, message: &Component, except: Option<u64>) {
+    /// Vanilla `sendChatMsgImpl`: logs and sends to everyone. Player chat uses position
+    /// 0; server messages (`sendChatMsg`) are system messages (position 1).
+    fn broadcast(&self, message: &Component, except: Option<u64>, player_chat: bool) {
         info!("{}", message.unformatted());
         let json = message.to_json_string();
         for p in &self.players {
             if Some(p.conn_id) != except {
                 p.send(ClientboundPlay::Chat {
                     json: json.clone(),
-                    position: 0,
+                    position: if player_chat { 0 } else { 1 },
                 });
             }
         }
+    }
+
+    /// Vanilla `sendChatMsg` (system message to everyone).
+    fn broadcast_chat(&self, message: &Component, except: Option<u64>) {
+        self.broadcast(message, except, false);
     }
 
     fn display_name(profile: &GameProfile) -> Component {
@@ -570,6 +592,9 @@ impl Game {
             chunk_queue: Default::default(),
             managed_pos: (0.0, 0.0),
             movement: Default::default(),
+            new_watches: Vec::new(),
+            xp_dirty: false,
+            score_dirty: false,
             chat_spam: 0,
             data,
         };
@@ -626,6 +651,10 @@ impl Game {
         let radius = self.config.view_distance;
         let player = &mut self.players[new_index];
         player.start_watching(radius);
+        for (x, z) in self.players[new_index].take_new_watches() {
+            self.level.overworld.chunk(x, z);
+        }
+        let player = &mut self.players[new_index];
         let (pos, rot) = (player.pos, player.rotation);
         Self::set_player_location(player, pos, rot);
 
@@ -708,6 +737,27 @@ impl Game {
                 properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32))],
             });
         }
+        if player.ticks > 1 && player.xp_dirty {
+            // Vanilla EntityPlayerMP.onUpdateEntity sends experience when it changed.
+            player.xp_dirty = false;
+            let d = &player.data;
+            player.send(ClientboundPlay::SetExperience {
+                bar: d.get_f32("XpP"),
+                level: d.get_i32("XpLevel"),
+                total: d.get_i32("XpTotal"),
+            });
+        }
+        if player.score_dirty {
+            // Entity tracker: changed data watcher entries (score is index 18).
+            player.score_dirty = false;
+            player.send(ClientboundPlay::EntityMetadata {
+                entity_id: player.entity_id,
+                metadata: vec![Metadata {
+                    index: 18,
+                    value: MetadataValue::Int(player.data.get_i32("Score")),
+                }],
+            });
+        }
         if player.ticks - player.last_keep_alive > 40 {
             player.last_keep_alive = player.ticks;
             let id = std::time::SystemTime::now()
@@ -762,6 +812,24 @@ impl Game {
                 sky_light: sky,
                 columns,
             });
+        }
+    }
+
+    /// Vanilla `World.setActivePlayerChunksAndCheckLight` + `updateBlocks`: every chunk
+    /// within the view distance of a player (`floor(pos / 16)`) is ticked.
+    fn tick_active_chunks(&mut self, radius: i32) {
+        let mut active = std::collections::HashSet::new();
+        for p in &self.players {
+            let cx = krol_java::math::floor_f64(p.pos.0 / 16.0);
+            let cz = krol_java::math::floor_f64(p.pos.2 / 16.0);
+            for dx in -radius..=radius {
+                for dz in -radius..=radius {
+                    active.insert((cx + dx, cz + dz));
+                }
+            }
+        }
+        for (x, z) in active {
+            self.level.overworld.tick_chunk(x, z);
         }
     }
 
@@ -883,6 +951,9 @@ impl Game {
         }
 
         let unload = self.players[i].update_watching(radius);
+        for (x, z) in self.players[i].take_new_watches() {
+            self.level.overworld.chunk(x, z);
+        }
         let sky = self.level.overworld.has_sky;
         for (ux, uz) in unload {
             let (_, data) = self.level.overworld.chunk(ux, uz).packet_data(true, 0, sky);
@@ -942,9 +1013,6 @@ impl Game {
             );
             // TODO: permission levels (non-ops may only use a few commands).
             self.execute_command(commands::Sender::Player(i), command);
-            if i >= self.players.len() {
-                return;
-            }
         } else {
             let player = &self.players[i];
             let msg = Component::translate(
@@ -954,7 +1022,7 @@ impl Game {
                     Arg::Str(message),
                 ],
             );
-            self.broadcast_chat(&msg, None);
+            self.broadcast(&msg, None, true);
         }
         let player = &mut self.players[i];
         player.chat_spam += 20;
@@ -972,6 +1040,26 @@ impl Game {
             .is_ok_and(|mut l| l.ops.contains(&key))
     }
 
+    /// Vanilla `EntityPlayerMP.setGameType`.
+    fn set_game_mode(&mut self, i: usize, mode: i32) {
+        let player = &mut self.players[i];
+        player.gamemode = mode;
+        let abilities = abilities_packet(mode);
+        player.send(abilities.clone());
+        let uuid = player.profile.id;
+        let update =
+            ClientboundPlay::PlayerListItem(PlayerListAction::UpdateGamemode(vec![(uuid, mode)]));
+        for p in &self.players {
+            p.send(update.clone());
+        }
+        let player = &self.players[i];
+        player.send(ClientboundPlay::ChangeGameState {
+            reason: 3,
+            value: mode as f32,
+        });
+        player.send(abilities);
+    }
+
     /// Vanilla `kickPlayerFromServer`.
     fn kick(&mut self, i: usize, reason: &str) {
         self.kick_with(i, Component::text(reason));
@@ -981,7 +1069,10 @@ impl Game {
         let _ = self.players[i]
             .out
             .send(Outgoing::Disconnect(reason.to_json_string()));
-        self.remove_player(i, &reason);
+        let conn_id = self.players[i].conn_id;
+        if !self.pending_removals.iter().any(|(c, _)| *c == conn_id) {
+            self.pending_removals.push((conn_id, reason));
+        }
     }
 
     /// Vanilla `onDisconnect` + `playerLoggedOut`.

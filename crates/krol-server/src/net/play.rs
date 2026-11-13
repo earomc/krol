@@ -82,6 +82,16 @@ where
                     }
                 },
                 Ok(None) => break Some(DisconnectReason::Closed),
+                // A reset (e.g. a client closing with unread data on Windows) ends the
+                // connection like a normal close in vanilla's logs.
+                Err(ConnectionError::Io(e))
+                    if matches!(
+                        e.kind(),
+                        std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted
+                    ) =>
+                {
+                    break Some(DisconnectReason::Closed);
+                }
                 Err(ConnectionError::Timeout) => break Some(DisconnectReason::Timeout),
                 Err(e) => break Some(DisconnectReason::Internal(e.java_exception())),
             },

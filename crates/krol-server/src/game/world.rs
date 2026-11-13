@@ -27,6 +27,8 @@ struct LoadedChunk {
     modified: bool,
     /// Loaded from disk (as opposed to a placeholder for a chunk vanilla would generate).
     from_disk: bool,
+    /// Ticked at least once by the world (vanilla: `Chunk.field_150815_m`).
+    ticked: bool,
 }
 
 impl World {
@@ -93,21 +95,79 @@ impl World {
                     chunk,
                     modified: false,
                     from_disk,
+                    ticked: false,
                 },
             );
+            self.populate_around(cx, cz);
         }
         &self.chunks[&(cx, cz)].chunk
     }
 
+    fn loaded(&self, cx: i32, cz: i32) -> bool {
+        self.chunks.contains_key(&(cx, cz))
+    }
+
+    /// Marks a chunk terrain-populated (vanilla: `IChunkProvider.populate`).
+    ///
+    /// TODO(M6): run the generator's population (structures, decorations). The flat
+    /// worlds used so far have none, so only the flag changes.
+    fn populate(&mut self, cx: i32, cz: i32) {
+        if let Some(c) = self.chunks.get_mut(&(cx, cz))
+            && c.from_disk
+            && !c.chunk.terrain_populated
+        {
+            c.chunk.terrain_populated = true;
+            c.modified = true;
+        }
+    }
+
+    /// Vanilla `Chunk.populateChunk`, run when `(x, z)` was loaded: populates this chunk
+    /// and its west/north neighbours once the chunks they need are loaded.
+    fn populate_around(&mut self, x: i32, z: i32) {
+        let e = |w: &Self, dx: i32, dz: i32| w.loaded(x + dx, z + dz);
+        if e(self, 1, 0) && e(self, 0, 1) && e(self, 1, 1) {
+            self.populate(x, z);
+        }
+        if e(self, -1, 0) && e(self, 0, 1) && e(self, -1, 1) {
+            self.populate(x - 1, z);
+        }
+        if e(self, 0, -1) && e(self, 1, 0) && e(self, 1, -1) {
+            self.populate(x, z - 1);
+        }
+        if e(self, -1, -1) && e(self, 0, -1) && e(self, -1, 0) {
+            self.populate(x - 1, z - 1);
+        }
+    }
+
+    /// Vanilla `Chunk.func_150804_b` for an active chunk: marks it ticked and populates
+    /// its light once all eight neighbours are loaded (`func_150809_p`).
+    ///
+    /// TODO(M5): recompute sky light instead of only setting the flag.
+    pub fn tick_chunk(&mut self, cx: i32, cz: i32) {
+        self.chunk(cx, cz);
+        let neighbours_loaded = (-1..=1).all(|dx| (-1..=1).all(|dz| self.loaded(cx + dx, cz + dz)));
+        let c = self.chunks.get_mut(&(cx, cz)).expect("loaded above");
+        c.ticked = true;
+        if c.from_disk
+            && c.chunk.terrain_populated
+            && !c.chunk.light_populated
+            && (neighbours_loaded || !self.has_sky)
+        {
+            c.chunk.light_populated = true;
+            c.modified = true;
+        }
+    }
+
     /// Whether vanilla would send this chunk to players (`Chunk.isPopulated`).
     ///
-    /// Vanilla only sends populated chunks, populating chunks (and generating missing
-    /// ones) as their neighbours load. krol cannot generate or populate yet (M6): it
-    /// sends every chunk stored on disk and holds back missing ones. This matches vanilla
-    /// inside a generated world but not at the edge of the generated area.
+    /// Whether vanilla would send this chunk (`Chunk.isPopulated`: ticked, terrain and
+    /// light populated).
+    ///
+    /// Chunks missing from disk are never sent: vanilla generates them, which needs M6.
     pub fn is_sendable(&mut self, cx: i32, cz: i32) -> bool {
         self.chunk(cx, cz);
-        self.chunks[&(cx, cz)].from_disk
+        let c = &self.chunks[&(cx, cz)];
+        c.from_disk && c.ticked && c.chunk.terrain_populated && c.chunk.light_populated
     }
 
     /// Mutable access to a chunk; marks it modified.

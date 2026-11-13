@@ -223,6 +223,13 @@ fn translate(key: &str) -> &'static str {
         "commands.kick.success" => "Kicked %s from the game",
         "commands.kick.success.reason" => "Kicked %s from the game: '%s'",
         "commands.stop.start" => "Stopping the server",
+        "commands.message.sameTarget" => "You can't send a private message to yourself!",
+        "commands.gamemode.success.self" => "Set own game mode to %s",
+        "commands.gamemode.success.other" => "Set %s's game mode to %s",
+        "commands.xp.success" => "Given %s experience to %s",
+        "commands.xp.success.levels" => "Given %s levels to %s",
+        "commands.xp.success.negative.levels" => "Taken %s levels from %s",
+        "commands.tp.success.coordinates" => "Teleported %s to %s, %s, %s",
         "options.difficulty.peaceful" => "Peaceful",
         "options.difficulty.easy" => "Easy",
         "options.difficulty.normal" => "Normal",
@@ -320,7 +327,7 @@ impl Game {
             Sender::Player(i) => {
                 self.players[i].send(krol_protocol::packets::play::ClientboundPlay::Chat {
                     json: message.to_json_string(),
-                    position: 0,
+                    position: 1,
                 })
             }
         }
@@ -434,7 +441,7 @@ impl Game {
                     key,
                     vec![
                         Arg::Component(self.sender_component(sender)),
-                        Arg::Component(Component::text(args.join(" "))),
+                        Arg::Component(Component::from_words(args)),
                     ],
                 );
                 self.broadcast_chat(&msg, None);
@@ -613,33 +620,145 @@ impl Game {
                 }
                 // Vanilla resolves the target with getEntity: a player name, else a UUID.
                 let target = args[0];
-                if self.find_player(target).is_err() {
-                    return Err(if parse_uuid_like_java(target) {
-                        err("commands.generic.entity.notFound", &[target])
-                    } else {
-                        err("commands.generic.entity.invalidUuid", &[])
-                    });
-                }
-                self.not_implemented(sender, name)
-            }
-            "tell" | "xp" | "gamemode" => {
-                let player_arg = match name {
-                    "tell" => args.first(),
-                    _ => args.get(1),
+                let t = match self.find_player(target) {
+                    Ok(t) => t,
+                    Err(_) => {
+                        return Err(if parse_uuid_like_java(target) {
+                            err("commands.generic.entity.notFound", &[target])
+                        } else {
+                            err("commands.generic.entity.invalidUuid", &[])
+                        });
+                    }
                 };
-                if args.is_empty() {
+                if args.len() != 4 {
+                    // TODO: /tp <player>, /tp <a> <b> and rotation arguments.
+                    return self.not_implemented(sender, "tp (this form)");
+                }
+                let base = self.players[t].pos;
+                let x = parse_coordinate(base.0, args[1], true)?;
+                let y = parse_coordinate(base.1, args[2], false)?;
+                let z = parse_coordinate(base.2, args[3], true)?;
+                let name_t = self.players[t].profile.name.clone();
+                let player = &mut self.players[t];
+                player.movement.has_moved = false;
+                player.movement.last_pos = (x, y, z);
+                player.pos = (x, y, z);
+                // Rotation unchanged: sent as relative yaw/pitch (flags 0x18).
+                player.send(
+                    krol_protocol::packets::play::ClientboundPlay::PositionLook {
+                        x,
+                        y,
+                        z,
+                        yaw: 0.0,
+                        pitch: 0.0,
+                        flags: 0x18,
+                    },
+                );
+                let f = krol_java::fmt::java_double;
+                self.reply_key(
+                    sender,
+                    "commands.tp.success.coordinates",
+                    &[&name_t, &f(x), &f(y), &f(z)],
+                );
+                Ok(())
+            }
+            "tell" => {
+                if args.len() < 2 {
                     return Err(CommandError::Usage(usage(name)));
                 }
-                match player_arg {
-                    Some(p) => {
-                        self.find_player(p)?;
-                    }
-                    None if sender == Sender::Console => {
+                let t = self.find_player(args[0])?;
+                if Sender::Player(t) == sender {
+                    return Err(err("commands.message.sameTarget", &[]));
+                }
+                let text = Component::from_words(&args[1..]);
+                let incoming = Component::translate(
+                    "commands.message.display.incoming",
+                    vec![
+                        Arg::Component(self.sender_component(sender)),
+                        Arg::Component(text.clone()),
+                    ],
+                )
+                .color("gray")
+                .italic();
+                let outgoing = Component::translate(
+                    "commands.message.display.outgoing",
+                    vec![
+                        Arg::Component(Self::display_name(&self.players[t].profile)),
+                        Arg::Component(text),
+                    ],
+                )
+                .color("gray")
+                .italic();
+                self.reply(Sender::Player(t), &incoming);
+                self.reply(sender, &outgoing);
+                Ok(())
+            }
+            "gamemode" => {
+                let a = args.first().ok_or(CommandError::Usage(usage(name)))?;
+                let mode = parse_game_mode(a)?;
+                let t = match (args.get(1), sender) {
+                    (Some(p), _) => self.find_player(p)?,
+                    (None, Sender::Player(i)) => i,
+                    (None, Sender::Console) => {
                         return Err(err("commands.generic.player.unspecified", &[]));
                     }
-                    None => {}
+                };
+                self.set_game_mode(t, mode);
+                let target_name = self.players[t].profile.name.clone();
+                if Sender::Player(t) != sender {
+                    self.reply(
+                        Sender::Player(t),
+                        &Component::translate("gameMode.changed", vec![]),
+                    );
                 }
-                self.not_implemented(sender, name)
+                let shown = render(game_mode_name(mode), &[]);
+                if Sender::Player(t) == sender {
+                    self.reply_key(sender, "commands.gamemode.success.self", &[&shown]);
+                } else {
+                    self.reply_key(
+                        sender,
+                        "commands.gamemode.success.other",
+                        &[&target_name, &shown],
+                    );
+                }
+                Ok(())
+            }
+            "xp" => {
+                let a = args.first().ok_or(CommandError::Usage(usage(name)))?;
+                let (levels, number) = match a.strip_suffix(['l', 'L']) {
+                    Some(n) => (true, n),
+                    None => (false, *a),
+                };
+                let amount = if levels {
+                    parse_int(number, i32::MIN, i32::MAX)?
+                } else {
+                    parse_int(number, 0, i32::MAX)?
+                };
+                let t = match (args.get(1), sender) {
+                    (Some(p), _) => self.find_player(p)?,
+                    (None, Sender::Player(i)) => i,
+                    (None, Sender::Console) => {
+                        return Err(err("commands.generic.player.unspecified", &[]));
+                    }
+                };
+                let target_name = self.players[t].profile.name.clone();
+                if levels {
+                    self.players[t].add_experience_levels(amount);
+                    let key = if amount < 0 {
+                        "commands.xp.success.negative.levels"
+                    } else {
+                        "commands.xp.success.levels"
+                    };
+                    self.reply_key(sender, key, &[&amount.abs().to_string(), &target_name]);
+                } else {
+                    self.players[t].add_experience(amount);
+                    self.reply_key(
+                        sender,
+                        "commands.xp.success",
+                        &[&amount.to_string(), &target_name],
+                    );
+                }
+                Ok(())
             }
             "stop" => {
                 self.reply_key(sender, "commands.stop.start", &[]);
@@ -859,6 +978,25 @@ impl Game {
         let _ = self.sender_name(sender);
         sender == Sender::Console
     }
+}
+
+/// Vanilla `CommandBase.parseCoordinate`: `~` for relative, integer coordinates centered
+/// on the block (+0.5) when `center` is set.
+fn parse_coordinate(base: f64, input: &str, center: bool) -> Result<f64, CommandError> {
+    let relative = input.starts_with('~');
+    let rest = if relative { &input[1..] } else { input };
+    if relative && rest.is_empty() {
+        return Ok(base);
+    }
+    let mut value: f64 = rest
+        .parse()
+        .ok()
+        .filter(|v: &f64| v.is_finite())
+        .ok_or_else(|| err("commands.generic.num.invalid", &[rest]))?;
+    if !relative && center && !rest.contains('.') {
+        value += 0.5;
+    }
+    Ok(if relative { base + value } else { value })
 }
 
 /// Whether `s` would parse with Java's `UUID.fromString`.

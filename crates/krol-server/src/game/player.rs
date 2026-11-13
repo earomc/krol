@@ -54,6 +54,12 @@ pub struct Player {
     pub managed_pos: (f64, f64),
     /// Movement state (vanilla: `NetHandlerPlayServer` fields).
     pub movement: Movement,
+    /// Chunks watched since the game last loaded them.
+    pub new_watches: Vec<(i32, i32)>,
+    /// Experience changed since the last Set Experience packet.
+    pub xp_dirty: bool,
+    /// Score changed since the last metadata update.
+    pub score_dirty: bool,
     /// Chat spam counter (vanilla: `chatSpamThresholdCount`).
     pub chat_spam: i32,
     /// Raw player data, kept to preserve fields krol does not model yet.
@@ -72,6 +78,12 @@ impl Player {
         ((x as i32) >> 4, (z as i32) >> 4)
     }
 
+    /// Newly watched chunks since the last call; the game loads them (vanilla's
+    /// `PlayerInstance` constructor loads its chunk).
+    pub fn take_new_watches(&mut self) -> Vec<(i32, i32)> {
+        std::mem::take(&mut self.new_watches)
+    }
+
     /// Vanilla `PlayerManager.addPlayer`: watch every chunk within `radius`.
     pub fn start_watching(&mut self, radius: i32) {
         let (cx, cz) = Self::managed_chunk(self.pos.0, self.pos.2);
@@ -87,6 +99,7 @@ impl Player {
     fn watch(&mut self, c: (i32, i32)) {
         if self.watching.insert(c) {
             self.chunk_queue.push_back(c);
+            self.new_watches.push(c);
         }
     }
 
@@ -158,6 +171,52 @@ impl Player {
             push(&mut queue, (k + ox, l + oz));
         }
         self.chunk_queue = queue;
+    }
+
+    /// Vanilla `EntityPlayer.xpBarCap`.
+    fn xp_bar_cap(level: i32) -> i32 {
+        if level >= 30 {
+            112 + (level - 30) * 9
+        } else if level >= 15 {
+            37 + (level - 15) * 5
+        } else {
+            7 + level * 2
+        }
+    }
+
+    /// Vanilla `EntityPlayer.addExperience` (float math as in vanilla).
+    pub fn add_experience(&mut self, amount: i32) {
+        let score = self.data.get_i32("Score").wrapping_add(amount);
+        self.data.insert("Score", Tag::Int(score));
+        self.score_dirty = true;
+        let mut total = self.data.get_i32("XpTotal");
+        let mut level = self.data.get_i32("XpLevel");
+        let mut bar = self.data.get_f32("XpP");
+        let amount = amount.min(i32::MAX - total);
+        bar += amount as f32 / Self::xp_bar_cap(level) as f32;
+        total += amount;
+        while bar >= 1.0 {
+            bar = (bar - 1.0) * Self::xp_bar_cap(level) as f32;
+            level += 1;
+            bar /= Self::xp_bar_cap(level) as f32;
+        }
+        self.data.insert("XpTotal", Tag::Int(total));
+        self.data.insert("XpLevel", Tag::Int(level));
+        self.data.insert("XpP", Tag::Float(bar));
+        self.xp_dirty = true;
+    }
+
+    /// Vanilla `EntityPlayerMP.addExperienceLevel`.
+    pub fn add_experience_levels(&mut self, levels: i32) {
+        let mut level = self.data.get_i32("XpLevel").wrapping_add(levels);
+        if level < 0 {
+            level = 0;
+            self.data.insert("XpP", Tag::Float(0.0));
+            self.data.insert("XpTotal", Tag::Int(0));
+        }
+        self.data.insert("XpLevel", Tag::Int(level));
+        // TODO: the level-up sound every 5 levels.
+        self.xp_dirty = true;
     }
 
     /// Writes the player's data to `<world>/playerdata/<uuid>.dat` (vanilla:
