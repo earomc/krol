@@ -1,0 +1,16 @@
+[package]
+name = "krol-nbt"
+description = "Named Binary Tag (NBT) format as used by Minecraft 1.8"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+krol-java = { path = "../krol-java" }
+indexmap = "2"
+thiserror.workspace = true
+
+[lints]
+workspace = true
