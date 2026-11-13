@@ -1,0 +1,17 @@
+description = "Join an existing superflat world as an idle client and say hello"
+subsystem = "play"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "join"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 4
+chat = ["hello world"]
+
+[observe]
+log = true

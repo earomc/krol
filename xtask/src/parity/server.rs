@@ -67,11 +67,29 @@ pub fn prepare_dir(dir: &Path, setup: &Setup, parity_root: &Path) -> Result<u16>
         }
         std::fs::write(dir.join("server.properties"), text)?;
     }
+    if let Some(world) = &setup.world {
+        copy_dir(&parity_root.join(world), &dir.join("world"))
+            .with_context(|| format!("copying world fixture {world}"))?;
+    }
     for (dest, src) in &setup.files {
         std::fs::copy(parity_root.join(src), dir.join(dest))
             .with_context(|| format!("copying fixture {src}"))?;
     }
     Ok(port)
+}
+
+fn copy_dir(src: &Path, dest: &Path) -> Result<()> {
+    std::fs::create_dir_all(dest)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let target = dest.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), target)?;
+        }
+    }
+    Ok(())
 }
 
 impl RunningServer {

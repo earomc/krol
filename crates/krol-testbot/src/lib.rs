@@ -50,10 +50,15 @@ pub struct StatusObservation {
     pub closed_after_pong: bool,
 }
 
-/// A connection with framing helpers.
-struct Conn {
+mod play;
+
+pub use play::{ObservedPacket, PlayObservation, play_session};
+
+/// A connection with framing and compression helpers.
+pub(crate) struct Conn {
     stream: TcpStream,
     decoder: FrameDecoder,
+    threshold: Option<usize>,
 }
 
 impl Conn {
@@ -63,12 +68,28 @@ impl Conn {
         Ok(Self {
             stream,
             decoder: FrameDecoder::new(),
+            threshold: None,
         })
     }
 
     async fn send(&mut self, body: &[u8]) -> Result<(), BotError> {
-        self.stream.write_all(&encode_frame(body)?).await?;
+        let payload = match self.threshold {
+            Some(t) => krol_protocol::compression::compress(body, t),
+            None => body.to_vec(),
+        };
+        self.stream.write_all(&encode_frame(&payload)?).await?;
         Ok(())
+    }
+
+    /// The next packet body (decompressed if compression is on), `None` on close.
+    async fn recv_packet(&mut self) -> Result<Option<Vec<u8>>, BotError> {
+        match self.recv().await? {
+            Some(frame) => Ok(Some(match self.threshold {
+                Some(t) => krol_protocol::compression::decompress(&frame, t)?,
+                None => frame,
+            })),
+            None => Ok(None),
+        }
     }
 
     /// The next frame, or `None` if the server closed the connection.
@@ -191,17 +212,22 @@ pub async fn login_start(
         .encode(version)?,
     )
     .await?;
+    let packets = login_exchange(&mut conn, version).await?;
+    Ok(packets)
+}
+
+/// Reads login packets until one that ends the unauthenticated phase, enabling
+/// compression when asked.
+pub(crate) async fn login_exchange(
+    conn: &mut Conn,
+    version: ProtocolVersion,
+) -> Result<Vec<ClientboundLogin>, BotError> {
     let mut packets = Vec::new();
-    let mut threshold = None;
-    while let Some(frame) = conn.recv().await? {
-        let body = match threshold {
-            Some(t) => krol_protocol::compression::decompress(&frame, t)?,
-            None => frame,
-        };
+    while let Some(body) = conn.recv_packet().await? {
         let packet = ClientboundLogin::decode(&body, version)?;
         let done = match packet {
             ClientboundLogin::SetCompression(t) => {
-                threshold = usize::try_from(t).ok();
+                conn.threshold = usize::try_from(t).ok();
                 false
             }
             _ => true,

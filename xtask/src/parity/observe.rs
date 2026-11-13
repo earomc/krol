@@ -78,6 +78,24 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
             }
         }
         Step::Wait { .. } => Value::Null,
+        Step::Play {
+            protocol,
+            name,
+            seconds,
+            chat,
+            ..
+        } => match krol_testbot::play_session(
+            addr,
+            *protocol,
+            name,
+            std::time::Duration::from_secs(*seconds),
+            chat,
+        )
+        .await
+        {
+            Ok(o) => super::play::summarize(&o),
+            Err(e) => json!({ "error": e.to_string() }),
+        },
         Step::LoginStart { protocol, name, .. } => {
             match krol_testbot::login_start(addr, *protocol, name).await {
                 Ok(packets) => Value::Array(packets.iter().map(login_packet_json).collect()),
@@ -137,8 +155,33 @@ fn normalize_log(lines: &[String], observe: &Observe) -> Value {
     Value::Array(out)
 }
 
+/// Replaces the port of every `/<ip>:<port>` (client socket addresses) with `<port>`.
+fn normalize_socket_ports(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(slash) = rest.find('/') {
+        out.push_str(&rest[..=slash]);
+        rest = &rest[slash + 1..];
+        let ip_len = rest
+            .find(|c: char| !(c.is_ascii_digit() || c == '.'))
+            .unwrap_or(rest.len());
+        if ip_len > 0 && rest[ip_len..].starts_with(':') {
+            let digits = rest[ip_len + 1..]
+                .find(|c: char| !c.is_ascii_digit())
+                .unwrap_or(rest.len() - ip_len - 1);
+            if digits > 0 {
+                out.push_str(&rest[..ip_len]);
+                out.push_str(":<port>");
+                rest = &rest[ip_len + 1 + digits..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 fn normalize_text(line: &str) -> String {
-    let mut s = line.to_owned();
+    let mut s = normalize_socket_ports(line);
     if let Some(start) = s.find("Done (")
         && let Some(end) = s[start..].find(")!")
     {

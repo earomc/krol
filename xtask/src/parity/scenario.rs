@@ -43,6 +43,9 @@ pub struct Setup {
     /// `parity/`).
     #[serde(default)]
     pub files: BTreeMap<String, String>,
+    /// A world directory (relative to `parity/`) copied to `<server>/world`.
+    #[serde(default)]
+    pub world: Option<String>,
 }
 
 fn yes() -> bool {
@@ -68,6 +71,16 @@ pub enum Step {
         protocol: i32,
         name: String,
     },
+    /// Joins and plays as an idle vanilla client for `seconds`, optionally chatting.
+    Play {
+        id: String,
+        protocol: i32,
+        name: String,
+        #[serde(default = "three")]
+        seconds: u64,
+        #[serde(default)]
+        chat: Vec<String>,
+    },
     /// Sleeps; produces no observation. Use to step past timing-dependent windows
     /// (e.g. vanilla's status has no player data before the first tick).
     Wait { ms: u64 },
@@ -77,12 +90,17 @@ fn one() -> i64 {
     1
 }
 
+fn three() -> u64 {
+    3
+}
+
 impl Step {
     pub fn id(&self) -> Option<&str> {
         match self {
-            Step::StatusPing { id, .. } | Step::Raw { id, .. } | Step::LoginStart { id, .. } => {
-                Some(id)
-            }
+            Step::StatusPing { id, .. }
+            | Step::Raw { id, .. }
+            | Step::LoginStart { id, .. }
+            | Step::Play { id, .. } => Some(id),
             Step::Wait { .. } => None,
         }
     }

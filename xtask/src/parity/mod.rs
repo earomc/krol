@@ -2,6 +2,7 @@
 
 mod diff;
 mod observe;
+mod play;
 mod scenario;
 mod server;
 
