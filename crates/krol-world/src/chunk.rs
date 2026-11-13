@@ -111,6 +111,14 @@ impl Section {
         }
     }
 
+    /// Whether the section has no non-air blocks (vanilla: `isEmpty`, `blockRefCount == 0`).
+    ///
+    /// Known deviation: vanilla counts unregistered block ids as air; krol counts any
+    /// non-zero id as a block.
+    pub fn is_empty(&self) -> bool {
+        self.blocks.iter().all(|&s| s >> 4 == 0)
+    }
+
     /// The section-local index of `(x, y, z)`.
     pub fn index(x: usize, y: usize, z: usize) -> usize {
         (y << 8) | (z << 4) | x
@@ -225,6 +233,46 @@ const KNOWN_KEYS: [&str; 13] = [
 ];
 
 impl Chunk {
+    /// Serializes sections for a protocol-47 Chunk Data / Map Chunk Bulk packet (vanilla:
+    /// `S21PacketChunkData.func_179756_a`). Returns the included section mask and data:
+    /// all block states (little-endian `u16`), then block light, then sky light (if
+    /// `sky`), then biomes (if `full`). In a full chunk, empty sections are omitted.
+    pub fn packet_data(&self, full: bool, mask: u16, sky: bool) -> (u16, Vec<u8>) {
+        let included: Vec<(usize, &Section)> = self
+            .sections
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.as_ref().map(|s| (i, s)))
+            .filter(|(i, s)| (!full || !s.is_empty()) && mask & (1 << i) != 0)
+            .collect();
+        let out_mask = included.iter().fold(0u16, |m, (i, _)| m | (1 << i));
+        let n = included.len();
+        let mut data =
+            Vec::with_capacity(n * 8192 + n * 2048 + if sky { n * 2048 } else { 0 } + 256);
+        for (_, s) in &included {
+            for &state in s.blocks.iter() {
+                data.extend_from_slice(&state.to_le_bytes());
+            }
+        }
+        for (_, s) in &included {
+            data.extend_from_slice(&s.block_light.0[..]);
+        }
+        if sky {
+            for (_, s) in &included {
+                // A section without stored sky light (loaded in a sky-less dimension) is
+                // sent dark.
+                match &s.sky_light {
+                    Some(l) => data.extend_from_slice(&l.0[..]),
+                    None => data.extend_from_slice(&[0u8; 2048]),
+                }
+            }
+        }
+        if full {
+            data.extend_from_slice(&self.biomes);
+        }
+        (out_mask, data)
+    }
+
     /// An empty, ungenerated chunk.
     pub fn empty(x: i32, z: i32) -> Self {
         Self {
@@ -398,6 +446,27 @@ mod tests {
         assert_eq!(back.extra.get_i32("Custom"), 42);
         assert_eq!(back.last_update, 1000);
         assert_eq!(back.biomes[5], 4);
+    }
+
+    #[test]
+    fn packet_layout() {
+        let mut chunk = Chunk::empty(0, 0);
+        chunk.set_block(0, 0, 0, 0x0123, true);
+        chunk.sections[5] = Some(Section::empty(5, true)); // empty: omitted when full
+        let (mask, data) = chunk.packet_data(true, 0xffff, true);
+        assert_eq!(mask, 1);
+        assert_eq!(data.len(), 8192 + 2048 + 2048 + 256);
+        assert_eq!(&data[..2], &[0x23, 0x01]);
+        assert_eq!(data[8192 + 2048], 0xff, "sky light starts at 15");
+        let (mask, data) = chunk.packet_data(false, 0xffff, false);
+        assert_eq!(mask, 0b10_0001);
+        assert_eq!(data.len(), 2 * (8192 + 2048));
+        let (mask, data) = chunk.packet_data(true, 0, true);
+        assert_eq!(
+            (mask, data.len()),
+            (0, 256),
+            "unload packet carries biomes only"
+        );
     }
 
     #[test]
