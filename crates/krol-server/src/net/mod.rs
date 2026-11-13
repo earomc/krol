@@ -7,6 +7,7 @@
 
 mod connection;
 mod login;
+mod play;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -60,6 +61,10 @@ pub struct NetShared {
     pub online_players: AtomicI32,
     /// Operators, whitelist and bans.
     pub user_lists: std::sync::Mutex<UserLists>,
+    /// The game's event sender, once a world is loaded.
+    pub game: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<crate::game::GameEvent>>,
+    /// Source of connection ids for logged-in players.
+    pub next_conn_id: std::sync::atomic::AtomicU64,
     /// Counter for "User Authenticator #N" thread names.
     authenticator_ids: AtomicU32,
     /// Source of stand-in identity hash codes for logged Java objects.
@@ -72,6 +77,8 @@ impl NetShared {
         Arc::new(Self {
             config,
             user_lists: std::sync::Mutex::new(user_lists),
+            game: std::sync::OnceLock::new(),
+            next_conn_id: std::sync::atomic::AtomicU64::new(1),
             online_players: AtomicI32::new(status.online_players),
             status: RwLock::new(status),
             authenticator_ids: AtomicU32::new(0),
@@ -147,7 +154,7 @@ pub async fn handle_connection<S>(
     shared: Arc<NetShared>,
 ) -> Result<(), ConnectionError>
 where
-    S: AsyncRead + AsyncWrite + Unpin,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let mut buf = vec![0u8; READ_CHUNK];
     let n = match tokio::time::timeout(READ_TIMEOUT, stream.read(&mut buf)).await {

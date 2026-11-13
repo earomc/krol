@@ -11,6 +11,7 @@ rust-version.workspace = true
 krol-java = { path = "../krol-java" }
 krol-nbt = { path = "../krol-nbt" }
 krol-protocol = { path = "../krol-protocol" }
+krol-world = { path = "../krol-world" }
 md5 = { package = "md-5", version = "0.11" }
 rsa = { version = "0.10", features = ["pkcs1v15"] }
 getrandom = { version = "0.4", features = ["sys_rng"] }

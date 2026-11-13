@@ -12,6 +12,8 @@ use std::time::Instant;
 
 use krol_server::auth::{SESSION_SERVER, ServerKeyPair};
 use krol_server::config::{PropertyManager, ServerProperties, eula};
+use krol_server::game::world::Level;
+use krol_server::game::{self, GameConfig, GameEvent, GameHandle};
 use krol_server::net::{NetConfig, NetShared, handle_connection, run_status_refresher};
 use krol_server::status::{StatusResponse, load_favicon};
 use krol_server::userlist::UserLists;
@@ -35,8 +37,11 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    runtime.block_on(run());
-    info!("Stopping server");
+    match runtime.block_on(run()) {
+        // The game thread logs "Stopping server" and saves.
+        Some(game) => game.stop(),
+        None => info!("Stopping server"),
+    }
     // Vanilla's JVM shutdown hook calls stopServer() again from its own thread.
     info!(thread = "Server Shutdown Thread", "Stopping server");
     ExitCode::SUCCESS
@@ -53,7 +58,7 @@ fn game_type_name(id: i32) -> &'static str {
 }
 
 /// Starts the server and runs until it is stopped. Returning means "stop".
-async fn run() {
+async fn run() -> Option<GameHandle> {
     info!("Starting minecraft server version 1.8.8");
     info!("Loading properties");
     let mut pm = PropertyManager::open("server.properties");
@@ -62,7 +67,7 @@ async fn run() {
             "You need to agree to the EULA in order to run the server. Go to eula.txt for more info."
         );
         eula::create(Path::new("eula.txt"));
-        return;
+        return None;
     }
     let props = ServerProperties::read(&mut pm);
     info!("Default game type: {}", game_type_name(props.gamemode));
@@ -74,7 +79,7 @@ async fn run() {
                 "Key pair generation failed!
 {e}"
             );
-            return;
+            return None;
         }
     };
 
@@ -95,7 +100,7 @@ async fn run() {
             warn!("**** FAILED TO BIND TO PORT!");
             warn!("The exception was: java.net.BindException: {e}");
             warn!("Perhaps a server is already running on that port?");
-            return;
+            return None;
         }
     };
     if cfg!(target_os = "linux") && props.use_native_transport {
@@ -114,7 +119,20 @@ async fn run() {
     }
 
     let started = Instant::now();
-    // TODO(M3): load worlds ("Preparing level ..." / "Preparing start region ...").
+    // Vanilla's DedicatedPlayerList (and its user lists) exists before the world loads.
+    let user_lists = UserLists::load(Path::new("."), props.white_list);
+    info!("Preparing level \"{}\"", props.level_name);
+    let level = Level::load(Path::new(&props.level_name)).map(|mut level| {
+        level.prepare_spawn_region();
+        level
+    });
+    if level.is_none() {
+        // TODO(M6): vanilla generates a new world here.
+        warn!(
+            "krol: no existing world \"{}\" found and world generation is not implemented yet; players cannot join",
+            props.level_name
+        );
+    }
     let shared = NetShared::new(
         NetConfig {
             online_mode: props.online_mode,
@@ -132,17 +150,43 @@ async fn run() {
             sample: Vec::new(),
             favicon: load_favicon(Path::new("server-icon.png")),
         },
-        UserLists::load(Path::new("."), props.white_list),
+        user_lists,
     );
     info!(
         "Done ({:.3}s)! For help, type \"help\" or \"?\"",
         started.elapsed().as_secs_f64()
     );
 
-    tokio::spawn(run_status_refresher(shared.clone()));
+    let game = level.map(|level| {
+        let handle = game::start(
+            level,
+            GameConfig {
+                view_distance: props.view_distance,
+                max_players: props.max_players,
+                gamemode: props.gamemode,
+                force_gamemode: props.force_gamemode,
+                difficulty: props.difficulty,
+                hardcore: props.hardcore,
+            },
+            pm,
+            shared.clone(),
+        );
+        let _ = shared.game.set(handle.sender());
+        handle
+    });
+    if game.is_none() {
+        tokio::spawn(run_status_refresher(shared.clone()));
+    }
+    let mut game = game;
+    let mut game_stopped = match &mut game {
+        Some(g) => g.stopped(),
+        None => tokio::sync::oneshot::channel().1,
+    };
+    let game_tx = game.as_ref().map(GameHandle::sender);
     let mut commands = spawn_console_reader();
     loop {
         tokio::select! {
+            _ = &mut game_stopped, if game.is_some() => return game,
             accepted = listener.accept() => match accepted {
                 Ok((socket, addr)) => {
                     let _ = socket.set_nodelay(true);
@@ -156,15 +200,21 @@ async fn run() {
                 Err(e) => warn!("Failed to accept connection: {e}"),
             },
             command = commands.recv() => match command {
-                Some(line) => {
-                    if run_console_command(&line) {
-                        return;
+                Some(line) => match &game_tx {
+                    // Vanilla runs console commands on the server thread.
+                    Some(tx) => {
+                        let _ = tx.send(GameEvent::Console(line));
                     }
-                }
+                    None => {
+                        if run_console_command(&line) {
+                            return game;
+                        }
+                    }
+                },
                 // Console closed (EOF): keep running, like vanilla.
                 None => commands = futures_pending(),
             },
-            _ = tokio::signal::ctrl_c() => return,
+            _ = tokio::signal::ctrl_c() => return game,
         }
     }
 }

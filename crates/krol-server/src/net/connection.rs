@@ -6,7 +6,7 @@ use std::time::Duration;
 use krol_protocol::cipher::Cfb8;
 use krol_protocol::compression;
 use krol_protocol::frame::{FrameDecoder, encode_frame};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::time::Instant;
 
 use super::{ConnectionError, READ_TIMEOUT};
@@ -105,6 +105,90 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Connection<S> {
     /// Turns on compression for subsequent packets in both directions.
     pub(super) fn enable_compression(&mut self, threshold: usize) {
         self.threshold = Some(threshold);
+    }
+
+    /// Flushes and closes the write side.
+    pub(super) async fn close(&mut self) {
+        let _ = tokio::time::timeout(Duration::from_secs(5), self.stream.shutdown()).await;
+    }
+
+    /// Splits into independently usable read and write halves, keeping cipher and
+    /// compression state.
+    pub(super) fn into_split(self) -> (ConnReader<ReadHalf<S>>, ConnWriter<WriteHalf<S>>) {
+        let (read, write) = tokio::io::split(self.stream);
+        (
+            ConnReader {
+                inner: Connection {
+                    stream: read,
+                    decoder: self.decoder,
+                    encryptor: None,
+                    decryptor: self.decryptor,
+                    threshold: self.threshold,
+                },
+            },
+            ConnWriter {
+                stream: write,
+                encryptor: self.encryptor,
+                threshold: self.threshold,
+            },
+        )
+    }
+}
+
+/// The read half of a split connection.
+pub(super) struct ConnReader<R> {
+    inner: Connection<R>,
+}
+
+impl<R: AsyncRead + Unpin> ConnReader<R> {
+    /// See [`Connection::next_packet`].
+    pub(super) async fn next_packet(&mut self) -> Result<Option<Vec<u8>>, ConnectionError> {
+        let mut buf = [0u8; READ_CHUNK];
+        let c = &mut self.inner;
+        loop {
+            if let Some(frame) = c.decoder.next_frame()? {
+                return Ok(Some(match c.threshold {
+                    Some(t) => compression::decompress(&frame, t)?,
+                    None => frame,
+                }));
+            }
+            let n = match tokio::time::timeout(READ_TIMEOUT, c.stream.read(&mut buf)).await {
+                Ok(result) => result?,
+                Err(_) => return Err(ConnectionError::Timeout),
+            };
+            if n == 0 {
+                return Ok(None);
+            }
+            let data = &mut buf[..n];
+            if let Some(dec) = &mut c.decryptor {
+                dec.apply(data);
+            }
+            c.decoder.extend(data);
+        }
+    }
+}
+
+/// The write half of a split connection.
+pub(super) struct ConnWriter<W> {
+    stream: W,
+    encryptor: Option<Cfb8>,
+    threshold: Option<usize>,
+}
+
+impl<W: AsyncWrite + Unpin> ConnWriter<W> {
+    /// Sends a packet body through compression, framing and encryption.
+    pub(super) async fn send(&mut self, body: &[u8]) -> Result<(), ConnectionError> {
+        let payload = match self.threshold {
+            Some(t) => compression::compress(body, t),
+            None => body.to_vec(),
+        };
+        let mut bytes = encode_frame(&payload)?;
+        if let Some(enc) = &mut self.encryptor {
+            enc.apply(&mut bytes);
+        }
+        self.stream.write_all(&bytes).await?;
+        self.stream.flush().await?;
+        Ok(())
     }
 
     /// Flushes and closes the write side.

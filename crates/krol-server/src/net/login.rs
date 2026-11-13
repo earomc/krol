@@ -100,7 +100,7 @@ async fn close_connection<S: AsyncRead + AsyncWrite + Unpin>(
 }
 
 /// Runs the login state after a handshake requesting it with `version`.
-pub(super) async fn run<S: AsyncRead + AsyncWrite + Unpin>(
+pub(super) async fn run<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
     mut conn: Connection<S>,
     shared: Arc<NetShared>,
     peer: SocketAddr,
@@ -113,7 +113,20 @@ pub(super) async fn run<S: AsyncRead + AsyncWrite + Unpin>(
         profile: None,
     };
     match login(&mut conn, &mut ctx, version, deadline).await {
-        Ok(()) => Ok(()),
+        Ok(Some(profile)) => match shared.game.get() {
+            Some(game) => {
+                super::play::run(conn, shared.clone(), game.clone(), peer, version, profile).await
+            }
+            None => {
+                // No world loaded (world creation is not implemented yet).
+                debug!("{} logged in but no world is loaded", profile.name);
+                let bye = ClientboundPlay::Disconnect(chat_text("krol: no world is loaded"));
+                conn.send(&bye.encode(version)?).await?;
+                conn.close().await;
+                Ok(())
+            }
+        },
+        Ok(None) => Ok(()),
         Err(ConnectionError::Deadline) => {
             close_connection(
                 &mut conn,
@@ -153,12 +166,14 @@ async fn expect_packet<S: AsyncRead + AsyncWrite + Unpin>(
     }
 }
 
+/// Runs the login exchange; returns the profile once Login Success was sent, or `None`
+/// if the login ended with a disconnect.
 async fn login<S: AsyncRead + AsyncWrite + Unpin>(
     conn: &mut Connection<S>,
     ctx: &mut LoginContext<'_>,
     version: ProtocolVersion,
     deadline: Instant,
-) -> Result<(), ConnectionError> {
+) -> Result<Option<GameProfile>, ConnectionError> {
     let shared = ctx.shared;
     let name = match expect_packet(conn, version, deadline).await? {
         ServerboundLogin::Start { name } => name,
@@ -233,7 +248,7 @@ async fn login<S: AsyncRead + AsyncWrite + Unpin>(
                     thread = thread.as_str(),
                     "Username '{name}' tried to join with an invalid session"
                 );
-                return Ok(());
+                return Ok(None);
             }
             SessionResult::Unavailable(reason) => {
                 debug!("session server unavailable: {reason}");
@@ -249,7 +264,7 @@ async fn login<S: AsyncRead + AsyncWrite + Unpin>(
                     thread = thread.as_str(),
                     "Couldn't verify username because servers are unavailable"
                 );
-                return Ok(());
+                return Ok(None);
             }
         }
     } else {
@@ -277,7 +292,8 @@ async fn login<S: AsyncRead + AsyncWrite + Unpin>(
             shared.config.max_players,
         );
     if let Some(reason) = refusal {
-        return close_connection(conn, ctx, version, &reason, "Server thread").await;
+        close_connection(conn, ctx, version, &reason, "Server thread").await?;
+        return Ok(None);
     }
     if let Ok(threshold) = usize::try_from(shared.config.compression_threshold)
         && version == ProtocolVersion::V47
@@ -291,11 +307,5 @@ async fn login<S: AsyncRead + AsyncWrite + Unpin>(
         username: profile.name.clone(),
     };
     conn.send(&success.encode(version)?).await?;
-
-    // TODO(M3): hand the player to the game (Join Game, chunks, ...).
-    debug!("{} logged in; play state not implemented yet", profile.name);
-    let bye = ClientboundPlay::Disconnect(chat_text("krol: play is not implemented yet"));
-    conn.send(&bye.encode(version)?).await?;
-    conn.close().await;
-    Ok(())
+    Ok(Some(profile))
 }
