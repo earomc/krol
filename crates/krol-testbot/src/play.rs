@@ -102,7 +102,7 @@ pub async fn play_session(
     let mut positioned_at: Option<Instant> = None;
     let mut next_chat = start;
 
-    loop {
+    let result: Result<(), BotError> = async { loop {
         tokio::select! {
             () = tokio::time::sleep_until(deadline) => break,
             _ = tick.tick() => {
@@ -139,6 +139,7 @@ pub async fn play_session(
                     obs.closed_by_server = true;
                     break;
                 };
+                let disconnect = body.first() == Some(&0x40);
                 let mut r = krol_protocol::buf::PacketReader::new(&body);
                 let id = r.varint()?;
                 let decoded = ClientboundPlay::decode(&body, version)?;
@@ -176,8 +177,19 @@ pub async fn play_session(
                     body: r.rest().to_vec(),
                     decoded,
                 });
+                if disconnect {
+                    obs.closed_by_server = true;
+                    break;
+                }
             }
         }
+    }
+    Ok(()) }.await;
+    match result {
+        Ok(()) => {}
+        // The server closing the socket while the bot is sending is a normal end.
+        Err(e) if is_closed(&e) => obs.closed_by_server = true,
+        Err(e) => return Err(e),
     }
     Ok(obs)
 }
@@ -187,4 +199,15 @@ async fn send_play(conn: &mut Conn, packet: &ServerboundPlay) -> Result<(), BotE
         conn.send(&bytes).await?;
     }
     Ok(())
+}
+
+/// Whether an error means the server closed the connection.
+fn is_closed(e: &BotError) -> bool {
+    matches!(e, BotError::Io(io) if matches!(
+        io.kind(),
+        std::io::ErrorKind::ConnectionAborted
+            | std::io::ErrorKind::ConnectionReset
+            | std::io::ErrorKind::BrokenPipe
+            | std::io::ErrorKind::UnexpectedEof
+    ))
 }

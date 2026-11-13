@@ -1013,10 +1013,7 @@ impl Game {
             return;
         }
         if let Some(command) = message.strip_prefix('/') {
-            info!(
-                "{} issued server command: /{command}",
-                self.players[i].profile.name
-            );
+            // Vanilla 1.8.8 does not log player commands (only admin notifications).
             // TODO: permission levels (non-ops may only use a few commands).
             self.execute_command(commands::Sender::Player(i), command);
         } else {

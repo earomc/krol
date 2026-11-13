@@ -65,7 +65,7 @@ wait_ms = 500
 
 [[steps]]
 action = "console"
-command = "tp Notch -440 10 -440"
+command = "tp Notch -450 10 -440"
 wait_ms = 500
 
 [[steps]]

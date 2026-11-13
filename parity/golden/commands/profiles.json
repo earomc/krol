@@ -60,6 +60,66 @@
         "chat",
         "chat",
         "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
+        "chat",
         "disconnect"
       ],
       "packets": [
@@ -289,6 +349,306 @@
           "packet": "chat"
         },
         {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"1\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/achievement \"},\"translate\":\"commands.achievement.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/ban \"},\"translate\":\"commands.ban.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/ban-ip \"},\"translate\":\"commands.banip.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/banlist \"},\"translate\":\"commands.banlist.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/blockdata \"},\"translate\":\"commands.blockdata.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/clear \"},\"translate\":\"commands.clear.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/clone \"},\"translate\":\"commands.clone.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"green\",\"translate\":\"commands.help.footer\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"3\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/execute \"},\"translate\":\"commands.execute.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/fill \"},\"translate\":\"commands.fill.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/gamemode \"},\"translate\":\"commands.gamemode.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/gamerule \"},\"translate\":\"commands.gamerule.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/give \"},\"translate\":\"commands.give.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/help \"},\"translate\":\"commands.help.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/kick \"},\"translate\":\"commands.kick.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"4\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/kill \"},\"translate\":\"commands.kill.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/list \"},\"translate\":\"commands.players.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/me \"},\"translate\":\"commands.me.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/op \"},\"translate\":\"commands.op.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/pardon \"},\"translate\":\"commands.unban.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/pardon-ip \"},\"translate\":\"commands.unbanip.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/particle \"},\"translate\":\"commands.particle.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"5\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/playsound \"},\"translate\":\"commands.playsound.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/replaceitem \"},\"translate\":\"commands.replaceitem.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/save-all \"},\"translate\":\"commands.save.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/save-off \"},\"translate\":\"commands.save-off.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/save-on \"},\"translate\":\"commands.save-on.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/say \"},\"translate\":\"commands.say.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/scoreboard \"},\"translate\":\"commands.scoreboard.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"6\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/seed \"},\"translate\":\"commands.seed.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/setblock \"},\"translate\":\"commands.setblock.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/setidletimeout \"},\"translate\":\"commands.setidletimeout.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/setworldspawn \"},\"translate\":\"commands.setworldspawn.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/spawnpoint \"},\"translate\":\"commands.spawnpoint.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/spreadplayers \"},\"translate\":\"commands.spreadplayers.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/stats \"},\"translate\":\"commands.stats.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"7\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/stop \"},\"translate\":\"commands.stop.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/summon \"},\"translate\":\"commands.summon.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell \"},\"translate\":\"commands.message.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tellraw \"},\"translate\":\"commands.tellraw.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/testfor \"},\"translate\":\"commands.testfor.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/testforblock \"},\"translate\":\"commands.testforblock.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/testforblocks \"},\"translate\":\"commands.compare.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"8\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/time \"},\"translate\":\"commands.time.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/title \"},\"translate\":\"commands.title.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/toggledownfall \"},\"translate\":\"commands.downfall.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tp \"},\"translate\":\"commands.tp.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/trigger \"},\"translate\":\"commands.trigger.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/weather \"},\"translate\":\"commands.weather.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/whitelist \"},\"translate\":\"commands.whitelist.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"9\",\"9\"]}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/worldborder \"},\"translate\":\"commands.worldborder.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/xp \"},\"translate\":\"commands.xp.usage\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
           "reason": "\"You are banned from this server.\"",
           "packet": "disconnect"
         }
@@ -388,6 +748,246 @@
         },
         {
           "json": "{\"color\":\"red\",\"translate\":\"commands.message.sameTarget\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"1\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/achievement \"},\"translate\":\"commands.achievement.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/ban \"},\"translate\":\"commands.ban.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/ban-ip \"},\"translate\":\"commands.banip.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/banlist \"},\"translate\":\"commands.banlist.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/blockdata \"},\"translate\":\"commands.blockdata.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/clear \"},\"translate\":\"commands.clear.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/clone \"},\"translate\":\"commands.clone.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"green\",\"translate\":\"commands.help.footer\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"3\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/execute \"},\"translate\":\"commands.execute.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/fill \"},\"translate\":\"commands.fill.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/gamemode \"},\"translate\":\"commands.gamemode.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/gamerule \"},\"translate\":\"commands.gamerule.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/give \"},\"translate\":\"commands.give.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/help \"},\"translate\":\"commands.help.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/kick \"},\"translate\":\"commands.kick.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"4\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/kill \"},\"translate\":\"commands.kill.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/list \"},\"translate\":\"commands.players.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/me \"},\"translate\":\"commands.me.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/op \"},\"translate\":\"commands.op.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/pardon \"},\"translate\":\"commands.unban.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/pardon-ip \"},\"translate\":\"commands.unbanip.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/particle \"},\"translate\":\"commands.particle.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"5\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/playsound \"},\"translate\":\"commands.playsound.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/replaceitem \"},\"translate\":\"commands.replaceitem.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/save-all \"},\"translate\":\"commands.save.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/save-off \"},\"translate\":\"commands.save-off.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/save-on \"},\"translate\":\"commands.save-on.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/say \"},\"translate\":\"commands.say.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/scoreboard \"},\"translate\":\"commands.scoreboard.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"6\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/seed \"},\"translate\":\"commands.seed.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/setblock \"},\"translate\":\"commands.setblock.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/setidletimeout \"},\"translate\":\"commands.setidletimeout.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/setworldspawn \"},\"translate\":\"commands.setworldspawn.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/spawnpoint \"},\"translate\":\"commands.spawnpoint.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/spreadplayers \"},\"translate\":\"commands.spreadplayers.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/stats \"},\"translate\":\"commands.stats.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"7\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/stop \"},\"translate\":\"commands.stop.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/summon \"},\"translate\":\"commands.summon.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell \"},\"translate\":\"commands.message.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tellraw \"},\"translate\":\"commands.tellraw.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/testfor \"},\"translate\":\"commands.testfor.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/testforblock \"},\"translate\":\"commands.testforblock.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/testforblocks \"},\"translate\":\"commands.compare.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"8\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/time \"},\"translate\":\"commands.time.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/title \"},\"translate\":\"commands.title.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/toggledownfall \"},\"translate\":\"commands.downfall.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tp \"},\"translate\":\"commands.tp.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/trigger \"},\"translate\":\"commands.trigger.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/weather \"},\"translate\":\"commands.weather.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/whitelist \"},\"translate\":\"commands.whitelist.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"color\":\"dark_green\",\"translate\":\"commands.help.header\",\"with\":[\"9\",\"9\"]}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/worldborder \"},\"translate\":\"commands.worldborder.usage\"}",
+          "position": 1
+        },
+        {
+          "json": "{\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/xp \"},\"translate\":\"commands.xp.usage\"}",
           "position": 1
         }
       ],
@@ -865,6 +1465,7 @@
       "[Server thread/INFO]: Notch[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
       "[Server thread/INFO]: Notch joined the game",
       "[Server thread/INFO]: * Notch waves",
+      "[Server thread/INFO]: Usage: /op <player>",
       "[Server thread/INFO]: Added Notch to the whitelist",
       "[Server thread/INFO]: There are 1 (out of 0 seen) whitelisted players:",
       "[Server thread/INFO]: Notch",
@@ -880,7 +1481,6 @@
       "[Server thread/INFO]: Removed Notch from the whitelist",
       "[Server thread/INFO]: Could not remove Nobody from the whitelist",
       "[Server thread/INFO]: [Notch: Set the time to 0]",
-      "[Server thread/INFO]: Usage: /op <player>",
       "[Server thread/INFO]: [Notch: Set own game mode to Creative Mode]",
       "[Server thread/INFO]: Banned player Notch",
       "[Server thread/INFO]: Notch lost connection: TextComponent{text='You are banned from this server.', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",

@@ -35,7 +35,7 @@ scenarios = ["login/bans_and_whitelist"]
 [[feature]]
 id = "config.usercache"
 description = "usercache.json"
-scenarios = []
+scenarios = ["commands/profiles"]
 
 [[feature]]
 id = "startup.log"
@@ -130,13 +130,13 @@ scenarios = ["commands/console_players"]
 
 [[feature]]
 id = "commands.profiles"
-description = "op/deop/ban/pardon/whitelist add/remove (profile lookups, usercache.json)"
-scenarios = []
+description = "op/deop/ban/pardon/ban-ip/pardon-ip/whitelist add/remove, usercache.json"
+scenarios = ["commands/profiles"]
 
 [[feature]]
 id = "commands.permissions"
-description = "Permission levels for players"
-scenarios = []
+description = "Permission levels, operator notifications, player help pages"
+scenarios = ["commands/profiles"]
 
 [[feature]]
 id = "world.weather"

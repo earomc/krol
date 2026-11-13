@@ -5,15 +5,21 @@ subsystem = "commands"
 world = "fixtures/worlds/flat"
 properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
 
-# Notch tries commands before being opped (t < 3 s) and again as an op (t >= 7 s).
+# Notch tries commands before being opped (t < 2 s) and again as an op (t >= 9.5 s),
+# after all console steps, so the two phases never interleave.
 [[steps]]
 id = "notch"
 action = "play"
 protocol = 47
 name = "Notch"
-seconds = 14
+seconds = 18
 background = true
-chat = ["@300 /time set 0", "@600 /help", "@900 /me waves", "@1200 /list", "@7000 /time set 0", "@7300 /gamemode 1", "@7600 /help 2", "@7900 /tell Notch hi"]
+chat = ["@300 /time set 0", "@600 /help", "@900 /me waves", "@1200 /list", "@9500 /time set 0", "@9800 /gamemode 1", "@10100 /help 2", "@10400 /tell Notch hi", "@10600 /help 1", "@10800 /help 3", "@11000 /help 4", "@11200 /help 5", "@11400 /help 6", "@11600 /help 7", "@11800 /help 8", "@12000 /help 9"]
+
+[[steps]]
+action = "console"
+command = "op"
+wait_ms = 500
 
 [[steps]]
 action = "console"
@@ -75,14 +81,10 @@ action = "console"
 command = "whitelist remove Nobody"
 wait_ms = 500
 
-[[steps]]
-action = "console"
-command = "op"
-wait_ms = 500
 
 [[steps]]
 action = "wait"
-ms = 3000
+ms = 6500
 
 [[steps]]
 action = "console"
