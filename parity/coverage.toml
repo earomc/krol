@@ -91,11 +91,36 @@ scenarios = ["login/offline"]
 [[feature]]
 id = "play.join"
 description = "Join Game sequence and initial chunks"
+scenarios = ["play/join_flat", "login/offline"]
+
+[[feature]]
+id = "play.chat"
+description = "Chat broadcast and log line"
+scenarios = ["play/join_flat"]
+
+[[feature]]
+id = "play.movement"
+description = "Movement validation (moved too quickly / wrongly), chunk tracking"
+scenarios = []
+
+[[feature]]
+id = "commands"
+description = "Console and player commands"
+scenarios = []
+
+[[feature]]
+id = "protocol5.play"
+description = "1.7 clients in the play state (translation layer)"
 scenarios = []
 
 [[feature]]
 id = "world.load_existing"
 description = "Load an existing vanilla world (Anvil, level.dat, playerdata)"
+scenarios = ["play/join_flat"]
+
+[[feature]]
+id = "world.playerdata"
+description = "playerdata/<uuid>.dat written like vanilla"
 scenarios = []
 
 [[feature]]

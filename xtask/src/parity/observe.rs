@@ -127,7 +127,14 @@ fn login_packet_json(p: &ClientboundLogin) -> Value {
 
 /// Strips timestamps and run-specific values from console lines.
 fn normalize_log(lines: &[String], observe: &Observe) -> Value {
-    let out: Vec<Value> = lines
+    // Vanilla's JVM shutdown hook runs a second stopServer() while log4j shuts down,
+    // which nondeterministically adds lines and log4j errors after this one. That is a
+    // teardown race, not server behavior, so the log is cut here.
+    let end = lines
+        .iter()
+        .position(|l| l.contains("[Server Shutdown Thread/INFO]: Stopping server"))
+        .map_or(lines.len(), |i| i + 1);
+    let out: Vec<Value> = lines[..end]
         .iter()
         .filter_map(|line| {
             // JVM stack frames are implementation details of vanilla, not behavior.

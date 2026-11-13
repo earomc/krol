@@ -1,8 +1,9 @@
-description = "Offline-mode login: Set Compression, Login Success with the offline UUID"
+description = "Offline-mode login: Set Compression, Login Success with the offline UUID, join and leave"
 subsystem = "login"
 
 [setup]
-properties = { online-mode = "false" }
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
 
 [[steps]]
 id = "login_47"
@@ -11,15 +12,18 @@ protocol = 47
 name = "Notch"
 
 [[steps]]
+action = "wait"
+ms = 500
+
+[[steps]]
 id = "login_47_second_player"
 action = "login_start"
 protocol = 47
 name = "jeb_"
 
+[[steps]]
+action = "wait"
+ms = 500
+
 [observe]
 log = true
-log_ignore_prefixes = [
-    # World loading is not implemented yet in krol (M3); keep this scenario about login.
-    "Preparing ",
-    "Saving",
-]
