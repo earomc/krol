@@ -504,6 +504,7 @@ dependencies = [
  "krol-java",
  "krol-nbt",
  "krol-protocol",
+ "krol-world",
  "md-5",
  "rsa",
  "serde_json",

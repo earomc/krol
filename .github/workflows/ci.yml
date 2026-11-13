@@ -32,7 +32,9 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
 
   parity:
-    runs-on: ubuntu-latest
+    # Goldens are recorded from vanilla on Windows, where vanilla's output differs from
+    # Linux (no epoll transport, OS-specific exception messages).
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
