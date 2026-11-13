@@ -1,0 +1,94 @@
+# Vanilla feature -> parity scenario map (AGENTS.md §10.2).
+#
+# `cargo xtask parity coverage` lists every feature as COVERED (all scenarios pass),
+# OPEN (scenarios exist but fail / have no golden) or UNCOVERED (no scenario yet).
+# Agents: pick an OPEN or UNCOVERED entry, write/extend a scenario, record vanilla,
+# implement, iterate until green.
+
+# --- Startup & configuration -------------------------------------------------------
+
+[[feature]]
+id = "config.eula.first_run"
+description = "Missing eula.txt is created; server refuses to start"
+scenarios = ["startup/first_run_no_eula"]
+
+[[feature]]
+id = "config.server_properties.defaults"
+description = "server.properties completed with defaults, vanilla key order"
+scenarios = ["startup/fresh_properties"]
+
+[[feature]]
+id = "config.server_properties.invalid_values"
+description = "Unparsable ints replaced by defaults, booleans kept, clamping"
+scenarios = []
+
+[[feature]]
+id = "config.ops_whitelist_bans"
+description = "ops.json, whitelist.json, banned-*.json, usercache.json"
+scenarios = []
+
+[[feature]]
+id = "startup.log"
+description = "Startup and shutdown console log lines"
+scenarios = []
+
+# --- Status ------------------------------------------------------------------------
+
+[[feature]]
+id = "status.modern"
+description = "Server list ping: response JSON (Gson escaping), pong, close"
+scenarios = ["status/modern_ping"]
+
+[[feature]]
+id = "status.legacy"
+description = "Legacy 0xFE pings (beta, 1.4, 1.6)"
+scenarios = ["status/legacy_ping"]
+
+[[feature]]
+id = "status.favicon"
+description = "server-icon.png in the status response"
+scenarios = []
+
+[[feature]]
+id = "status.player_sample"
+description = "Online count and player sample refreshed every 5 s"
+scenarios = []
+
+# --- Login -------------------------------------------------------------------------
+
+[[feature]]
+id = "login.version_reject"
+description = "Outdated client/server disconnect messages"
+scenarios = ["login/version_reject"]
+
+[[feature]]
+id = "login.offline"
+description = "Offline-mode login: UUID derivation, Login Success"
+scenarios = []
+
+[[feature]]
+id = "login.online"
+description = "Online-mode login: encryption request/response, session server"
+scenarios = []
+
+[[feature]]
+id = "login.compression"
+description = "Set Compression and compressed framing (protocol 47)"
+scenarios = []
+
+# --- Play --------------------------------------------------------------------------
+
+[[feature]]
+id = "play.join"
+description = "Join Game sequence and initial chunks"
+scenarios = []
+
+[[feature]]
+id = "world.load_existing"
+description = "Load an existing vanilla world (Anvil, level.dat, playerdata)"
+scenarios = []
+
+[[feature]]
+id = "worldgen.overworld"
+description = "Seed-exact overworld chunk generation"
+scenarios = []

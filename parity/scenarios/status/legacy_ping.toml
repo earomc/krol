@@ -1,0 +1,23 @@
+description = "Legacy (0xFE) server list pings: beta, 1.4-1.5 and 1.6 formats"
+subsystem = "status"
+
+[setup]
+properties = { motd = "Legacy \u00a7aMOTD", max-players = "13" }
+
+[[steps]]
+id = "beta"
+action = "raw"
+hex = "fe"
+
+[[steps]]
+id = "v1_4"
+action = "raw"
+hex = "fe01"
+
+[[steps]]
+id = "v1_6"
+action = "raw"
+hex = """
+fe01fa 000b 004d0043007c00500069006e00670048006f00730074
+0019 4a 0009 006c006f00630061006c0068006f00730074 000063dd
+"""

@@ -1,0 +1,8 @@
+description = "server.properties containing only server-port is completed with vanilla defaults"
+subsystem = "config"
+
+[setup]
+eula = true
+
+[observe]
+files = ["server.properties"]

@@ -1,0 +1,10 @@
+description = "First start in an empty directory: no eula.txt, no server.properties"
+subsystem = "config"
+
+[setup]
+eula = false
+write_properties = false
+
+[observe]
+files = ["eula.txt", "server.properties"]
+log = true

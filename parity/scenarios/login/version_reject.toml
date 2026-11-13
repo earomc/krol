@@ -1,0 +1,14 @@
+description = "Login with unsupported protocol numbers is rejected with vanilla's messages"
+subsystem = "login"
+
+[[steps]]
+id = "newer_client"
+action = "login_start"
+protocol = 48
+name = "Steve"
+
+[[steps]]
+id = "older_client"
+action = "login_start"
+protocol = 4
+name = "Steve"

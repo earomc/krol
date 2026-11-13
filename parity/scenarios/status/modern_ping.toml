@@ -1,0 +1,25 @@
+description = "Modern server list ping (protocol 47 and 5) with characters Gson escapes"
+subsystem = "status"
+
+[setup]
+properties = { motd = "Hello <krol> & =friends=", max-players = "7" }
+
+[[steps]]
+id = "status_47"
+action = "status_ping"
+protocol = 47
+payload = 123456789
+
+[[steps]]
+id = "status_5"
+action = "status_ping"
+protocol = 5
+payload = -1
+
+[observe]
+ignore = [
+    # Deliberate deviation (AGENTS.md / status.rs): krol reports protocol 5 / "1.7.10"
+    # to 1.7 clients so they see a compatible server; vanilla always reports 47.
+    "status_5.raw",
+    "status_5.parsed.version",
+]
