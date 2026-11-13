@@ -1,0 +1,8 @@
+description = "ops/whitelist/ban files are created or rewritten at startup (Gson pretty, HashMap order)"
+subsystem = "config"
+
+[setup.files]
+"ops.json" = "fixtures/ops_unordered.json"
+
+[observe]
+files = ["ops.json", "whitelist.json", "banned-players.json", "banned-ips.json"]

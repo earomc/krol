@@ -1,0 +1,27 @@
+description = "Login refused for banned players, non-whitelisted players and banned IPs"
+subsystem = "login"
+
+[setup]
+properties = { online-mode = "false", white-list = "true" }
+
+[setup.files]
+"banned-players.json" = "fixtures/banned_notch.json"
+"whitelist.json" = "fixtures/whitelist_jeb.json"
+
+[[steps]]
+id = "banned"
+action = "login_start"
+protocol = 47
+name = "Notch"
+
+[[steps]]
+id = "not_whitelisted"
+action = "login_start"
+protocol = 47
+name = "Steve"
+
+[[steps]]
+id = "whitelisted"
+action = "login_start"
+protocol = 47
+name = "jeb_"

@@ -24,7 +24,17 @@ scenarios = []
 
 [[feature]]
 id = "config.ops_whitelist_bans"
-description = "ops.json, whitelist.json, banned-*.json, usercache.json"
+description = "ops.json, whitelist.json, banned-*.json written at startup"
+scenarios = ["startup/user_lists"]
+
+[[feature]]
+id = "login.bans_whitelist"
+description = "Banned / not-whitelisted / IP-banned login refusals"
+scenarios = ["login/bans_and_whitelist"]
+
+[[feature]]
+id = "config.usercache"
+description = "usercache.json"
 scenarios = []
 
 [[feature]]
