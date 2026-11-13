@@ -566,7 +566,17 @@ impl Game {
         };
         let entity_id = self.next_entity_id;
         self.next_entity_id += 1;
-        let data = stored.unwrap_or_else(|| default_player_data(gamemode));
+        let loaded = stored.is_some();
+        let mut data = stored.unwrap_or_else(|| default_player_data(gamemode));
+        if loaded && data.get_i32("XpSeed") == 0 {
+            // Vanilla EntityPlayer.readEntityFromNBT: a zero seed is replaced with the
+            // entity's (unseeded) random; fresh players keep 0.
+            let seed = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_nanos() as i64);
+            let value = krol_java::JavaRandom::new(seed).next_int();
+            data.insert("XpSeed", krol_nbt::Tag::Int(value));
+        }
         let selected_slot = data.get_i32("SelectedItemSlot") as i8;
 
         info!(
@@ -709,10 +719,9 @@ impl Game {
                 value: thunder_strength,
             });
         }
-        // TODO(M4): send the stored inventory instead of an empty one.
         player.send(ClientboundPlay::WindowItems {
             window: 0,
-            items: vec![None; 45],
+            items: player::inventory_window(&player.data),
         });
         player.send(ClientboundPlay::SetSlot {
             window: -1,
@@ -725,6 +734,20 @@ impl Game {
         let player = &mut self.players[i];
         player.ticks += 1;
         if player.ticks == 1 {
+            // Vanilla quirk: the container's change tracking starts empty, so the first
+            // detectAndSendChanges resends every non-empty slot after Window Items.
+            for (slot, item) in player::inventory_window(&player.data)
+                .into_iter()
+                .enumerate()
+            {
+                if item.is_some() {
+                    player.send(ClientboundPlay::SetSlot {
+                        window: 0,
+                        slot: slot as i16,
+                        item,
+                    });
+                }
+            }
             // First EntityPlayerMP update and entity tracker pass after joining.
             let d = &player.data;
             player.send(ClientboundPlay::UpdateHealth {

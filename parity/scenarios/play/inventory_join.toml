@@ -1,0 +1,24 @@
+description = "A returning player with items, armor, an enchanted named sword and XP"
+subsystem = "play"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat" = "fixtures/playerdata/steve.dat"
+
+[[steps]]
+id = "steve"
+action = "play"
+protocol = 47
+name = "Steve"
+seconds = 3
+
+[observe]
+log = true
+files = ["world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat"]
+ignore = [
+    # Vanilla replaces a stored XpSeed of 0 with an unseeded random value on load.
+    "file:world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat.XpSeed",
+]

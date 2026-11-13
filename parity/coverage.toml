@@ -89,6 +89,11 @@ scenarios = ["login/offline"]
 # --- Play --------------------------------------------------------------------------
 
 [[feature]]
+id = "play.inventory_join"
+description = "Stored inventory, armor, item NBT and XP sent on join"
+scenarios = ["play/inventory_join"]
+
+[[feature]]
 id = "play.join"
 description = "Join Game sequence and initial chunks"
 scenarios = ["play/join_flat", "login/offline"]

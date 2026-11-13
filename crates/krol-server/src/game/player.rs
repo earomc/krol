@@ -285,6 +285,43 @@ pub struct Movement {
     pub floating_ticks: u32,
 }
 
+/// Reads an item stack from NBT (vanilla `ItemStack.readFromNBT`): the id is a name
+/// (`minecraft:stone`) or, in old data, a numeric short; unknown items are dropped.
+pub fn item_from_nbt(c: &Compound) -> Option<krol_protocol::packets::play::ItemStack> {
+    let id = match c.get("id") {
+        Some(Tag::String(name)) => krol_world::items::id_for_name(name)?,
+        Some(tag) => tag.as_i16()?,
+        None => return None,
+    };
+    Some(krol_protocol::packets::play::ItemStack {
+        id,
+        count: c.get_i8("Count"),
+        damage: c.get_i16("Damage").max(0),
+        nbt: c.get_compound("tag").cloned(),
+    })
+}
+
+/// The 45 slots of the player inventory window (vanilla `ContainerPlayer`): crafting
+/// result and grid (0–4, empty), armor 5–8 (helmet first), main inventory 9–35 and the
+/// hotbar 36–44, filled from the stored `Inventory` list.
+pub fn inventory_window(data: &Compound) -> Vec<Option<krol_protocol::packets::play::ItemStack>> {
+    let mut window = vec![None; 45];
+    if let Some(list) = data.get_list("Inventory", TagType::Compound) {
+        for tag in list {
+            let Tag::Compound(c) = tag else { continue };
+            let slot = i32::from(c.get_i8("Slot") as u8);
+            let index = match slot {
+                0..=8 => 36 + slot,
+                9..=35 => slot,
+                100..=103 => 8 - (slot - 100),
+                _ => continue,
+            };
+            window[index as usize] = item_from_nbt(c);
+        }
+    }
+    window
+}
+
 /// Loads `<world>/playerdata/<uuid>.dat`, if present and readable.
 pub fn load_player_data(world_dir: &Path, uuid: u128) -> Option<Compound> {
     let path = world_dir
