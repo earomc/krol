@@ -7,6 +7,7 @@
 
 pub mod commands;
 pub mod player;
+pub mod stats;
 pub mod world;
 
 use std::net::SocketAddr;
@@ -564,6 +565,7 @@ impl Game {
             Some(p) => p,
             None => (self.spawn_position(gamemode), (0.0, 0.0)),
         };
+        let profile_id = profile.id;
         let entity_id = self.next_entity_id;
         self.next_entity_id += 1;
         let loaded = stored.is_some();
@@ -609,6 +611,7 @@ impl Game {
             managed_pos: (0.0, 0.0),
             movement: Default::default(),
             new_watches: Vec::new(),
+            stats: stats::Stats::load(&self.level.dir, profile_id),
             xp_dirty: false,
             score_dirty: false,
             chat_spam: 0,
@@ -733,6 +736,23 @@ impl Game {
     fn tick_player(&mut self, i: usize, radius: i32) {
         let player = &mut self.players[i];
         player.ticks += 1;
+        // EntityPlayer.onUpdate: time statistics.
+        player.stats.add("stat.playOneMinute", 1);
+        player.stats.add("stat.timeSinceDeath", 1);
+        if (player.ticks - 1) % 20 == 0 {
+            // EntityPlayerMP.updateBiomesExplored (every 20 ticks).
+            let (x, z) = (
+                krol_java::math::floor_f64(player.pos.0),
+                krol_java::math::floor_f64(player.pos.2),
+            );
+            let biome = self.level.overworld.chunk(x >> 4, z >> 4).biomes
+                [((z & 15) << 4 | (x & 15)) as usize];
+            let player = &mut self.players[i];
+            player
+                .stats
+                .add_progress("achievement.exploreAllBiomes", stats::biome_name(biome));
+        }
+        let player = &mut self.players[i];
         if player.ticks == 1 {
             // Vanilla quirk: the container's change tracking starts empty, so the first
             // detectAndSendChanges resends every non-empty slot after Window Items.
@@ -1113,6 +1133,7 @@ impl Game {
         let conn_id = self.players[i].conn_id;
         self.broadcast_chat(&left, Some(conn_id));
         let mut player = self.players.remove(i);
+        player.stats.add("stat.leaveGame", 1);
         player.save(&self.level.dir);
         let remove =
             ClientboundPlay::PlayerListItem(PlayerListAction::Remove(vec![player.profile.id]));

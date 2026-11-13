@@ -80,3 +80,11 @@ wait_ms = 500
 
 [observe]
 log = true
+log_ignore_prefixes = [
+    # Vanilla race: kickPlayerFromServer runs checkDisconnected immediately, so a client
+    # that closes quickly is logged as disconnected before the "Kicked" line (followed
+    # by "handleDisconnection() called twice"); a slower one after it.
+    "Notch lost connection",
+    "Notch left the game",
+    "handleDisconnection() called twice",
+]

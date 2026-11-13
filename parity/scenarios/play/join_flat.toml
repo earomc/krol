@@ -15,4 +15,12 @@ chat = ["hello world"]
 
 [observe]
 log = true
-files = ["world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat"]
+files = [
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
+]
+ignore = [
+    # Tick counters depend on session timing.
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+]

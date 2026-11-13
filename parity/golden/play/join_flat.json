@@ -614,8 +614,7 @@
       "[Server thread/INFO]: Saving worlds",
       "[Server thread/INFO]: Saving chunks for level 'world'/Overworld",
       "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
-      "[Server thread/INFO]: Saving chunks for level 'world'/The End",
-      "[Server Shutdown Thread/INFO]: Stopping server"
+      "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ],
     "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat": {
       "AbsorptionAmount": "0f",
@@ -689,6 +688,25 @@
       "foodSaturationLevel": "5f",
       "foodTickTimer": 0,
       "playerGameType": 2
+    },
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json": {
+      "keys": [
+        "stat.playOneMinute",
+        "stat.leaveGame",
+        "stat.timeSinceDeath",
+        "achievement.exploreAllBiomes"
+      ],
+      "value": {
+        "stat.playOneMinute": 77,
+        "stat.leaveGame": 1,
+        "stat.timeSinceDeath": 77,
+        "achievement.exploreAllBiomes": {
+          "value": 0,
+          "progress": [
+            "Plains"
+          ]
+        }
+      }
     }
   }
 }

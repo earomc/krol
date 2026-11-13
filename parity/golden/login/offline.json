@@ -60,8 +60,7 @@
       "[Server thread/INFO]: Saving worlds",
       "[Server thread/INFO]: Saving chunks for level 'world'/Overworld",
       "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
-      "[Server thread/INFO]: Saving chunks for level 'world'/The End",
-      "[Server Shutdown Thread/INFO]: Stopping server"
+      "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ]
   }
 }

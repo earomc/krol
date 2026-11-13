@@ -2,9 +2,36 @@
   "recorded_with": "vanilla 1.8.8",
   "observations": {
     "started": true,
-    "file:ops.json": "[\n  {\n    \"uuid\": \"61699b2e-d327-4a01-9f1e-0ea8c3f06bc6\",\n    \"name\": \"Dinnerbone\",\n    \"level\": 2,\n    \"bypassesPlayerLimit\": false\n  },\n  {\n    \"uuid\": \"853c80ef-3c37-49fd-aa49-938b674adae6\",\n    \"name\": \"jeb_\",\n    \"level\": 4,\n    \"bypassesPlayerLimit\": false\n  },\n  {\n    \"uuid\": \"069a79f4-44e9-4726-a5be-fca90e38aaf5\",\n    \"name\": \"Notch\",\n    \"level\": 3,\n    \"bypassesPlayerLimit\": true\n  }\n]",
-    "file:whitelist.json": "[]",
-    "file:banned-players.json": "[]",
-    "file:banned-ips.json": "[]"
+    "file:ops.json": {
+      "value": [
+        {
+          "uuid": "61699b2e-d327-4a01-9f1e-0ea8c3f06bc6",
+          "name": "Dinnerbone",
+          "level": 2,
+          "bypassesPlayerLimit": false
+        },
+        {
+          "uuid": "853c80ef-3c37-49fd-aa49-938b674adae6",
+          "name": "jeb_",
+          "level": 4,
+          "bypassesPlayerLimit": false
+        },
+        {
+          "uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+          "name": "Notch",
+          "level": 3,
+          "bypassesPlayerLimit": true
+        }
+      ]
+    },
+    "file:whitelist.json": {
+      "value": []
+    },
+    "file:banned-players.json": {
+      "value": []
+    },
+    "file:banned-ips.json": {
+      "value": []
+    }
   }
 }

@@ -56,6 +56,8 @@ pub struct Player {
     pub movement: Movement,
     /// Chunks watched since the game last loaded them.
     pub new_watches: Vec<(i32, i32)>,
+    /// Statistics (`stats/<uuid>.json`).
+    pub stats: super::stats::Stats,
     /// Experience changed since the last Set Experience packet.
     pub xp_dirty: bool,
     /// Score changed since the last metadata update.
@@ -223,6 +225,7 @@ impl Player {
     /// `writePlayerData`: `<uuid>.dat.tmp`, then replace).
     pub fn save(&mut self, world_dir: &Path) {
         self.store_state();
+        self.stats.save();
         let dir = world_dir.join("playerdata");
         let uuid = java_uuid_string(self.profile.id);
         let tmp = dir.join(format!("{uuid}.dat.tmp"));

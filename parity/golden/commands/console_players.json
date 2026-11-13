@@ -756,16 +756,13 @@
       "[Server thread/INFO]: Teleported Notch to -449.5, 10.0, -439.5",
       "[Server thread/INFO]: That player cannot be found",
       "[Server thread/INFO]: Kicked Notch from the game: 'Bye now'",
-      "[Server thread/INFO]: Notch lost connection: TextComponent{text='Bye now', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",
-      "[Server thread/INFO]: Notch left the game",
       "[Server thread/INFO]: Stopping the server",
       "[Server thread/INFO]: Stopping server",
       "[Server thread/INFO]: Saving players",
       "[Server thread/INFO]: Saving worlds",
       "[Server thread/INFO]: Saving chunks for level 'world'/Overworld",
       "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
-      "[Server thread/INFO]: Saving chunks for level 'world'/The End",
-      "[Server Shutdown Thread/INFO]: Stopping server"
+      "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ]
   }
 }

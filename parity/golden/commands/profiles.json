@@ -1483,8 +1483,6 @@
       "[Server thread/INFO]: [Notch: Set the time to 0]",
       "[Server thread/INFO]: [Notch: Set own game mode to Creative Mode]",
       "[Server thread/INFO]: Banned player Notch",
-      "[Server thread/INFO]: Notch lost connection: TextComponent{text='You are banned from this server.', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",
-      "[Server thread/INFO]: Notch left the game",
       "[Server thread/INFO]: There are 1 total banned players:",
       "[Server thread/INFO]: Notch",
       "[Server thread/INFO]: Unbanned player Notch",
@@ -1494,13 +1492,35 @@
       "[Server thread/INFO]: Saving worlds",
       "[Server thread/INFO]: Saving chunks for level 'world'/Overworld",
       "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
-      "[Server thread/INFO]: Saving chunks for level 'world'/The End",
-      "[Server Shutdown Thread/INFO]: Stopping server"
+      "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ],
-    "file:ops.json": "[\n  {\n    \"uuid\": \"b50ad385-829d-3141-a216-7e7d7539ba7f\",\n    \"name\": \"Notch\",\n    \"level\": 4,\n    \"bypassesPlayerLimit\": false\n  }\n]",
-    "file:whitelist.json": "[]",
-    "file:banned-players.json": "[]",
-    "file:banned-ips.json": "[]",
-    "file:usercache.json": "[{\"name\":\"Notch\",\"uuid\":\"b50ad385-829d-3141-a216-7e7d7539ba7f\",\"expiresOn\":\"<date>\"}]"
+    "file:ops.json": {
+      "value": [
+        {
+          "uuid": "b50ad385-829d-3141-a216-7e7d7539ba7f",
+          "name": "Notch",
+          "level": 4,
+          "bypassesPlayerLimit": false
+        }
+      ]
+    },
+    "file:whitelist.json": {
+      "value": []
+    },
+    "file:banned-players.json": {
+      "value": []
+    },
+    "file:banned-ips.json": {
+      "value": []
+    },
+    "file:usercache.json": {
+      "value": [
+        {
+          "name": "Notch",
+          "uuid": "b50ad385-829d-3141-a216-7e7d7539ba7f",
+          "expiresOn": "<date>"
+        }
+      ]
+    }
   }
 }

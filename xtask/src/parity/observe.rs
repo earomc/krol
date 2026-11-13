@@ -159,12 +159,12 @@ fn login_packet_json(p: &ClientboundLogin) -> Value {
 /// Strips timestamps and run-specific values from console lines.
 fn normalize_log(lines: &[String], observe: &Observe) -> Value {
     // Vanilla's JVM shutdown hook runs a second stopServer() while log4j shuts down,
-    // which nondeterministically adds lines and log4j errors after this one. That is a
-    // teardown race, not server behavior, so the log is cut here.
+    // which nondeterministically adds (or loses) this line and log4j errors after it.
+    // That is a teardown race, not server behavior, so the log is cut before it.
     let end = lines
         .iter()
         .position(|l| l.contains("[Server Shutdown Thread/INFO]: Stopping server"))
-        .map_or(lines.len(), |i| i + 1);
+        .unwrap_or(lines.len());
     let out: Vec<Value> = lines[..end]
         .iter()
         .filter_map(|line| {
@@ -268,7 +268,17 @@ fn normalize_dates(s: &str) -> String {
 
 fn normalize_file(name: &str, text: &str) -> Value {
     if name.ends_with(".json") {
-        return Value::String(normalize_dates(text));
+        let text = normalize_dates(text);
+        // Parsed so single values can be ignored; object key order is kept separately
+        // because it is observable (vanilla writes maps in hash order).
+        return match serde_json::from_str::<Value>(&text) {
+            Ok(Value::Object(map)) => json!({
+                "keys": map.keys().cloned().collect::<Vec<_>>(),
+                "value": Value::Object(map),
+            }),
+            Ok(v) => json!({ "value": v }),
+            Err(_) => Value::String(text),
+        };
     }
     let is_properties = name.ends_with(".properties") || name.ends_with("eula.txt");
     let lines: Vec<Value> = text

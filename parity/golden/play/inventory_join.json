@@ -622,8 +622,7 @@
       "[Server thread/INFO]: Saving worlds",
       "[Server thread/INFO]: Saving chunks for level 'world'/Overworld",
       "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
-      "[Server thread/INFO]: Saving chunks for level 'world'/The End",
-      "[Server Shutdown Thread/INFO]: Stopping server"
+      "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ],
     "file:world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat": {
       "AbsorptionAmount": "0f",
@@ -732,7 +731,7 @@
       "UUIDMost": "6208174260129512481L",
       "XpLevel": 31,
       "XpP": "0.05785124f",
-      "XpSeed": -1098972064,
+      "XpSeed": 1723159920,
       "XpTotal": 7,
       "abilities": {
         "flySpeed": "0.05f",

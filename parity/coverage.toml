@@ -89,6 +89,11 @@ scenarios = ["login/offline"]
 # --- Play --------------------------------------------------------------------------
 
 [[feature]]
+id = "world.stats"
+description = "stats/<uuid>.json (time stats, leaveGame, exploreAllBiomes, key order)"
+scenarios = ["play/join_flat"]
+
+[[feature]]
 id = "play.inventory_join"
 description = "Stored inventory, armor, item NBT and XP sent on join"
 scenarios = ["play/inventory_join"]
