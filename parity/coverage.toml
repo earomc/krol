@@ -110,7 +110,12 @@ scenarios = []
 
 [[feature]]
 id = "world.population"
-description = "Chunks generated/populated at the edge of the generated area"
+description = "Terrain/light population and ticked flags decide which chunks are sent"
+scenarios = ["play/walk_and_jump", "commands/console_players"]
+
+[[feature]]
+id = "world.generation_edge"
+description = "Chunks vanilla generates on demand at the edge of the generated area"
 scenarios = []
 
 [[feature]]
@@ -120,7 +125,12 @@ scenarios = ["commands/console_basic"]
 
 [[feature]]
 id = "commands.with_players"
-description = "Commands targeting online players (kick, tell, tp, gamemode, xp, op, ...)"
+description = "list, say/me/tell to players, gamemode, xp, tp <coords>, kick with an online player"
+scenarios = ["commands/console_players"]
+
+[[feature]]
+id = "commands.profiles"
+description = "op/deop/ban/pardon/whitelist add/remove (profile lookups, usercache.json)"
 scenarios = []
 
 [[feature]]

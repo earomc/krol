@@ -1,0 +1,82 @@
+description = "Console commands targeting an online player, observed from the player's side"
+subsystem = "commands"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "notch"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 12
+background = true
+
+[[steps]]
+action = "console"
+command = "list"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "list uuids"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "say hello players"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "me waves"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "tell Notch psst"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "msg notch hi again"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "gamemode creative Notch"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "gamemode 1 Nobody"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "xp 10 Notch"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "xp 3L Notch"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "tp Notch -440 10 -440"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "kick jeb_"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "kick Notch Bye now"
+wait_ms = 500
+
+[observe]
+log = true

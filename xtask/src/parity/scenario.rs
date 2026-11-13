@@ -53,7 +53,7 @@ fn yes() -> bool {
 }
 
 /// One scripted action; its observation is stored under `id`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Step {
     /// Modern server list ping.
@@ -83,6 +83,10 @@ pub enum Step {
         /// Offsets from the spawn position, one Position packet per tick.
         #[serde(default)]
         moves: Vec<[f64; 3]>,
+        /// Run concurrently with the following steps (e.g. console commands); the
+        /// observation is collected at the end.
+        #[serde(default)]
+        background: bool,
     },
     /// Types a line into the server console; output appears in the log observation.
     /// Waits `wait_ms` (default 300) afterwards so the output is captured in order.

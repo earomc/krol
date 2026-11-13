@@ -18,10 +18,27 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
     obs.insert("started".into(), Value::Bool(server.started));
 
     if server.started {
-        let runtime = tokio::runtime::Builder::new_current_thread()
+        let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
+        let mut background = Vec::new();
         for step in &scenario.steps {
+            if let Step::Play {
+                background: true,
+                id,
+                ..
+            } = step
+            {
+                let step = step.clone();
+                let addr = server.addr;
+                background.push((
+                    id.clone(),
+                    runtime.spawn(async move { run_step(&step, addr).await }),
+                ));
+                // Give the join a moment so following steps see the player online.
+                std::thread::sleep(std::time::Duration::from_millis(1500));
+                continue;
+            }
             if let Step::Wait { ms } = step {
                 std::thread::sleep(std::time::Duration::from_millis(*ms));
                 continue;
@@ -35,6 +52,12 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
             if let Some(id) = step.id() {
                 obs.insert(id.to_owned(), value);
             }
+        }
+        for (id, handle) in background {
+            let value = runtime
+                .block_on(handle)
+                .unwrap_or_else(|e| json!({ "error": e.to_string() }));
+            obs.insert(id, value);
         }
     }
 
