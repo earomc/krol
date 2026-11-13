@@ -11,6 +11,7 @@
 
 #![deny(missing_docs)]
 
+mod concurrent_map;
 pub mod fmt;
 pub mod gson;
 mod hashmap;
@@ -22,6 +23,7 @@ mod random;
 mod strict_math;
 mod string;
 
+pub use concurrent_map::JavaConcurrentHashMap;
 pub use hashmap::JavaHashMap;
 pub use hashtable::JavaHashtable;
 pub use random::JavaRandom;

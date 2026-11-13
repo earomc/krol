@@ -1759,6 +1759,678 @@ fn hashmap_order_matches_jvm() {
 }
 
 #[test]
+fn concurrent_map_order_matches_jvm() {
+    let mut m = krol_java::JavaConcurrentHashMap::with_guava_defaults();
+    m.insert("stat.bc697832.0".to_string(), 0);
+    m.insert("stat.c400c63a.1".to_string(), 1);
+    m.insert("stat.befd25d5.2".to_string(), 2);
+    m.insert("stat.bebb8273.3".to_string(), 3);
+    m.insert("stat.b3652098.4".to_string(), 4);
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "stat.b3652098.4",
+            "stat.bc697832.0",
+            "stat.befd25d5.2",
+            "stat.c400c63a.1",
+            "stat.bebb8273.3",
+        ] as [&str; 5]
+    );
+    let mut m = krol_java::JavaConcurrentHashMap::with_guava_defaults();
+    m.insert("stat.bc639945.0".to_string(), 0);
+    m.insert("stat.8e011da.1".to_string(), 1);
+    m.insert("stat.ea6468ca.2".to_string(), 2);
+    m.insert("stat.8bd00b46.3".to_string(), 3);
+    m.insert("stat.4564239e.4".to_string(), 4);
+    m.insert("stat.505ad10d.5".to_string(), 5);
+    m.insert("stat.8668afe2.6".to_string(), 6);
+    m.insert("stat.508e5618.7".to_string(), 7);
+    m.insert("stat.3c67f0ac.8".to_string(), 8);
+    m.insert("stat.acddd19f.9".to_string(), 9);
+    m.insert("stat.52e395dd.10".to_string(), 10);
+    m.insert("stat.c1460480.11".to_string(), 11);
+    m.insert("stat.911bc29f.12".to_string(), 12);
+    m.insert("stat.8d9f20d7.13".to_string(), 13);
+    m.insert("stat.75622f8c.14".to_string(), 14);
+    m.insert("stat.905cc845.15".to_string(), 15);
+    m.insert("stat.2374c8cd.16".to_string(), 16);
+    m.insert("stat.30b7ef7e.17".to_string(), 17);
+    m.insert("stat.2ba1b5b5.18".to_string(), 18);
+    m.insert("stat.109cfa1a.19".to_string(), 19);
+    m.insert("stat.8d8686a1.20".to_string(), 20);
+    m.insert("stat.41a71fc2.21".to_string(), 21);
+    m.insert("stat.1ad0c727.22".to_string(), 22);
+    m.insert("stat.d7ccb423.23".to_string(), 23);
+    m.insert("stat.95bb5d3.24".to_string(), 24);
+    m.insert("stat.31d44d5c.25".to_string(), 25);
+    m.insert("stat.71da380d.26".to_string(), 26);
+    m.insert("stat.883d90b9.27".to_string(), 27);
+    m.insert("stat.3d3e97d9.28".to_string(), 28);
+    m.insert("stat.db78b3f5.29".to_string(), 29);
+    m.insert("stat.a1bd0287.30".to_string(), 30);
+    m.insert("stat.70d3116a.31".to_string(), 31);
+    m.insert("stat.8eb06a9d.32".to_string(), 32);
+    m.insert("stat.d5c597c5.33".to_string(), 33);
+    m.insert("stat.631a2c76.34".to_string(), 34);
+    m.insert("stat.1e59f243.35".to_string(), 35);
+    m.insert("stat.3416f46f.36".to_string(), 36);
+    m.insert("stat.8476147d.37".to_string(), 37);
+    m.insert("stat.c95ab697.38".to_string(), 38);
+    m.insert("stat.55eaed50.39".to_string(), 39);
+    m.insert("stat.42225b3c.40".to_string(), 40);
+    m.insert("stat.c7747667.41".to_string(), 41);
+    m.insert("stat.ff5ce8d3.42".to_string(), 42);
+    m.insert("stat.52b7b263.43".to_string(), 43);
+    m.insert("stat.835cbb00.44".to_string(), 44);
+    m.insert("stat.f1981ca.45".to_string(), 45);
+    m.insert("stat.48b98fd4.46".to_string(), 46);
+    m.insert("stat.a2491714.47".to_string(), 47);
+    m.insert("stat.d9782f78.48".to_string(), 48);
+    m.insert("stat.f10e4c92.49".to_string(), 49);
+    m.insert("stat.2aa6ffdb.50".to_string(), 50);
+    m.insert("stat.f521c309.51".to_string(), 51);
+    m.insert("stat.7451c.52".to_string(), 52);
+    m.insert("stat.7f3f8e30.53".to_string(), 53);
+    m.insert("stat.6988f0d0.54".to_string(), 54);
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "stat.8d9f20d7.13",
+            "stat.bc639945.0",
+            "stat.70d3116a.31",
+            "stat.109cfa1a.19",
+            "stat.1ad0c727.22",
+            "stat.4564239e.4",
+            "stat.75622f8c.14",
+            "stat.d5c597c5.33",
+            "stat.a1bd0287.30",
+            "stat.7451c.52",
+            "stat.505ad10d.5",
+            "stat.42225b3c.40",
+            "stat.2ba1b5b5.18",
+            "stat.c7747667.41",
+            "stat.f10e4c92.49",
+            "stat.f1981ca.45",
+            "stat.8476147d.37",
+            "stat.55eaed50.39",
+            "stat.2aa6ffdb.50",
+            "stat.7f3f8e30.53",
+            "stat.30b7ef7e.17",
+            "stat.db78b3f5.29",
+            "stat.c1460480.11",
+            "stat.2374c8cd.16",
+            "stat.41a71fc2.21",
+            "stat.a2491714.47",
+            "stat.1e59f243.35",
+            "stat.3416f46f.36",
+            "stat.911bc29f.12",
+            "stat.acddd19f.9",
+            "stat.8668afe2.6",
+            "stat.c95ab697.38",
+            "stat.95bb5d3.24",
+            "stat.3c67f0ac.8",
+            "stat.52e395dd.10",
+            "stat.883d90b9.27",
+            "stat.8d8686a1.20",
+            "stat.508e5618.7",
+            "stat.8bd00b46.3",
+            "stat.631a2c76.34",
+            "stat.ff5ce8d3.42",
+            "stat.52b7b263.43",
+            "stat.d7ccb423.23",
+            "stat.f521c309.51",
+            "stat.835cbb00.44",
+            "stat.71da380d.26",
+            "stat.6988f0d0.54",
+            "stat.8e011da.1",
+            "stat.31d44d5c.25",
+            "stat.905cc845.15",
+            "stat.8eb06a9d.32",
+            "stat.ea6468ca.2",
+            "stat.48b98fd4.46",
+            "stat.3d3e97d9.28",
+            "stat.d9782f78.48",
+        ] as [&str; 55]
+    );
+    let mut m = krol_java::JavaConcurrentHashMap::with_guava_defaults();
+    m.insert("stat.bc75360c.0".to_string(), 0);
+    m.insert("stat.3a422efb.1".to_string(), 1);
+    m.insert("stat.682e9feb.2".to_string(), 2);
+    m.insert("stat.249270cc.3".to_string(), 3);
+    m.insert("stat.8f671a8c.4".to_string(), 4);
+    m.insert("stat.21e076ea.5".to_string(), 5);
+    m.insert("stat.2d9e2c59.6".to_string(), 6);
+    m.insert("stat.b0683389.7".to_string(), 7);
+    m.insert("stat.201591e5.8".to_string(), 8);
+    m.insert("stat.e33caeb0.9".to_string(), 9);
+    m.insert("stat.4e1a4d08.10".to_string(), 10);
+    m.insert("stat.e1aad2a.11".to_string(), 11);
+    m.insert("stat.d4cef5d9.12".to_string(), 12);
+    m.insert("stat.e9e08a45.13".to_string(), 13);
+    m.insert("stat.97ecdafc.14".to_string(), 14);
+    m.insert("stat.d9a3e9a1.15".to_string(), 15);
+    m.insert("stat.ef3900d3.16".to_string(), 16);
+    m.insert("stat.86d5dba0.17".to_string(), 17);
+    m.insert("stat.2ed4fb91.18".to_string(), 18);
+    m.insert("stat.21ae263d.19".to_string(), 19);
+    m.insert("stat.2fa9064c.20".to_string(), 20);
+    m.insert("stat.74106d49.21".to_string(), 21);
+    m.insert("stat.72ea2978.22".to_string(), 22);
+    m.insert("stat.78084062.23".to_string(), 23);
+    m.insert("stat.981ccd70.24".to_string(), 24);
+    m.insert("stat.3402722b.25".to_string(), 25);
+    m.insert("stat.feb849fe.26".to_string(), 26);
+    m.insert("stat.f165db7c.27".to_string(), 27);
+    m.insert("stat.8813f200.28".to_string(), 28);
+    m.insert("stat.44679eae.29".to_string(), 29);
+    m.insert("stat.36b15294.30".to_string(), 30);
+    m.insert("stat.61277231.31".to_string(), 31);
+    m.insert("stat.e423ef79.32".to_string(), 32);
+    m.insert("stat.77803f05.33".to_string(), 33);
+    m.insert("stat.cad5428b.34".to_string(), 34);
+    m.insert("stat.b0f5c6d5.35".to_string(), 35);
+    m.insert("stat.4d1f3a76.36".to_string(), 36);
+    m.insert("stat.b0b6dec3.37".to_string(), 37);
+    m.insert("stat.b239751e.38".to_string(), 38);
+    m.insert("stat.a0bf6723.39".to_string(), 39);
+    m.insert("stat.254a0c52.40".to_string(), 40);
+    m.insert("stat.7e4055b4.41".to_string(), 41);
+    m.insert("stat.b248fb5.42".to_string(), 42);
+    m.insert("stat.e95e3728.43".to_string(), 43);
+    m.insert("stat.bc9dc511.44".to_string(), 44);
+    m.insert("stat.71ef4dea.45".to_string(), 45);
+    m.insert("stat.ea049068.46".to_string(), 46);
+    m.insert("stat.46163782.47".to_string(), 47);
+    m.insert("stat.11c60780.48".to_string(), 48);
+    m.insert("stat.dd719715.49".to_string(), 49);
+    m.insert("stat.41d8c0c1.50".to_string(), 50);
+    m.insert("stat.5e7dfaca.51".to_string(), 51);
+    m.insert("stat.2290f39a.52".to_string(), 52);
+    m.insert("stat.72bedb18.53".to_string(), 53);
+    m.insert("stat.7a0190c6.54".to_string(), 54);
+    m.insert("stat.ae747e4e.55".to_string(), 55);
+    m.insert("stat.6e3e232c.56".to_string(), 56);
+    m.insert("stat.d5e587d8.57".to_string(), 57);
+    m.insert("stat.4049e35.58".to_string(), 58);
+    m.insert("stat.13cf5a03.59".to_string(), 59);
+    m.insert("stat.94ae4cbc.60".to_string(), 60);
+    m.insert("stat.12dc0256.61".to_string(), 61);
+    m.insert("stat.e7f36c11.62".to_string(), 62);
+    m.insert("stat.84a77bb9.63".to_string(), 63);
+    m.insert("stat.912fb0a7.64".to_string(), 64);
+    m.insert("stat.25c976ff.65".to_string(), 65);
+    m.insert("stat.1c078e5d.66".to_string(), 66);
+    m.insert("stat.fcd9e190.67".to_string(), 67);
+    m.insert("stat.fcc1b489.68".to_string(), 68);
+    m.insert("stat.e79adb42.69".to_string(), 69);
+    m.insert("stat.ebef4e27.70".to_string(), 70);
+    m.insert("stat.b507aa.71".to_string(), 71);
+    m.insert("stat.bc6c50e0.72".to_string(), 72);
+    m.insert("stat.20edf463.73".to_string(), 73);
+    m.insert("stat.527209c7.74".to_string(), 74);
+    m.insert("stat.2d22fd21.75".to_string(), 75);
+    m.insert("stat.1aee34f3.76".to_string(), 76);
+    m.insert("stat.bba5778f.77".to_string(), 77);
+    m.insert("stat.14c3d568.78".to_string(), 78);
+    m.insert("stat.6e2b543b.79".to_string(), 79);
+    m.insert("stat.43cec4f0.80".to_string(), 80);
+    m.insert("stat.d516972f.81".to_string(), 81);
+    m.insert("stat.8e541fc7.82".to_string(), 82);
+    m.insert("stat.4aa761dc.83".to_string(), 83);
+    m.insert("stat.870f5654.84".to_string(), 84);
+    m.insert("stat.30f19180.85".to_string(), 85);
+    m.insert("stat.565b5f3a.86".to_string(), 86);
+    m.insert("stat.a2b6803b.87".to_string(), 87);
+    m.insert("stat.7a894e8f.88".to_string(), 88);
+    m.insert("stat.750c1463.89".to_string(), 89);
+    m.insert("stat.6a280af4.90".to_string(), 90);
+    m.insert("stat.9d2748d9.91".to_string(), 91);
+    m.insert("stat.9ebd07e6.92".to_string(), 92);
+    m.insert("stat.f14d8a71.93".to_string(), 93);
+    m.insert("stat.6b6487.94".to_string(), 94);
+    m.insert("stat.d9e5f9ad.95".to_string(), 95);
+    m.insert("stat.6aafa09b.96".to_string(), 96);
+    m.insert("stat.226aa552.97".to_string(), 97);
+    m.insert("stat.ecad5a9.98".to_string(), 98);
+    m.insert("stat.53cf79a3.99".to_string(), 99);
+    m.insert("stat.bbb4184c.100".to_string(), 100);
+    m.insert("stat.cb1eb94e.101".to_string(), 101);
+    m.insert("stat.5402e63a.102".to_string(), 102);
+    m.insert("stat.5e4bb047.103".to_string(), 103);
+    m.insert("stat.6cde5f98.104".to_string(), 104);
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "stat.cad5428b.34",
+            "stat.d4cef5d9.12",
+            "stat.4d1f3a76.36",
+            "stat.11c60780.48",
+            "stat.97ecdafc.14",
+            "stat.912fb0a7.64",
+            "stat.2ed4fb91.18",
+            "stat.44679eae.29",
+            "stat.2290f39a.52",
+            "stat.94ae4cbc.60",
+            "stat.78084062.23",
+            "stat.61277231.31",
+            "stat.bc9dc511.44",
+            "stat.6aafa09b.96",
+            "stat.ea049068.46",
+            "stat.7a0190c6.54",
+            "stat.682e9feb.2",
+            "stat.5e7dfaca.51",
+            "stat.b0683389.7",
+            "stat.e9e08a45.13",
+            "stat.750c1463.89",
+            "stat.bbb4184c.100",
+            "stat.d9a3e9a1.15",
+            "stat.72ea2978.22",
+            "stat.9ebd07e6.92",
+            "stat.53cf79a3.99",
+            "stat.4aa761dc.83",
+            "stat.254a0c52.40",
+            "stat.8f671a8c.4",
+            "stat.3402722b.25",
+            "stat.13cf5a03.59",
+            "stat.fcc1b489.68",
+            "stat.b0f5c6d5.35",
+            "stat.e7f36c11.62",
+            "stat.fcd9e190.67",
+            "stat.6e2b543b.79",
+            "stat.71ef4dea.45",
+            "stat.527209c7.74",
+            "stat.41d8c0c1.50",
+            "stat.a0bf6723.39",
+            "stat.84a77bb9.63",
+            "stat.b507aa.71",
+            "stat.d9e5f9ad.95",
+            "stat.7e4055b4.41",
+            "stat.43cec4f0.80",
+            "stat.e33caeb0.9",
+            "stat.30f19180.85",
+            "stat.bba5778f.77",
+            "stat.b248fb5.42",
+            "stat.9d2748d9.91",
+            "stat.981ccd70.24",
+            "stat.3a422efb.1",
+            "stat.20edf463.73",
+            "stat.5e4bb047.103",
+            "stat.565b5f3a.86",
+            "stat.72bedb18.53",
+            "stat.870f5654.84",
+            "stat.7a894e8f.88",
+            "stat.bc75360c.0",
+            "stat.25c976ff.65",
+            "stat.1aee34f3.76",
+            "stat.e79adb42.69",
+            "stat.e95e3728.43",
+            "stat.74106d49.21",
+            "stat.b0b6dec3.37",
+            "stat.21ae263d.19",
+            "stat.249270cc.3",
+            "stat.f165db7c.27",
+            "stat.6b6487.94",
+            "stat.2fa9064c.20",
+            "stat.5402e63a.102",
+            "stat.d516972f.81",
+            "stat.feb849fe.26",
+            "stat.ae747e4e.55",
+            "stat.86d5dba0.17",
+            "stat.2d9e2c59.6",
+            "stat.21e076ea.5",
+            "stat.46163782.47",
+            "stat.8e541fc7.82",
+            "stat.6e3e232c.56",
+            "stat.4049e35.58",
+            "stat.6cde5f98.104",
+            "stat.e423ef79.32",
+            "stat.226aa552.97",
+            "stat.bc6c50e0.72",
+            "stat.77803f05.33",
+            "stat.2d22fd21.75",
+            "stat.ef3900d3.16",
+            "stat.12dc0256.61",
+            "stat.4e1a4d08.10",
+            "stat.36b15294.30",
+            "stat.d5e587d8.57",
+            "stat.f14d8a71.93",
+            "stat.cb1eb94e.101",
+            "stat.6a280af4.90",
+            "stat.1c078e5d.66",
+            "stat.b239751e.38",
+            "stat.201591e5.8",
+            "stat.8813f200.28",
+            "stat.14c3d568.78",
+            "stat.ebef4e27.70",
+            "stat.ecad5a9.98",
+            "stat.a2b6803b.87",
+            "stat.e1aad2a.11",
+            "stat.dd719715.49",
+        ] as [&str; 105]
+    );
+    let mut m = krol_java::JavaConcurrentHashMap::with_guava_defaults();
+    m.insert("stat.bc6f571f.0".to_string(), 0);
+    m.insert("stat.7f217a9a.1".to_string(), 1);
+    m.insert("stat.9395e2e0.2".to_string(), 2);
+    m.insert("stat.f1a6f99f.3".to_string(), 3);
+    m.insert("stat.21661d92.4".to_string(), 4);
+    m.insert("stat.dc093fa0.5".to_string(), 5);
+    m.insert("stat.f5e1ad87.6".to_string(), 6);
+    m.insert("stat.3b1f9463.7".to_string(), 7);
+    m.insert("stat.7edbb17d.8".to_string(), 8);
+    m.insert("stat.d11d0faa.9".to_string(), 9);
+    m.insert("stat.fa5d654f.10".to_string(), 10);
+    m.insert("stat.f47e74f1.11".to_string(), 11);
+    m.insert("stat.68e88f71.12".to_string(), 12);
+    m.insert("stat.75cabc76.13".to_string(), 13);
+    m.insert("stat.8c694c82.14".to_string(), 14);
+    m.insert("stat.6be1892d.15".to_string(), 15);
+    m.insert("stat.a2437c.16".to_string(), 16);
+    m.insert("stat.6a213795.17".to_string(), 17);
+    m.insert("stat.2dc3e448.18".to_string(), 18);
+    m.insert("stat.71531787.19".to_string(), 19);
+    m.insert("stat.4ef2dbbe.20".to_string(), 20);
+    m.insert("stat.ded5371.21".to_string(), 21);
+    m.insert("stat.aae1b35d.22".to_string(), 22);
+    m.insert("stat.429f11a3.23".to_string(), 23);
+    m.insert("stat.bddc703c.24".to_string(), 24);
+    m.insert("stat.ddf31091.25".to_string(), 25);
+    m.insert("stat.7a6e4403.26".to_string(), 26);
+    m.insert("stat.ce586d3b.27".to_string(), 27);
+    m.insert("stat.19ccd3f3.28".to_string(), 28);
+    m.insert("stat.cc17fb1b.29".to_string(), 29);
+    m.insert("stat.50a8d3a.30".to_string(), 30);
+    m.insert("stat.6660a744.31".to_string(), 31);
+    m.insert("stat.7252c330.32".to_string(), 32);
+    m.insert("stat.41975c9a.33".to_string(), 33);
+    m.insert("stat.52ec3b2f.34".to_string(), 34);
+    m.insert("stat.2ac1d54f.35".to_string(), 35);
+    m.insert("stat.44c7231e.36".to_string(), 36);
+    m.insert("stat.4ca14601.37".to_string(), 37);
+    m.insert("stat.f448af1.38".to_string(), 38);
+    m.insert("stat.87cde932.39".to_string(), 39);
+    m.insert("stat.d99226a0.40".to_string(), 40);
+    m.insert("stat.4151b5f0.41".to_string(), 41);
+    m.insert("stat.5c8cad6a.42".to_string(), 42);
+    m.insert("stat.c7c0ae7.43".to_string(), 43);
+    m.insert("stat.fedd6c60.44".to_string(), 44);
+    m.insert("stat.50fd5f35.45".to_string(), 45);
+    m.insert("stat.b440e58c.46".to_string(), 46);
+    m.insert("stat.ba272cb3.47".to_string(), 47);
+    m.insert("stat.ff016a28.48".to_string(), 48);
+    m.insert("stat.8ea5d394.49".to_string(), 49);
+    m.insert("stat.8f72d5ca.50".to_string(), 50);
+    m.insert("stat.3b5f3d8a.51".to_string(), 51);
+    m.insert("stat.170db970.52".to_string(), 52);
+    m.insert("stat.cc3f16cb.53".to_string(), 53);
+    m.insert("stat.1f2eb0c9.54".to_string(), 54);
+    m.insert("stat.4eb09db1.55".to_string(), 55);
+    m.insert("stat.dfb11937.56".to_string(), 56);
+    m.insert("stat.3e8cddd0.57".to_string(), 57);
+    m.insert("stat.23364157.58".to_string(), 58);
+    m.insert("stat.2a5bb9a5.59".to_string(), 59);
+    m.insert("stat.39bf3916.60".to_string(), 60);
+    m.insert("stat.f4fdfe5c.61".to_string(), 61);
+    m.insert("stat.5e4ffd9b.62".to_string(), 62);
+    m.insert("stat.d930ef3b.63".to_string(), 63);
+    m.insert("stat.dcdfa191.64".to_string(), 64);
+    m.insert("stat.c450d2ac.65".to_string(), 65);
+    m.insert("stat.2097998e.66".to_string(), 66);
+    m.insert("stat.1d632108.67".to_string(), 67);
+    m.insert("stat.b3d24db0.68".to_string(), 68);
+    m.insert("stat.1e339586.69".to_string(), 69);
+    m.insert("stat.7520cca9.70".to_string(), 70);
+    m.insert("stat.76659c02.71".to_string(), 71);
+    m.insert("stat.a36bc9ce.72".to_string(), 72);
+    m.insert("stat.91bffa79.73".to_string(), 73);
+    m.insert("stat.38143ee0.74".to_string(), 74);
+    m.insert("stat.91103367.75".to_string(), 75);
+    m.insert("stat.2933ebb0.76".to_string(), 76);
+    m.insert("stat.f8e18669.77".to_string(), 77);
+    m.insert("stat.7079d0ce.78".to_string(), 78);
+    m.insert("stat.e78eb6dd.79".to_string(), 79);
+    m.insert("stat.b9af77d8.80".to_string(), 80);
+    m.insert("stat.9aa6c4a.81".to_string(), 81);
+    m.insert("stat.ec62b330.82".to_string(), 82);
+    m.insert("stat.474f26da.83".to_string(), 83);
+    m.insert("stat.ce0e481b.84".to_string(), 84);
+    m.insert("stat.8892f22b.85".to_string(), 85);
+    m.insert("stat.32590197.86".to_string(), 86);
+    m.insert("stat.98744b45.87".to_string(), 87);
+    m.insert("stat.da7cc771.88".to_string(), 88);
+    m.insert("stat.5ddba276.89".to_string(), 89);
+    m.insert("stat.3721d459.90".to_string(), 90);
+    m.insert("stat.c288905d.91".to_string(), 91);
+    m.insert("stat.baf0d70b.92".to_string(), 92);
+    m.insert("stat.850acd75.93".to_string(), 93);
+    m.insert("stat.f639fdc8.94".to_string(), 94);
+    m.insert("stat.2f874dd9.95".to_string(), 95);
+    m.insert("stat.a13770ab.96".to_string(), 96);
+    m.insert("stat.26021f18.97".to_string(), 97);
+    m.insert("stat.8d44e6a6.98".to_string(), 98);
+    m.insert("stat.e710dc51.99".to_string(), 99);
+    m.insert("stat.e5899a2f.100".to_string(), 100);
+    m.insert("stat.1bb14cf5.101".to_string(), 101);
+    m.insert("stat.2283dd7.102".to_string(), 102);
+    m.insert("stat.da001cdc.103".to_string(), 103);
+    m.insert("stat.d0447e6d.104".to_string(), 104);
+    m.insert("stat.f937208f.105".to_string(), 105);
+    m.insert("stat.90066f58.106".to_string(), 106);
+    m.insert("stat.f0de56f9.107".to_string(), 107);
+    m.insert("stat.20c9bf46.108".to_string(), 108);
+    m.insert("stat.39261da.109".to_string(), 109);
+    m.insert("stat.93f51670.110".to_string(), 110);
+    m.insert("stat.201c90b2.111".to_string(), 111);
+    m.insert("stat.a84a54f5.112".to_string(), 112);
+    m.insert("stat.181865fe.113".to_string(), 113);
+    m.insert("stat.c66bdf24.114".to_string(), 114);
+    m.insert("stat.e9c7c4fe.115".to_string(), 115);
+    m.insert("stat.488f8ea8.116".to_string(), 116);
+    m.insert("stat.9eff465b.117".to_string(), 117);
+    m.insert("stat.dd3b8aef.118".to_string(), 118);
+    m.insert("stat.afdf9c67.119".to_string(), 119);
+    m.insert("stat.5bfb0851.120".to_string(), 120);
+    m.insert("stat.41a603cd.121".to_string(), 121);
+    m.insert("stat.72a40cb2.122".to_string(), 122);
+    m.insert("stat.52cd8bec.123".to_string(), 123);
+    m.insert("stat.662fa9bd.124".to_string(), 124);
+    m.insert("stat.76251a30.125".to_string(), 125);
+    m.insert("stat.cc1befe9.126".to_string(), 126);
+    m.insert("stat.36f47e27.127".to_string(), 127);
+    m.insert("stat.a96302e4.128".to_string(), 128);
+    m.insert("stat.21564826.129".to_string(), 129);
+    m.insert("stat.f5ca7f1f.130".to_string(), 130);
+    m.insert("stat.c12f6ab2.131".to_string(), 131);
+    m.insert("stat.2c779983.132".to_string(), 132);
+    m.insert("stat.ae2a8f17.133".to_string(), 133);
+    m.insert("stat.71d95da3.134".to_string(), 134);
+    m.insert("stat.16977fc7.135".to_string(), 135);
+    m.insert("stat.6f5fbe8.136".to_string(), 136);
+    m.insert("stat.6111af79.137".to_string(), 137);
+    m.insert("stat.3bd9887c.138".to_string(), 138);
+    m.insert("stat.c650c226.139".to_string(), 139);
+    m.insert("stat.a303ad0c.140".to_string(), 140);
+    m.insert("stat.40a6a551.141".to_string(), 141);
+    m.insert("stat.13c2f299.142".to_string(), 142);
+    m.insert("stat.76a6473b.143".to_string(), 143);
+    m.insert("stat.9fd43de6.144".to_string(), 144);
+    m.insert("stat.4e08e8f8.145".to_string(), 145);
+    m.insert("stat.58d5304c.146".to_string(), 146);
+    m.insert("stat.97ad6d7f.147".to_string(), 147);
+    m.insert("stat.3a0227fd.148".to_string(), 148);
+    m.insert("stat.9f827822.149".to_string(), 149);
+    m.insert("stat.5612e5f9.150".to_string(), 150);
+    m.insert("stat.ff39b71e.151".to_string(), 151);
+    m.insert("stat.90023d3f.152".to_string(), 152);
+    m.insert("stat.2b96eb1c.153".to_string(), 153);
+    m.insert("stat.d778ee0a.154".to_string(), 154);
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "stat.8f72d5ca.50",
+            "stat.c66bdf24.114",
+            "stat.2b96eb1c.153",
+            "stat.dfb11937.56",
+            "stat.4e08e8f8.145",
+            "stat.2097998e.66",
+            "stat.ba272cb3.47",
+            "stat.4ca14601.37",
+            "stat.f448af1.38",
+            "stat.c450d2ac.65",
+            "stat.d778ee0a.154",
+            "stat.41a603cd.121",
+            "stat.36f47e27.127",
+            "stat.b440e58c.46",
+            "stat.8d44e6a6.98",
+            "stat.ff016a28.48",
+            "stat.f4fdfe5c.61",
+            "stat.1e339586.69",
+            "stat.bc6f571f.0",
+            "stat.41975c9a.33",
+            "stat.9395e2e0.2",
+            "stat.5612e5f9.150",
+            "stat.d99226a0.40",
+            "stat.d0447e6d.104",
+            "stat.50fd5f35.45",
+            "stat.68e88f71.12",
+            "stat.ae2a8f17.133",
+            "stat.e5899a2f.100",
+            "stat.93f51670.110",
+            "stat.6111af79.137",
+            "stat.7edbb17d.8",
+            "stat.662fa9bd.124",
+            "stat.170db970.52",
+            "stat.39261da.109",
+            "stat.181865fe.113",
+            "stat.7f217a9a.1",
+            "stat.21661d92.4",
+            "stat.13c2f299.142",
+            "stat.97ad6d7f.147",
+            "stat.58d5304c.146",
+            "stat.b3d24db0.68",
+            "stat.850acd75.93",
+            "stat.ce586d3b.27",
+            "stat.26021f18.97",
+            "stat.4ef2dbbe.20",
+            "stat.2c779983.132",
+            "stat.ec62b330.82",
+            "stat.a303ad0c.140",
+            "stat.dc093fa0.5",
+            "stat.2a5bb9a5.59",
+            "stat.39bf3916.60",
+            "stat.3721d459.90",
+            "stat.ddf31091.25",
+            "stat.474f26da.83",
+            "stat.c288905d.91",
+            "stat.201c90b2.111",
+            "stat.429f11a3.23",
+            "stat.a13770ab.96",
+            "stat.bddc703c.24",
+            "stat.75cabc76.13",
+            "stat.f937208f.105",
+            "stat.71d95da3.134",
+            "stat.3e8cddd0.57",
+            "stat.6be1892d.15",
+            "stat.cc17fb1b.29",
+            "stat.3bd9887c.138",
+            "stat.f0de56f9.107",
+            "stat.d11d0faa.9",
+            "stat.23364157.58",
+            "stat.ff39b71e.151",
+            "stat.91103367.75",
+            "stat.afdf9c67.119",
+            "stat.6f5fbe8.136",
+            "stat.44c7231e.36",
+            "stat.38143ee0.74",
+            "stat.2ac1d54f.35",
+            "stat.a36bc9ce.72",
+            "stat.91bffa79.73",
+            "stat.20c9bf46.108",
+            "stat.90023d3f.152",
+            "stat.b9af77d8.80",
+            "stat.d930ef3b.63",
+            "stat.baf0d70b.92",
+            "stat.21564826.129",
+            "stat.50a8d3a.30",
+            "stat.5bfb0851.120",
+            "stat.a96302e4.128",
+            "stat.87cde932.39",
+            "stat.f1a6f99f.3",
+            "stat.19ccd3f3.28",
+            "stat.2f874dd9.95",
+            "stat.8ea5d394.49",
+            "stat.ded5371.21",
+            "stat.f639fdc8.94",
+            "stat.f47e74f1.11",
+            "stat.32590197.86",
+            "stat.e710dc51.99",
+            "stat.dd3b8aef.118",
+            "stat.6660a744.31",
+            "stat.2933ebb0.76",
+            "stat.ce0e481b.84",
+            "stat.76a6473b.143",
+            "stat.5ddba276.89",
+            "stat.aae1b35d.22",
+            "stat.76251a30.125",
+            "stat.cc1befe9.126",
+            "stat.f5e1ad87.6",
+            "stat.2dc3e448.18",
+            "stat.fa5d654f.10",
+            "stat.1d632108.67",
+            "stat.9eff465b.117",
+            "stat.2283dd7.102",
+            "stat.cc3f16cb.53",
+            "stat.3b5f3d8a.51",
+            "stat.8892f22b.85",
+            "stat.4151b5f0.41",
+            "stat.fedd6c60.44",
+            "stat.5e4ffd9b.62",
+            "stat.16977fc7.135",
+            "stat.1bb14cf5.101",
+            "stat.7252c330.32",
+            "stat.7079d0ce.78",
+            "stat.6a213795.17",
+            "stat.52cd8bec.123",
+            "stat.488f8ea8.116",
+            "stat.72a40cb2.122",
+            "stat.90066f58.106",
+            "stat.9f827822.149",
+            "stat.9aa6c4a.81",
+            "stat.40a6a551.141",
+            "stat.c7c0ae7.43",
+            "stat.98744b45.87",
+            "stat.7a6e4403.26",
+            "stat.52ec3b2f.34",
+            "stat.dcdfa191.64",
+            "stat.7520cca9.70",
+            "stat.e9c7c4fe.115",
+            "stat.da001cdc.103",
+            "stat.71531787.19",
+            "stat.a84a54f5.112",
+            "stat.76659c02.71",
+            "stat.8c694c82.14",
+            "stat.da7cc771.88",
+            "stat.e78eb6dd.79",
+            "stat.3a0227fd.148",
+            "stat.3b1f9463.7",
+            "stat.c12f6ab2.131",
+            "stat.5c8cad6a.42",
+            "stat.a2437c.16",
+            "stat.f8e18669.77",
+            "stat.9fd43de6.144",
+            "stat.4eb09db1.55",
+            "stat.1f2eb0c9.54",
+            "stat.f5ca7f1f.130",
+            "stat.c650c226.139",
+        ] as [&str; 155]
+    );
+}
+
+#[test]
 fn properties_load_matches_jvm() {
     use krol_java::properties::JavaProperties;
     let p = JavaProperties::load(b"  a=1\x0d\x0ab : 2\x0a! bang comment\x0a#hash\\\x0ac 3\x0ad\\=e=4\x0af=line\\\x0d\x0a   cont\x0ag\\u0041=\\u00e9\\t\x0ah\x0akey with\\ space = v \x0a\\#notcomment=5\x0a").unwrap();

@@ -169,6 +169,26 @@ public class JavaVectors {
         }
         out.append("}\n\n");
 
+        // --- ConcurrentHashMap(16, 0.75f, 16) iteration order ----------------------
+        out.append("#[test]\nfn concurrent_map_order_matches_jvm() {\n");
+        for (int trial = 0; trial < 4; trial++) {
+            Random kr = new Random(200 + trial);
+            java.util.concurrent.ConcurrentHashMap<String, Integer> cm =
+                new java.util.concurrent.ConcurrentHashMap<>(16, 0.75f, 16);
+            out.append("    let mut m = krol_java::JavaConcurrentHashMap::with_guava_defaults();\n");
+            int n = 5 + trial * 50;
+            for (int i = 0; i < n; i++) {
+                String k = "stat." + Integer.toHexString(kr.nextInt()) + "." + i;
+                cm.put(k, i);
+                out.append("    m.insert(\"").append(k).append("\".to_string(), ").append(i).append(");\n");
+            }
+            StringBuilder order = new StringBuilder();
+            for (String k : cm.keySet()) order.append("\"").append(k).append("\", ");
+            out.append("    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();\n");
+            out.append("    assert_eq!(keys, [").append(order).append("] as [&str; ").append(cm.size()).append("]);\n");
+        }
+        out.append("}\n\n");
+
         // --- Properties.load / store ----------------------------------------------
         String[] propInputs = {
             "  a=1\r\nb : 2\n! bang comment\n#hash\\\nc 3\nd\\=e=4\nf=line\\\r\n   cont\ng\\u0041=\\u00e9\\t\nh\nkey with\\ space = v \n\\#notcomment=5\n",
