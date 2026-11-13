@@ -5,6 +5,7 @@
 //! [`encode_frame`](crate::frame::encode_frame).
 
 pub mod handshake;
+pub mod login;
 pub mod status;
 
 use crate::DecodeError;
