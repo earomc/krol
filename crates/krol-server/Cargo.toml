@@ -1,0 +1,21 @@
+[package]
+name = "krol-server"
+description = "krol game server: configuration, game logic and connection handling"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+krol-java = { path = "../krol-java" }
+krol-nbt = { path = "../krol-nbt" }
+krol-protocol = { path = "../krol-protocol" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true
