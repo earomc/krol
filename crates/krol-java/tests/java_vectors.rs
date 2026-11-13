@@ -983,6 +983,782 @@ fn hashtable_order_matches_jvm() {
 }
 
 #[test]
+fn hashmap_order_matches_jvm() {
+    let mut m = krol_java::JavaHashMap::new();
+    m.insert("b8d59fd5-bc12-dbb4-31e9-f344b73ee369".to_string(), 0);
+    m.insert("aacaf867-070c-5774-c747-e6984d95fa51".to_string(), 1);
+    m.insert("9e5d1175-b3b8-8942-9f83-48fd3faffa1a".to_string(), 2);
+    m.remove("b8d59fd5-bc12-dbb4-31e9-f344b73ee369");
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "aacaf867-070c-5774-c747-e6984d95fa51",
+            "9e5d1175-b3b8-8942-9f83-48fd3faffa1a",
+        ] as [&str; 2]
+    );
+    let mut m = krol_java::JavaHashMap::new();
+    m.insert("b8cfc0e9-00f2-2754-5d51-363a84536c3d".to_string(), 0);
+    m.insert("3cc9fb6c-c135-202b-8f8b-67c5d84d5b2b".to_string(), 1);
+    m.insert("fd23310c-a198-ea3c-4bc6-61442613c1e1".to_string(), 2);
+    m.remove("b8cfc0e9-00f2-2754-5d51-363a84536c3d");
+    m.insert("d0b55ad6-d055-b684-7137-5cc4adea0193".to_string(), 3);
+    m.insert("bf996790-b2a3-f881-8537-850099200308".to_string(), 4);
+    m.insert("9e8497ec-0443-6061-35a8-ceaf4bb43758".to_string(), 5);
+    m.insert("0a22e9f8-c074-d35c-d4be-93162c0e60f7".to_string(), 6);
+    m.insert("09e847db-8af1-065d-601c-bfe29faf68f1".to_string(), 7);
+    m.remove("fd23310c-a198-ea3c-4bc6-61442613c1e1");
+    m.insert("33396dbd-fbdb-9ee7-5119-b03d56b2c476".to_string(), 8);
+    m.insert("1e68bb07-874c-fe36-7c1c-031622c22e99".to_string(), 9);
+    m.insert("1e1262cc-a60b-1aa4-9acf-02c3b8e4ba54".to_string(), 10);
+    m.insert("e226af86-fbac-0b4e-857d-71cf5c9e80cf".to_string(), 11);
+    m.insert("69a84e04-ece3-29f7-748b-d10b8e666fe1".to_string(), 12);
+    m.remove("bf996790-b2a3-f881-8537-850099200308");
+    m.insert("fc0fd3a4-0963-ef2b-1108-72ea33cbfcd6".to_string(), 13);
+    m.insert("e4a4f3bc-d5d3-eca7-63d8-f00b14febf73".to_string(), 14);
+    m.insert("1a31185c-85f7-89f8-6b71-d11606063936".to_string(), 15);
+    m.insert("9376523a-9bdb-6761-f17e-81cb32184ce1".to_string(), 16);
+    m.insert("b010d3e5-d076-8b01-21ac-e15719612a39".to_string(), 17);
+    m.remove("9e8497ec-0443-6061-35a8-ceaf4bb43758");
+    m.insert("35186c3e-335f-bc35-f231-03e93d77b20b".to_string(), 18);
+    m.insert("f83ab423-c3f2-b13b-0aca-f983d2e5966f".to_string(), 19);
+    m.insert("7a5de374-7ce7-f317-f961-ae1636dabb50".to_string(), 20);
+    m.insert("9f678132-9e2c-9bb9-f8e3-36ca43979b2a".to_string(), 21);
+    m.insert("12c16305-0df5-525f-b94c-2099d492b415".to_string(), 22);
+    m.remove("09e847db-8af1-065d-601c-bfe29faf68f1");
+    m.insert("22eaafe0-b3da-2a38-abbc-942709194103".to_string(), 23);
+    m.insert("4909da07-5d7f-474a-9c9b-62cbc96bc345".to_string(), 24);
+    m.insert("b74fc42f-d628-6d94-7d34-50f0335b2053".to_string(), 25);
+    m.insert("294b8606-8fd3-de76-5740-319b587357cc".to_string(), 26);
+    m.insert("7f5183d8-5f5b-2851-849a-a74add0d15bb".to_string(), 27);
+    m.remove("1e68bb07-874c-fe36-7c1c-031622c22e99");
+    m.insert("110fcd86-13de-cc6a-8552-9e07cd6fa51b".to_string(), 28);
+    m.insert("f694f8c1-f6ab-df13-9b7f-d2b668c1069d".to_string(), 29);
+    m.insert("19adea78-c219-060c-b018-fba8b91a2fa7".to_string(), 30);
+    m.insert("b6d2438e-3dca-7926-c3ab-667de0f1b5a0".to_string(), 31);
+    m.insert("041e64c9-33a2-e929-3a8e-1f27e06f696a".to_string(), 32);
+    m.remove("1e1262cc-a60b-1aa4-9acf-02c3b8e4ba54");
+    m.insert("29553e0d-c4a1-70f7-eb37-f448cd5fa730".to_string(), 33);
+    m.insert("2cd35cd0-964a-f4f0-c800-ecc1a6a55e61".to_string(), 34);
+    m.insert("49ffedc8-d23f-9498-f10d-028cec7615fb".to_string(), 35);
+    m.insert("955fa5e3-5883-1277-a8a7-36c9599b710c".to_string(), 36);
+    m.insert("5c38c678-cc09-5640-1931-5315a3a9f775".to_string(), 37);
+    m.remove("69a84e04-ece3-29f7-748b-d10b8e666fe1");
+    m.insert("40f6b0c2-a686-6d35-b93d-ec2330d526f1".to_string(), 38);
+    m.insert("556ebc8d-4693-acc9-d5af-7983a6051055".to_string(), 39);
+    m.insert("f80f4629-d831-db86-ec10-96c7ff520518".to_string(), 40);
+    m.insert("cc1d27a8-15ca-8431-e606-c1ca444f1916".to_string(), 41);
+    m.insert("06b31143-9d50-d72b-6302-2a4690d47c90".to_string(), 42);
+    m.remove("e4a4f3bc-d5d3-eca7-63d8-f00b14febf73");
+    m.insert("6d797520-0444-be19-5462-66b11686f277".to_string(), 43);
+    m.insert("b044fa32-ec61-05c7-9b71-22426b69e6e9".to_string(), 44);
+    m.insert("5734aa80-33e7-c249-c511-1853329de9fb".to_string(), 45);
+    m.insert("e2c8508a-760e-5163-ae10-f0ed364592b9".to_string(), 46);
+    m.insert("35fab805-8c3c-9f2a-e1f6-d29ff0a70e6a".to_string(), 47);
+    m.remove("1a31185c-85f7-89f8-6b71-d11606063936");
+    m.insert("2af2c5d1-a5e9-90ea-0e12-bd935740e017".to_string(), 48);
+    m.insert("b4999b25-0518-ba4a-68f3-03dc50ec944e".to_string(), 49);
+    m.insert("09933808-071b-c0ae-8437-731170926d23".to_string(), 50);
+    m.insert("9afa5105-0e7c-10dc-8975-031f749d4a77".to_string(), 51);
+    m.insert("92174c1d-3a17-cae1-5ba5-1e59488e527c".to_string(), 52);
+    m.remove("b010d3e5-d076-8b01-21ac-e15719612a39");
+    m.insert("f75598fd-d0c7-0835-cab8-d6d33e041e78".to_string(), 53);
+    m.insert("a939d874-868c-e01d-d799-9cf14d816fc8".to_string(), 54);
+    m.insert("cf4e8720-82a9-ce50-a966-4b3a197bb127".to_string(), 55);
+    m.insert("52241f69-7b1b-5fdd-1254-9b7157f9c830".to_string(), 56);
+    m.insert("21dce6ae-9c6f-4a4b-788c-58e6248ffb21".to_string(), 57);
+    m.remove("f83ab423-c3f2-b13b-0aca-f983d2e5966f");
+    m.insert("378bd9c4-fa8e-5101-56d2-e408860deee1".to_string(), 58);
+    m.insert("76316c9f-4285-9ce8-d732-db3f65000143".to_string(), 59);
+    m.insert("05981149-8c9b-6a4e-e034-fcf80a75838c".to_string(), 60);
+    m.insert("cefdba1b-db66-310d-38fc-970085919932".to_string(), 61);
+    m.insert("3896cb2c-c66b-aaec-aaeb-17159284bee6".to_string(), 62);
+    m.remove("7a5de374-7ce7-f317-f961-ae1636dabb50");
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "9376523a-9bdb-6761-f17e-81cb32184ce1",
+            "a939d874-868c-e01d-d799-9cf14d816fc8",
+            "378bd9c4-fa8e-5101-56d2-e408860deee1",
+            "09933808-071b-c0ae-8437-731170926d23",
+            "b74fc42f-d628-6d94-7d34-50f0335b2053",
+            "294b8606-8fd3-de76-5740-319b587357cc",
+            "b6d2438e-3dca-7926-c3ab-667de0f1b5a0",
+            "6d797520-0444-be19-5462-66b11686f277",
+            "22eaafe0-b3da-2a38-abbc-942709194103",
+            "35fab805-8c3c-9f2a-e1f6-d29ff0a70e6a",
+            "556ebc8d-4693-acc9-d5af-7983a6051055",
+            "92174c1d-3a17-cae1-5ba5-1e59488e527c",
+            "2af2c5d1-a5e9-90ea-0e12-bd935740e017",
+            "955fa5e3-5883-1277-a8a7-36c9599b710c",
+            "f694f8c1-f6ab-df13-9b7f-d2b668c1069d",
+            "4909da07-5d7f-474a-9c9b-62cbc96bc345",
+            "19adea78-c219-060c-b018-fba8b91a2fa7",
+            "7f5183d8-5f5b-2851-849a-a74add0d15bb",
+            "3896cb2c-c66b-aaec-aaeb-17159284bee6",
+            "9f678132-9e2c-9bb9-f8e3-36ca43979b2a",
+            "5734aa80-33e7-c249-c511-1853329de9fb",
+            "2cd35cd0-964a-f4f0-c800-ecc1a6a55e61",
+            "76316c9f-4285-9ce8-d732-db3f65000143",
+            "3cc9fb6c-c135-202b-8f8b-67c5d84d5b2b",
+            "cc1d27a8-15ca-8431-e606-c1ca444f1916",
+            "12c16305-0df5-525f-b94c-2099d492b415",
+            "05981149-8c9b-6a4e-e034-fcf80a75838c",
+            "29553e0d-c4a1-70f7-eb37-f448cd5fa730",
+            "40f6b0c2-a686-6d35-b93d-ec2330d526f1",
+            "110fcd86-13de-cc6a-8552-9e07cd6fa51b",
+            "5c38c678-cc09-5640-1931-5315a3a9f775",
+            "9afa5105-0e7c-10dc-8975-031f749d4a77",
+            "041e64c9-33a2-e929-3a8e-1f27e06f696a",
+            "e2c8508a-760e-5163-ae10-f0ed364592b9",
+            "b4999b25-0518-ba4a-68f3-03dc50ec944e",
+            "cefdba1b-db66-310d-38fc-970085919932",
+            "b044fa32-ec61-05c7-9b71-22426b69e6e9",
+            "52241f69-7b1b-5fdd-1254-9b7157f9c830",
+            "33396dbd-fbdb-9ee7-5119-b03d56b2c476",
+            "f80f4629-d831-db86-ec10-96c7ff520518",
+            "cf4e8720-82a9-ce50-a966-4b3a197bb127",
+            "21dce6ae-9c6f-4a4b-788c-58e6248ffb21",
+            "35186c3e-335f-bc35-f231-03e93d77b20b",
+            "06b31143-9d50-d72b-6302-2a4690d47c90",
+            "0a22e9f8-c074-d35c-d4be-93162c0e60f7",
+            "d0b55ad6-d055-b684-7137-5cc4adea0193",
+            "f75598fd-d0c7-0835-cab8-d6d33e041e78",
+            "e226af86-fbac-0b4e-857d-71cf5c9e80cf",
+            "49ffedc8-d23f-9498-f10d-028cec7615fb",
+            "fc0fd3a4-0963-ef2b-1108-72ea33cbfcd6",
+        ] as [&str; 50]
+    );
+    let mut m = krol_java::JavaHashMap::new();
+    m.insert("b8e15daf-3254-4474-db1b-6d5b1d15d1c2".to_string(), 0);
+    m.insert("86ccf259-92ba-c608-36c0-e43d3827389c".to_string(), 1);
+    m.insert("e0d0d245-d7f7-c74d-46fd-186f72e86a8b".to_string(), 2);
+    m.remove("b8e15daf-3254-4474-db1b-6d5b1d15d1c2");
+    m.insert("14688e11-2c97-1ff1-93c2-0834f73122ef".to_string(), 3);
+    m.insert("8b5d9f97-08c1-e4a4-886a-cadcaa312f2b".to_string(), 4);
+    m.insert("40a71797-36ac-ade8-8dc2-30ffebefc397".to_string(), 5);
+    m.insert("98e40195-c2a2-f82b-619c-a5069536abba".to_string(), 6);
+    m.insert("54bda202-f3df-f116-f511-0fef9003c9b8".to_string(), 7);
+    m.remove("e0d0d245-d7f7-c74d-46fd-186f72e86a8b");
+    m.insert("88acf29a-9d96-4627-b8d4-c651e94e9909".to_string(), 8);
+    m.insert("3771010e-b38d-c87d-64fa-c19e6d96a86b".to_string(), 9);
+    m.insert("013a13e3-5cd6-f9f2-a696-a9a74f8b3f19".to_string(), 10);
+    m.insert("1b67b998-5e81-d76e-26c8-7263006ba13d".to_string(), 11);
+    m.insert("a1f6260c-d946-747a-8bbd-91f1f7c2a7a2".to_string(), 12);
+    m.remove("8b5d9f97-08c1-e4a4-886a-cadcaa312f2b");
+    m.insert("1e998220-fce3-3c13-2181-12e053179ead".to_string(), 13);
+    m.insert("904c119c-9bdd-eac0-0644-06a6d159a08d".to_string(), 14);
+    m.insert("2afe5350-df91-95e6-085c-1c770869deb1".to_string(), 15);
+    m.insert("b0667f7b-c045-545b-e3ce-6037d07c8e7a".to_string(), 16);
+    m.insert("8adf0870-2cac-5c38-8618-65ceb84f6d32".to_string(), 17);
+    m.remove("40a71797-36ac-ade8-8dc2-30ffebefc397");
+    m.insert("801a0175-e0e9-a9f2-414a-64a011b00f3b".to_string(), 18);
+    m.insert("cd698fee-0c3e-84ab-f7a9-075366bb6e8b".to_string(), 19);
+    m.insert("18bbcab9-df2c-73c5-df35-f3db40e36c57".to_string(), 20);
+    m.insert("ca6aabdc-9748-79b8-64ea-4fb4625e3a0e".to_string(), 21);
+    m.insert("f2e6f85e-5386-a825-525e-c46b646edd88".to_string(), 22);
+    m.remove("54bda202-f3df-f116-f511-0fef9003c9b8");
+    m.insert("ce4f4271-f8a2-612b-ca50-c8630835447f".to_string(), 23);
+    m.insert("a57269d9-52b8-d9f8-212d-2fd50fa79b3d".to_string(), 24);
+    m.insert("39cf3e87-e470-b2a1-72c4-4a17c03dda97".to_string(), 25);
+    m.insert("ff192986-fe62-b736-0dcc-0f220bf3c119".to_string(), 26);
+    m.insert("2ae4001b-a825-1e11-1519-214e06d4ab82".to_string(), 27);
+    m.remove("3771010e-b38d-c87d-64fa-c19e6d96a86b");
+    m.insert("88976529-089b-d76e-c5bf-a75eba880072".to_string(), 28);
+    m.insert("16ec5cd1-9a45-c240-a4d9-42c47d8c2361".to_string(), 29);
+    m.insert("b33df661-eb67-da42-efbd-a61ccc3922d3".to_string(), 30);
+    m.insert("9820306e-9e74-b34b-4a4f-8ffccd8395c9".to_string(), 31);
+    m.insert("b63e7b3b-161f-d5e6-18d8-2df1700b5c7a".to_string(), 32);
+    m.remove("013a13e3-5cd6-f9f2-a696-a9a74f8b3f19");
+    m.insert("12b57d5b-c771-d121-c207-2bc09c893843".to_string(), 33);
+    m.insert("6331fe9e-bc2b-15a5-524d-f2f4c4696edb".to_string(), 34);
+    m.insert("40591d29-de10-ee07-7830-de99f590ecca".to_string(), 35);
+    m.insert("089c30e0-41a1-285c-6991-67452a2d9b1b".to_string(), 36);
+    m.insert("22dd0107-b95e-4512-10a0-8b584c49dc50".to_string(), 37);
+    m.remove("a1f6260c-d946-747a-8bbd-91f1f7c2a7a2");
+    m.insert("cf6d3030-7baf-3efd-8458-f78313e66495".to_string(), 38);
+    m.insert("593e024e-e16b-40b0-b054-b38cb2dce139".to_string(), 39);
+    m.insert("dec3e129-1bda-db0e-92ca-57540f012359".to_string(), 40);
+    m.insert("546342f6-eb7d-9120-49ba-0c11f01dc1dd".to_string(), 41);
+    m.insert("f772d745-a67b-cd27-7a12-dde10fc466a8".to_string(), 42);
+    m.remove("904c119c-9bdd-eac0-0644-06a6d159a08d");
+    m.insert("73391e1f-5b9a-92f5-611d-217fe3b93b0a".to_string(), 43);
+    m.insert("2709cd67-4607-8378-11fe-f2577c442779".to_string(), 44);
+    m.insert("a009a888-9ca9-0597-3afc-0cb80d29da81".to_string(), 45);
+    m.insert("a865ae50-a607-a840-1062-88670db9caf8".to_string(), 46);
+    m.insert("a334c11a-cda3-11c1-2a2a-375c197da975".to_string(), 47);
+    m.remove("2afe5350-df91-95e6-085c-1c770869deb1");
+    m.insert("06092d2b-c1d6-1057-c564-acc762e9f501".to_string(), 48);
+    m.insert("01a9b15e-b792-a004-bff8-30531336a70f".to_string(), 49);
+    m.insert("18bfee03-3c77-f9a5-1c00-21ae09822aa9".to_string(), 50);
+    m.insert("e7c45e03-3d51-ff43-f4d1-90492ed012ec".to_string(), 51);
+    m.insert("8b4e3e47-6832-99a8-aa4b-0b5bd79844b6".to_string(), 52);
+    m.remove("8adf0870-2cac-5c38-8618-65ceb84f6d32");
+    m.insert("53700759-fb4a-db35-fc02-ee2c35b2879d".to_string(), 53);
+    m.insert("222f5d4c-9db2-fbf3-bd57-ac8fa9b5b222".to_string(), 54);
+    m.insert("6ab199d9-9aad-82e7-5999-e3b040a0e525".to_string(), 55);
+    m.insert("24a454ca-e3e3-30a9-34c0-330ffd188a9c".to_string(), 56);
+    m.insert("adfb8e9b-90da-7f37-fd91-21cbc9e80b7f".to_string(), 57);
+    m.remove("cd698fee-0c3e-84ab-f7a9-075366bb6e8b");
+    m.insert("ea95615f-32c6-cb06-b22f-942569147106".to_string(), 58);
+    m.insert("7fed5bde-a0f8-795a-9bba-953b1edb6516".to_string(), 59);
+    m.insert("c107eb07-ccf8-afd6-1979-791badbd45f8".to_string(), 60);
+    m.insert("4e607586-7af0-7156-3419-9afcdf68414b".to_string(), 61);
+    m.insert("0d2b0dab-44a4-33fc-9e13-3bc5e945aa3c".to_string(), 62);
+    m.remove("18bbcab9-df2c-73c5-df35-f3db40e36c57");
+    m.insert("82e4dd95-404a-4489-c39f-44d289c9fef3".to_string(), 63);
+    m.insert("d43cb18e-c213-8aed-a2ff-f2f788bb5150".to_string(), 64);
+    m.insert("430f44b6-8ca3-8420-617a-adc607a906d6".to_string(), 65);
+    m.insert("94c933e1-0b2d-8532-8281-8f0bb40b23e7".to_string(), 66);
+    m.insert("f33ababa-dcba-9ba1-a16f-5e9fd12e9631".to_string(), 67);
+    m.remove("f2e6f85e-5386-a825-525e-c46b646edd88");
+    m.insert("ac079f30-9c7c-9eea-eb21-065f48773268".to_string(), 68);
+    m.insert("609fef12-d448-4762-efe3-c27081d75935".to_string(), 69);
+    m.insert("585473f2-dd99-5e45-dfdf-91d0efe8776d".to_string(), 70);
+    m.insert("71e40152-f021-5b0f-c099-ab0baa0ed586".to_string(), 71);
+    m.insert("c80d0100-1c12-020a-91a2-f94786c66a46".to_string(), 72);
+    m.remove("a57269d9-52b8-d9f8-212d-2fd50fa79b3d");
+    m.insert("3f80e1b7-a75a-d828-d542-e5873fdda4bc".to_string(), 73);
+    m.insert("8a4d4c11-8129-8012-382e-f02ccd3e6174".to_string(), 74);
+    m.insert("7fa9419e-db6a-5480-9563-debf50347ee5".to_string(), 75);
+    m.insert("25528a4a-a807-d3ca-c93d-81ed5424c52e".to_string(), 76);
+    m.insert("438a1408-bc7c-b0bf-6d36-57d1799e1501".to_string(), 77);
+    m.remove("39cf3e87-e470-b2a1-72c4-4a17c03dda97");
+    m.insert("8c8428ae-d335-9cb5-ec88-8e78b0da11df".to_string(), 78);
+    m.insert("1e0b9e1c-f47d-1ee1-6d7e-2aa24861bb85".to_string(), 79);
+    m.insert("ae6564a5-017d-0ce8-d3d6-56c646ddaaa5".to_string(), 80);
+    m.insert("ee7417a6-0086-78b5-f282-1e58c360e4d9".to_string(), 81);
+    m.insert("58f1747a-4b8a-278d-ae5b-194e60f87bd4".to_string(), 82);
+    m.remove("2ae4001b-a825-1e11-1519-214e06d4ab82");
+    m.insert("b38ddb91-1db8-e660-ec9a-cbdf58396bda".to_string(), 83);
+    m.insert("41243fde-04e4-4f60-4701-be8de7296d71".to_string(), 84);
+    m.insert("fe332871-13ad-d4d7-8109-9265dc76ae58".to_string(), 85);
+    m.insert("10b1a864-141b-2535-fd6d-9585b9bda5b8".to_string(), 86);
+    m.insert("d46170fb-7404-3c68-1e09-9bde88db7799".to_string(), 87);
+    m.remove("16ec5cd1-9a45-c240-a4d9-42c47d8c2361");
+    m.insert("fb2d6205-d740-b670-b1c7-203b9d3e9b97".to_string(), 88);
+    m.insert("18363c89-9bbf-3732-c94c-f181ab0ebad5".to_string(), 89);
+    m.insert("82255b9f-b30a-fb8b-6ba5-f038ae1ff930".to_string(), 90);
+    m.insert("d077979b-e070-e7a8-6457-a04a49351db7".to_string(), 91);
+    m.insert("bdf0b770-1c36-a694-7ca9-930986574e5b".to_string(), 92);
+    m.remove("b33df661-eb67-da42-efbd-a61ccc3922d3");
+    m.insert("028a1451-d86b-af11-de6a-ed761a4152e2".to_string(), 93);
+    m.insert("b735539c-8405-41ac-9f93-8ebf9a479321".to_string(), 94);
+    m.insert("27f65af3-9a73-b40b-cff2-9b0a0505446a".to_string(), 95);
+    m.insert("1b65e2ad-11f0-9d89-1cf4-6e6fd5aa7a42".to_string(), 96);
+    m.insert("abe04a6b-26aa-b904-c7a6-3c4bcf4e0e57".to_string(), 97);
+    m.remove("b63e7b3b-161f-d5e6-18d8-2df1700b5c7a");
+    m.insert("dcba940c-7ded-8ff5-4ebd-deb42c6193b0".to_string(), 98);
+    m.insert("4711a8c5-e7b0-42c0-a5d0-9a46c594c926".to_string(), 99);
+    m.insert("1c664c8b-afd8-024c-f44b-da28a6593f12".to_string(), 100);
+    m.insert("837a63b6-6030-0ed6-be6f-284aeb0e2447".to_string(), 101);
+    m.insert("140a6ee0-01e2-5002-a8b6-e5ef68e76e42".to_string(), 102);
+    m.remove("6331fe9e-bc2b-15a5-524d-f2f4c4696edb");
+    m.insert("2a486110-a658-da33-1f1b-886ab122d0a0".to_string(), 103);
+    m.insert("91ab341f-2521-f51b-7581-5e2c635037cf".to_string(), 104);
+    m.insert("e1f8df52-43f5-7795-41f1-1ffd4c9abb08".to_string(), 105);
+    m.insert("ffa69447-b093-8cb1-ebf1-d2888f5a397c".to_string(), 106);
+    m.insert("cc056617-6f22-3610-aae0-bc1e7e0516cd".to_string(), 107);
+    m.remove("40591d29-de10-ee07-7830-de99f590ecca");
+    m.insert("e06fbeb8-5430-1f72-67ac-72b32a1ccabf".to_string(), 108);
+    m.insert("840e46a2-54d8-978d-6924-462c0a27382f".to_string(), 109);
+    m.insert("1c1122b4-82ed-c220-1d5d-8adae471ff43".to_string(), 110);
+    m.insert("7ca4ac59-5bcb-5746-3ac4-884a2e7c3ee2".to_string(), 111);
+    m.insert("7bb707e7-27c5-840f-6087-1036cdb67966".to_string(), 112);
+    m.remove("22dd0107-b95e-4512-10a0-8b584c49dc50");
+    m.insert("58163d46-db4c-c04c-1c63-01df150f9090".to_string(), 113);
+    m.insert("35c4b6d8-a318-ada9-1bc3-3d7ea6c10cbc".to_string(), 114);
+    m.insert("85dc4a97-bf39-5401-63b9-cc16aa3c2355".to_string(), 115);
+    m.insert("7b36317c-df0f-4eed-cf0e-3f705e3c308a".to_string(), 116);
+    m.insert("1f909120-f720-c09e-1f83-8e603e1a9841".to_string(), 117);
+    m.remove("593e024e-e16b-40b0-b054-b38cb2dce139");
+    m.insert("8d507ba4-c2ca-1dec-87e8-f14cb2cb424c".to_string(), 118);
+    m.insert("ba8989d5-5c27-27ae-5bbd-82ef0aa825da".to_string(), 119);
+    m.insert("00e2738a-ad81-a54c-2f66-a9595aa5982f".to_string(), 120);
+    m.insert("a5804a50-ee58-b491-1575-8b390ef05297".to_string(), 121);
+    m.insert("7a983a49-ebec-c2c5-3a78-155d9b916397".to_string(), 122);
+    m.remove("dec3e129-1bda-db0e-92ca-57540f012359");
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "bdf0b770-1c36-a694-7ca9-930986574e5b",
+            "7b36317c-df0f-4eed-cf0e-3f705e3c308a",
+            "fe332871-13ad-d4d7-8109-9265dc76ae58",
+            "4e607586-7af0-7156-3419-9afcdf68414b",
+            "71e40152-f021-5b0f-c099-ab0baa0ed586",
+            "585473f2-dd99-5e45-dfdf-91d0efe8776d",
+            "0d2b0dab-44a4-33fc-9e13-3bc5e945aa3c",
+            "a009a888-9ca9-0597-3afc-0cb80d29da81",
+            "53700759-fb4a-db35-fc02-ee2c35b2879d",
+            "58f1747a-4b8a-278d-ae5b-194e60f87bd4",
+            "73391e1f-5b9a-92f5-611d-217fe3b93b0a",
+            "801a0175-e0e9-a9f2-414a-64a011b00f3b",
+            "a865ae50-a607-a840-1062-88670db9caf8",
+            "ea95615f-32c6-cb06-b22f-942569147106",
+            "58163d46-db4c-c04c-1c63-01df150f9090",
+            "10b1a864-141b-2535-fd6d-9585b9bda5b8",
+            "ee7417a6-0086-78b5-f282-1e58c360e4d9",
+            "82255b9f-b30a-fb8b-6ba5-f038ae1ff930",
+            "7fed5bde-a0f8-795a-9bba-953b1edb6516",
+            "18bfee03-3c77-f9a5-1c00-21ae09822aa9",
+            "840e46a2-54d8-978d-6924-462c0a27382f",
+            "06092d2b-c1d6-1057-c564-acc762e9f501",
+            "438a1408-bc7c-b0bf-6d36-57d1799e1501",
+            "1c664c8b-afd8-024c-f44b-da28a6593f12",
+            "fb2d6205-d740-b670-b1c7-203b9d3e9b97",
+            "86ccf259-92ba-c608-36c0-e43d3827389c",
+            "3f80e1b7-a75a-d828-d542-e5873fdda4bc",
+            "abe04a6b-26aa-b904-c7a6-3c4bcf4e0e57",
+            "88976529-089b-d76e-c5bf-a75eba880072",
+            "ac079f30-9c7c-9eea-eb21-065f48773268",
+            "b0667f7b-c045-545b-e3ce-6037d07c8e7a",
+            "7fa9419e-db6a-5480-9563-debf50347ee5",
+            "1f909120-f720-c09e-1f83-8e603e1a9841",
+            "27f65af3-9a73-b40b-cff2-9b0a0505446a",
+            "ca6aabdc-9748-79b8-64ea-4fb4625e3a0e",
+            "8d507ba4-c2ca-1dec-87e8-f14cb2cb424c",
+            "028a1451-d86b-af11-de6a-ed761a4152e2",
+            "140a6ee0-01e2-5002-a8b6-e5ef68e76e42",
+            "c80d0100-1c12-020a-91a2-f94786c66a46",
+            "609fef12-d448-4762-efe3-c27081d75935",
+            "a5804a50-ee58-b491-1575-8b390ef05297",
+            "222f5d4c-9db2-fbf3-bd57-ac8fa9b5b222",
+            "ffa69447-b093-8cb1-ebf1-d2888f5a397c",
+            "01a9b15e-b792-a004-bff8-30531336a70f",
+            "d46170fb-7404-3c68-1e09-9bde88db7799",
+            "91ab341f-2521-f51b-7581-5e2c635037cf",
+            "d43cb18e-c213-8aed-a2ff-f2f788bb5150",
+            "cf6d3030-7baf-3efd-8458-f78313e66495",
+            "1e0b9e1c-f47d-1ee1-6d7e-2aa24861bb85",
+            "e7c45e03-3d51-ff43-f4d1-90492ed012ec",
+            "24a454ca-e3e3-30a9-34c0-330ffd188a9c",
+            "2a486110-a658-da33-1f1b-886ab122d0a0",
+            "546342f6-eb7d-9120-49ba-0c11f01dc1dd",
+            "f33ababa-dcba-9ba1-a16f-5e9fd12e9631",
+            "35c4b6d8-a318-ada9-1bc3-3d7ea6c10cbc",
+            "88acf29a-9d96-4627-b8d4-c651e94e9909",
+            "cc056617-6f22-3610-aae0-bc1e7e0516cd",
+            "8b4e3e47-6832-99a8-aa4b-0b5bd79844b6",
+            "41243fde-04e4-4f60-4701-be8de7296d71",
+            "1e998220-fce3-3c13-2181-12e053179ead",
+            "7ca4ac59-5bcb-5746-3ac4-884a2e7c3ee2",
+            "6ab199d9-9aad-82e7-5999-e3b040a0e525",
+            "8c8428ae-d335-9cb5-ec88-8e78b0da11df",
+            "a334c11a-cda3-11c1-2a2a-375c197da975",
+            "25528a4a-a807-d3ca-c93d-81ed5424c52e",
+            "f772d745-a67b-cd27-7a12-dde10fc466a8",
+            "85dc4a97-bf39-5401-63b9-cc16aa3c2355",
+            "8a4d4c11-8129-8012-382e-f02ccd3e6174",
+            "ce4f4271-f8a2-612b-ca50-c8630835447f",
+            "94c933e1-0b2d-8532-8281-8f0bb40b23e7",
+            "4711a8c5-e7b0-42c0-a5d0-9a46c594c926",
+            "00e2738a-ad81-a54c-2f66-a9595aa5982f",
+            "ff192986-fe62-b736-0dcc-0f220bf3c119",
+            "837a63b6-6030-0ed6-be6f-284aeb0e2447",
+            "1b67b998-5e81-d76e-26c8-7263006ba13d",
+            "c107eb07-ccf8-afd6-1979-791badbd45f8",
+            "12b57d5b-c771-d121-c207-2bc09c893843",
+            "98e40195-c2a2-f82b-619c-a5069536abba",
+            "2709cd67-4607-8378-11fe-f2577c442779",
+            "82e4dd95-404a-4489-c39f-44d289c9fef3",
+            "e1f8df52-43f5-7795-41f1-1ffd4c9abb08",
+            "7bb707e7-27c5-840f-6087-1036cdb67966",
+            "7a983a49-ebec-c2c5-3a78-155d9b916397",
+            "1b65e2ad-11f0-9d89-1cf4-6e6fd5aa7a42",
+            "b735539c-8405-41ac-9f93-8ebf9a479321",
+            "14688e11-2c97-1ff1-93c2-0834f73122ef",
+            "9820306e-9e74-b34b-4a4f-8ffccd8395c9",
+            "ba8989d5-5c27-27ae-5bbd-82ef0aa825da",
+            "dcba940c-7ded-8ff5-4ebd-deb42c6193b0",
+            "e06fbeb8-5430-1f72-67ac-72b32a1ccabf",
+            "d077979b-e070-e7a8-6457-a04a49351db7",
+            "b38ddb91-1db8-e660-ec9a-cbdf58396bda",
+            "1c1122b4-82ed-c220-1d5d-8adae471ff43",
+            "18363c89-9bbf-3732-c94c-f181ab0ebad5",
+            "430f44b6-8ca3-8420-617a-adc607a906d6",
+            "adfb8e9b-90da-7f37-fd91-21cbc9e80b7f",
+            "ae6564a5-017d-0ce8-d3d6-56c646ddaaa5",
+            "089c30e0-41a1-285c-6991-67452a2d9b1b",
+        ] as [&str; 98]
+    );
+    let mut m = krol_java::JavaHashMap::new();
+    m.insert("b8db7ec2-7733-9014-0682-b04fea2a5a95".to_string(), 0);
+    m.insert("18cbf561-4ce3-8ebe-ff04-656ac2de9976".to_string(), 1);
+    m.insert("3f96f1dd-c5d8-2847-f340-30b6594c3252".to_string(), 2);
+    m.remove("b8db7ec2-7733-9014-0682-b04fea2a5a95");
+    m.insert("a88227a7-b881-5222-883e-79b9896ec27b".to_string(), 3);
+    m.insert("9cc6e23f-ec0d-4098-8759-b393f9d62074".to_string(), 4);
+    m.insert("5ff0ed08-d089-9410-c5b9-bae4b68694d8".to_string(), 5);
+    m.insert("bea3a462-6c93-9690-dd52-9f0c72293d79".to_string(), 6);
+    m.insert("e67683f6-7b90-4d83-c36a-4a96953cfecb".to_string(), 7);
+    m.remove("3f96f1dd-c5d8-2847-f340-30b6594c3252");
+    m.insert("16dbc652-67ad-63bc-40eb-bef6631aa783".to_string(), 8);
+    m.insert("2f18e9b7-4f78-2fba-c205-d77154a52a7b".to_string(), 9);
+    m.insert("b5822e31-1fe8-5a2d-f7fe-c75b72a912d8".to_string(), 10);
+    m.insert("5da760e8-3d8f-e8b9-f104-c787747c966d".to_string(), 11);
+    m.insert("8f3188b4-8a7a-b0f9-d957-a6fad4a3ea62".to_string(), 12);
+    m.remove("9cc6e23f-ec0d-4098-8759-b393f9d62074");
+    m.insert("131647f7-5663-77c6-c6ae-32e2f353be10".to_string(), 13);
+    m.insert("01bf07a7-0485-40b8-2575-a9c7e7e6002f".to_string(), 14);
+    m.insert("d00f3fa9-c1b3-91ec-7eb8-ae015cf35233".to_string(), 15);
+    m.insert("fc167066-5ecc-b007-e85e-6b68f105cdf2".to_string(), 16);
+    m.insert("41efa198-6345-167b-0f49-e4512e000189".to_string(), 17);
+    m.remove("5ff0ed08-d089-9410-c5b9-bae4b68694d8");
+    m.insert("67197a63-51bb-b009-26ec-99b8759d4580".to_string(), 18);
+    m.insert("dbaf46ab-497a-9386-535f-02b8e01ed12c".to_string(), 19);
+    m.insert("8e9c7da3-13c0-48e1-3d44-87443d8b3155".to_string(), 20);
+    m.insert("11699da3-eee9-da63-40e7-f210581c0517".to_string(), 21);
+    m.insert("52da7140-3c56-3639-1f58-8dcf89d0250d".to_string(), 22);
+    m.remove("e67683f6-7b90-4d83-c36a-4a96953cfecb");
+    m.insert("ea831196-8c5f-a42f-c01f-61a45dd698ab".to_string(), 23);
+    m.insert("dbfa39e8-5650-53be-9fa7-40d1a2e8fdeb".to_string(), 24);
+    m.insert("63a4c06a-3503-4648-20e9-a1b53bf2472b".to_string(), 25);
+    m.insert("627f485b-8433-19a1-7b9d-6ff57ac8f355".to_string(), 26);
+    m.insert("4708815b-3a8c-76d1-3a44-4df7a3922440".to_string(), 27);
+    m.remove("2f18e9b7-4f78-2fba-c205-d77154a52a7b");
+    m.insert("60bf87f3-61b2-2917-b045-f996c0d53755".to_string(), 28);
+    m.insert("b6cf3b77-63bd-2131-f710-c814769dc475".to_string(), 29);
+    m.insert("2ab89d13-dda2-e8da-8531-6d4c7084271a".to_string(), 30);
+    m.insert("a25b8c23-d391-4a94-72c3-82282952f5bb".to_string(), 31);
+    m.insert("7ade73bf-1ff6-31a7-cebf-7e5895820b75".to_string(), 32);
+    m.remove("b5822e31-1fe8-5a2d-f7fe-c75b72a912d8");
+    m.insert("c4eabd98-1bd7-0668-cfc2-1943022607e7".to_string(), 33);
+    m.insert("fbbd1e04-af8b-0abe-2434-4638ba7d695d".to_string(), 34);
+    m.insert("98e60d5e-da20-7ae2-a07a-3fea9d32a52f".to_string(), 35);
+    m.insert("3788028b-f3ec-7665-2943-571c39fce26b".to_string(), 36);
+    m.insert("e0a642d9-6a41-f577-137b-7896bebf3ab1".to_string(), 37);
+    m.remove("8f3188b4-8a7a-b0f9-d957-a6fad4a3ea62");
+    m.insert("9ff05b0b-df4c-4e65-95fa-9e6372e0a55e".to_string(), 38);
+    m.insert("02a395b8-adce-0f63-121d-a034ae94f0ed".to_string(), 39);
+    m.insert("91dd02d4-054d-308b-5b37-1725b4716e99".to_string(), 40);
+    m.insert("7c4be486-a441-e225-287e-48a50c2e3445".to_string(), 41);
+    m.insert("51dd9544-a36d-7b29-1d0d-4cad901f18a0".to_string(), 42);
+    m.remove("01bf07a7-0485-40b8-2575-a9c7e7e6002f");
+    m.insert("1bf93b1e-93d3-4c01-5cde-e33b49fdcd84".to_string(), 43);
+    m.insert("ff72dc56-2825-5992-3fcf-acfb2150bc9f".to_string(), 44);
+    m.insert("87c2a92f-cf13-447d-13ad-bb40c4508a54".to_string(), 45);
+    m.insert("66868f0e-9609-e0a1-ef9c-ab3dc5e862e3".to_string(), 46);
+    m.insert("d42168bd-b7d6-40e4-bcc3-c072b68b75c6".to_string(), 47);
+    m.remove("d00f3fa9-c1b3-91ec-7eb8-ae015cf35233");
+    m.insert("67ac600d-b887-3b33-dd9e-b25fb45c435e".to_string(), 48);
+    m.insert("92a454a1-7c14-a8c6-4da1-218127c8a0cf".to_string(), 49);
+    m.insert("69065c04-8003-e6a8-e967-e779d6879627".to_string(), 50);
+    m.insert("ce2baf04-2db5-5a76-7bb2-b69046147ac5".to_string(), 51);
+    m.insert("e2e69839-037e-ff66-9013-bc5b5294f3f8".to_string(), 52);
+    m.remove("41efa198-6345-167b-0f49-e4512e000189");
+    m.insert("df6737e6-4274-3f8b-40ea-3bb88dcdb9e6".to_string(), 53);
+    m.insert("a4883104-95fb-9d56-c618-520635a446ae".to_string(), 54);
+    m.insert("e190939c-3d56-f15f-7433-5b8888e9d3d1".to_string(), 55);
+    m.insert("de799855-164b-4065-d3f1-ab2fc60e49cd".to_string(), 56);
+    m.insert("d49c014d-3f61-6d93-268f-897fe820060a".to_string(), 57);
+    m.remove("dbaf46ab-497a-9386-535f-02b8e01ed12c");
+    m.insert("5992342c-2009-4d04-e910-aec61d679afa".to_string(), 58);
+    m.insert("27596174-817c-da89-04e2-ac92363cee7b".to_string(), 59);
+    m.insert("828d4d1e-0cd9-98a9-5bb7-fa64cca55a7f".to_string(), 60);
+    m.insert("793f8c63-45c2-5be9-35ba-99a96c20b3ee".to_string(), 61);
+    m.insert("1ba44cd5-c53c-064c-f7b0-84e077055bca".to_string(), 62);
+    m.remove("8e9c7da3-13c0-48e1-3d44-87443d8b3155");
+    m.insert("e0dbf8b9-a29b-f71c-099b-5e203a29be94".to_string(), 63);
+    m.insert("76c24c91-3887-32eb-5100-10bd829be5ed".to_string(), 64);
+    m.insert("e920b1f3-a66d-87d4-5b9a-5a48f20e0081".to_string(), 65);
+    m.insert("142af3a1-f3dc-3206-cb0b-6eba37a90420".to_string(), 66);
+    m.insert("c50a9ed9-b6b7-c482-af52-2be89a64ce2d".to_string(), 67);
+    m.remove("52da7140-3c56-3639-1f58-8dcf89d0250d");
+    m.insert("62aea5eb-b825-5a23-e7ce-9040ea17663b".to_string(), 68);
+    m.insert("ee5a180c-b9e7-52df-f079-68b6db6346f4".to_string(), 69);
+    m.insert("27c6026b-1f72-214b-7e14-69f712c6d13d".to_string(), 70);
+    m.insert("8157ce80-8f41-ec64-37a6-28e0228d4d97".to_string(), 71);
+    m.insert("c72eb1ab-5a42-098b-a8d8-a63190841fc8".to_string(), 72);
+    m.remove("dbfa39e8-5650-53be-9fa7-40d1a2e8fdeb");
+    m.insert("2ce001fb-94a3-92d1-1f08-6185915d10b9".to_string(), 73);
+    m.insert("3ae3844e-cd90-9d75-9d3d-277da2d0d2a1".to_string(), 74);
+    m.insert("7b2e079c-7dfd-d4aa-0125-0f3c09232363".to_string(), 75);
+    m.insert("0d89e18b-e2b4-7c9c-17bd-5b1692dc3135".to_string(), 76);
+    m.insert("8d22204d-8ecb-21b5-f2dc-308beca12581".to_string(), 77);
+    m.remove("63a4c06a-3503-4648-20e9-a1b53bf2472b");
+    m.insert("12ae85aa-aa63-781b-bc89-5b72694ffa0f".to_string(), 78);
+    m.insert("1efb9f57-59e8-2f7d-6943-9070fe20fc63".to_string(), 79);
+    m.insert("e96b908a-0c6d-bf0f-9a32-e2b381d2a363".to_string(), 80);
+    m.insert("d2c160ce-8885-6dd2-4320-60dd170a9b3d".to_string(), 81);
+    m.insert("8f51e41c-1e02-1b18-f916-0d3947612b87".to_string(), 82);
+    m.remove("4708815b-3a8c-76d1-3a44-4df7a3922440");
+    m.insert("49d29020-cd22-8b47-5d09-a534543a5ba7".to_string(), 83);
+    m.insert("6aafd2e3-e08d-3cdc-c527-ec0ee6e27974".to_string(), 84);
+    m.insert("8c59be8d-13c6-09b3-ee7d-6cceb899e61d".to_string(), 85);
+    m.insert("3c8f1e7e-1b86-1885-2b14-e7784f964d49".to_string(), 86);
+    m.insert("9a9c49a7-34e2-e2b0-ad72-dd7b35bdaa7f".to_string(), 87);
+    m.remove("b6cf3b77-63bd-2131-f710-c814769dc475");
+    m.insert("5c044617-3bb9-523e-74d8-f16c6b41c0c8".to_string(), 88);
+    m.insert("c96011d4-ec9e-3c1f-1d33-0df68088e893".to_string(), 89);
+    m.insert("75a924f0-22e5-bab9-cd3b-8814123b57d8".to_string(), 90);
+    m.insert("b7e180d3-9c67-2ca2-7c82-b079161a487e".to_string(), 91);
+    m.insert("cb5ce0dd-9abb-dbac-54d9-884fe1b8a101".to_string(), 92);
+    m.remove("2ab89d13-dda2-e8da-8531-6d4c7084271a");
+    m.insert("4313e033-6912-9021-7e66-8d2a5b83034f".to_string(), 93);
+    m.insert("99a328cc-ae92-944f-dea6-d031c4ff65f3".to_string(), 94);
+    m.insert("d725ffd5-9bec-ec46-580c-cca4d10a9b75".to_string(), 95);
+    m.insert("d93cc338-8762-c5df-bd11-b180b45c6bff".to_string(), 96);
+    m.insert("e5852c73-c974-6501-b5a5-127be8012543".to_string(), 97);
+    m.remove("7ade73bf-1ff6-31a7-cebf-7e5895820b75");
+    m.insert("0cd36cb2-85dc-101f-4432-3436e701c49c".to_string(), 98);
+    m.insert("12d8761a-24ac-c104-d731-67b328621f73".to_string(), 99);
+    m.insert("2bd30662-3ea4-9dd2-08af-2904772eade4".to_string(), 100);
+    m.insert("e5ae46a6-923f-7e47-6d99-f542f9c9dba0".to_string(), 101);
+    m.insert("04ca147e-ad16-0142-6e43-0bc842430314".to_string(), 102);
+    m.remove("fbbd1e04-af8b-0abe-2434-4638ba7d695d");
+    m.insert("5bd6484d-82d9-f685-cf8d-8e97917f76ca".to_string(), 103);
+    m.insert("a2eb8cd8-6909-20bc-cc0a-b61ba0a03d0f".to_string(), 104);
+    m.insert("d1a19c17-587b-93be-c4f9-0c143d9561d6".to_string(), 105);
+    m.insert("5b8bf54d-ec83-3312-4807-e1ca6b7a02dc".to_string(), 106);
+    m.insert("1383605d-1ea6-14b4-771f-758983627a0c".to_string(), 107);
+    m.remove("98e60d5e-da20-7ae2-a07a-3fea9d32a52f");
+    m.insert("29b3d256-fe55-cc17-8e81-7b50a8f84a24".to_string(), 108);
+    m.insert("47cb8750-a9a1-e16e-0a9c-fcc34dd5b197".to_string(), 109);
+    m.insert("e721657c-2703-f927-b52b-c462214d07b5".to_string(), 110);
+    m.insert("9b75fd75-c548-6fb7-07de-c7fcb6664808".to_string(), 111);
+    m.insert("c353bbdb-ad7e-6d9c-ed42-4665119f7001".to_string(), 112);
+    m.remove("e0a642d9-6a41-f577-137b-7896bebf3ab1");
+    m.insert("42482022-f806-b79f-fdd9-8c65c9a292d4".to_string(), 113);
+    m.insert("12790ca6-f988-bf5a-22fd-94f52beec79f".to_string(), 114);
+    m.insert("67b68403-8309-b7f9-ba08-f8a5069f55d1".to_string(), 115);
+    m.insert("2f5a67a5-61d9-b344-4c0e-e060154ec3c9".to_string(), 116);
+    m.insert("234d0b98-b4c7-0adc-0801-ef523ec9abbd".to_string(), 117);
+    m.remove("02a395b8-adce-0f63-121d-a034ae94f0ed");
+    m.insert("b49eb3ad-5c48-99c4-f20b-58279e1f7add".to_string(), 118);
+    m.insert("60934db6-5753-8a23-2a21-9178e9dd7eb7".to_string(), 119);
+    m.insert("c2fefd2d-be99-bb47-78f1-5d840222e4dd".to_string(), 120);
+    m.insert("efa74c01-003a-03ed-2423-191bf80290c4".to_string(), 121);
+    m.insert("634614a9-3ebb-d4bf-bd31-85de9891ebee".to_string(), 122);
+    m.remove("91dd02d4-054d-308b-5b37-1725b4716e99");
+    m.insert("a1087978-4bc3-ff1d-7fa6-83adaa52144b".to_string(), 123);
+    m.insert("54357d33-a988-a41f-e7e5-6d587e930cdc".to_string(), 124);
+    m.insert("644d10e7-99e6-8fda-69f2-0c980046d49a".to_string(), 125);
+    m.insert("bda9aaf9-575a-84e2-c31e-5940f0b48795".to_string(), 126);
+    m.insert("debbbb76-b745-3c10-e978-77b6d6d9ee5f".to_string(), 127);
+    m.remove("51dd9544-a36d-7b29-1d0d-4cad901f18a0");
+    m.insert("539791b5-3e09-1c85-6b75-aaa13a4c1faa".to_string(), 128);
+    m.insert("d4038719-f8fc-efee-70ee-2bdbec4e182f".to_string(), 129);
+    m.insert("6cbd8338-a01f-1709-f749-20b25bde6cd1".to_string(), 130);
+    m.insert("088c2d1e-b629-0267-44f7-1d4a99eb7b02".to_string(), 131);
+    m.insert("72215dec-c15a-f372-8f4c-eb62cbefbb65".to_string(), 132);
+    m.remove("ff72dc56-2825-5992-3fcf-acfb2150bc9f");
+    m.insert("fa18a8a4-b654-49b1-00b7-883d3b2e1ab5".to_string(), 133);
+    m.insert("d5b60b48-38cc-e04a-7f5d-8dd5ffe07ce4".to_string(), 134);
+    m.insert("e8b61d1f-2048-3fc8-04d1-7b5de828ce87".to_string(), 135);
+    m.insert("6fc24e59-7123-a81e-f9bb-90e2bcb74870".to_string(), 136);
+    m.insert("2f310cd5-b0ec-36ec-c399-324f5f1ec99c".to_string(), 137);
+    m.remove("87c2a92f-cf13-447d-13ad-bb40c4508a54");
+    m.insert("bbe2e240-a7fa-ae00-a21b-059389fa6b4f".to_string(), 138);
+    m.insert("d78adf63-8626-9e1e-ac8a-4024b795b37d".to_string(), 139);
+    m.insert("efc1e8b6-453a-fa04-7930-d7a702fb096c".to_string(), 140);
+    m.insert("ad29b838-95f2-55a7-f047-89e7bf625096".to_string(), 141);
+    m.insert("4edda881-b3e1-55c3-6ca7-f00f2d33cdd3".to_string(), 142);
+    m.remove("d42168bd-b7d6-40e4-bcc3-c072b68b75c6");
+    m.insert("cbbc9d18-fe1a-1392-75b0-1114b071bab7".to_string(), 143);
+    m.insert("6ff89c01-fdbb-78da-a2a8-27746c9d2b38".to_string(), 144);
+    m.insert("cf0dec9a-b54b-d82d-1fd2-8e1d44512994".to_string(), 145);
+    m.insert("620ccfa8-4bee-456c-9359-08ae29192c71".to_string(), 146);
+    m.insert("553e24ab-ca76-728c-f3c9-dae408b64b45".to_string(), 147);
+    m.remove("92a454a1-7c14-a8c6-4da1-218127c8a0cf");
+    m.insert("bfdc907a-1657-149c-260a-634cba58d4f7".to_string(), 148);
+    m.insert("7a20f90a-4ba3-1506-c4cc-2d423e8a2cc6".to_string(), 149);
+    m.insert("ca7a6a90-3c1a-1314-52ec-ae13b9dd116a".to_string(), 150);
+    m.insert("4fb6b9ca-21bc-f9b6-cbf7-21857b38b278".to_string(), 151);
+    m.insert("94627799-77ef-ad82-3d83-397a6cf5380a".to_string(), 152);
+    m.remove("69065c04-8003-e6a8-e967-e779d6879627");
+    m.insert("1cfc09d2-aaf9-16fb-f8a2-94ecba46a09e".to_string(), 153);
+    m.insert("1ffefd56-a303-0d15-573a-322792dd193e".to_string(), 154);
+    m.insert("5989e560-a1cf-e3f8-d544-502e8b7033e1".to_string(), 155);
+    m.insert("15b25c1e-0173-a404-dcca-737c855ca011".to_string(), 156);
+    m.insert("f1bff881-eabb-2d15-942e-81f28fd249cd".to_string(), 157);
+    m.remove("e2e69839-037e-ff66-9013-bc5b5294f3f8");
+    m.insert("5ec04d59-63cb-ca07-ec55-2a0d448b02b0".to_string(), 158);
+    m.insert("5c73459c-3729-f87c-36b3-095586e01952".to_string(), 159);
+    m.insert("83b07206-40fe-68dc-8561-461cb89782ed".to_string(), 160);
+    m.insert("705b1be5-085c-7a9d-c875-9068c2277b43".to_string(), 161);
+    m.insert("26043135-0cbd-b8c3-ff24-be292eb9bebf".to_string(), 162);
+    m.remove("a4883104-95fb-9d56-c618-520635a446ae");
+    m.insert("b4b65de9-811a-1aaa-57f6-76aff525c2da".to_string(), 163);
+    m.insert("4e59e68b-f63d-0d03-e4c3-a15ed8ab90c0".to_string(), 164);
+    m.insert("1de31808-a173-871c-aca0-8ba2fcaf2632".to_string(), 165);
+    m.insert("915760c5-ebaf-b063-b26e-fa21e04e80ae".to_string(), 166);
+    m.insert("c3e266f5-fc02-da2c-b9e3-993067aab6cc".to_string(), 167);
+    m.remove("e190939c-3d56-f15f-7433-5b8888e9d3d1");
+    m.insert("3ef5b02f-3716-d1b1-a18d-8087735ec3ea".to_string(), 168);
+    m.insert("2602ae39-b05b-ce5a-7625-be374124ea0b".to_string(), 169);
+    m.insert("e908452a-4930-803f-8d58-1cdb0555cdfc".to_string(), 170);
+    m.insert("fc2a1eaf-7a9e-02ea-0b95-990cd9fab1b8".to_string(), 171);
+    m.insert("8f195eab-4f99-b861-fc94-3a1ae7de710d".to_string(), 172);
+    m.remove("d49c014d-3f61-6d93-268f-897fe820060a");
+    m.insert("6b7b8d04-f45b-5062-5027-41fa169f247e".to_string(), 173);
+    m.insert("a6f5c8be-0375-7ff0-8855-e87a447c8e6b".to_string(), 174);
+    m.insert("b14f9840-b744-2d0e-1146-15bb13bdb66f".to_string(), 175);
+    m.insert("0a81eafd-b62b-12ca-2af3-cfdf744a5708".to_string(), 176);
+    m.insert("fcbc2038-ee4c-217c-0705-4fffcabb017d".to_string(), 177);
+    m.remove("27596174-817c-da89-04e2-ac92363cee7b");
+    m.insert("8cb2271e-020d-1f4f-7d96-f263aced1bfc".to_string(), 178);
+    m.insert("3c240c19-0638-4d00-31d9-75eebd561e02".to_string(), 179);
+    m.insert("98c08763-acfc-12e6-8e10-3ed7fc23aeff".to_string(), 180);
+    m.insert("198960df-9ac9-fa31-fd24-909e95ec8b39".to_string(), 181);
+    m.insert("c7f9bd29-3b55-7676-c1dd-f33d959052f0".to_string(), 182);
+    m.remove("828d4d1e-0cd9-98a9-5bb7-fa64cca55a7f");
+    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "634614a9-3ebb-d4bf-bd31-85de9891ebee",
+            "9b75fd75-c548-6fb7-07de-c7fcb6664808",
+            "142af3a1-f3dc-3206-cb0b-6eba37a90420",
+            "60bf87f3-61b2-2917-b045-f996c0d53755",
+            "8157ce80-8f41-ec64-37a6-28e0228d4d97",
+            "b49eb3ad-5c48-99c4-f20b-58279e1f7add",
+            "4313e033-6912-9021-7e66-8d2a5b83034f",
+            "e920b1f3-a66d-87d4-5b9a-5a48f20e0081",
+            "de799855-164b-4065-d3f1-ab2fc60e49cd",
+            "8d22204d-8ecb-21b5-f2dc-308beca12581",
+            "12ae85aa-aa63-781b-bc89-5b72694ffa0f",
+            "5b8bf54d-ec83-3312-4807-e1ca6b7a02dc",
+            "47cb8750-a9a1-e16e-0a9c-fcc34dd5b197",
+            "2f310cd5-b0ec-36ec-c399-324f5f1ec99c",
+            "72215dec-c15a-f372-8f4c-eb62cbefbb65",
+            "1bf93b1e-93d3-4c01-5cde-e33b49fdcd84",
+            "efc1e8b6-453a-fa04-7930-d7a702fb096c",
+            "0d89e18b-e2b4-7c9c-17bd-5b1692dc3135",
+            "e5852c73-c974-6501-b5a5-127be8012543",
+            "644d10e7-99e6-8fda-69f2-0c980046d49a",
+            "d5b60b48-38cc-e04a-7f5d-8dd5ffe07ce4",
+            "915760c5-ebaf-b063-b26e-fa21e04e80ae",
+            "27c6026b-1f72-214b-7e14-69f712c6d13d",
+            "83b07206-40fe-68dc-8561-461cb89782ed",
+            "9a9c49a7-34e2-e2b0-ad72-dd7b35bdaa7f",
+            "e0dbf8b9-a29b-f71c-099b-5e203a29be94",
+            "26043135-0cbd-b8c3-ff24-be292eb9bebf",
+            "ca7a6a90-3c1a-1314-52ec-ae13b9dd116a",
+            "16dbc652-67ad-63bc-40eb-bef6631aa783",
+            "75a924f0-22e5-bab9-cd3b-8814123b57d8",
+            "ce2baf04-2db5-5a76-7bb2-b69046147ac5",
+            "8f195eab-4f99-b861-fc94-3a1ae7de710d",
+            "60934db6-5753-8a23-2a21-9178e9dd7eb7",
+            "6fc24e59-7123-a81e-f9bb-90e2bcb74870",
+            "4fb6b9ca-21bc-f9b6-cbf7-21857b38b278",
+            "131647f7-5663-77c6-c6ae-32e2f353be10",
+            "4edda881-b3e1-55c3-6ca7-f00f2d33cdd3",
+            "1ffefd56-a303-0d15-573a-322792dd193e",
+            "c50a9ed9-b6b7-c482-af52-2be89a64ce2d",
+            "5992342c-2009-4d04-e910-aec61d679afa",
+            "d78adf63-8626-9e1e-ac8a-4024b795b37d",
+            "553e24ab-ca76-728c-f3c9-dae408b64b45",
+            "4e59e68b-f63d-0d03-e4c3-a15ed8ab90c0",
+            "fc2a1eaf-7a9e-02ea-0b95-990cd9fab1b8",
+            "cbbc9d18-fe1a-1392-75b0-1114b071bab7",
+            "11699da3-eee9-da63-40e7-f210581c0517",
+            "8c59be8d-13c6-09b3-ee7d-6cceb899e61d",
+            "99a328cc-ae92-944f-dea6-d031c4ff65f3",
+            "bda9aaf9-575a-84e2-c31e-5940f0b48795",
+            "c3e266f5-fc02-da2c-b9e3-993067aab6cc",
+            "e8b61d1f-2048-3fc8-04d1-7b5de828ce87",
+            "67197a63-51bb-b009-26ec-99b8759d4580",
+            "c7f9bd29-3b55-7676-c1dd-f33d959052f0",
+            "a6f5c8be-0375-7ff0-8855-e87a447c8e6b",
+            "3788028b-f3ec-7665-2943-571c39fce26b",
+            "15b25c1e-0173-a404-dcca-737c855ca011",
+            "67b68403-8309-b7f9-ba08-f8a5069f55d1",
+            "ad29b838-95f2-55a7-f047-89e7bf625096",
+            "627f485b-8433-19a1-7b9d-6ff57ac8f355",
+            "2bd30662-3ea4-9dd2-08af-2904772eade4",
+            "1de31808-a173-871c-aca0-8ba2fcaf2632",
+            "a1087978-4bc3-ff1d-7fa6-83adaa52144b",
+            "bbe2e240-a7fa-ae00-a21b-059389fa6b4f",
+            "e5ae46a6-923f-7e47-6d99-f542f9c9dba0",
+            "b14f9840-b744-2d0e-1146-15bb13bdb66f",
+            "29b3d256-fe55-cc17-8e81-7b50a8f84a24",
+            "088c2d1e-b629-0267-44f7-1d4a99eb7b02",
+            "3ae3844e-cd90-9d75-9d3d-277da2d0d2a1",
+            "9ff05b0b-df4c-4e65-95fa-9e6372e0a55e",
+            "0cd36cb2-85dc-101f-4432-3436e701c49c",
+            "620ccfa8-4bee-456c-9359-08ae29192c71",
+            "62aea5eb-b825-5a23-e7ce-9040ea17663b",
+            "12790ca6-f988-bf5a-22fd-94f52beec79f",
+            "04ca147e-ad16-0142-6e43-0bc842430314",
+            "b4b65de9-811a-1aaa-57f6-76aff525c2da",
+            "705b1be5-085c-7a9d-c875-9068c2277b43",
+            "7c4be486-a441-e225-287e-48a50c2e3445",
+            "67ac600d-b887-3b33-dd9e-b25fb45c435e",
+            "a2eb8cd8-6909-20bc-cc0a-b61ba0a03d0f",
+            "1efb9f57-59e8-2f7d-6943-9070fe20fc63",
+            "bfdc907a-1657-149c-260a-634cba58d4f7",
+            "7a20f90a-4ba3-1506-c4cc-2d423e8a2cc6",
+            "e721657c-2703-f927-b52b-c462214d07b5",
+            "ea831196-8c5f-a42f-c01f-61a45dd698ab",
+            "df6737e6-4274-3f8b-40ea-3bb88dcdb9e6",
+            "c353bbdb-ad7e-6d9c-ed42-4665119f7001",
+            "fa18a8a4-b654-49b1-00b7-883d3b2e1ab5",
+            "7b2e079c-7dfd-d4aa-0125-0f3c09232363",
+            "cf0dec9a-b54b-d82d-1fd2-8e1d44512994",
+            "0a81eafd-b62b-12ca-2af3-cfdf744a5708",
+            "1cfc09d2-aaf9-16fb-f8a2-94ecba46a09e",
+            "c72eb1ab-5a42-098b-a8d8-a63190841fc8",
+            "ee5a180c-b9e7-52df-f079-68b6db6346f4",
+            "debbbb76-b745-3c10-e978-77b6d6d9ee5f",
+            "1ba44cd5-c53c-064c-f7b0-84e077055bca",
+            "6b7b8d04-f45b-5062-5027-41fa169f247e",
+            "98c08763-acfc-12e6-8e10-3ed7fc23aeff",
+            "5bd6484d-82d9-f685-cf8d-8e97917f76ca",
+            "d1a19c17-587b-93be-c4f9-0c143d9561d6",
+            "3c8f1e7e-1b86-1885-2b14-e7784f964d49",
+            "fcbc2038-ee4c-217c-0705-4fffcabb017d",
+            "fc167066-5ecc-b007-e85e-6b68f105cdf2",
+            "8f51e41c-1e02-1b18-f916-0d3947612b87",
+            "76c24c91-3887-32eb-5100-10bd829be5ed",
+            "6ff89c01-fdbb-78da-a2a8-27746c9d2b38",
+            "12d8761a-24ac-c104-d731-67b328621f73",
+            "a88227a7-b881-5222-883e-79b9896ec27b",
+            "94627799-77ef-ad82-3d83-397a6cf5380a",
+            "e96b908a-0c6d-bf0f-9a32-e2b381d2a363",
+            "18cbf561-4ce3-8ebe-ff04-656ac2de9976",
+            "3ef5b02f-3716-d1b1-a18d-8087735ec3ea",
+            "c2fefd2d-be99-bb47-78f1-5d840222e4dd",
+            "efa74c01-003a-03ed-2423-191bf80290c4",
+            "c4eabd98-1bd7-0668-cfc2-1943022607e7",
+            "d93cc338-8762-c5df-bd11-b180b45c6bff",
+            "2f5a67a5-61d9-b344-4c0e-e060154ec3c9",
+            "198960df-9ac9-fa31-fd24-909e95ec8b39",
+            "539791b5-3e09-1c85-6b75-aaa13a4c1faa",
+            "66868f0e-9609-e0a1-ef9c-ab3dc5e862e3",
+            "6cbd8338-a01f-1709-f749-20b25bde6cd1",
+            "5ec04d59-63cb-ca07-ec55-2a0d448b02b0",
+            "793f8c63-45c2-5be9-35ba-99a96c20b3ee",
+            "1383605d-1ea6-14b4-771f-758983627a0c",
+            "5989e560-a1cf-e3f8-d544-502e8b7033e1",
+            "f1bff881-eabb-2d15-942e-81f28fd249cd",
+            "bea3a462-6c93-9690-dd52-9f0c72293d79",
+            "49d29020-cd22-8b47-5d09-a534543a5ba7",
+            "3c240c19-0638-4d00-31d9-75eebd561e02",
+            "e908452a-4930-803f-8d58-1cdb0555cdfc",
+            "cb5ce0dd-9abb-dbac-54d9-884fe1b8a101",
+            "a25b8c23-d391-4a94-72c3-82282952f5bb",
+            "8cb2271e-020d-1f4f-7d96-f263aced1bfc",
+            "5da760e8-3d8f-e8b9-f104-c787747c966d",
+            "d2c160ce-8885-6dd2-4320-60dd170a9b3d",
+            "5c73459c-3729-f87c-36b3-095586e01952",
+            "54357d33-a988-a41f-e7e5-6d587e930cdc",
+            "c96011d4-ec9e-3c1f-1d33-0df68088e893",
+            "b7e180d3-9c67-2ca2-7c82-b079161a487e",
+            "42482022-f806-b79f-fdd9-8c65c9a292d4",
+            "6aafd2e3-e08d-3cdc-c527-ec0ee6e27974",
+            "234d0b98-b4c7-0adc-0801-ef523ec9abbd",
+            "5c044617-3bb9-523e-74d8-f16c6b41c0c8",
+            "2602ae39-b05b-ce5a-7625-be374124ea0b",
+            "d725ffd5-9bec-ec46-580c-cca4d10a9b75",
+            "2ce001fb-94a3-92d1-1f08-6185915d10b9",
+            "d4038719-f8fc-efee-70ee-2bdbec4e182f",
+        ] as [&str; 146]
+    );
+}
+
+#[test]
 fn properties_load_matches_jvm() {
     use krol_java::properties::JavaProperties;
     let p = JavaProperties::load(b"  a=1\x0d\x0ab : 2\x0a! bang comment\x0a#hash\\\x0ac 3\x0ad\\=e=4\x0af=line\\\x0d\x0a   cont\x0ag\\u0041=\\u00e9\\t\x0ah\x0akey with\\ space = v \x0a\\#notcomment=5\x0a").unwrap();

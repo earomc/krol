@@ -141,6 +141,34 @@ public class JavaVectors {
         }
         out.append("}\n\n");
 
+        // --- HashMap iteration order -----------------------------------------------
+        out.append("#[test]\nfn hashmap_order_matches_jvm() {\n");
+        for (int trial = 0; trial < 4; trial++) {
+            Random kr = new Random(100 + trial);
+            List<String> keys = new ArrayList<>();
+            int n = 3 + trial * 60;
+            for (int i = 0; i < n; i++) {
+                long hi = kr.nextLong(), lo = kr.nextLong();
+                keys.add(new java.util.UUID(hi, lo).toString());
+            }
+            java.util.HashMap<String, Integer> hm = new java.util.HashMap<>();
+            out.append("    let mut m = krol_java::JavaHashMap::new();\n");
+            for (int i = 0; i < keys.size(); i++) {
+                hm.put(keys.get(i), i);
+                out.append("    m.insert(\"").append(keys.get(i)).append("\".to_string(), ").append(i).append(");\n");
+                if (i % 5 == 2) {
+                    String victim = keys.get(i / 3);
+                    hm.remove(victim);
+                    out.append("    m.remove(\"").append(victim).append("\");\n");
+                }
+            }
+            StringBuilder order = new StringBuilder();
+            for (String k : hm.keySet()) order.append("\"").append(k).append("\", ");
+            out.append("    let keys: Vec<&str> = m.iter().map(|(k, _)| k.as_str()).collect();\n");
+            out.append("    assert_eq!(keys, [").append(order).append("] as [&str; ").append(hm.size()).append("]);\n");
+        }
+        out.append("}\n\n");
+
         // --- Properties.load / store ----------------------------------------------
         String[] propInputs = {
             "  a=1\r\nb : 2\n! bang comment\n#hash\\\nc 3\nd\\=e=4\nf=line\\\r\n   cont\ng\\u0041=\\u00e9\\t\nh\nkey with\\ space = v \n\\#notcomment=5\n",
