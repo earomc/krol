@@ -1,5 +1,6 @@
 //! Server configuration files.
 
+pub mod eula;
 mod property_manager;
 mod server_properties;
 

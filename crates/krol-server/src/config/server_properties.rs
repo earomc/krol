@@ -55,11 +55,16 @@ pub struct ServerProperties {
 }
 
 impl ServerProperties {
-    /// Loads (creating or completing) the file at `path` like vanilla's startup.
+    /// Opens the file at `path` and reads all values (convenience for
+    /// [`PropertyManager::open`] + [`read`](Self::read)).
     pub fn load(path: impl Into<PathBuf>) -> (Self, PropertyManager) {
         let mut pm = PropertyManager::open(path);
-        let p = &mut pm;
+        let props = Self::read(&mut pm);
+        (props, pm)
+    }
 
+    /// Reads all values like vanilla's startup, inserting and saving missing defaults.
+    pub fn read(p: &mut PropertyManager) -> Self {
         let online_mode = p.get_bool("online-mode", true);
         let server_ip = p.get_string("server-ip", "");
         let spawn_animals = p.get_bool("spawn-animals", true);
@@ -117,7 +122,7 @@ impl ServerProperties {
         let enable_rcon = p.get_bool("enable-rcon", false);
         let max_tick_time = p.get_long("max-tick-time", 60_000);
 
-        let props = Self {
+        Self {
             online_mode,
             server_ip,
             spawn_animals,
@@ -156,8 +161,7 @@ impl ServerProperties {
             enable_query,
             enable_rcon,
             max_tick_time,
-        };
-        (props, pm)
+        }
     }
 }
 

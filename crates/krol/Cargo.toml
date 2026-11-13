@@ -1,0 +1,20 @@
+[package]
+name = "krol"
+description = "Drop-in Rust reimplementation of the vanilla Minecraft 1.8.8 server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+krol-server = { path = "../krol-server" }
+anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+flate2.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "registry"] }
+
+[lints]
+workspace = true
