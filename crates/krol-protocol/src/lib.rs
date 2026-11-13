@@ -8,12 +8,14 @@
 //! - [`buf`]: field primitives (VarInt, strings, positions, ...) with vanilla's limits and
 //!   error behavior,
 //! - [`frame`]: VarInt length-prefixed framing,
+//! - [`compression`]: protocol-47 packet compression,
 //! - [`legacy`]: the pre-Netty (`0xFE`) server list ping,
 //! - [`packets`]: typed packets per connection state.
 
 #![deny(missing_docs)]
 
 pub mod buf;
+pub mod compression;
 mod error;
 pub mod frame;
 pub mod legacy;
