@@ -8,13 +8,18 @@
 // The algorithms exercised here (java.util.Random, StrictMath.log, String.hashCode,
 // DataOutputStream.writeUTF) are unchanged between Java 8 and current JDKs.
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
+import java.util.TreeMap;
 
 public class JavaVectors {
     static final long[] SEEDS = {0L, 1L, -1L, 42L, 123456789L, Long.MIN_VALUE, Long.MAX_VALUE};
@@ -136,6 +141,49 @@ public class JavaVectors {
         }
         out.append("}\n\n");
 
+        // --- Properties.load / store ----------------------------------------------
+        String[] propInputs = {
+            "  a=1\r\nb : 2\n! bang comment\n#hash\\\nc 3\nd\\=e=4\nf=line\\\r\n   cont\ng\\u0041=\\u00e9\\t\nh\nkey with\\ space = v \n\\#notcomment=5\n",
+            "x=1\\\\\ny=2\\\\\\\n  z\n   \n\t\f\nlast=no newline\\",
+            "a:=b\nc==d\ne =  = f\n:emptykey\n=alsoempty\n#c\\\nnot=continued\n",
+            "motd=\u00a7aGreen \u00c3\u00a9\r\rcr=only\r\n\r\nend\\\n",
+        };
+        out.append("#[test]\nfn properties_load_matches_jvm() {\n");
+        out.append("    use krol_java::properties::JavaProperties;\n");
+        for (String in : propInputs) {
+            byte[] bytes = in.getBytes(StandardCharsets.ISO_8859_1);
+            Properties p = new Properties();
+            p.load(new ByteArrayInputStream(bytes));
+            TreeMap<String, String> sorted = new TreeMap<>();
+            for (String k : p.stringPropertyNames()) sorted.put(k, p.getProperty(k));
+            out.append("    let p = JavaProperties::load(").append(bytesLiteral(bytes)).append(").unwrap();\n");
+            out.append("    let mut got: Vec<(String, String)> = p.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();\n");
+            out.append("    got.sort();\n");
+            out.append("    let expected: Vec<(String, String)> = vec![");
+            for (Map.Entry<String, String> e : sorted.entrySet())
+                out.append("(").append(rustLiteral(e.getKey())).append(".to_string(), ")
+                   .append(rustLiteral(e.getValue())).append(".to_string()), ");
+            out.append("];\n    assert_eq!(got, expected);\n");
+        }
+        out.append("}\n\n");
+        out.append("#[test]\nfn properties_store_escaping_matches_jvm() {\n");
+        out.append("    use krol_java::properties::JavaProperties;\n");
+        String[][] entries = {
+            {" k=:#!", " v=:#! \t\u00e9\u263a\\"}, {"plain", "a b  c"}, {"ctl\u0001", "\u007f\u0000~"}
+        };
+        for (String[] kv : entries) {
+            Properties p = new Properties();
+            p.setProperty(kv[0], kv[1]);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            p.store(bos, "c");
+            String[] lines = bos.toString("ISO-8859-1").split(System.lineSeparator());
+            out.append("    let mut p = JavaProperties::new();\n");
+            out.append("    p.set(").append(rustLiteral(kv[0])).append(", ").append(rustLiteral(kv[1])).append(");\n");
+            out.append("    let out = String::from_utf8(p.store(\"c\", \"d\", \"\\n\")).unwrap();\n");
+            out.append("    assert_eq!(out.lines().nth(2).unwrap(), ").append(rustLiteral(lines[2])).append(");\n");
+        }
+        out.append("}\n\n");
+
         // --- MathHelper sin table checksum ---------------------------------------
         // Vanilla fills its table with (float) Math.sin(i * PI * 2 / 65536).
         long h = 0xcbf29ce484222325L;
@@ -150,6 +198,17 @@ public class JavaVectors {
         out.append("}\n");
 
         System.out.print(out);
+    }
+
+    static String bytesLiteral(byte[] bytes) {
+        StringBuilder b = new StringBuilder("b\"");
+        for (byte x : bytes) {
+            int v = x & 0xff;
+            if (v == '"' || v == '\\') b.append('\\').append((char) v);
+            else if (v < 0x20 || v > 0x7e) b.append(String.format("\\x%02x", v));
+            else b.append((char) v);
+        }
+        return b.append('"').toString();
     }
 
     static String rustLiteral(String s) {

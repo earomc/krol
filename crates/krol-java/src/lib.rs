@@ -15,6 +15,7 @@ pub mod gson;
 mod hashtable;
 pub mod math;
 pub mod modified_utf8;
+pub mod properties;
 mod random;
 mod strict_math;
 mod string;

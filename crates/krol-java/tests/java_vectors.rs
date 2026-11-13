@@ -983,6 +983,95 @@ fn hashtable_order_matches_jvm() {
 }
 
 #[test]
+fn properties_load_matches_jvm() {
+    use krol_java::properties::JavaProperties;
+    let p = JavaProperties::load(b"  a=1\x0d\x0ab : 2\x0a! bang comment\x0a#hash\\\x0ac 3\x0ad\\=e=4\x0af=line\\\x0d\x0a   cont\x0ag\\u0041=\\u00e9\\t\x0ah\x0akey with\\ space = v \x0a\\#notcomment=5\x0a").unwrap();
+    let mut got: Vec<(String, String)> = p
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    got.sort();
+    let expected: Vec<(String, String)> = vec![
+        ("#notcomment".to_string(), "5".to_string()),
+        ("a".to_string(), "1".to_string()),
+        ("b".to_string(), "2".to_string()),
+        ("c".to_string(), "3".to_string()),
+        ("d=e".to_string(), "4".to_string()),
+        ("f".to_string(), "linecont".to_string()),
+        ("gA".to_string(), "\u{e9}\u{9}".to_string()),
+        ("h".to_string(), "".to_string()),
+        ("key".to_string(), "with space = v ".to_string()),
+    ];
+    assert_eq!(got, expected);
+    let p = JavaProperties::load(
+        b"x=1\\\\\x0ay=2\\\\\\\x0a  z\x0a   \x0a\x09\x0c\x0alast=no newline\\",
+    )
+    .unwrap();
+    let mut got: Vec<(String, String)> = p
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    got.sort();
+    let expected: Vec<(String, String)> = vec![
+        ("last".to_string(), "no newline".to_string()),
+        ("x".to_string(), "1\\".to_string()),
+        ("y".to_string(), "2\\z".to_string()),
+    ];
+    assert_eq!(got, expected);
+    let p = JavaProperties::load(
+        b"a:=b\x0ac==d\x0ae =  = f\x0a:emptykey\x0a=alsoempty\x0a#c\\\x0anot=continued\x0a",
+    )
+    .unwrap();
+    let mut got: Vec<(String, String)> = p
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    got.sort();
+    let expected: Vec<(String, String)> = vec![
+        ("".to_string(), "alsoempty".to_string()),
+        ("a".to_string(), "=b".to_string()),
+        ("c".to_string(), "=d".to_string()),
+        ("e".to_string(), "= f".to_string()),
+        ("not".to_string(), "continued".to_string()),
+    ];
+    assert_eq!(got, expected);
+    let p =
+        JavaProperties::load(b"motd=\xa7aGreen \xc3\xa9\x0d\x0dcr=only\x0d\x0a\x0d\x0aend\\\x0a")
+            .unwrap();
+    let mut got: Vec<(String, String)> = p
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    got.sort();
+    let expected: Vec<(String, String)> = vec![
+        ("cr".to_string(), "only".to_string()),
+        ("end".to_string(), "".to_string()),
+        ("motd".to_string(), "\u{a7}aGreen \u{c3}\u{a9}".to_string()),
+    ];
+    assert_eq!(got, expected);
+}
+
+#[test]
+fn properties_store_escaping_matches_jvm() {
+    use krol_java::properties::JavaProperties;
+    let mut p = JavaProperties::new();
+    p.set(" k=:#!", " v=:#! \u{9}\u{e9}\u{263a}\\");
+    let out = String::from_utf8(p.store("c", "d", "\n")).unwrap();
+    assert_eq!(
+        out.lines().nth(2).unwrap(),
+        "\\ k\\=\\:\\#\\!=\\ v\\=\\:\\#\\! \\t\\u00E9\\u263A\\\\"
+    );
+    let mut p = JavaProperties::new();
+    p.set("plain", "a b  c");
+    let out = String::from_utf8(p.store("c", "d", "\n")).unwrap();
+    assert_eq!(out.lines().nth(2).unwrap(), "plain=a b  c");
+    let mut p = JavaProperties::new();
+    p.set("ctl\u{1}", "\u{7f}\u{0}~");
+    let out = String::from_utf8(p.store("c", "d", "\n")).unwrap();
+    assert_eq!(out.lines().nth(2).unwrap(), "ctl\\u0001=\\u007F\\u0000~");
+}
+
+#[test]
 fn sin_table_matches_jvm() {
     assert_eq!(krol_java::math::sin_table_fnv1a(), 0x21cb003ccaa34307_u64);
 }
