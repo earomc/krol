@@ -1,0 +1,14 @@
+[package]
+name = "krol-java"
+description = "Bit-exact ports of Java platform behavior that vanilla Minecraft depends on"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true
