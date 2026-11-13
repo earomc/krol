@@ -234,6 +234,22 @@ async fn status<S: AsyncRead + AsyncWrite + Unpin>(
     Ok(())
 }
 
+/// Refreshes the status player data like vanilla's tick: the first tick runs about 50 ms
+/// after startup and refreshes immediately, later refreshes happen every 5 seconds.
+///
+/// TODO(M3): move into the tick loop once it exists.
+pub async fn run_status_refresher(shared: Arc<NetShared>) {
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    loop {
+        {
+            let mut status = shared.status.write().await;
+            status.online_players = shared.online_players.load(Ordering::Relaxed);
+            status.players_known = true;
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
 /// Serializes a plain text chat component like vanilla (a bare JSON string).
 pub fn chat_text(text: &str) -> String {
     JsonValue::from(text).to_gson_string()

@@ -27,6 +27,7 @@ fn shared_with(online_mode: bool, session_server: &str, max_players: i32) -> Arc
             motd: "A Minecraft Server".into(),
             max_players,
             online_players: 0,
+            players_known: true,
             sample: vec![],
             favicon: None,
         },

@@ -293,6 +293,15 @@ pub fn ip_key(addr: SocketAddr) -> String {
     host.split(':').next().unwrap_or("").to_owned()
 }
 
+/// The OS message Java puts in a `FileNotFoundException` for a missing file.
+fn file_not_found_text() -> &'static str {
+    if cfg!(windows) {
+        "The system cannot find the file specified"
+    } else {
+        "No such file or directory"
+    }
+}
+
 /// A user list file.
 #[derive(Debug)]
 pub struct UserList<E> {
@@ -329,6 +338,19 @@ impl<E: ListEntry> UserList<E> {
                 Ok(_) => warn!("Failed to load {}: not a JSON array", list.label),
                 Err(e) => warn!("Failed to load {}: {e}", list.label),
             }
+        } else {
+            // Vanilla opens the file unconditionally and logs the exception (its stack
+            // trace lines are dropped by the parity normalizer).
+            let name = list
+                .path
+                .file_name()
+                .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+            warn!(
+                "Failed to load {}: 
+java.io.FileNotFoundException: {name} ({})",
+                list.label,
+                file_not_found_text()
+            );
         }
         list
     }

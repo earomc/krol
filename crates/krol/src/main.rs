@@ -12,7 +12,7 @@ use std::time::Instant;
 
 use krol_server::auth::{SESSION_SERVER, ServerKeyPair};
 use krol_server::config::{PropertyManager, ServerProperties, eula};
-use krol_server::net::{NetConfig, NetShared, handle_connection};
+use krol_server::net::{NetConfig, NetShared, handle_connection, run_status_refresher};
 use krol_server::status::{StatusResponse, load_favicon};
 use krol_server::userlist::UserLists;
 use tokio::net::TcpListener;
@@ -37,6 +37,8 @@ fn main() -> ExitCode {
     };
     runtime.block_on(run());
     info!("Stopping server");
+    // Vanilla's JVM shutdown hook calls stopServer() again from its own thread.
+    info!(thread = "Server Shutdown Thread", "Stopping server");
     ExitCode::SUCCESS
 }
 
@@ -126,6 +128,7 @@ async fn run() {
             motd: props.motd.clone(),
             max_players: props.max_players,
             online_players: 0,
+            players_known: false,
             sample: Vec::new(),
             favicon: load_favicon(Path::new("server-icon.png")),
         },
@@ -136,6 +139,7 @@ async fn run() {
         started.elapsed().as_secs_f64()
     );
 
+    tokio::spawn(run_status_refresher(shared.clone()));
     let mut commands = spawn_console_reader();
     loop {
         tokio::select! {

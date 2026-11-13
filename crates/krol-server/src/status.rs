@@ -15,6 +15,9 @@ pub struct StatusResponse {
     pub max_players: i32,
     /// Online players. Vanilla refreshes this (and the sample) only every 5 seconds.
     pub online_players: i32,
+    /// Whether player data is included. Vanilla quirk: it is absent until the first
+    /// server tick (about 50 ms after "Done") performs the first 5-second refresh.
+    pub players_known: bool,
     /// Up to 12 sampled players as `(uuid, name)`.
     pub sample: Vec<(u128, String)>,
     /// `data:image/png;base64,...` favicon, if `server-icon.png` is valid.
@@ -47,15 +50,16 @@ impl StatusResponse {
                 .collect::<Vec<_>>();
             players = players.with("sample", sample);
         }
-        let mut root = JsonValue::object()
-            .with("description", self.motd.as_str())
-            .with("players", players)
-            .with(
-                "version",
-                JsonValue::object()
-                    .with("name", protocol.version_name())
-                    .with("protocol", protocol.number()),
-            );
+        let mut root = JsonValue::object().with("description", self.motd.as_str());
+        if self.players_known {
+            root = root.with("players", players);
+        }
+        root = root.with(
+            "version",
+            JsonValue::object()
+                .with("name", protocol.version_name())
+                .with("protocol", protocol.number()),
+        );
         if let Some(favicon) = &self.favicon {
             root = root.with("favicon", favicon.as_str());
         }
@@ -161,6 +165,7 @@ mod tests {
             motd: "A Minecraft Server".into(),
             max_players: 20,
             online_players: 0,
+            players_known: true,
             sample: vec![],
             favicon: None,
         };

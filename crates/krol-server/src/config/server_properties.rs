@@ -47,8 +47,6 @@ pub struct ServerProperties {
     pub hardcore: bool,
     pub spawn_monsters: bool,
     pub max_world_size: i32,
-    pub spawn_protection: i32,
-    pub debug: bool,
     pub enable_query: bool,
     pub enable_rcon: bool,
     pub max_tick_time: i64,
@@ -90,7 +88,10 @@ impl ServerProperties {
         let generate_structures = p.get_bool("generate-structures", true);
         let gamemode = p.get_int("gamemode", 0);
         let server_port = p.get_int("server-port", 25565);
-        let use_native_transport = p.get_bool("use-native-transport", true);
+        // Vanilla evaluates `Epoll.isAvailable() && shouldUseNativeTransport()`: the key is
+        // only read (and therefore written) where Netty's epoll transport exists.
+        let use_native_transport =
+            cfg!(target_os = "linux") && p.get_bool("use-native-transport", true);
 
         // DedicatedPlayerList constructor.
         let view_distance = p.get_int("view-distance", 10);
@@ -116,8 +117,9 @@ impl ServerProperties {
         let hardcore = p.get_bool("hardcore", false);
         let spawn_monsters = p.get_bool("spawn-monsters", true);
         let max_world_size = p.get_int("max-world-size", 29_999_984).clamp(1, 29_999_984);
-        let spawn_protection = p.get_int("spawn-protection", 16);
-        let debug = p.get_bool("debug", false);
+        // `spawn-protection` and `debug` are only read lazily by vanilla (not during
+        // startup), so a fresh file does not contain them; see the parity golden
+        // `startup/fresh_properties`.
         let enable_query = p.get_bool("enable-query", false);
         let enable_rcon = p.get_bool("enable-rcon", false);
         let max_tick_time = p.get_long("max-tick-time", 60_000);
@@ -156,8 +158,6 @@ impl ServerProperties {
             hardcore,
             spawn_monsters,
             max_world_size,
-            spawn_protection,
-            debug,
             enable_query,
             enable_rcon,
             max_tick_time,
@@ -169,75 +169,73 @@ impl ServerProperties {
 mod tests {
     use super::*;
 
-    /// Key order of a vanilla 1.8.x `server.properties` as commonly seen (the relative
-    /// order of `motd` and `enable-rcon` alternates between restarts).
-    const KNOWN_ORDER: [&str; 38] = [
-        "spawn-protection",
-        "max-tick-time",
+    /// Key order vanilla 1.8.8 (Java 8, Windows) wrote for a file that initially held only
+    /// `server-port` (recorded in `parity/golden/startup/fresh_properties.json`).
+    #[cfg(not(target_os = "linux"))]
+    const VANILLA_ORDER: [&str; 35] = [
         "generator-settings",
-        "force-gamemode",
-        "allow-nether",
-        "gamemode",
-        "enable-query",
-        "player-idle-timeout",
-        "difficulty",
-        "spawn-monsters",
         "op-permission-level",
+        "allow-nether",
         "resource-pack-hash",
-        "announce-player-achievements",
-        "pvp",
-        "snooper-enabled",
-        "level-type",
-        "hardcore",
-        "enable-command-block",
-        "max-players",
-        "network-compression-threshold",
-        "max-world-size",
-        "server-port",
-        "debug",
-        "server-ip",
-        "spawn-npcs",
-        "allow-flight",
         "level-name",
-        "view-distance",
-        "resource-pack",
-        "spawn-animals",
-        "white-list",
-        "generate-structures",
-        "online-mode",
-        "max-build-height",
-        "level-seed",
-        "use-native-transport",
-        "motd",
+        "enable-query",
+        "allow-flight",
+        "announce-player-achievements",
+        "server-port",
+        "max-world-size",
+        "level-type",
         "enable-rcon",
+        "level-seed",
+        "force-gamemode",
+        "server-ip",
+        "network-compression-threshold",
+        "max-build-height",
+        "spawn-npcs",
+        "white-list",
+        "spawn-animals",
+        "hardcore",
+        "snooper-enabled",
+        "online-mode",
+        "resource-pack",
+        "pvp",
+        "difficulty",
+        "enable-command-block",
+        "gamemode",
+        "player-idle-timeout",
+        "max-players",
+        "max-tick-time",
+        "spawn-monsters",
+        "generate-structures",
+        "view-distance",
+        "motd",
     ];
 
+    /// Keys in file line order (re-parsing into a table would reorder colliding keys).
+    #[cfg(not(target_os = "linux"))]
     fn keys(path: &std::path::Path) -> Vec<String> {
-        let props =
-            krol_java::properties::JavaProperties::load(&std::fs::read(path).unwrap()).unwrap();
-        props.iter().map(|(k, _)| k.to_string()).collect()
+        std::fs::read_to_string(path)
+            .unwrap()
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .map(|l| l.split('=').next().unwrap().to_owned())
+            .collect()
     }
 
+    #[cfg(not(target_os = "linux"))]
     #[test]
-    fn fresh_file_has_vanilla_keys_and_order_alternates_on_restart() {
+    fn fresh_file_matches_vanilla_order() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("server.properties");
+        std::fs::write(
+            &path,
+            "server-port=25565
+",
+        )
+        .unwrap();
         let (props, _) = ServerProperties::load(&path);
         assert_eq!(props.motd, "A Minecraft Server");
-        assert_eq!(props.server_port, 25565);
         assert_eq!(props.max_tick_time, 60_000);
-
-        let first = keys(&path);
-        // Everything but the colliding pair is fixed by hashing alone.
-        assert_eq!(first[..36], KNOWN_ORDER[..36]);
-
-        // A restart only loads (no missing keys, no save); force a save to observe the
-        // reloaded order, as the next missing key would.
-        let (_, pm) = ServerProperties::load(&path);
-        pm.save();
-        let second = keys(&path);
-        assert_eq!(second[..36], KNOWN_ORDER[..36]);
-        assert_ne!(first[36..], second[36..], "colliding keys swap on reload");
+        assert_eq!(keys(&path), VANILLA_ORDER);
     }
 
     #[test]
