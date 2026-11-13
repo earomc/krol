@@ -5,7 +5,8 @@
 //!
 //! - an in-memory model: [`Tag`], [`Compound`] and [`List`],
 //! - big-endian binary encoding and decoding ([`read`](fn@read), [`write`](fn@write)) with vanilla's
-//!   nesting-depth limit.
+//!   nesting-depth limit,
+//! - gzip and zlib containers ([`read_gzip`], [`write_zlib`], ...).
 //!
 //! 1.8 knows tag types 0–11; there is no long array.
 //!
@@ -26,9 +27,11 @@
 #![deny(missing_docs)]
 
 mod codec;
+mod compression;
 mod error;
 mod tag;
 
 pub use codec::{MAX_DEPTH, read, write};
+pub use compression::{read_gzip, read_zlib, write_gzip, write_zlib};
 pub use error::{Error, Result};
 pub use tag::{Compound, List, Tag, TagType};

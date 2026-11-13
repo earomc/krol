@@ -10,6 +10,7 @@ rust-version.workspace = true
 [dependencies]
 krol-java = { path = "../krol-java" }
 indexmap = "2"
+flate2.workspace = true
 thiserror.workspace = true
 
 [lints]
