@@ -58,6 +58,13 @@ pub struct Player {
     pub new_watches: Vec<(i32, i32)>,
     /// The tick in which the player joined.
     pub joined_tick: u64,
+    /// The player inventory window (45 slots, vanilla `ContainerPlayer`).
+    pub inventory: Vec<Option<krol_protocol::packets::play::ItemStack>>,
+    /// What the client was last told per slot (`Container.inventoryItemStacks`); starts
+    /// empty, which makes vanilla resend every slot on the first tick.
+    pub sent_inventory: Vec<Option<krol_protocol::packets::play::ItemStack>>,
+    /// Selected hotbar slot (0-8).
+    pub selected: usize,
     /// Statistics (`stats/<uuid>.json`).
     pub stats: super::stats::Stats,
     /// Experience changed since the last Set Experience packet.
@@ -247,7 +254,24 @@ impl Player {
         }
     }
 
+    /// The held item (vanilla `inventory.getCurrentItem()`).
+    pub fn held(&self) -> Option<&krol_protocol::packets::play::ItemStack> {
+        self.inventory[36 + self.selected].as_ref()
+    }
+
     fn store_state(&mut self) {
+        store_inventory(&mut self.data, &self.inventory);
+        // Vanilla EntityPlayer.writeEntityToNBT also stores the held item on its own.
+        match self.held().and_then(item_to_nbt) {
+            Some(c) => {
+                self.data.insert("SelectedItem", Tag::Compound(c));
+            }
+            None => {
+                self.data.remove("SelectedItem");
+            }
+        }
+        self.data
+            .insert("SelectedItemSlot", Tag::Int(self.selected as i32));
         let d = &mut self.data;
         d.insert("Pos", doubles(&[self.pos.0, self.pos.1, self.pos.2]));
         d.insert("Rotation", floats(&[self.rotation.0, self.rotation.1]));
@@ -325,6 +349,51 @@ pub fn inventory_window(data: &Compound) -> Vec<Option<krol_protocol::packets::p
         }
     }
     window
+}
+
+/// An item stack as NBT (vanilla `ItemStack.writeToNBT`), without a slot.
+fn item_to_nbt(item: &krol_protocol::packets::play::ItemStack) -> Option<Compound> {
+    let name = krol_world::items::name_for_id(item.id)?;
+    let mut c = Compound::new();
+    c.insert("id", Tag::String(name.to_owned()));
+    c.insert("Count", Tag::Byte(item.count));
+    c.insert("Damage", Tag::Short(item.damage));
+    if let Some(tag) = &item.nbt {
+        c.insert("tag", Tag::Compound(tag.clone()));
+    }
+    Some(c)
+}
+
+/// Writes the window back as the `Inventory` list like vanilla `InventoryPlayer.writeToNBT`
+/// (main slots 0-35, then armor 100-103), keeping entries krol cannot map unchanged.
+fn store_inventory(
+    data: &mut Compound,
+    window: &[Option<krol_protocol::packets::play::ItemStack>],
+) {
+    let mut list = List::new();
+    let mut push = |slot: i32, item: &Option<krol_protocol::packets::play::ItemStack>| {
+        let Some(item) = item else { return };
+        let Some(name) = krol_world::items::name_for_id(item.id) else {
+            return;
+        };
+        let mut c = Compound::new();
+        c.insert("Slot", Tag::Byte(slot as u8 as i8));
+        c.insert("id", Tag::String(name.to_owned()));
+        c.insert("Count", Tag::Byte(item.count));
+        c.insert("Damage", Tag::Short(item.damage));
+        if let Some(tag) = &item.nbt {
+            c.insert("tag", Tag::Compound(tag.clone()));
+        }
+        let _ = list.push(Tag::Compound(c));
+    };
+    for slot in 0..36 {
+        let index = if slot < 9 { 36 + slot } else { slot };
+        push(slot as i32, &window[index]);
+    }
+    for armor in 0..4 {
+        push(100 + armor as i32, &window[8 - armor]);
+    }
+    data.insert("Inventory", Tag::List(list));
 }
 
 /// Loads `<world>/playerdata/<uuid>.dat`, if present and readable.

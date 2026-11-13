@@ -11,6 +11,9 @@ use tracing::{error, info};
 /// One dimension's chunk storage.
 #[derive(Debug)]
 pub struct World {
+    /// Block changes per chunk since the last flush, as vanilla's `PlayerInstance`
+    /// records them (`x << 12 | z << 8 | y`, at most 64; 64 means "resend sections").
+    pub pending_changes: HashMap<(i32, i32), (Vec<u16>, u16)>,
     /// Dimension id (0 overworld, -1 nether, 1 end).
     pub dimension: i8,
     /// Directory holding this dimension's `region/` folder.
@@ -40,6 +43,32 @@ impl World {
             has_sky: dimension == 0,
             chunks: HashMap::new(),
             regions: HashMap::new(),
+            pending_changes: HashMap::new(),
+        }
+    }
+
+    /// Sets a block (vanilla `setBlockState` with update flags 3) and records the change
+    /// for the end-of-tick flush to watching players.
+    pub fn set_block(&mut self, x: i32, y: i32, z: i32, state: u16) {
+        if !(0..256).contains(&y) {
+            return;
+        }
+        let has_sky = self.has_sky;
+        self.chunk_mut(x >> 4, z >> 4).set_block(
+            (x & 15) as usize,
+            y as usize,
+            (z & 15) as usize,
+            state,
+            has_sky,
+        );
+        // Vanilla PlayerInstance.flagChunkForUpdate.
+        let entry = self.pending_changes.entry((x >> 4, z >> 4)).or_default();
+        entry.1 |= 1 << (y >> 4);
+        if entry.0.len() < 64 {
+            let packed = ((x & 15) as u16) << 12 | ((z & 15) as u16) << 8 | y as u16;
+            if !entry.0.contains(&packed) {
+                entry.0.push(packed);
+            }
         }
     }
 

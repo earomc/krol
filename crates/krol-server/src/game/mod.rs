@@ -5,6 +5,7 @@
 //! scheduled packet tasks at the start of each tick. Packets to clients go through each
 //! player's [`Outgoing`] queue.
 
+pub mod blocks;
 pub mod commands;
 pub mod player;
 pub mod stats;
@@ -124,6 +125,8 @@ pub struct GameConfig {
     pub allow_flight: bool,
     /// `op-permission-level`.
     pub op_permission_level: i32,
+    /// `max-build-height`.
+    pub max_build_height: i32,
 }
 
 /// Handle to the running game thread.
@@ -301,6 +304,7 @@ impl Game {
         }
         let radius = self.config.view_distance;
         self.tick_active_chunks(radius);
+        self.flush_block_changes();
         for i in 0..self.players.len() {
             // Vanilla accepts logins in the network phase at the end of a tick, so a new
             // player's first update happens on the following tick (after its packets).
@@ -573,7 +577,14 @@ impl Game {
         let entity_id = self.next_entity_id;
         self.next_entity_id += 1;
         let loaded = stored.is_some();
-        let mut data = stored.unwrap_or_else(|| default_player_data(gamemode));
+        // Vanilla reads what is stored and keeps defaults for everything missing, then
+        // writes a complete record back.
+        let mut data = default_player_data(gamemode);
+        if let Some(stored) = stored {
+            for (k, v) in &stored {
+                data.insert(k.clone(), v.clone());
+            }
+        }
         if loaded && data.get_i32("XpSeed") == 0 {
             // Vanilla EntityPlayer.readEntityFromNBT: a zero seed is replaced with the
             // entity's (unseeded) random; fresh players keep 0.
@@ -596,6 +607,8 @@ impl Game {
             krol_java::fmt::java_double(pos.2)
         );
 
+        let inventory = player::inventory_window(&data);
+        let selected = data.get_i32("SelectedItemSlot").clamp(0, 8) as usize;
         let player = Player {
             conn_id,
             entity_id,
@@ -616,6 +629,9 @@ impl Game {
             movement: Default::default(),
             new_watches: Vec::new(),
             joined_tick: self.tick_count,
+            inventory,
+            sent_inventory: vec![None; 45],
+            selected,
             stats: stats::Stats::load(&self.level.dir, profile_id),
             xp_dirty: false,
             score_dirty: false,
@@ -729,7 +745,7 @@ impl Game {
         }
         player.send(ClientboundPlay::WindowItems {
             window: 0,
-            items: player::inventory_window(&player.data),
+            items: player.inventory.clone(),
         });
         player.send(ClientboundPlay::SetSlot {
             window: -1,
@@ -739,7 +755,19 @@ impl Game {
     }
 
     fn tick_player(&mut self, i: usize, radius: i32) {
+        // Container.detectAndSendChanges (vanilla quirk: the tracking starts empty, so the
+        // first pass resends every non-empty slot after Window Items).
         let player = &mut self.players[i];
+        for slot in 0..45 {
+            if player.inventory[slot] != player.sent_inventory[slot] {
+                player.sent_inventory[slot] = player.inventory[slot].clone();
+                player.send(ClientboundPlay::SetSlot {
+                    window: 0,
+                    slot: slot as i16,
+                    item: player.inventory[slot].clone(),
+                });
+            }
+        }
         player.ticks += 1;
         // EntityPlayer.onUpdate: time statistics.
         player.stats.add("stat.playOneMinute", 1);
@@ -759,20 +787,6 @@ impl Game {
         }
         let player = &mut self.players[i];
         if player.ticks == 1 {
-            // Vanilla quirk: the container's change tracking starts empty, so the first
-            // detectAndSendChanges resends every non-empty slot after Window Items.
-            for (slot, item) in player::inventory_window(&player.data)
-                .into_iter()
-                .enumerate()
-            {
-                if item.is_some() {
-                    player.send(ClientboundPlay::SetSlot {
-                        window: 0,
-                        slot: slot as i16,
-                        item,
-                    });
-                }
-            }
             // First EntityPlayerMP update and entity tracker pass after joining.
             let d = &player.data;
             player.send(ClientboundPlay::UpdateHealth {
@@ -866,6 +880,334 @@ impl Game {
                 sky_light: sky,
                 columns,
             });
+        }
+    }
+
+    /// Vanilla `PlayerManager.updatePlayerInstances`: send each changed chunk's block
+    /// changes to the players who have that chunk (one change: Block Change; up to 63:
+    /// Multi Block Change; 64: the changed sections).
+    fn flush_block_changes(&mut self) {
+        let changes = std::mem::take(&mut self.level.overworld.pending_changes);
+        for ((cx, cz), (blocks, section_mask)) in changes {
+            let packet = if blocks.len() == 1 {
+                let b = blocks[0];
+                let (x, y, z) = (
+                    cx * 16 + i32::from(b >> 12),
+                    i32::from(b & 0xff),
+                    cz * 16 + i32::from((b >> 8) & 15),
+                );
+                ClientboundPlay::BlockChange {
+                    pos: (x, y, z),
+                    state: i32::from(self.level.overworld.block(x, y, z)),
+                }
+            } else if blocks.len() < 64 {
+                let records = blocks
+                    .iter()
+                    .map(|&b| {
+                        let (lx, y, lz) =
+                            ((b >> 12) as u8, (b & 0xff) as u8, ((b >> 8) & 15) as u8);
+                        let state = self.level.overworld.block(
+                            cx * 16 + i32::from(lx),
+                            i32::from(y),
+                            cz * 16 + i32::from(lz),
+                        );
+                        (lx, y, lz, i32::from(state))
+                    })
+                    .collect();
+                ClientboundPlay::MultiBlockChange {
+                    chunk_x: cx,
+                    chunk_z: cz,
+                    records,
+                }
+            } else {
+                let sky = self.level.overworld.has_sky;
+                let (mask, data) =
+                    self.level
+                        .overworld
+                        .chunk(cx, cz)
+                        .packet_data(false, section_mask, sky);
+                ClientboundPlay::ChunkData {
+                    column: ChunkColumn {
+                        x: cx,
+                        z: cz,
+                        mask,
+                        data,
+                    },
+                    full: false,
+                }
+            };
+            for p in &self.players {
+                if p.watching.contains(&(cx, cz)) && !p.chunk_queue.contains(&(cx, cz)) {
+                    p.send(packet.clone());
+                }
+            }
+        }
+    }
+
+    /// Vanilla `DedicatedServer.isBlockProtected` (spawn protection).
+    fn is_block_protected(&mut self, i: usize, pos: (i32, i32, i32)) -> bool {
+        let key = crate::status::java_uuid_string(self.players[i].profile.id);
+        let (ops_empty, is_op) = match self.shared.user_lists.lock() {
+            Ok(mut l) => {
+                let empty = l.ops.iter().next().is_none();
+                (empty, l.ops.contains(&key))
+            }
+            Err(_) => (true, false),
+        };
+        if ops_empty || is_op {
+            return false;
+        }
+        let size = self.props.get_int("spawn-protection", 16);
+        if size <= 0 {
+            return false;
+        }
+        let d = &self.level.data;
+        let k = (pos.0 - d.spawn_x()).abs().max((pos.2 - d.spawn_z()).abs());
+        k <= size
+    }
+
+    /// Vanilla `processCreativeInventoryAction`.
+    fn creative_inventory_action(
+        &mut self,
+        i: usize,
+        slot: i16,
+        item: Option<krol_protocol::packets::play::ItemStack>,
+    ) {
+        let player = &mut self.players[i];
+        if player.gamemode != 1 {
+            return;
+        }
+        let valid_item = item
+            .as_ref()
+            .is_none_or(|s| krol_world::items::name_for_id(s.id).is_some());
+        let valid_size = item
+            .as_ref()
+            .is_none_or(|s| s.damage >= 0 && s.count <= 64 && s.count > 0);
+        if (1..45).contains(&slot) && valid_item && valid_size {
+            player.inventory[slot as usize] = item;
+        }
+        // TODO: slot -1 drops the item as an entity (needs item entities).
+    }
+
+    /// Vanilla `processPlayerDigging` for start/abort/stop.
+    fn digging(&mut self, i: usize, status: i8, pos: (i32, i32, i32)) {
+        if !matches!(status, 0..=2) {
+            // TODO: dropping items (3, 4) and releasing a used item (5).
+            return;
+        }
+        let p = &self.players[i];
+        let d0 = p.pos.0 - (f64::from(pos.0) + 0.5);
+        let d1 = p.pos.1 - (f64::from(pos.1) + 0.5) + 1.5;
+        let d2 = p.pos.2 - (f64::from(pos.2) + 0.5);
+        if d0 * d0 + d1 * d1 + d2 * d2 > 36.0 || pos.1 >= self.config.max_build_height {
+            return;
+        }
+        if status == 0 {
+            if self.is_block_protected(i, pos) {
+                self.send_block(i, pos);
+            } else {
+                self.block_clicked(i, pos);
+            }
+        }
+        // TODO(M4): survival digging (progress, hardness, tools, drops).
+        if self.level.overworld.block(pos.0, pos.1, pos.2) != 0 {
+            self.send_block(i, pos);
+        }
+    }
+
+    fn send_block(&mut self, i: usize, pos: (i32, i32, i32)) {
+        let state = i32::from(self.level.overworld.block(pos.0, pos.1, pos.2));
+        self.players[i].send(ClientboundPlay::BlockChange { pos, state });
+    }
+
+    /// Vanilla `ItemInWorldManager.onBlockClicked` (creative: instant break).
+    fn block_clicked(&mut self, i: usize, pos: (i32, i32, i32)) {
+        if self.players[i].gamemode != 1 {
+            // Survival digging is not implemented yet; adventure/spectator cannot dig.
+            return;
+        }
+        // Creative players holding a sword cannot break blocks.
+        if self.players[i]
+            .held()
+            .is_some_and(|s| matches!(s.id, 267 | 268 | 272 | 276 | 283))
+        {
+            return;
+        }
+        let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+        // playAuxSFXAtEntity: break effect to everyone else within 64 blocks.
+        let state_id = i32::from(state >> 4) + (i32::from(state & 15) << 12);
+        let effect = ClientboundPlay::Effect {
+            id: 2001,
+            pos,
+            data: state_id,
+            disable_relative_volume: false,
+        };
+        let conn = self.players[i].conn_id;
+        for p in &self.players {
+            let (dx, dy, dz) = (
+                f64::from(pos.0) - p.pos.0,
+                f64::from(pos.1) - p.pos.1,
+                f64::from(pos.2) - p.pos.2,
+            );
+            if p.conn_id != conn && dx * dx + dy * dy + dz * dz < 64.0 * 64.0 {
+                p.send(effect.clone());
+            }
+        }
+        self.level.overworld.set_block(pos.0, pos.1, pos.2, 0);
+        self.send_block(i, pos);
+    }
+
+    /// Vanilla `processPlayerBlockPlacement` (block faces only).
+    fn block_placement(
+        &mut self,
+        i: usize,
+        pos: (i32, i32, i32),
+        face: i8,
+        packet_item: Option<krol_protocol::packets::play::ItemStack>,
+    ) {
+        if face == -1 {
+            // TODO: using an item in the air (face 255).
+            return;
+        }
+        let offset = |p: (i32, i32, i32), f: i8| match f {
+            0 => (p.0, p.1 - 1, p.2),
+            1 => (p.0, p.1 + 1, p.2),
+            2 => (p.0, p.1, p.2 - 1),
+            3 => (p.0, p.1, p.2 + 1),
+            4 => (p.0 - 1, p.1, p.2),
+            _ => (p.0 + 1, p.1, p.2),
+        };
+        let limit = self.config.max_build_height;
+        if pos.1 < limit - 1 || (face != 1 && pos.1 < limit) {
+            let p = &self.players[i];
+            let (dx, dy, dz) = (
+                f64::from(pos.0) + 0.5 - p.pos.0,
+                f64::from(pos.1) + 0.5 - p.pos.1,
+                f64::from(pos.2) + 0.5 - p.pos.2,
+            );
+            if p.movement.has_moved
+                && dx * dx + dy * dy + dz * dz < 64.0
+                && !self.is_block_protected(i, pos)
+            {
+                self.place_block(i, pos, face, offset);
+            }
+        } else {
+            let msg = crate::chat::Component::translate(
+                "build.tooHigh",
+                vec![crate::chat::Arg::Str(limit.to_string())],
+            )
+            .color("red");
+            self.players[i].send(ClientboundPlay::Chat {
+                json: msg.to_json_string(),
+                position: 1,
+            });
+        }
+        self.send_block(i, pos);
+        self.send_block(i, offset(pos, face));
+        let player = &mut self.players[i];
+        let held = 36 + player.selected;
+        if player.inventory[held]
+            .as_ref()
+            .is_some_and(|s| s.count == 0)
+        {
+            player.inventory[held] = None;
+        }
+        // isChangingQuantityOnly: the slot is synced without a packet, then one Set Slot
+        // if the client's idea of the stack differs.
+        player.sent_inventory[held] = player.inventory[held].clone();
+        if player.inventory[held] != packet_item {
+            player.send(ClientboundPlay::SetSlot {
+                window: 0,
+                slot: held as i16,
+                item: player.inventory[held].clone(),
+            });
+        }
+    }
+
+    /// Vanilla `ItemBlock.onItemUse` for the simple blocks krol supports.
+    fn place_block(
+        &mut self,
+        i: usize,
+        pos: (i32, i32, i32),
+        face: i8,
+        offset: impl Fn((i32, i32, i32), i8) -> (i32, i32, i32),
+    ) {
+        // TODO(M4): block activation (chests, doors, crafting tables, ...).
+        let player = &self.players[i];
+        if player.gamemode == 2 || player.gamemode == 3 {
+            return;
+        }
+        let Some(stack) = player.held().cloned() else {
+            return;
+        };
+        let Some((block_id, subtypes, sound)) = blocks::simple_block(stack.id) else {
+            return;
+        };
+        let target = if blocks::is_replaceable(self.level.overworld.block(pos.0, pos.1, pos.2)) {
+            pos
+        } else {
+            offset(pos, face)
+        };
+        if stack.count <= 0 || !(0..256).contains(&target.1) {
+            return;
+        }
+        if !blocks::is_replaceable(self.level.overworld.block(target.0, target.1, target.2)) {
+            return;
+        }
+        // World.canBlockBePlaced: the block's box must not intersect any player.
+        let intersects = self.players.iter().any(|p| {
+            let (x, y, z) = p.pos;
+            x + 0.3 > f64::from(target.0)
+                && x - 0.3 < f64::from(target.0 + 1)
+                && y + 1.8 > f64::from(target.1)
+                && y < f64::from(target.1 + 1)
+                && z + 0.3 > f64::from(target.2)
+                && z - 0.3 < f64::from(target.2 + 1)
+        });
+        if intersects {
+            return;
+        }
+        let meta = if subtypes {
+            (stack.damage & 15) as u16
+        } else {
+            0
+        };
+        self.level
+            .overworld
+            .set_block(target.0, target.1, target.2, block_id << 4 | meta);
+        // playSoundEffect at the block center, to everyone within 16 blocks.
+        let volume = (sound.volume + 1.0) / 2.0;
+        let pitch = sound.frequency * 0.8;
+        let (sx, sy, sz) = (
+            f64::from(target.0) + 0.5,
+            f64::from(target.1) + 0.5,
+            f64::from(target.2) + 0.5,
+        );
+        let packet = ClientboundPlay::SoundEffect {
+            name: sound.place_sound(),
+            x: (sx * 8.0) as i32,
+            y: (sy * 8.0) as i32,
+            z: (sz * 8.0) as i32,
+            volume,
+            pitch: (pitch * 63.0) as i32 as u8,
+        };
+        let range = if volume > 1.0 {
+            16.0 * f64::from(volume)
+        } else {
+            16.0
+        };
+        for p in &self.players {
+            let (dx, dy, dz) = (sx - p.pos.0, sy - p.pos.1, sz - p.pos.2);
+            if dx * dx + dy * dy + dz * dz < range * range {
+                p.send(packet.clone());
+            }
+        }
+        let player = &mut self.players[i];
+        if player.gamemode != 1 {
+            let held = 36 + player.selected;
+            if let Some(s) = &mut player.inventory[held] {
+                s.count -= 1;
+            }
         }
     }
 
@@ -1047,6 +1389,29 @@ impl Game {
             }
             ServerboundPlay::ClientSettings { skin_parts, .. } => {
                 self.players[i].skin_parts = skin_parts;
+            }
+            ServerboundPlay::HeldItemChange { slot } => {
+                if (0..9).contains(&slot) {
+                    self.players[i].selected = slot as usize;
+                } else {
+                    tracing::warn!(
+                        "{} tried to set an invalid carried item",
+                        self.players[i].profile.name
+                    );
+                }
+            }
+            ServerboundPlay::CreativeInventoryAction { slot, item } => {
+                self.creative_inventory_action(i, slot, item);
+            }
+            ServerboundPlay::Digging {
+                status,
+                pos,
+                face: _,
+            } => self.digging(i, status, pos),
+            ServerboundPlay::BlockPlacement {
+                pos, face, item, ..
+            } => {
+                self.block_placement(i, pos, face, item);
             }
             // TODO(M3/M4): movement validation, interaction, inventories, ...
             _ => {}

@@ -1,0 +1,33 @@
+description = "Creative mode: break blocks, take stone from the creative inventory, place it"
+subsystem = "play"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "1" }
+
+# A fixed position (creative players get a random spawn offset otherwise).
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_creative.dat"
+
+[[steps]]
+id = "builder"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 5
+chat = [
+    "@800 !dig -469 3 -435 1",
+    "@1100 !dig -468 3 -435 1",
+    "@1400 !creative 36 1 64 0",
+    "@1700 !place -469 2 -435 1",
+    "@2000 !place -466 3 -435 1",
+    "@2300 !dig -465 0 -435 1",
+]
+
+[observe]
+log = true
+files = ["world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat"]
+ignore = [
+    # Vanilla replaces a stored XpSeed of 0 with an unseeded random value on load.
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]

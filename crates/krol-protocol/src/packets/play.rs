@@ -376,6 +376,32 @@ impl ServerboundPlay {
             Self::ClientStatus { action } => {
                 w.varint(0x16).varint(*action);
             }
+            Self::Digging { status, pos, face } => {
+                w.varint(0x07)
+                    .i8(*status)
+                    .position(pos.0, pos.1, pos.2)
+                    .i8(*face);
+            }
+            Self::BlockPlacement {
+                pos,
+                face,
+                item,
+                cursor,
+            } => {
+                w.varint(0x08).position(pos.0, pos.1, pos.2).i8(*face);
+                ItemStack::write(&mut w, item.as_ref())?;
+                w.i8(cursor.0).i8(cursor.1).i8(cursor.2);
+            }
+            Self::CreativeInventoryAction { slot, item } => {
+                w.varint(0x10).i16(*slot);
+                ItemStack::write(&mut w, item.as_ref())?;
+            }
+            Self::HeldItemChange { slot } => {
+                w.varint(0x09).i16(*slot);
+            }
+            Self::Animation => {
+                w.varint(0x0a);
+            }
             Self::PluginMessage { channel, data } => {
                 w.varint(0x17).string(channel)?;
                 w.bytes(data);
@@ -521,6 +547,30 @@ pub enum ClientboundPlay {
     },
     /// `0x37` (statistic name, value) pairs
     Statistics(Vec<(String, i32)>),
+    /// `0x23`
+    BlockChange { pos: BlockPos, state: i32 },
+    /// `0x22` changes inside one chunk: (local x, y, local z, state)
+    MultiBlockChange {
+        chunk_x: i32,
+        chunk_z: i32,
+        records: Vec<(u8, u8, u8, i32)>,
+    },
+    /// `0x29` (position in 1/8 blocks, pitch as `pitch * 63`)
+    SoundEffect {
+        name: String,
+        x: i32,
+        y: i32,
+        z: i32,
+        volume: f32,
+        pitch: u8,
+    },
+    /// `0x28`
+    Effect {
+        id: i32,
+        pos: BlockPos,
+        data: i32,
+        disable_relative_volume: bool,
+    },
     /// `0x1C`
     EntityMetadata {
         entity_id: i32,
@@ -631,6 +681,10 @@ impl ClientboundPlay {
             Self::ServerDifficulty { .. } => 0x41,
             Self::WorldBorderInit { .. } => 0x44,
             Self::Statistics(_) => 0x37,
+            Self::BlockChange { .. } => 0x23,
+            Self::MultiBlockChange { .. } => 0x22,
+            Self::SoundEffect { .. } => 0x29,
+            Self::Effect { .. } => 0x28,
             Self::EntityMetadata { .. } => 0x1c,
             Self::EntityProperties { .. } => 0x20,
         }
@@ -770,6 +824,41 @@ impl ClientboundPlay {
                     .varint(*portal_teleport_boundary)
                     .varint(*warning_distance)
                     .varint(*warning_time);
+            }
+            Self::BlockChange { pos, state } => {
+                w.position(pos.0, pos.1, pos.2).varint(*state);
+            }
+            Self::MultiBlockChange {
+                chunk_x,
+                chunk_z,
+                records,
+            } => {
+                w.i32(*chunk_x).i32(*chunk_z).varint(records.len() as i32);
+                for (x, y, z, state) in records {
+                    w.u8((x << 4) | (z & 15)).u8(*y).varint(*state);
+                }
+            }
+            Self::SoundEffect {
+                name,
+                x,
+                y,
+                z,
+                volume,
+                pitch,
+            } => {
+                w.string(name)?;
+                w.i32(*x).i32(*y).i32(*z).f32(*volume).u8(*pitch);
+            }
+            Self::Effect {
+                id,
+                pos,
+                data,
+                disable_relative_volume,
+            } => {
+                w.i32(*id)
+                    .position(pos.0, pos.1, pos.2)
+                    .i32(*data)
+                    .bool(*disable_relative_volume);
             }
             Self::Statistics(stats) => {
                 w.varint(stats.len() as i32);
@@ -1072,6 +1161,28 @@ mod tests {
             saturation: 5.0,
         };
         assert_eq!(hex(&health.encode(V).unwrap()[1..]), "41a000001440a00000");
+    }
+
+    /// Bytes recorded from vanilla 1.8.8 (parity/golden/play/build_creative.json).
+    #[test]
+    fn vanilla_build_packets() {
+        let sound = ClientboundPlay::SoundEffect {
+            name: "dig.stone".into(),
+            x: -3748,
+            y: 28,
+            z: -3476,
+            volume: 1.0,
+            pitch: 50,
+        };
+        assert_eq!(
+            hex(&sound.encode(V).unwrap()[1..]),
+            "096469672e73746f6e65fffff15c0000001cfffff26c3f80000032"
+        );
+        let change = ClientboundPlay::BlockChange {
+            pos: (-469, 2, -435),
+            state: 48,
+        };
+        assert_eq!(hex(&change.encode(V).unwrap()[1..]), "ffff8ac00bfffe4d30");
     }
 
     #[test]

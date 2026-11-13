@@ -44,7 +44,12 @@ pub struct PlayObservation {
 /// - then sends a Player (on ground) packet every 50 ms, like a client tick.
 ///
 /// Optional `chat` lines are sent once the position is known, 500 ms apart; a line
-/// written `@<ms> <text>` is instead sent `<ms>` after the position was received. Optional
+/// written `@<ms> <text>` is instead sent `<ms>` after the position was received.
+/// Lines starting with `!` (after the timing) are bot actions instead of chat:
+/// `!dig <x> <y> <z> <face> [status]` (default: start digging, status 0),
+/// `!creative <slot> <id> <count> <damage>` (set a slot in creative mode),
+/// `!place <x> <y> <z> <face>` (use the held item, cursor 8/8/8; sends the swing first),
+/// `!hold <slot>` (select hotbar slot). Optional
 /// `moves` (offsets from the first server-given position) replace the idle Player
 /// packet, one Position packet per tick, after which the bot idles again.
 ///
@@ -100,6 +105,8 @@ pub async fn play_session(
         })
         .collect();
     let mut positioned_at: Option<Instant> = None;
+    let mut held: Vec<Option<krol_protocol::packets::play::ItemStack>> = vec![None; 9];
+    let mut held_slot: i16 = 0;
     let mut next_chat = start;
 
     let result: Result<(), BotError> = async { loop {
@@ -129,7 +136,18 @@ pub async fn play_session(
                             .collect();
                         timed_chat.retain(|(ms, _)| *ms > elapsed);
                         for message in due {
-                            send_play(&mut conn, &ServerboundPlay::Chat { message }).await?;
+                            for packet in action_or_chat(&message, &held) {
+                                if let ServerboundPlay::HeldItemChange { slot } = packet {
+                                    held_slot = slot;
+                                }
+                                if let ServerboundPlay::CreativeInventoryAction { slot, item } = &packet {
+                                    if *slot >= 36 {
+                                        held[(*slot - 36) as usize] = item.clone();
+                                    }
+                                }
+                                send_play(&mut conn, &packet).await?;
+                            }
+                            let _ = held_slot;
                         }
                     }
                 }
@@ -199,6 +217,54 @@ async fn send_play(conn: &mut Conn, packet: &ServerboundPlay) -> Result<(), BotE
         conn.send(&bytes).await?;
     }
     Ok(())
+}
+
+/// Parses a scripted line into packets: a `!` action or a chat message.
+fn action_or_chat(
+    line: &str,
+    held: &[Option<krol_protocol::packets::play::ItemStack>],
+) -> Vec<ServerboundPlay> {
+    let Some(action) = line.strip_prefix('!') else {
+        return vec![ServerboundPlay::Chat {
+            message: line.to_owned(),
+        }];
+    };
+    let parts: Vec<&str> = action.split_whitespace().collect();
+    let num = |i: usize| {
+        parts
+            .get(i)
+            .and_then(|p| p.parse::<i32>().ok())
+            .unwrap_or(0)
+    };
+    match parts.first().copied() {
+        Some("dig") => vec![ServerboundPlay::Digging {
+            status: num(5) as i8,
+            pos: (num(1), num(2), num(3)),
+            face: num(4) as i8,
+        }],
+        Some("creative") => vec![ServerboundPlay::CreativeInventoryAction {
+            slot: num(1) as i16,
+            item: Some(krol_protocol::packets::play::ItemStack {
+                id: num(2) as i16,
+                count: num(3) as i8,
+                damage: num(4) as i16,
+                nbt: None,
+            }),
+        }],
+        Some("hold") => vec![ServerboundPlay::HeldItemChange {
+            slot: num(1) as i16,
+        }],
+        Some("place") => vec![
+            ServerboundPlay::Animation,
+            ServerboundPlay::BlockPlacement {
+                pos: (num(1), num(2), num(3)),
+                face: num(4) as i8,
+                item: held.first().cloned().flatten(),
+                cursor: (8, 8, 8),
+            },
+        ],
+        _ => Vec::new(),
+    }
 }
 
 /// Whether an error means the server closed the connection.

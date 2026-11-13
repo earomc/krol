@@ -89,6 +89,16 @@ scenarios = ["login/offline"]
 # --- Play --------------------------------------------------------------------------
 
 [[feature]]
+id = "play.build_creative"
+description = "Creative breaking/placing, creative inventory, block change broadcast, place sounds"
+scenarios = ["play/build_creative"]
+
+[[feature]]
+id = "play.build_survival"
+description = "Survival digging (progress, tools, drops) and placing with stack use"
+scenarios = []
+
+[[feature]]
 id = "world.stats"
 description = "stats/<uuid>.json (time stats, leaveGame, exploreAllBiomes, key order)"
 scenarios = ["play/join_flat"]

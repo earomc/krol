@@ -170,6 +170,7 @@ async fn run() -> Option<GameHandle> {
                 difficulty: props.difficulty,
                 allow_flight: props.allow_flight,
                 op_permission_level: props.op_permission_level,
+                max_build_height: props.max_build_height,
             },
             pm,
             shared.clone(),

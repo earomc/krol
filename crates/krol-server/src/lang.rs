@@ -17,6 +17,7 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "disconnect.spam" => "Kicked for spamming",
         "multiplayer.disconnect.server_shutdown" => "Server closed",
         "gameMode.changed" => "Your game mode has been updated",
+        "build.tooHigh" => "Height limit for building is %s blocks",
         "gameMode.survival" => "Survival Mode",
         "gameMode.creative" => "Creative Mode",
         "gameMode.adventure" => "Adventure Mode",
