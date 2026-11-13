@@ -127,6 +127,8 @@ async fn run() -> Option<GameHandle> {
         level
     });
     if level.is_none() {
+        // Vanilla reads these only when creating a new world.
+        let _hardcore = pm.get_bool("hardcore", false);
         // TODO(M6): vanilla generates a new world here.
         warn!(
             "krol: no existing world \"{}\" found and world generation is not implemented yet; players cannot join",
@@ -166,7 +168,7 @@ async fn run() -> Option<GameHandle> {
                 gamemode: props.gamemode,
                 force_gamemode: props.force_gamemode,
                 difficulty: props.difficulty,
-                hardcore: props.hardcore,
+                allow_flight: props.allow_flight,
             },
             pm,
             shared.clone(),

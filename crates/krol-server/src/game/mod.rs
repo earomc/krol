@@ -5,6 +5,7 @@
 //! scheduled packet tasks at the start of each tick. Packets to clients go through each
 //! player's [`Outgoing`] queue.
 
+pub mod commands;
 pub mod player;
 pub mod world;
 
@@ -118,8 +119,6 @@ pub struct GameConfig {
     pub force_gamemode: bool,
     /// `difficulty`.
     pub difficulty: i32,
-    /// `hardcore`.
-    pub hardcore: bool,
     /// `allow-flight`.
     pub allow_flight: bool,
 }
@@ -166,6 +165,14 @@ struct Game {
     tick_count: u64,
     last_status_refresh: Option<Instant>,
     stopping: bool,
+    /// `save-on` / `save-off`.
+    saving_enabled: bool,
+    /// The world's unseeded `Random` (weather durations).
+    weather_rand: krol_java::JavaRandom,
+    /// Rain strength and its previous-tick value (vanilla: `rainingStrength`).
+    rain: (f32, f32),
+    /// Thunder strength and its previous-tick value.
+    thunder: (f32, f32),
 }
 
 /// Starts the server thread for `level`.
@@ -193,7 +200,23 @@ pub fn start(
         tick_count: 0,
         last_status_refresh: None,
         stopping: false,
+        saving_enabled: true,
+        weather_rand: krol_java::JavaRandom::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_nanos() as i64),
+        ),
+        rain: (0.0, 0.0),
+        thunder: (0.0, 0.0),
     };
+    let mut game = game;
+    // Vanilla World.calculateInitialWeather.
+    if game.level.data.raining() {
+        game.rain = (1.0, 1.0);
+        if game.level.data.thundering() {
+            game.thunder = (1.0, 1.0);
+        }
+    }
     let thread = std::thread::Builder::new()
         .name("Server thread".into())
         .spawn(move || {
@@ -250,7 +273,16 @@ impl Game {
         }
 
         self.refresh_status();
+        self.tick_weather();
         self.tick_time();
+        if self.tick_count % 900 == 0 && self.saving_enabled {
+            // Vanilla autosave (saveAllWorlds(true): no log lines).
+            let dir = self.level.dir.clone();
+            for p in &mut self.players {
+                p.save(&dir);
+            }
+            self.level.save_quietly();
+        }
         let radius = self.config.view_distance;
         for i in 0..self.players.len() {
             self.tick_player(i, radius);
@@ -261,16 +293,92 @@ impl Game {
         !self.stopping
     }
 
-    /// Runs a console command (TODO(M3): the full command system).
+    /// Runs a console command line.
     fn console_command(&mut self, line: &str) {
-        let command = line.trim().trim_start_matches('/');
-        match command.split(' ').next().unwrap_or("") {
-            "" => {}
-            "stop" => {
-                info!("Stopping the server");
-                self.stopping = true;
+        if line.trim().is_empty() {
+            return;
+        }
+        self.execute_command(commands::Sender::Console, line);
+    }
+
+    /// Vanilla `World.updateWeather` + `WorldServer.updateWeather` (overworld).
+    fn tick_weather(&mut self) {
+        let d = &mut self.level.data;
+        let was_raining = self.rain.0 > 0.2;
+        let clear = d.clear_weather_time();
+        if clear > 0 {
+            d.set_clear_weather_time(clear - 1);
+            d.set_thunder_time(if d.thundering() { 1 } else { 2 });
+            d.set_rain_time(if d.raining() { 1 } else { 2 });
+        }
+        let t = d.thunder_time();
+        if t <= 0 {
+            let next = if d.thundering() {
+                self.weather_rand.next_int_bounded(12000) + 3600
+            } else {
+                self.weather_rand.next_int_bounded(168_000) + 12000
+            };
+            d.set_thunder_time(next);
+        } else {
+            d.set_thunder_time(t - 1);
+            if t - 1 <= 0 {
+                let v = !d.thundering();
+                d.data
+                    .insert("thundering", krol_nbt::Tag::Byte(i8::from(v)));
             }
-            _ => info!("Unknown command. Try /help for a list of commands"),
+        }
+        self.thunder.1 = self.thunder.0;
+        self.thunder.0 =
+            (self.thunder.0 + if d.thundering() { 0.01 } else { -0.01 }).clamp(0.0, 1.0);
+        let r = d.rain_time();
+        if r <= 0 {
+            let next = if d.raining() {
+                self.weather_rand.next_int_bounded(12000) + 12000
+            } else {
+                self.weather_rand.next_int_bounded(168_000) + 12000
+            };
+            d.set_rain_time(next);
+        } else {
+            d.set_rain_time(r - 1);
+            if r - 1 <= 0 {
+                let v = !d.raining();
+                d.data.insert("raining", krol_nbt::Tag::Byte(i8::from(v)));
+            }
+        }
+        self.rain.1 = self.rain.0;
+        self.rain.0 = (self.rain.0 + if d.raining() { 0.01 } else { -0.01 }).clamp(0.0, 1.0);
+
+        let mut packets = Vec::new();
+        if self.rain.1 != self.rain.0 {
+            packets.push(ClientboundPlay::ChangeGameState {
+                reason: 7,
+                value: self.rain.0,
+            });
+        }
+        if self.thunder.1 != self.thunder.0 {
+            packets.push(ClientboundPlay::ChangeGameState {
+                reason: 8,
+                value: self.thunder.0,
+            });
+        }
+        if was_raining != (self.rain.0 > 0.2) {
+            packets.push(ClientboundPlay::ChangeGameState {
+                reason: if was_raining { 2 } else { 1 },
+                value: 0.0,
+            });
+            packets.push(ClientboundPlay::ChangeGameState {
+                reason: 7,
+                value: self.rain.0,
+            });
+            packets.push(ClientboundPlay::ChangeGameState {
+                reason: 8,
+                value: self.thunder.0,
+            });
+        }
+        for p in &self.players {
+            for packet in &packets {
+                p.send(packet.clone());
+            }
         }
     }
 
@@ -470,7 +578,7 @@ impl Game {
         let difficulty = self.config.difficulty as u8;
         player.send(ClientboundPlay::JoinGame {
             entity_id,
-            gamemode: gamemode as u8 | if self.config.hardcore { 8 } else { 0 },
+            gamemode: gamemode as u8 | if self.level.data.hardcore() { 8 } else { 0 },
             dimension: 0,
             difficulty,
             max_players: self.config.max_players as u8,
@@ -547,8 +655,8 @@ impl Game {
             },
         };
         let time = self.time_packet();
-        let raining = self.level.data.raining();
-        let thundering = self.level.data.thundering();
+        let raining = self.rain.0 > 0.2;
+        let (rain_strength, thunder_strength) = (self.rain.0, self.thunder.0 * self.rain.0);
         let player = &self.players[new_index];
         player.send(world_border);
         player.send(time);
@@ -559,11 +667,11 @@ impl Game {
             });
             player.send(ClientboundPlay::ChangeGameState {
                 reason: 7,
-                value: 1.0,
+                value: rain_strength,
             });
             player.send(ClientboundPlay::ChangeGameState {
                 reason: 8,
-                value: if thundering { 1.0 } else { 0.0 },
+                value: thunder_strength,
             });
         }
         // TODO(M4): send the stored inventory instead of an empty one.
@@ -828,14 +936,15 @@ impl Game {
             return;
         }
         if let Some(command) = message.strip_prefix('/') {
-            let player = &self.players[i];
-            info!("{} issued server command: /{command}", player.profile.name);
-            // TODO(M3): commands. Vanilla answers unknown commands like this:
-            let reply = Component::translate("commands.generic.notFound", vec![]).color("red");
-            player.send(ClientboundPlay::Chat {
-                json: reply.to_json_string(),
-                position: 0,
-            });
+            info!(
+                "{} issued server command: /{command}",
+                self.players[i].profile.name
+            );
+            // TODO: permission levels (non-ops may only use a few commands).
+            self.execute_command(commands::Sender::Player(i), command);
+            if i >= self.players.len() {
+                return;
+            }
         } else {
             let player = &self.players[i];
             let msg = Component::translate(

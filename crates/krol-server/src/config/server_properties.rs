@@ -44,7 +44,6 @@ pub struct ServerProperties {
     pub network_compression_threshold: i32,
     pub max_build_height: i32,
     pub allow_nether: bool,
-    pub hardcore: bool,
     pub spawn_monsters: bool,
     pub max_world_size: i32,
     pub enable_query: bool,
@@ -114,7 +113,8 @@ impl ServerProperties {
         p.set("max-build-height", max_build_height);
 
         let allow_nether = p.get_bool("allow-nether", true);
-        let hardcore = p.get_bool("hardcore", false);
+        // `hardcore` is only read when a new world is created (vanilla: isHardcore() in
+        // loadAllWorlds); existing worlds use the flag in level.dat.
         let spawn_monsters = p.get_bool("spawn-monsters", true);
         let max_world_size = p.get_int("max-world-size", 29_999_984).clamp(1, 29_999_984);
         // `spawn-protection` and `debug` are only read lazily by vanilla (not during
@@ -155,7 +155,6 @@ impl ServerProperties {
             network_compression_threshold,
             max_build_height,
             allow_nether,
-            hardcore,
             spawn_monsters,
             max_world_size,
             enable_query,
@@ -232,7 +231,9 @@ mod tests {
 ",
         )
         .unwrap();
-        let (props, _) = ServerProperties::load(&path);
+        let (props, mut pm) = ServerProperties::load(&path);
+        // No world exists, so (like vanilla creating one) `hardcore` is read too.
+        pm.get_bool("hardcore", false);
         assert_eq!(props.motd, "A Minecraft Server");
         assert_eq!(props.max_tick_time, 60_000);
         assert_eq!(keys(&path), VANILLA_ORDER);

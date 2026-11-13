@@ -202,6 +202,15 @@ impl Level {
         }
     }
 
+    /// Saves chunks and `level.dat` without log lines (autosave, `save-all`).
+    pub fn save_quietly(&mut self) {
+        let time = self.data.time();
+        self.overworld.save_chunks(time);
+        if let Err(e) = self.data.save(&self.dir) {
+            error!("Failed to save level.dat: {e}");
+        }
+    }
+
     /// Saves chunks and `level.dat` like vanilla's `saveAllWorlds`, logging each
     /// dimension (vanilla always has three, even with `allow-nether=false`).
     pub fn save_all(&mut self) {

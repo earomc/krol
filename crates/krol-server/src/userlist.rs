@@ -437,6 +437,12 @@ impl UserLists {
         }
     }
 
+    /// Re-reads `whitelist.json` (vanilla `/whitelist reload`).
+    pub fn reload_whitelist(&mut self) {
+        let path = self.whitelist.path().to_path_buf();
+        self.whitelist = UserList::load(path, "white-list");
+    }
+
     /// Vanilla `allowUserToConnect`: the disconnect reason, or `None` to admit.
     pub fn allow_user_to_connect(
         &mut self,
