@@ -100,7 +100,17 @@ scenarios = ["play/join_flat"]
 
 [[feature]]
 id = "play.movement"
-description = "Movement validation (moved too quickly / wrongly), chunk tracking"
+description = "Teleport confirmation, moved too quickly, chunk tracking while walking"
+scenarios = ["play/walk_and_jump"]
+
+[[feature]]
+id = "play.collision"
+description = "Moved wrongly / collision (needs entity physics)"
+scenarios = []
+
+[[feature]]
+id = "world.population"
+description = "Chunks generated/populated at the edge of the generated area"
 scenarios = []
 
 [[feature]]

@@ -43,7 +43,9 @@ pub struct PlayObservation {
 /// - answers Player Position And Look with a matching serverbound position,
 /// - then sends a Player (on ground) packet every 50 ms, like a client tick.
 ///
-/// Optional `chat` lines are sent once the position is known, 500 ms apart.
+/// Optional `chat` lines are sent once the position is known, 500 ms apart. Optional
+/// `moves` (offsets from the first server-given position) replace the idle Player
+/// packet, one Position packet per tick, after which the bot idles again.
 ///
 /// # Errors
 ///
@@ -54,6 +56,7 @@ pub async fn play_session(
     name: &str,
     duration: Duration,
     chat: &[String],
+    moves: &[[f64; 3]],
 ) -> Result<PlayObservation, BotError> {
     let version = ProtocolVersion::from_number(protocol).unwrap_or(ProtocolVersion::V47);
     let mut conn = Conn::connect(addr).await?;
@@ -80,6 +83,8 @@ pub async fn play_session(
     let deadline = start + duration;
     let mut tick = tokio::time::interval(Duration::from_millis(50));
     let mut positioned = false;
+    let mut origin: Option<(f64, f64, f64)> = None;
+    let mut next_move = 0usize;
     let mut pending_chat: Vec<String> = chat.iter().rev().cloned().collect();
     let mut next_chat = start;
 
@@ -88,7 +93,15 @@ pub async fn play_session(
             () = tokio::time::sleep_until(deadline) => break,
             _ = tick.tick() => {
                 if positioned {
-                    send_play(&mut conn, &ServerboundPlay::Player { on_ground: true }).await?;
+                    match (origin, moves.get(next_move)) {
+                        (Some((ox, oy, oz)), Some([dx, dy, dz])) => {
+                            next_move += 1;
+                            send_play(&mut conn, &ServerboundPlay::Position {
+                                x: ox + dx, y: oy + dy, z: oz + dz, on_ground: true,
+                            }).await?;
+                        }
+                        _ => send_play(&mut conn, &ServerboundPlay::Player { on_ground: true }).await?,
+                    }
                     if Instant::now() >= next_chat && let Some(message) = pending_chat.pop() {
                         send_play(&mut conn, &ServerboundPlay::Chat { message }).await?;
                         next_chat = Instant::now() + Duration::from_millis(500);
@@ -125,6 +138,7 @@ pub async fn play_session(
                             x: *x, y: *y, z: *z, yaw: *yaw, pitch: *pitch, on_ground: false,
                         }).await?;
                         positioned = true;
+                        origin.get_or_insert((*x, *y, *z));
                         next_chat = Instant::now() + Duration::from_millis(500);
                     }
                     _ => {}

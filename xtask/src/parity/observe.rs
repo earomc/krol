@@ -84,6 +84,7 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
             name,
             seconds,
             chat,
+            moves,
             ..
         } => match krol_testbot::play_session(
             addr,
@@ -91,6 +92,7 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
             name,
             std::time::Duration::from_secs(*seconds),
             chat,
+            moves,
         )
         .await
         {

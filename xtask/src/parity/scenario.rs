@@ -80,6 +80,9 @@ pub enum Step {
         seconds: u64,
         #[serde(default)]
         chat: Vec<String>,
+        /// Offsets from the spawn position, one Position packet per tick.
+        #[serde(default)]
+        moves: Vec<[f64; 3]>,
     },
     /// Sleeps; produces no observation. Use to step past timing-dependent windows
     /// (e.g. vanilla's status has no player data before the first tick).
