@@ -114,8 +114,23 @@ description = "Chunks generated/populated at the edge of the generated area"
 scenarios = []
 
 [[feature]]
-id = "commands"
-description = "Console and player commands"
+id = "commands.console_basic"
+description = "help, list, say, me, time, weather, difficulty, gamerule, save-*, banlist, whitelist on/off/list, errors"
+scenarios = ["commands/console_basic"]
+
+[[feature]]
+id = "commands.with_players"
+description = "Commands targeting online players (kick, tell, tp, gamemode, xp, op, ...)"
+scenarios = []
+
+[[feature]]
+id = "commands.permissions"
+description = "Permission levels for players"
+scenarios = []
+
+[[feature]]
+id = "world.weather"
+description = "Weather cycle and weather packets"
 scenarios = []
 
 [[feature]]

@@ -84,6 +84,13 @@ pub enum Step {
         #[serde(default)]
         moves: Vec<[f64; 3]>,
     },
+    /// Types a line into the server console; output appears in the log observation.
+    /// Waits `wait_ms` (default 300) afterwards so the output is captured in order.
+    Console {
+        command: String,
+        #[serde(default = "console_wait")]
+        wait_ms: u64,
+    },
     /// Sleeps; produces no observation. Use to step past timing-dependent windows
     /// (e.g. vanilla's status has no player data before the first tick).
     Wait { ms: u64 },
@@ -97,6 +104,10 @@ fn three() -> u64 {
     3
 }
 
+fn console_wait() -> u64 {
+    300
+}
+
 impl Step {
     pub fn id(&self) -> Option<&str> {
         match self {
@@ -104,7 +115,7 @@ impl Step {
             | Step::Raw { id, .. }
             | Step::LoginStart { id, .. }
             | Step::Play { id, .. } => Some(id),
-            Step::Wait { .. } => None,
+            Step::Wait { .. } | Step::Console { .. } => None,
         }
     }
 }

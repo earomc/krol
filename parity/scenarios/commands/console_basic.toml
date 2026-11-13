@@ -1,0 +1,242 @@
+description = "Console commands without players: output, usage and error messages"
+subsystem = "commands"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "help"
+
+[[steps]]
+action = "console"
+command = "help 2"
+
+[[steps]]
+action = "console"
+command = "help 10"
+
+[[steps]]
+action = "console"
+command = "help nope"
+
+[[steps]]
+action = "console"
+command = "help 3"
+
+[[steps]]
+action = "console"
+command = "help 4"
+
+[[steps]]
+action = "console"
+command = "help 5"
+
+[[steps]]
+action = "console"
+command = "help 6"
+
+[[steps]]
+action = "console"
+command = "help 7"
+
+[[steps]]
+action = "console"
+command = "help 8"
+
+[[steps]]
+action = "console"
+command = "help 9"
+
+[[steps]]
+action = "console"
+command = "help time"
+
+[[steps]]
+action = "console"
+command = "list"
+
+[[steps]]
+action = "console"
+command = "say hello world"
+
+[[steps]]
+action = "console"
+command = "say"
+
+[[steps]]
+action = "console"
+command = "time"
+
+[[steps]]
+action = "console"
+command = "time set 1000"
+
+[[steps]]
+action = "console"
+command = "time set day"
+
+[[steps]]
+action = "console"
+command = "time add 100"
+
+[[steps]]
+action = "console"
+command = "time set banana"
+
+[[steps]]
+action = "console"
+command = "weather"
+
+[[steps]]
+action = "console"
+command = "weather clear"
+
+[[steps]]
+action = "console"
+command = "weather rain 100"
+
+[[steps]]
+action = "console"
+command = "weather thunder"
+
+[[steps]]
+action = "console"
+command = "toggledownfall"
+
+[[steps]]
+action = "console"
+command = "difficulty"
+
+[[steps]]
+action = "console"
+command = "difficulty 2"
+
+[[steps]]
+action = "console"
+command = "difficulty peaceful"
+
+[[steps]]
+action = "console"
+command = "difficulty 9"
+
+[[steps]]
+action = "console"
+command = "defaultgamemode"
+
+[[steps]]
+action = "console"
+command = "defaultgamemode creative"
+
+[[steps]]
+action = "console"
+command = "defaultgamemode 0"
+
+[[steps]]
+action = "console"
+command = "seed"
+
+[[steps]]
+action = "console"
+command = "gamerule"
+
+[[steps]]
+action = "console"
+command = "gamerule doDaylightCycle"
+
+[[steps]]
+action = "console"
+command = "gamerule doDaylightCycle false"
+
+[[steps]]
+action = "console"
+command = "gamerule doDaylightCycle"
+
+[[steps]]
+action = "console"
+command = "gamerule madeUpRule 5"
+
+[[steps]]
+action = "console"
+command = "gamerule madeUpRule"
+
+[[steps]]
+action = "console"
+command = "kick Nobody"
+
+[[steps]]
+action = "console"
+command = "tp Nobody 0 0 0"
+
+[[steps]]
+action = "console"
+command = "xp 5 Nobody"
+
+[[steps]]
+action = "console"
+command = "gamemode 1 Nobody"
+
+[[steps]]
+action = "console"
+command = "save-off"
+
+[[steps]]
+action = "console"
+command = "save-on"
+
+[[steps]]
+action = "console"
+command = "save-all"
+
+[[steps]]
+action = "console"
+command = "banlist"
+
+[[steps]]
+action = "console"
+command = "banlist ips"
+
+[[steps]]
+action = "console"
+command = "whitelist"
+
+[[steps]]
+action = "console"
+command = "whitelist list"
+
+[[steps]]
+action = "console"
+command = "whitelist on"
+
+[[steps]]
+action = "console"
+command = "whitelist off"
+
+[[steps]]
+action = "console"
+command = "me waves"
+
+[[steps]]
+action = "console"
+command = "tell Nobody hi"
+
+[[steps]]
+action = "console"
+command = "setidletimeout 5"
+
+[[steps]]
+action = "console"
+command = "setworldspawn"
+
+[[steps]]
+action = "console"
+command = "unknowncommand"
+
+[[steps]]
+action = "console"
+command = "/list"
+
+[observe]
+log = true
+files = ["server.properties"]

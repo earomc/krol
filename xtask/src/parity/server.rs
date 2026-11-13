@@ -189,6 +189,20 @@ impl RunningServer {
         let _ = self.child.wait();
     }
 
+    /// Writes a line to the server console.
+    pub fn console(&mut self, line: &str) {
+        if let Some(stdin) = &mut self.stdin {
+            let _ = stdin.write_all(
+                format!(
+                    "{line}
+"
+                )
+                .as_bytes(),
+            );
+            let _ = stdin.flush();
+        }
+    }
+
     /// Sends `stop`, waits for exit and returns the full console log.
     pub fn stop(mut self) -> Result<Vec<String>> {
         if let Some(mut stdin) = self.stdin.take() {

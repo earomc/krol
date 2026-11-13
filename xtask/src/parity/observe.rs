@@ -13,7 +13,7 @@ use super::server::{RunningServer, Target};
 /// Runs `scenario` against `target` in `dir`, returning normalized observations.
 pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path) -> Result<Value> {
     let port = super::server::prepare_dir(dir, &scenario.setup, parity_root)?;
-    let server = RunningServer::start(target, dir, port)?;
+    let mut server = RunningServer::start(target, dir, port)?;
     let mut obs = Map::new();
     obs.insert("started".into(), Value::Bool(server.started));
 
@@ -24,6 +24,11 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
         for step in &scenario.steps {
             if let Step::Wait { ms } = step {
                 std::thread::sleep(std::time::Duration::from_millis(*ms));
+                continue;
+            }
+            if let Step::Console { command, wait_ms } = step {
+                server.console(command);
+                std::thread::sleep(std::time::Duration::from_millis(*wait_ms));
                 continue;
             }
             let value = runtime.block_on(run_step(step, server.addr));
@@ -78,7 +83,7 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
                 Err(e) => json!({ "error": e.to_string() }),
             }
         }
-        Step::Wait { .. } => Value::Null,
+        Step::Wait { .. } | Step::Console { .. } => Value::Null,
         Step::Play {
             protocol,
             name,
