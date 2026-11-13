@@ -355,3 +355,16 @@ Every gameplay change must name the parity scenarios it adds or turns green.
 | M9 | CraftBukkit/NMS `v1_8_R3` shims, driven by the plugin corpus |
 
 The parity harness arrives in M1 on purpose: every later milestone is developed against it.
+
+### Current status (keep this updated)
+
+| Area | State |
+|------|-------|
+| M0 | Done: workspace, CI, `cargo-deny`, `krol-java` (Random, StrictMath.log, String.hashCode, modified UTF-8, MathHelper, Hashtable/HashMap order, Properties, Gson writer/parser — all JVM-verified via `crates/krol-java/tools/JavaVectors.java`), `krol-nbt` |
+| M1 | Done: status (modern + legacy) for 47 and 5, `server.properties`, EULA, vanilla logging, parity runner (`run`, `record`, `diff`, `coverage`). Not yet: `fuzz`, `worldgen`, `plugins` commands, the vanilla Java agent for RNG pinning |
+| M2 | Done: offline/online login, encryption, compression, ops/whitelist/bans. Missing: `usercache.json`, duplicate-login handling |
+| M3 | Started: `krol-world` has Anvil regions, chunk sections and `level.dat`/`session.lock`. Next: tick loop, play-state packets (47 + 5 translation), joining an existing world |
+| Goldens | None recorded yet — `cargo xtask parity record` needs `KROL_VANILLA_JAR`; until then scenarios report `no_golden` |
+
+Login currently ends with a temporary play-state disconnect ("krol: play is not
+implemented yet") until M3 lands.
