@@ -11,6 +11,7 @@
 
 #![deny(missing_docs)]
 
+pub mod gson;
 mod hashtable;
 pub mod math;
 pub mod modified_utf8;
