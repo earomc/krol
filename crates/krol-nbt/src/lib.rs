@@ -4,7 +4,7 @@
 //! network packets (item stacks, tile entity data). This crate provides:
 //!
 //! - an in-memory model: [`Tag`], [`Compound`] and [`List`],
-//! - big-endian binary encoding and decoding ([`read`], [`write`]) with vanilla's
+//! - big-endian binary encoding and decoding ([`read`](fn@read), [`write`](fn@write)) with vanilla's
 //!   nesting-depth limit.
 //!
 //! 1.8 knows tag types 0–11; there is no long array.
