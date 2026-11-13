@@ -56,7 +56,10 @@ impl JsonValue {
     /// let v = JsonValue::object()
     ///     .with("text", "a=b <c>")
     ///     .with("bold", true);
-    /// assert_eq!(v.to_gson_string(), r#"{"text":"a=b <c>","bold":true}"#);
+    /// assert_eq!(
+    ///     v.to_gson_string(),
+    ///     "{\"text\":\"a\\u003db \\u003cc\\u003e\",\"bold\":true}"
+    /// );
     /// ```
     pub fn to_gson_string(&self) -> String {
         let mut out = String::new();
