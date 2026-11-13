@@ -212,6 +212,23 @@ public class JavaVectors {
         }
         out.append("}\n\n");
 
+        // --- Double.toString / Float.toString --------------------------------------
+        // Note: JDK 19+ prints the shortest round-trip digits (as krol does); JDK 8
+        // occasionally differs. Generate on a modern JDK.
+        out.append("#[test]\nfn double_to_string_matches_jvm() {\n");
+        Random dr = new Random(9);
+        for (int i = 0; i < 300; i++) {
+            double d = (dr.nextDouble() - 0.5) * Math.pow(10, dr.nextInt(24) - 10);
+            float f = (float) d;
+            out.append("    assert_eq!(krol_java::fmt::java_double(f64::from_bits(0x")
+               .append(Long.toHexString(Double.doubleToRawLongBits(d))).append("_u64)), \"")
+               .append(Double.toString(d)).append("\");\n");
+            out.append("    assert_eq!(krol_java::fmt::java_float(f32::from_bits(0x")
+               .append(Integer.toHexString(Float.floatToRawIntBits(f))).append("_u32)), \"")
+               .append(Float.toString(f)).append("\");\n");
+        }
+        out.append("}\n\n");
+
         // --- MathHelper sin table checksum ---------------------------------------
         // Vanilla fills its table with (float) Math.sin(i * PI * 2 / 65536).
         long h = 0xcbf29ce484222325L;

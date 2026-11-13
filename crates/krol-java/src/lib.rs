@@ -11,6 +11,7 @@
 
 #![deny(missing_docs)]
 
+pub mod fmt;
 pub mod gson;
 mod hashmap;
 mod hashtable;
