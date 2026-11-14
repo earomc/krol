@@ -7,6 +7,7 @@ use std::sync::atomic::Ordering;
 
 use krol_protocol::ProtocolVersion;
 use krol_protocol::packets::play::{ClientboundPlay, ServerboundPlay};
+use krol_protocol::translate::V5Translator;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -43,19 +44,33 @@ where
         return Ok(());
     }
 
+    // 1.7 clients: packets are translated at this edge; the game only sees protocol 47.
+    let translator = (version == ProtocolVersion::V5)
+        .then(|| std::sync::Arc::new(std::sync::Mutex::new(V5Translator::new())));
+    let encoder = translator.clone();
+    let encode = move |p: &ClientboundPlay| -> Vec<Vec<u8>> {
+        match &encoder {
+            Some(t) => t
+                .lock()
+                .ok()
+                .and_then(|mut t| t.clientbound(p).ok())
+                .unwrap_or_default(),
+            None => p.encode(version).map(|b| vec![b]).unwrap_or_default(),
+        }
+    };
+
     let writer_task = tokio::spawn(async move {
         while let Some(out) = out_rx.recv().await {
             match out {
                 Outgoing::Packet(p) => {
-                    let Ok(bytes) = p.encode(version) else {
-                        continue;
-                    };
-                    if writer.send(&bytes).await.is_err() {
-                        break;
+                    for bytes in encode(&p) {
+                        if writer.send(&bytes).await.is_err() {
+                            return false;
+                        }
                     }
                 }
                 Outgoing::Disconnect(json) => {
-                    if let Ok(bytes) = ClientboundPlay::Disconnect(json).encode(version) {
+                    for bytes in encode(&ClientboundPlay::Disconnect(json)) {
                         let _ = writer.send(&bytes).await;
                     }
                     writer.close().await;
@@ -69,7 +84,13 @@ where
     let reason = loop {
         tokio::select! {
             packet = reader.next_packet() => match packet {
-                Ok(Some(body)) => match ServerboundPlay::decode(&body, version) {
+                Ok(Some(body)) => match match &translator {
+                    Some(t) => t
+                        .lock()
+                        .map_err(|_| krol_protocol::DecodeError::UnexpectedEnd)
+                        .and_then(|mut t| t.serverbound(&body)),
+                    None => ServerboundPlay::decode(&body, version),
+                } {
                     Ok(packet) => {
                         if game.send(GameEvent::Packet { conn_id, packet }).is_err() {
                             break None;

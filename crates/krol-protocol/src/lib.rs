@@ -22,6 +22,7 @@ mod error;
 pub mod frame;
 pub mod legacy;
 pub mod packets;
+pub mod translate;
 mod version;
 
 pub use error::{DecodeError, EncodeError};
