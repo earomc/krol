@@ -136,7 +136,13 @@
           "packet": "entity_metadata"
         },
         {
-          "hex": "00000000011567656e657269632e6d6f76656d656e7453706565643fb99999a000000000",
+          "entity_id": 0,
+          "properties": [
+            [
+              "generic.movementSpeed",
+              0.10000000149011612
+            ]
+          ],
           "packet": "entity_properties"
         }
       ],
@@ -588,6 +594,7 @@
         "keep_alive": true,
         "time_update": true
       },
+      "entities": {},
       "closed_by_server": false
     },
     "log": [
@@ -731,7 +738,7 @@
       "UUIDMost": "6208174260129512481L",
       "XpLevel": 31,
       "XpP": "0.05785124f",
-      "XpSeed": 1723159920,
+      "XpSeed": 1735426479,
       "XpTotal": 7,
       "abilities": {
         "flySpeed": "0.05f",

@@ -9,6 +9,7 @@ pub mod blocks;
 pub mod commands;
 pub mod player;
 pub mod stats;
+mod tracker;
 pub mod world;
 
 use std::net::SocketAddr;
@@ -19,8 +20,7 @@ use std::time::{Duration, Instant};
 
 use krol_protocol::ProtocolVersion;
 use krol_protocol::packets::play::{
-    ChunkColumn, ClientboundPlay, Metadata, MetadataValue, PlayerListAction, PlayerListAdd,
-    ServerboundPlay,
+    ChunkColumn, ClientboundPlay, PlayerListAction, PlayerListAdd, ServerboundPlay,
 };
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, error::TryRecvError};
 use tracing::info;
@@ -175,6 +175,8 @@ struct Game {
     user_cache: crate::usercache::UserCache,
     /// Players disconnected by the server, removed (with logs) in the next network tick.
     pending_removals: Vec<(u64, Component)>,
+    /// Entity tracker entries.
+    tracker: tracker::Tracker,
     /// `save-on` / `save-off`.
     saving_enabled: bool,
     /// The world's unseeded `Random` (weather durations).
@@ -211,6 +213,7 @@ pub fn start(
         last_status_refresh: None,
         stopping: false,
         pending_removals: Vec::new(),
+        tracker: Default::default(),
         user_cache: crate::usercache::UserCache::load("usercache.json"),
         saving_enabled: true,
         weather_rand: krol_java::JavaRandom::new(
@@ -310,8 +313,15 @@ impl Game {
             // player's first update happens on the following tick (after its packets).
             if self.players[i].joined_tick != self.tick_count {
                 self.tick_player(i, radius);
+                // World.updateEntityWithOptionalForce: move the entity to its new chunk.
+                let p = &mut self.players[i];
+                p.entity_chunk = (
+                    krol_java::math::floor_f64(p.pos.0) >> 4,
+                    krol_java::math::floor_f64(p.pos.2) >> 4,
+                );
             }
         }
+        self.update_tracked_entities();
         for line in commands {
             self.console_command(&line);
         }
@@ -607,6 +617,16 @@ impl Game {
             krol_java::fmt::java_double(pos.2)
         );
 
+        // setPlayerGameTypeBasedOnOther: the game mode update goes to everyone already
+        // online (the new player has no connection handler yet).
+        let update = ClientboundPlay::PlayerListItem(PlayerListAction::UpdateGamemode(vec![(
+            profile_id, gamemode,
+        )]));
+        for p in &self.players {
+            p.send(update.clone());
+        }
+        // A new entity starts off the ground; stored players read `OnGround`.
+        let on_ground = loaded && data.get_bool("OnGround");
         let inventory = player::inventory_window(&data);
         let selected = data.get_i32("SelectedItemSlot").clamp(0, 8) as usize;
         let player = Player {
@@ -618,7 +638,7 @@ impl Game {
             out,
             pos,
             rotation,
-            on_ground: true,
+            on_ground,
             gamemode,
             skin_parts: 0,
             ticks: 0,
@@ -634,7 +654,14 @@ impl Game {
             selected,
             stats: stats::Stats::load(&self.level.dir, profile_id),
             xp_dirty: false,
-            score_dirty: false,
+            dirty_metadata: tracker::PLAYER_METADATA_INDICES.into_iter().collect(),
+            dirty_attributes: true,
+            entity_chunk: (
+                krol_java::math::floor_f64(pos.0) >> 4,
+                krol_java::math::floor_f64(pos.2) >> 4,
+            ),
+            swing: (false, 0),
+            last_equipment: Default::default(),
             chat_spam: 0,
             data,
         };
@@ -682,6 +709,8 @@ impl Game {
         for p in &self.players {
             p.send(add_new.clone());
         }
+        // spawnEntityInWorld: start tracking the new player.
+        self.track_player(new_index);
         for p in &self.players {
             self.players[new_index].send(ClientboundPlay::PlayerListItem(PlayerListAction::Add(
                 vec![player_list_entry(p)],
@@ -799,11 +828,6 @@ impl Game {
                 level: d.get_i32("XpLevel"),
                 total: d.get_i32("XpTotal"),
             });
-            player.send(self_metadata(player));
-            player.send(ClientboundPlay::EntityProperties {
-                entity_id: player.entity_id,
-                properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32))],
-            });
         }
         if player.ticks > 1 && player.xp_dirty {
             // Vanilla EntityPlayerMP.onUpdateEntity sends experience when it changed.
@@ -815,17 +839,33 @@ impl Game {
                 total: d.get_i32("XpTotal"),
             });
         }
-        if player.score_dirty {
-            // Entity tracker: changed data watcher entries (score is index 18).
-            player.score_dirty = false;
-            player.send(ClientboundPlay::EntityMetadata {
-                entity_id: player.entity_id,
-                metadata: vec![Metadata {
-                    index: 18,
-                    value: MetadataValue::Int(player.data.get_i32("Score")),
-                }],
-            });
+        // EntityLivingBase.updateArmSwingProgress (swing duration 6 without haste).
+        if player.swing.0 {
+            player.swing.1 += 1;
+            if player.swing.1 >= 6 {
+                player.swing = (false, 0);
+            }
+        } else {
+            player.swing.1 = 0;
         }
+        // EntityLivingBase.onUpdate: equipment changes go to the viewers.
+        let equipment = tracker::equipment(player);
+        let mut changed = Vec::new();
+        for (slot, item) in equipment.into_iter().enumerate() {
+            if player.last_equipment[slot] != item {
+                player.last_equipment[slot] = item.clone();
+                changed.push(ClientboundPlay::EntityEquipment {
+                    entity_id: player.entity_id,
+                    slot: slot as i16,
+                    item,
+                });
+            }
+        }
+        let entity_id = player.entity_id;
+        for packet in &changed {
+            self.send_to_tracking(entity_id, packet);
+        }
+        let player = &mut self.players[i];
         if player.ticks - player.last_keep_alive > 40 {
             player.last_keep_alive = player.ticks;
             let id = std::time::SystemTime::now()
@@ -881,6 +921,8 @@ impl Game {
                 columns,
             });
         }
+        // TODO(M4): tile entity updates for the sent chunks.
+        self.chunks_sent(i, &batch);
     }
 
     /// Vanilla `PlayerManager.updatePlayerInstances`: send each changed chunk's block
@@ -1388,7 +1430,27 @@ impl Game {
                 self.process_movement(i, None, None, on_ground);
             }
             ServerboundPlay::ClientSettings { skin_parts, .. } => {
-                self.players[i].skin_parts = skin_parts;
+                let p = &mut self.players[i];
+                if p.skin_parts != skin_parts {
+                    p.skin_parts = skin_parts;
+                    p.dirty_metadata.insert(10);
+                }
+            }
+            ServerboundPlay::Animation => {
+                // EntityLivingBase.swingItem: viewers see the swing unless one is already
+                // in its first half.
+                let p = &mut self.players[i];
+                if !p.swing.0 || p.swing.1 >= 3 || p.swing.1 < 0 {
+                    p.swing = (true, -1);
+                    let entity_id = p.entity_id;
+                    self.send_to_tracking(
+                        entity_id,
+                        &ClientboundPlay::Animation {
+                            entity_id,
+                            animation: 0,
+                        },
+                    );
+                }
             }
             ServerboundPlay::HeldItemChange { slot } => {
                 if (0..9).contains(&slot) {
@@ -1502,9 +1564,12 @@ impl Game {
         .color("yellow");
         let conn_id = self.players[i].conn_id;
         self.broadcast_chat(&left, Some(conn_id));
-        let mut player = self.players.remove(i);
-        player.stats.add("stat.leaveGame", 1);
-        player.save(&self.level.dir);
+        self.players[i].stats.add("stat.leaveGame", 1);
+        let dir = self.level.dir.clone();
+        self.players[i].save(&dir);
+        // World.removeEntity: viewers destroy the player entity.
+        self.untrack_player(i);
+        let player = self.players.remove(i);
         let remove =
             ClientboundPlay::PlayerListItem(PlayerListAction::Remove(vec![player.profile.id]));
         for p in &self.players {
@@ -1566,37 +1631,6 @@ fn player_list_entry(p: &Player) -> PlayerListAdd {
         gamemode: p.gamemode,
         ping: 0,
         display_name: None,
-    }
-}
-
-fn self_metadata(p: &Player) -> ClientboundPlay {
-    use MetadataValue::{Byte, Float, Int, Short, String};
-    let md = |index, value| Metadata { index, value };
-    let d = &p.data;
-    ClientboundPlay::EntityMetadata {
-        entity_id: p.entity_id,
-        metadata: vec![
-            md(0, Byte(0)),
-            md(
-                1,
-                Short(if d.contains_key("Air") {
-                    d.get_i16("Air")
-                } else {
-                    300
-                }),
-            ),
-            md(2, String(std::string::String::new())),
-            md(3, Byte(0)),
-            md(4, Byte(0)),
-            md(6, Float(d.get_f32("HealF"))),
-            md(7, Int(0)),
-            md(8, Byte(0)),
-            md(9, Byte(0)),
-            md(10, Byte(p.skin_parts as i8)),
-            md(16, Byte(0)),
-            md(17, Float(d.get_f32("AbsorptionAmount"))),
-            md(18, Int(d.get_i32("Score"))),
-        ],
     }
 }
 

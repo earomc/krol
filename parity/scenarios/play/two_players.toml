@@ -1,0 +1,32 @@
+description = "Two players see each other: spawn, walking, looking, arm swing, chat, leaving"
+subsystem = "entity"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "watcher"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 9
+
+[[steps]]
+id = "mover"
+action = "play"
+protocol = 47
+name = "jeb_"
+seconds = 5
+# One block only: after about 1.5 blocks vanilla plays a step sound to the other player,
+# which needs server-side entity movement and collision (M5).
+moves = [[0.25, 0, 0], [0.5, 0, 0], [0.75, 0, 0], [1.0, 0, 0]]
+chat = [
+    "@1500 !look 90 30",
+    "@2000 !swing",
+    "@2500 hello",
+]
+
+[observe]
+log = true

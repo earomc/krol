@@ -69,8 +69,17 @@ pub struct Player {
     pub stats: super::stats::Stats,
     /// Experience changed since the last Set Experience packet.
     pub xp_dirty: bool,
-    /// Score changed since the last metadata update.
-    pub score_dirty: bool,
+    /// Data watcher indices changed since the entity tracker last sent them (all of them
+    /// on creation).
+    pub dirty_metadata: std::collections::BTreeSet<u8>,
+    /// Watched attributes changed since the tracker last sent them.
+    pub dirty_attributes: bool,
+    /// The chunk the player entity was last added to (vanilla `chunkCoordX/Z`).
+    pub entity_chunk: (i32, i32),
+    /// Arm swing state (`isSwingInProgress`, `swingProgressInt`).
+    pub swing: (bool, i32),
+    /// Equipment as last announced to viewers (`previousEquipment`).
+    pub last_equipment: [Option<krol_protocol::packets::play::ItemStack>; 5],
     /// Chat spam counter (vanilla: `chatSpamThresholdCount`).
     pub chat_spam: i32,
     /// Raw player data, kept to preserve fields krol does not model yet.
@@ -199,7 +208,7 @@ impl Player {
     pub fn add_experience(&mut self, amount: i32) {
         let score = self.data.get_i32("Score").wrapping_add(amount);
         self.data.insert("Score", Tag::Int(score));
-        self.score_dirty = true;
+        self.dirty_metadata.insert(18);
         let mut total = self.data.get_i32("XpTotal");
         let mut level = self.data.get_i32("XpLevel");
         let mut bar = self.data.get_f32("XpP");

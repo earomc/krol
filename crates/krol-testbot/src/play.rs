@@ -49,7 +49,8 @@ pub struct PlayObservation {
 /// `!dig <x> <y> <z> <face> [status]` (default: start digging, status 0),
 /// `!creative <slot> <id> <count> <damage>` (set a slot in creative mode),
 /// `!place <x> <y> <z> <face>` (use the held item, cursor 8/8/8; sends the swing first),
-/// `!hold <slot>` (select hotbar slot). Optional
+/// `!hold <slot>` (select hotbar slot), `!swing` (arm animation),
+/// `!look <yaw> <pitch>` (Player Look, on ground). Optional
 /// `moves` (offsets from the first server-given position) replace the idle Player
 /// packet, one Position packet per tick, after which the bot idles again.
 ///
@@ -250,6 +251,12 @@ fn action_or_chat(
                 damage: num(4) as i16,
                 nbt: None,
             }),
+        }],
+        Some("swing") => vec![ServerboundPlay::Animation],
+        Some("look") => vec![ServerboundPlay::Look {
+            yaw: parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(0.0),
+            pitch: parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0.0),
+            on_ground: true,
         }],
         Some("hold") => vec![ServerboundPlay::HeldItemChange {
             slot: num(1) as i16,

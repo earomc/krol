@@ -117,7 +117,13 @@
           "packet": "entity_metadata"
         },
         {
-          "hex": "00000000011567656e657269632e6d6f76656d656e7453706565643fb99999a000000000",
+          "entity_id": 0,
+          "properties": [
+            [
+              "generic.movementSpeed",
+              0.10000000149011612
+            ]
+          ],
           "packet": "entity_properties"
         },
         {
@@ -579,6 +585,7 @@
         "keep_alive": true,
         "time_update": true
       },
+      "entities": {},
       "closed_by_server": false
     },
     "log": [
@@ -697,9 +704,9 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.playOneMinute": 77,
+        "stat.playOneMinute": 76,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 77,
+        "stat.timeSinceDeath": 76,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [

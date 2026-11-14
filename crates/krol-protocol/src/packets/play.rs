@@ -581,6 +581,65 @@ pub enum ClientboundPlay {
         entity_id: i32,
         properties: Vec<(String, f64)>,
     },
+    /// `0x04`
+    EntityEquipment {
+        entity_id: i32,
+        slot: i16,
+        item: Option<ItemStack>,
+    },
+    /// `0x0B`
+    Animation { entity_id: i32, animation: u8 },
+    /// `0x0C` (positions in 1/32 blocks, angles in 1/256 turns)
+    SpawnPlayer {
+        entity_id: i32,
+        uuid: u128,
+        x: i32,
+        y: i32,
+        z: i32,
+        yaw: i8,
+        pitch: i8,
+        current_item: i16,
+        metadata: Vec<Metadata>,
+    },
+    /// `0x13`
+    DestroyEntities(Vec<i32>),
+    /// `0x15`
+    EntityRelMove {
+        entity_id: i32,
+        dx: i8,
+        dy: i8,
+        dz: i8,
+        on_ground: bool,
+    },
+    /// `0x16`
+    EntityLook {
+        entity_id: i32,
+        yaw: i8,
+        pitch: i8,
+        on_ground: bool,
+    },
+    /// `0x17`
+    EntityLookMove {
+        entity_id: i32,
+        dx: i8,
+        dy: i8,
+        dz: i8,
+        yaw: i8,
+        pitch: i8,
+        on_ground: bool,
+    },
+    /// `0x18`
+    EntityTeleport {
+        entity_id: i32,
+        x: i32,
+        y: i32,
+        z: i32,
+        yaw: i8,
+        pitch: i8,
+        on_ground: bool,
+    },
+    /// `0x19`
+    EntityHeadLook { entity_id: i32, yaw: i8 },
 }
 
 /// One entity metadata entry (protocol 47 types).
@@ -687,6 +746,15 @@ impl ClientboundPlay {
             Self::Effect { .. } => 0x28,
             Self::EntityMetadata { .. } => 0x1c,
             Self::EntityProperties { .. } => 0x20,
+            Self::EntityEquipment { .. } => 0x04,
+            Self::Animation { .. } => 0x0b,
+            Self::SpawnPlayer { .. } => 0x0c,
+            Self::DestroyEntities(_) => 0x13,
+            Self::EntityRelMove { .. } => 0x15,
+            Self::EntityLook { .. } => 0x16,
+            Self::EntityLookMove { .. } => 0x17,
+            Self::EntityTeleport { .. } => 0x18,
+            Self::EntityHeadLook { .. } => 0x19,
         }
     }
 
@@ -882,6 +950,105 @@ impl ClientboundPlay {
                     w.string(key)?.f64(*value).varint(0);
                 }
             }
+            Self::EntityEquipment {
+                entity_id,
+                slot,
+                item,
+            } => {
+                w.varint(*entity_id).i16(*slot);
+                ItemStack::write(&mut w, item.as_ref())?;
+            }
+            Self::Animation {
+                entity_id,
+                animation,
+            } => {
+                w.varint(*entity_id).u8(*animation);
+            }
+            Self::SpawnPlayer {
+                entity_id,
+                uuid,
+                x,
+                y,
+                z,
+                yaw,
+                pitch,
+                current_item,
+                metadata,
+            } => {
+                w.varint(*entity_id)
+                    .uuid(*uuid)
+                    .i32(*x)
+                    .i32(*y)
+                    .i32(*z)
+                    .i8(*yaw)
+                    .i8(*pitch)
+                    .i16(*current_item);
+                write_metadata(&mut w, metadata)?;
+            }
+            Self::DestroyEntities(ids) => {
+                w.varint(ids.len() as i32);
+                for id in ids {
+                    w.varint(*id);
+                }
+            }
+            Self::EntityRelMove {
+                entity_id,
+                dx,
+                dy,
+                dz,
+                on_ground,
+            } => {
+                w.varint(*entity_id)
+                    .i8(*dx)
+                    .i8(*dy)
+                    .i8(*dz)
+                    .bool(*on_ground);
+            }
+            Self::EntityLook {
+                entity_id,
+                yaw,
+                pitch,
+                on_ground,
+            } => {
+                w.varint(*entity_id).i8(*yaw).i8(*pitch).bool(*on_ground);
+            }
+            Self::EntityLookMove {
+                entity_id,
+                dx,
+                dy,
+                dz,
+                yaw,
+                pitch,
+                on_ground,
+            } => {
+                w.varint(*entity_id)
+                    .i8(*dx)
+                    .i8(*dy)
+                    .i8(*dz)
+                    .i8(*yaw)
+                    .i8(*pitch)
+                    .bool(*on_ground);
+            }
+            Self::EntityTeleport {
+                entity_id,
+                x,
+                y,
+                z,
+                yaw,
+                pitch,
+                on_ground,
+            } => {
+                w.varint(*entity_id)
+                    .i32(*x)
+                    .i32(*y)
+                    .i32(*z)
+                    .i8(*yaw)
+                    .i8(*pitch)
+                    .bool(*on_ground);
+            }
+            Self::EntityHeadLook { entity_id, yaw } => {
+                w.varint(*entity_id).i8(*yaw);
+            }
         }
         Ok(w.into_bytes())
     }
@@ -938,6 +1105,69 @@ impl ClientboundPlay {
             0x40 => Self::Disconnect(r.string(32767)?),
             0x41 => Self::ServerDifficulty {
                 difficulty: r.u8()?,
+            },
+            0x13 => {
+                let n = r.varint()?;
+                let mut ids = Vec::new();
+                for _ in 0..n.clamp(0, 1 << 16) {
+                    ids.push(r.varint()?);
+                }
+                Self::DestroyEntities(ids)
+            }
+            0x15 => Self::EntityRelMove {
+                entity_id: r.varint()?,
+                dx: r.i8()?,
+                dy: r.i8()?,
+                dz: r.i8()?,
+                on_ground: r.bool()?,
+            },
+            0x16 => Self::EntityLook {
+                entity_id: r.varint()?,
+                yaw: r.i8()?,
+                pitch: r.i8()?,
+                on_ground: r.bool()?,
+            },
+            0x17 => Self::EntityLookMove {
+                entity_id: r.varint()?,
+                dx: r.i8()?,
+                dy: r.i8()?,
+                dz: r.i8()?,
+                yaw: r.i8()?,
+                pitch: r.i8()?,
+                on_ground: r.bool()?,
+            },
+            0x18 => Self::EntityTeleport {
+                entity_id: r.varint()?,
+                x: r.i32()?,
+                y: r.i32()?,
+                z: r.i32()?,
+                yaw: r.i8()?,
+                pitch: r.i8()?,
+                on_ground: r.bool()?,
+            },
+            0x20 => {
+                let entity_id = r.varint()?;
+                let n = r.i32()?;
+                let mut properties = Vec::new();
+                for _ in 0..n.clamp(0, 1024) {
+                    let key = r.string(64)?;
+                    let value = r.f64()?;
+                    // Modifiers (uuid, amount, operation) are not modeled.
+                    for _ in 0..r.varint()?.clamp(0, 1024) {
+                        r.uuid()?;
+                        r.f64()?;
+                        r.i8()?;
+                    }
+                    properties.push((key, value));
+                }
+                Self::EntityProperties {
+                    entity_id,
+                    properties,
+                }
+            }
+            0x19 => Self::EntityHeadLook {
+                entity_id: r.varint()?,
+                yaw: r.i8()?,
             },
             _ => return Ok(None),
         };
@@ -1183,6 +1413,97 @@ mod tests {
             state: 48,
         };
         assert_eq!(hex(&change.encode(V).unwrap()[1..]), "ffff8ac00bfffe4d30");
+    }
+
+    /// Bytes recorded from vanilla 1.8.8 (parity/golden/play/two_players.json).
+    #[test]
+    fn vanilla_entity_packets() {
+        use MetadataValue::*;
+        let md = |index, value| Metadata { index, value };
+        let spawn = ClientboundPlay::SpawnPlayer {
+            entity_id: 1,
+            uuid: 0xa762f560_4fce_3236_812a_b80efff0b62b,
+            x: -15088,
+            y: 128,
+            z: -13904,
+            yaw: 0,
+            pitch: 0,
+            current_item: 0,
+            metadata: vec![
+                md(0, Byte(0)),
+                md(1, Short(300)),
+                md(2, String(std::string::String::new())),
+                md(3, Byte(0)),
+                md(4, Byte(0)),
+                md(6, Float(20.0)),
+                md(7, Int(0)),
+                md(8, Byte(0)),
+                md(9, Byte(0)),
+                md(10, Byte(0)),
+                md(16, Byte(0)),
+                md(17, Float(0.0)),
+                md(18, Int(0)),
+            ],
+        };
+        assert_eq!(
+            hex(&spawn.encode(V).unwrap()[1..]),
+            "01a762f5604fce3236812ab80efff0b62bffffc51000000080ffffc9b000000000000021012c8200030004006641a000004700000000080009000a001000710000000052000000007f"
+        );
+        let cases: [(ClientboundPlay, &str); 6] = [
+            (
+                ClientboundPlay::EntityTeleport {
+                    entity_id: 1,
+                    x: -15080,
+                    y: 128,
+                    z: -13904,
+                    yaw: 0,
+                    pitch: 0,
+                    on_ground: true,
+                },
+                "01ffffc51800000080ffffc9b0000001",
+            ),
+            (
+                ClientboundPlay::EntityRelMove {
+                    entity_id: 1,
+                    dx: 8,
+                    dy: 0,
+                    dz: 0,
+                    on_ground: true,
+                },
+                "0108000001",
+            ),
+            (
+                ClientboundPlay::EntityLook {
+                    entity_id: 1,
+                    yaw: 64,
+                    pitch: 21,
+                    on_ground: true,
+                },
+                "01401501",
+            ),
+            (
+                ClientboundPlay::EntityHeadLook {
+                    entity_id: 1,
+                    yaw: 64,
+                },
+                "0140",
+            ),
+            (
+                ClientboundPlay::Animation {
+                    entity_id: 1,
+                    animation: 0,
+                },
+                "0100",
+            ),
+            (ClientboundPlay::DestroyEntities(vec![1]), "0101"),
+        ];
+        for (packet, expected) in cases {
+            let bytes = packet.encode(V).unwrap();
+            assert_eq!(hex(&bytes[1..]), expected);
+            if let Some(decoded) = ClientboundPlay::decode(&bytes, V).unwrap() {
+                assert_eq!(decoded, packet);
+            }
+        }
     }
 
     #[test]

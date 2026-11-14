@@ -124,6 +124,16 @@ description = "Teleport confirmation, moved too quickly, chunk tracking while wa
 scenarios = ["play/walk_and_jump"]
 
 [[feature]]
+id = "entity.players_tracking"
+description = "Players see each other: spawn, movement/look/head packets, arm swing, destroy on leave, game mode list update"
+scenarios = ["play/two_players"]
+
+[[feature]]
+id = "entity.step_sounds"
+description = "Step sounds of walking players heard by others (needs moveEntity)"
+scenarios = []
+
+[[feature]]
 id = "play.collision"
 description = "Moved wrongly / collision (needs entity physics)"
 scenarios = []

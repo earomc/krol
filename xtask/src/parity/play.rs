@@ -6,7 +6,11 @@
 //! - `packets`: every packet of the sequence, decoded where modeled, otherwise as hex
 //!   (volatile fields such as keep-alive ids and world time are dropped),
 //! - `chunks`: the sorted set of chunk columns received (`x,z,mask`),
-//! - `periodic`: which periodic packets were seen at all.
+//! - `periodic`: which periodic packets were seen at all,
+//! - `entities`: the final position, angles and ground flag of every entity spawned with
+//!   Spawn Player, after applying all movement packets (relative moves, looks, teleports
+//!   and head looks are left out of `sequence`: how movement is split into packets
+//!   depends on when client packets land in server ticks, the sum does not).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -115,6 +119,16 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
         }
         ClientboundPlay::Disconnect(reason) => json!({ "reason": reason }),
         ClientboundPlay::ServerDifficulty { difficulty } => json!({ "difficulty": difficulty }),
+        // Vanilla sends attributes in `HashSet` order of identity hash codes, which
+        // changes from run to run.
+        ClientboundPlay::EntityProperties {
+            entity_id,
+            properties,
+        } => {
+            let mut sorted = properties.clone();
+            sorted.sort_by(|a, b| a.0.cmp(&b.0));
+            json!({ "entity_id": entity_id, "properties": sorted })
+        }
         // Volatile values (ids, world time) are not compared.
         ClientboundPlay::KeepAlive { .. } | ClientboundPlay::TimeUpdate { .. } => json!({}),
         other => json!({ "debug": format!("{other:?}") }),
@@ -166,8 +180,131 @@ fn login_json(p: &ClientboundLogin) -> Value {
     }
 }
 
+/// An entity's state as the client sees it (1/32 blocks, 1/256 turns).
+#[derive(Default)]
+struct EntityState {
+    pos: [i64; 3],
+    yaw: i8,
+    pitch: i8,
+    head: i8,
+    on_ground: Option<bool>,
+}
+
+fn spawn_player_state(body: &[u8]) -> Option<(i32, EntityState)> {
+    let mut r = PacketReader::new(body);
+    let id = r.varint().ok()?;
+    r.uuid().ok()?;
+    let pos = [
+        i64::from(r.i32().ok()?),
+        i64::from(r.i32().ok()?),
+        i64::from(r.i32().ok()?),
+    ];
+    let yaw = r.i8().ok()?;
+    let pitch = r.i8().ok()?;
+    Some((
+        id,
+        EntityState {
+            pos,
+            yaw,
+            pitch,
+            head: yaw,
+            on_ground: None,
+        },
+    ))
+}
+
+/// Applies a movement packet; returns `false` for other packets.
+fn apply_movement(entities: &mut BTreeMap<i32, EntityState>, p: &ClientboundPlay) -> bool {
+    let (id, delta, angles, abs, head, ground) = match *p {
+        ClientboundPlay::EntityRelMove {
+            entity_id,
+            dx,
+            dy,
+            dz,
+            on_ground,
+        } => (
+            entity_id,
+            Some([dx, dy, dz]),
+            None,
+            None,
+            None,
+            Some(on_ground),
+        ),
+        ClientboundPlay::EntityLook {
+            entity_id,
+            yaw,
+            pitch,
+            on_ground,
+        } => (
+            entity_id,
+            None,
+            Some((yaw, pitch)),
+            None,
+            None,
+            Some(on_ground),
+        ),
+        ClientboundPlay::EntityLookMove {
+            entity_id,
+            dx,
+            dy,
+            dz,
+            yaw,
+            pitch,
+            on_ground,
+        } => (
+            entity_id,
+            Some([dx, dy, dz]),
+            Some((yaw, pitch)),
+            None,
+            None,
+            Some(on_ground),
+        ),
+        ClientboundPlay::EntityTeleport {
+            entity_id,
+            x,
+            y,
+            z,
+            yaw,
+            pitch,
+            on_ground,
+        } => (
+            entity_id,
+            None,
+            Some((yaw, pitch)),
+            Some([x, y, z]),
+            None,
+            Some(on_ground),
+        ),
+        ClientboundPlay::EntityHeadLook { entity_id, yaw } => {
+            (entity_id, None, None, None, Some(yaw), None)
+        }
+        _ => return false,
+    };
+    let e = entities.entry(id).or_default();
+    if let Some(d) = delta {
+        for (p, d) in e.pos.iter_mut().zip(d) {
+            *p += i64::from(d);
+        }
+    }
+    if let Some(a) = abs {
+        e.pos = a.map(i64::from);
+    }
+    if let Some((yaw, pitch)) = angles {
+        e.yaw = yaw;
+        e.pitch = pitch;
+    }
+    if let Some(h) = head {
+        e.head = h;
+    }
+    if ground.is_some() {
+        e.on_ground = ground;
+    }
+    true
+}
+
 /// Turns a play session into a comparable observation.
 pub fn summarize(o: &PlayObservation) -> Value {
+    let mut entities: BTreeMap<i32, EntityState> = BTreeMap::new();
     let mut sequence = Vec::new();
     let mut packets: Vec<Value> = Vec::new();
     let mut chunks = BTreeSet::new();
@@ -184,6 +321,18 @@ pub fn summarize(o: &PlayObservation) -> Value {
             0x21 | 0x26 => {
                 chunks.extend(chunk_columns(p.id, &p.body));
                 continue;
+            }
+            0x15..=0x19 => {
+                if let Some(d) = &p.decoded {
+                    apply_movement(&mut entities, d);
+                }
+                continue;
+            }
+            0x0c => {
+                if let Some((id, state)) = spawn_player_state(&p.body) {
+                    entities.insert(id, state);
+                }
+                sequence.push(Value::String(n.clone()));
             }
             _ => sequence.push(Value::String(n.clone())),
         }
@@ -206,6 +355,18 @@ pub fn summarize(o: &PlayObservation) -> Value {
         "chat": chat,
         "chunks": chunks.into_iter().collect::<Vec<_>>(),
         "periodic": periodic,
+        "entities": entities
+            .iter()
+            .map(|(id, e)| {
+                (
+                    id.to_string(),
+                    json!({
+                        "pos": e.pos, "yaw": e.yaw, "pitch": e.pitch, "head": e.head,
+                        "on_ground": e.on_ground,
+                    }),
+                )
+            })
+            .collect::<serde_json::Map<_, _>>(),
         "closed_by_server": o.closed_by_server,
     })
 }
