@@ -192,9 +192,9 @@
         },
         {
           "name": "random.pop",
-          "x": -3764,
-          "y": 24,
-          "z": -3524,
+          "x": null,
+          "y": null,
+          "z": null,
           "volume": 0.20000000298023224,
           "pitch": null,
           "packet": "sound_effect"
@@ -236,9 +236,9 @@
         },
         {
           "name": "random.pop",
-          "x": -3764,
-          "y": 24,
-          "z": -3524,
+          "x": null,
+          "y": null,
+          "z": null,
           "volume": 0.20000000298023224,
           "pitch": null,
           "packet": "sound_effect"
@@ -971,9 +971,9 @@
         },
         {
           "name": "random.pop",
-          "x": -3764,
-          "y": 24,
-          "z": -3524,
+          "x": null,
+          "y": null,
+          "z": null,
           "volume": 0.20000000298023224,
           "pitch": null,
           "packet": "sound_effect"
@@ -1024,9 +1024,9 @@
         },
         {
           "name": "random.pop",
-          "x": -3764,
-          "y": 24,
-          "z": -3524,
+          "x": null,
+          "y": null,
+          "z": null,
           "volume": 0.20000000298023224,
           "pitch": null,
           "packet": "sound_effect"
@@ -1552,6 +1552,7 @@
       "[Server thread/INFO]: Preparing level \"world\"",
       "[Server thread/INFO]: Preparing start region for level 0",
       "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
+      "[Server thread/INFO]: Game rule has been updated",
       "[Server thread/INFO]: jeb_[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
       "[Server thread/INFO]: jeb_ joined the game",
       "[Server thread/INFO]: Notch[/127.0.0.1:<port>] logged in with entity id 1 at (-473.5, 4.0, -440.5)",
@@ -1640,7 +1641,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": -310408347,
+      "XpSeed": 251664842,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -1668,9 +1669,9 @@
       ],
       "value": {
         "stat.walkOneCm": 300,
-        "stat.playOneMinute": 160,
+        "stat.playOneMinute": 161,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 160,
+        "stat.timeSinceDeath": 161,
         "stat.mineBlock.minecraft.dirt": 2,
         "achievement.exploreAllBiomes": {
           "value": 0,

@@ -196,6 +196,17 @@ impl Game {
 
     /// Creates an item entity (`new EntityItem`) and adds it to the world.
     pub(super) fn spawn_item(&mut self, pos: (f64, f64, f64), stack: ItemStack, delay: i32) {
+        self.spawn_item_moving(pos, stack, delay, None);
+    }
+
+    /// Like [`Self::spawn_item`], replacing the random start motion.
+    fn spawn_item_moving(
+        &mut self,
+        pos: (f64, f64, f64),
+        stack: ItemStack,
+        delay: i32,
+        motion: Option<(f64, f64, f64)>,
+    ) {
         let entity_id = self.next_entity_id();
         // Vanilla uses Math.random() here.
         let r = &mut self.world_rand;
@@ -206,7 +217,7 @@ impl Game {
         body.width = 0.25;
         body.height = 0.25;
         body.step_height = 0.0;
-        body.motion = (mx, f64::from(0.2f32), mz);
+        body.motion = motion.unwrap_or((mx, f64::from(0.2f32), mz));
         let item = ItemEntity {
             body,
             yaw,
@@ -225,18 +236,14 @@ impl Game {
         self.track_entity(entity_id);
     }
 
-    /// Ticks every item (`EntityItem.onUpdate`) and removes dead ones.
-    pub(super) fn tick_items(&mut self) {
-        let ids: Vec<i32> = self.items.keys().copied().collect();
-        for id in ids {
-            let dead = self.items.get(&id).is_none_or(|it| it.dead);
-            if !dead {
-                self.tick_item(id);
-            }
-            if self.items.get(&id).is_some_and(|it| it.dead) {
-                self.items.remove(&id);
-                self.untrack_entity(id);
-            }
+    /// One item's turn in the entity loop: tick it unless dead, then remove it if dead.
+    pub(super) fn update_item(&mut self, id: i32) {
+        if self.items.get(&id).is_some_and(|it| !it.dead) {
+            self.tick_item(id);
+        }
+        if self.items.get(&id).is_some_and(|it| it.dead) {
+            self.items.remove(&id);
+            self.untrack_entity(id);
         }
     }
 
@@ -349,6 +356,52 @@ impl Game {
             this.dead = true;
         }
         true
+    }
+
+    /// Vanilla `EntityPlayer.dropOneItem` (Q, or Ctrl+Q for the whole stack) and
+    /// `dropItem` with the thrower set.
+    pub(super) fn drop_held(&mut self, i: usize, all: bool) {
+        let p = &mut self.players[i];
+        let slot = 36 + p.selected;
+        let Some(held) = p.inventory[slot].as_mut() else {
+            return;
+        };
+        let amount = if all { held.count } else { 1 };
+        let stack = if held.count <= amount {
+            p.inventory[slot].take()
+        } else {
+            held.count -= amount;
+            Some(ItemStack {
+                count: amount,
+                ..held.clone()
+            })
+        };
+        let Some(stack) = stack.filter(|s| s.count != 0) else {
+            return;
+        };
+        let p = &mut self.players[i];
+        let y = p.pos.1 - f64::from(0.3f32) + f64::from(1.62f32);
+        let (yaw, pitch) = (
+            p.rotation.0 / 180.0 * std::f32::consts::PI,
+            p.rotation.1 / 180.0 * std::f32::consts::PI,
+        );
+        use krol_java::math::{cos, sin};
+        let f = 0.3f32;
+        let mut motion = (
+            f64::from(-sin(yaw) * cos(pitch) * f),
+            f64::from(-sin(pitch) * f + 0.1),
+            f64::from(cos(yaw) * cos(pitch) * f),
+        );
+        let r = &mut p.rand;
+        let angle = r.next_float() * std::f32::consts::PI * 2.0;
+        let speed = 0.02 * r.next_float();
+        motion.0 += f64::from(angle).cos() * f64::from(speed);
+        motion.1 += f64::from((r.next_float() - r.next_float()) * 0.1);
+        motion.2 += f64::from(angle).sin() * f64::from(speed);
+        let pos = (p.pos.0, y, p.pos.2);
+        p.stats.add("stat.drop", 1);
+        // TODO(M5): remember the thrower (diamondsToYou achievement).
+        self.spawn_item_moving(pos, stack, 40, Some(motion));
     }
 
     /// Items near the player get picked up (`EntityPlayer.onLivingUpdate` collisions,

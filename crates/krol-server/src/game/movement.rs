@@ -128,7 +128,29 @@ impl Game {
     ///
     /// TODO(M5): the rest of the living update (fire, air, potions, food, regeneration,
     /// entity pushing).
+    /// `EntityLivingBase.onUpdate`: equipment changes go to the viewers.
+    fn send_equipment_changes(&mut self, i: usize) {
+        let player = &mut self.players[i];
+        let equipment = super::tracker::equipment(player);
+        let mut changed = Vec::new();
+        for (slot, item) in equipment.into_iter().enumerate() {
+            if player.last_equipment[slot] != item {
+                player.last_equipment[slot] = item.clone();
+                changed.push(ClientboundPlay::EntityEquipment {
+                    entity_id: player.entity_id,
+                    slot: slot as i16,
+                    item,
+                });
+            }
+        }
+        let entity_id = player.entity_id;
+        for packet in &changed {
+            self.send_to_tracking(entity_id, packet);
+        }
+    }
+
     fn living_move(&mut self, i: usize) {
+        self.send_equipment_changes(i);
         let water = {
             let bb = Aabb::at(self.players[i].pos, 0.6, 1.8)
                 .expand([0.0, -0.4, 0.0])

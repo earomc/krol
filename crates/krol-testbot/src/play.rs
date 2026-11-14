@@ -119,23 +119,8 @@ pub async fn play_session(
             () = tokio::time::sleep_until(deadline) => break,
             _ = tick.tick() => {
                 if positioned {
-                    match (origin, moves.get(next_move)) {
-                        // An empty move: send nothing this tick.
-                        (Some(_), Some(m)) if m.is_empty() => next_move += 1,
-                        (Some((ox, oy, oz)), Some(m)) => {
-                            next_move += 1;
-                            let at = |k: usize| m.get(k).copied().unwrap_or(0.0);
-                            send_play(&mut conn, v5_eid, &ServerboundPlay::Position {
-                                x: ox + at(0), y: oy + at(1), z: oz + at(2),
-                                on_ground: m.get(3).is_none_or(|g| *g != 0.0),
-                            }).await?;
-                        }
-                        _ => send_play(&mut conn, v5_eid, &ServerboundPlay::Player { on_ground: true }).await?,
-                    }
-                    if Instant::now() >= next_chat && let Some(message) = pending_chat.pop() {
-                        send_play(&mut conn, v5_eid, &ServerboundPlay::Chat { message }).await?;
-                        next_chat = Instant::now() + Duration::from_millis(500);
-                    }
+                    // Scripted actions go out right before this tick's movement packet, so
+                    // the server always handles both in the same tick.
                     if let Some(at) = positioned_at {
                         let elapsed = at.elapsed().as_millis() as u64;
                         let due: Vec<String> = timed_chat
@@ -158,6 +143,23 @@ pub async fn play_session(
                             }
                             let _ = held_slot;
                         }
+                    }
+                    match (origin, moves.get(next_move)) {
+                        // An empty move: send nothing this tick.
+                        (Some(_), Some(m)) if m.is_empty() => next_move += 1,
+                        (Some((ox, oy, oz)), Some(m)) => {
+                            next_move += 1;
+                            let at = |k: usize| m.get(k).copied().unwrap_or(0.0);
+                            send_play(&mut conn, v5_eid, &ServerboundPlay::Position {
+                                x: ox + at(0), y: oy + at(1), z: oz + at(2),
+                                on_ground: m.get(3).is_none_or(|g| *g != 0.0),
+                            }).await?;
+                        }
+                        _ => send_play(&mut conn, v5_eid, &ServerboundPlay::Player { on_ground: true }).await?,
+                    }
+                    if Instant::now() >= next_chat && let Some(message) = pending_chat.pop() {
+                        send_play(&mut conn, v5_eid, &ServerboundPlay::Chat { message }).await?;
+                        next_chat = Instant::now() + Duration::from_millis(500);
                     }
                 }
             }

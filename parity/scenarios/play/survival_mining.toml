@@ -5,7 +5,8 @@ subsystem = "blocks"
 # watcher does not overlap him, and the first drop is out of reach until it settled
 # (how long its arc takes is random). Then he walks into its hole; the second drop lands
 # next to him and is picked up when its pickup delay ends. Item positions and speeds are random in vanilla (unseeded
-# randoms); the summary leaves them out.
+# randoms); the summary leaves them out, and with them where the pickup sound plays
+# (the player's position at the moment of pickup).
 
 [setup]
 world = "fixtures/worlds/flat"
@@ -13,6 +14,11 @@ properties = { online-mode = "false", level-type = "FLAT", generate-structures =
 
 [setup.files]
 "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_survival.dat"
+
+# Exposed dirt would turn into grass on a random block tick.
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
 
 [[steps]]
 id = "watcher"

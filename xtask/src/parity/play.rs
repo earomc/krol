@@ -142,8 +142,12 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
                 name.as_str(),
                 "game.player.hurt" | "game.player.die" | "random.pop"
             );
+            // The pickup sound plays where the player is when an item's random arc
+            // brings it into reach.
+            let random_place = name == "random.pop";
+            let place = |v: i32| if random_place { Value::Null } else { json!(v) };
             json!({
-                "name": name, "x": x, "y": y, "z": z, "volume": volume,
+                "name": name, "x": place(*x), "y": place(*y), "z": place(*z), "volume": volume,
                 "pitch": if random_pitch { Value::Null } else { json!(pitch) },
             })
         }

@@ -212,3 +212,8 @@ scenarios = ["play/survival_mining"]
 id = "entity.items"
 description = "Item entities: block drops, spawn/metadata/velocity, physics, pickup (collect, pop sound, inventory), destroy"
 scenarios = ["play/survival_mining"]
+
+[[feature]]
+id = "entity.item_drop"
+description = "Dropping items (Q / Ctrl+Q): toss motion, 40-tick pickup delay, stat.drop, merging, pickup"
+scenarios = ["play/drop_items"]

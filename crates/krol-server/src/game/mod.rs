@@ -335,7 +335,19 @@ impl Game {
         let radius = self.config.view_distance;
         self.tick_active_chunks(radius);
         self.flush_block_changes();
-        for i in 0..self.players.len() {
+        // World.updateEntities: entities update in the order they were added, which is
+        // entity id order; dead items are removed when the loop reaches them.
+        let mut order: Vec<i32> = self.players.iter().map(|p| p.entity_id).collect();
+        order.extend(self.items.keys().copied());
+        order.sort_unstable();
+        for id in order {
+            if self.items.contains_key(&id) {
+                self.update_item(id);
+                continue;
+            }
+            let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
+                continue;
+            };
             // Vanilla accepts logins in the network phase at the end of a tick, so a new
             // player's first update happens on the following tick (after its packets).
             if self.players[i].joined_tick != self.tick_count {
@@ -348,7 +360,6 @@ impl Game {
                 );
             }
         }
-        self.tick_items();
         self.update_tracked_entities();
         for line in commands {
             self.console_command(&line);
@@ -934,23 +945,6 @@ impl Game {
         } else {
             player.swing.1 = 0;
         }
-        // EntityLivingBase.onUpdate: equipment changes go to the viewers.
-        let equipment = tracker::equipment(player);
-        let mut changed = Vec::new();
-        for (slot, item) in equipment.into_iter().enumerate() {
-            if player.last_equipment[slot] != item {
-                player.last_equipment[slot] = item.clone();
-                changed.push(ClientboundPlay::EntityEquipment {
-                    entity_id: player.entity_id,
-                    slot: slot as i16,
-                    item,
-                });
-            }
-        }
-        let entity_id = player.entity_id;
-        for packet in &changed {
-            self.send_to_tracking(entity_id, packet);
-        }
         let player = &mut self.players[i];
         if player.ticks - player.last_keep_alive > 40 {
             player.last_keep_alive = player.ticks;
@@ -1119,8 +1113,15 @@ impl Game {
 
     /// Vanilla `processPlayerDigging` for start/abort/stop.
     fn digging(&mut self, i: usize, status: i8, pos: (i32, i32, i32)) {
+        if matches!(status, 3 | 4) {
+            // processPlayerDigging: drop one item or the whole stack.
+            if self.players[i].gamemode != 3 {
+                self.drop_held(i, status == 3);
+            }
+            return;
+        }
         if !matches!(status, 0..=2) {
-            // TODO: dropping items (3, 4) and releasing a used item (5).
+            // TODO(M5): releasing a used item (5).
             return;
         }
         let p = &self.players[i];
