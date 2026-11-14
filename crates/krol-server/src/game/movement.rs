@@ -293,6 +293,7 @@ impl Game {
 
     fn living_move(&mut self, i: usize) {
         // EntityPlayer.onUpdate, before the living update.
+        self.item_use_update(i);
         let p = &mut self.players[i];
         if p.xp_cooldown > 0 {
             p.xp_cooldown -= 1;

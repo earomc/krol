@@ -19,6 +19,7 @@ mod digging;
 mod dispenser;
 mod falling_block;
 mod fire;
+mod food;
 mod furnace;
 mod hopper;
 pub mod ids;
@@ -143,6 +144,9 @@ pub enum GameEvent {
     /// Stop the server (e.g. Ctrl-C) without running a command.
     Shutdown,
 }
+
+/// Player Digging status 5: the player let go of the item they were using.
+const RELEASE_USE_ITEM: i8 = 5;
 
 /// The first armor item (`leather_helmet`); armor comes in sets of four.
 const ARMOR_FIRST_ID: i16 = 298;
@@ -907,6 +911,7 @@ impl Game {
             fall_distance: data.get_f32("FallDistance"),
             in_water: false,
             first_update: true,
+            using: None,
             collided_horizontally: false,
             distance_walked_on_step: 0.0,
             next_step_distance: 1,
@@ -1284,8 +1289,12 @@ impl Game {
             }
             return;
         }
+        if status == RELEASE_USE_ITEM {
+            // stopUsingItem. TODO(M5): bows shoot (onPlayerStoppedUsing).
+            self.clear_item_in_use(i);
+            return;
+        }
         if !matches!(status, 0..=2) {
-            // TODO(M5): releasing a used item (5).
             return;
         }
         let p = &self.players[i];
@@ -1421,6 +1430,13 @@ impl Game {
         {
             player.inventory[held] = None;
         }
+        // Items with a use duration (food, bows, swords) are not resynced.
+        if player.inventory[held]
+            .as_ref()
+            .is_some_and(|s| item_data::use_duration(s.id, s.damage) > 0)
+        {
+            return;
+        }
         // isChangingQuantityOnly: the open window (possibly one this click opened) is
         // synced without packets, then the held slot is sent in that window's numbering
         // if the client's idea of the stack differs.
@@ -1446,13 +1462,21 @@ impl Game {
                 self.use_bucket(i, &held)
             }
             id if item_data::armor_points(id) > 0 => self.equip_armor(i, &held),
+            id if food::food(id, held.damage).is_some() => {
+                if let Some(f) = food::food(id, held.damage) {
+                    self.start_eating(i, &held, f);
+                }
+                buckets::UseResult::Kept
+            }
             // TODO(M4): food, potions, bows, throwables and the other usable items.
             _ => buckets::UseResult::Unchanged,
         };
         let slot = 36 + self.players[i].selected;
         let mut new = match result {
             buckets::UseResult::Unchanged => return,
-            buckets::UseResult::Resized => self.players[i].inventory[slot].clone(),
+            buckets::UseResult::Resized | buckets::UseResult::Kept => {
+                self.players[i].inventory[slot].clone()
+            }
             buckets::UseResult::Replaced(s) => s,
         };
         if self.players[i].gamemode == 1
@@ -1468,7 +1492,10 @@ impl Game {
         }
         let p = &mut self.players[i];
         p.inventory[slot] = new;
-        // sendContainerToPlayer(inventoryContainer).
+        if p.using.is_some() {
+            return;
+        }
+        // sendContainerToPlayer(inventoryContainer), unless the item is now in use.
         p.send(ClientboundPlay::WindowItems {
             window: 0,
             items: p.inventory.clone(),

@@ -95,6 +95,8 @@ pub struct Player {
     /// No living update has run yet (`Entity.firstUpdate`): entering water then does
     /// not splash.
     pub first_update: bool,
+    /// The item being used (eaten), if any.
+    pub using: Option<super::food::ItemUse>,
     /// The last move was blocked horizontally.
     pub collided_horizontally: bool,
     /// Distance walked, for step sounds (`distanceWalkedOnStepModified`).

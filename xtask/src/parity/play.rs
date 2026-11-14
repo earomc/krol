@@ -154,13 +154,17 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
                     | "game.neutral.swim.splash"
                     | "fire.ignite"
                     | "random.break"
+                    | "random.eat"
+                    | "random.burp"
             );
             // The pickup sound plays where the player is when an item's random arc
             // brings it into reach.
             let random_place = name == "random.pop";
+            // Eating sounds pick their volume at random too.
+            let random_volume = name == "random.eat";
             let place = |v: i32| if random_place { Value::Null } else { json!(v) };
             json!({
-                "name": name, "x": place(*x), "y": place(*y), "z": place(*z), "volume": volume,
+                "name": name, "x": place(*x), "y": place(*y), "z": place(*z), "volume": if random_volume { Value::Null } else { json!(volume) },
                 "pitch": if random_pitch { Value::Null } else { json!(pitch) },
             })
         }

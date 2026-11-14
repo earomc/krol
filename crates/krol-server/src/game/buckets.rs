@@ -24,6 +24,8 @@ pub enum UseResult {
     Resized,
     /// A different stack (or none).
     Replaced(Option<ItemStack>),
+    /// The same stack, which has a use duration (food): it counts as changed.
+    Kept,
 }
 
 impl Game {

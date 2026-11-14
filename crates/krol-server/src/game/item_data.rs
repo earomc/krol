@@ -88,6 +88,20 @@ pub fn armor_points(id: i16) -> i32 {
     POINTS[k / 4][k % 4]
 }
 
+/// `Item.getMaxItemUseDuration`: how long right-clicking uses the item (0: not used
+/// over time).
+pub fn use_duration(id: i16, damage: i16) -> i32 {
+    const BLOCK_OR_DRAW: i32 = 72000;
+    match id {
+        _ if super::food::food(id, damage).is_some() => super::food::EAT_DURATION,
+        // Potions and milk are drunk like food is eaten.
+        373 | 335 => super::food::EAT_DURATION,
+        // Bows and swords (blocking).
+        261 | 267 | 268 | 272 | 276 | 283 => BLOCK_OR_DRAW,
+        _ => 0,
+    }
+}
+
 /// `Enchantment.protection`'s id; fire, feather falling, blast and projectile
 /// protection follow (`EnchantmentProtection.protectionType` 0 to 4).
 pub const PROTECTION: i16 = 0;

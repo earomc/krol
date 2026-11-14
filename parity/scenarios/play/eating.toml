@@ -1,0 +1,41 @@
+description = "Eating in survival: bread eaten over 32 updates (eating flag, status 9, burp, hunger and saturation), a second bread let go early (not eaten), mushroom stew leaving a bowl, cooked salmon refused at full hunger (inventory resent)"
+subsystem = "play"
+
+# Notch (survival, from fixture data: half hunger, bread, stew and salmon) stands 6
+# blocks south and 2 west of the spawn.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_hungry.dat"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 12
+chat = [
+    "@1000 !use",
+    "@3500 !use",
+    "@4000 !dig 0 0 0 0 5",
+    "@7000 !hold 1",
+    "@7300 !use",
+    "@9500 !hold 2",
+    "@9800 !use",
+]
+
+[observe]
+log = true
+files = [
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
+]
+ignore = [
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]
