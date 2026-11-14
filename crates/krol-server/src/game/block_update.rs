@@ -169,6 +169,10 @@ impl Game {
                 self.liquid_neighbor_changed(pos, state);
                 return;
             }
+            block::FIRE => {
+                self.fire_neighbor_changed(pos);
+                return;
+            }
             block::REDSTONE_WIRE => {
                 if self.wire_can_stay(pos) {
                     self.wire_neighbor_changed(pos, state);
@@ -294,6 +298,7 @@ impl Game {
                 self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
             }
             _ if super::liquids::is_liquid(id) => self.liquid_added(pos, state),
+            block::FIRE => self.fire_added(pos),
             block::REDSTONE_WIRE => self.wire_added(pos, state),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
@@ -439,6 +444,7 @@ impl Game {
             }
             _ if super::falling_block::falls(id) => self.check_fallable(pos, state),
             block::FLOWING_WATER | block::FLOWING_LAVA => self.flowing_liquid_tick(pos, state),
+            block::FIRE => self.fire_tick(pos, state),
             block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => self.torch_tick(pos, state),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
             _ if super::pressure_plates::is_plate(id) => self.plate_tick(pos, state),

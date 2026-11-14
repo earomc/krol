@@ -117,7 +117,7 @@ impl Game {
         self.update_lcg >> 2
     }
 
-    fn is_raining(&self) -> bool {
+    pub(super) fn is_raining(&self) -> bool {
         self.rain.0 > 0.2
     }
 
@@ -216,6 +216,8 @@ impl Game {
                 }
             }
             block::PUMPKIN_STEM | block::MELON_STEM => self.stem_tick(pos, state),
+            // Block.randomTick runs updateTick.
+            block::FIRE => self.fire_tick(pos, state),
             block::REEDS => self.cane_tick(pos, state, false),
             block::CACTUS => self.cane_tick(pos, state, true),
             block::ICE => {
@@ -302,8 +304,7 @@ impl Game {
                 }
             }
         }
-        // canLightningStrike(up). TODO(M5): precipitation height and biomes.
-        let rain = self.is_raining() && self.level.overworld.sees_sky((pos.0, pos.1 + 1, pos.2));
+        let rain = self.rains_at((pos.0, pos.1 + 1, pos.2));
         let flags_send = super::block_update::flags::SEND;
         if !water && !rain {
             if moisture > 0 {

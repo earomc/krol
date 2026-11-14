@@ -84,6 +84,19 @@ impl World {
         })
     }
 
+    /// `Chunk.getTopFilledSegment() + 15` of the column's chunk: where downward scans
+    /// start.
+    pub fn top_filled_y(&self, x: i32, z: i32) -> i32 {
+        self.top_filled_segment(x >> 4, z >> 4) + 15
+    }
+
+    /// The biome id stored for a column (255: none stored, or the chunk is not loaded).
+    pub fn biome_id(&self, x: i32, z: i32) -> u8 {
+        self.chunks.get(&(x >> 4, z >> 4)).map_or(u8::MAX, |c| {
+            c.chunk.biomes[((z & 15) << 4 | (x & 15)) as usize]
+        })
+    }
+
     /// `World.canSeeSky` for other modules.
     pub fn sees_sky(&self, pos: (i32, i32, i32)) -> bool {
         self.can_see_sky(pos)

@@ -83,7 +83,8 @@
         "set_slot",
         "block_change",
         "block_change",
-        "multi_block_change",
+        "block_change",
+        "block_change",
         "block_change",
         "block_change",
         "block_change",
@@ -423,15 +424,11 @@
           "packet": "block_change"
         },
         {
-          "hex": "ffff8a800ffffe4c30",
+          "hex": "ffff8ac013fffe5200",
           "packet": "block_change"
         },
         {
-          "hex": "ffffffe2ffffffe402ac03208f0320",
-          "packet": "multi_block_change"
-        },
-        {
-          "hex": "ffff89000ffffe4f30",
+          "hex": "ffff8a000ffffe4f20",
           "packet": "block_change"
         },
         {
@@ -439,7 +436,15 @@
           "packet": "block_change"
         },
         {
-          "hex": "ffff8ac013fffe5200",
+          "hex": "ffff89000ffffe4f30",
+          "packet": "block_change"
+        },
+        {
+          "hex": "ffff8a800ffffe4c30",
+          "packet": "block_change"
+        },
+        {
+          "hex": "ffff8a800ffffe4c20",
           "packet": "block_change"
         },
         {

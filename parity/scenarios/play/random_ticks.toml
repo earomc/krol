@@ -20,7 +20,7 @@ action = "play"
 background = true
 protocol = 47
 name = "jeb_"
-seconds = 18
+seconds = 26
 chat = [
     "@2500 !creative 36 1 8 0",
     "@2700 !creative 37 3 8 0",
@@ -53,8 +53,8 @@ wait_ms = 7500
 
 [[steps]]
 action = "console"
-command = "gamerule randomTickSpeed 1000"
-wait_ms = 10000
+command = "gamerule randomTickSpeed 600"
+wait_ms = 18000
 
 [observe]
 log = true

@@ -1,0 +1,58 @@
+description = "Fire: flint and steel in survival lights the block above netherrack (burns forever) and above grass (goes out when the grass below is removed), and wears by one per use; fire.ignite sound, use statistic"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, gets flint and steel in
+# creative mode and uses it in survival mode. Fire ages and spreads with the unseeded
+# world random, so only fire that cannot change on its own is kept until the end.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -433 netherrack"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 10
+chat = [
+    "@2500 !creative 36 259 1 0",
+    "@6000 !place -470 3 -433 1",
+    "@6400 !place -473 3 -436 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 4500
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+wait_ms = 3000
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -436 air"
+wait_ms = 3500
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-473, 4, -436], [-473, 3, -436]]
+# The netherrack fire's age is random; its light shows it still burns.
+light = [[-470, 4, -433]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "blocks.-470,4,-433",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

@@ -394,6 +394,70 @@ impl Game {
         self.toss(i, stack, true);
     }
 
+    /// `ItemStack.damageItem(amount, player)` on the held item: wear (unless creative,
+    /// unbreakable or negated by unbreaking), breaking it past its maximum damage.
+    pub(super) fn damage_held_item(&mut self, i: usize, amount: i32) {
+        let p = &mut self.players[i];
+        if p.gamemode == 1 {
+            return;
+        }
+        let slot = 36 + p.selected;
+        let Some(stack) = p.inventory[slot].clone() else {
+            return;
+        };
+        let max = i32::from(super::item_data::max_damage(stack.id));
+        let unbreakable = stack
+            .nbt
+            .as_ref()
+            .is_some_and(|n| n.get_bool("Unbreakable"));
+        if max <= 0 || unbreakable {
+            return;
+        }
+        let mut amount = amount;
+        if amount > 0 {
+            let level =
+                super::item_data::enchantment_level(Some(&stack), super::item_data::UNBREAKING);
+            let armor = (ARMOR_FIRST..=ARMOR_LAST).contains(&stack.id);
+            let mut negated = 0;
+            let mut k = 0;
+            while level > 0 && k < amount {
+                // EnchantmentDurability.negateDamage.
+                let kept = armor && p.rand.next_float() < ARMOR_UNBREAKING_IGNORED;
+                if !kept && p.rand.next_int_bounded(level + 1) > 0 {
+                    negated += 1;
+                }
+                k += 1;
+            }
+            amount -= negated;
+            if amount <= 0 {
+                return;
+            }
+        }
+        let mut stack = stack;
+        let damage = i32::from(stack.damage) + amount;
+        if damage > max {
+            // renderBrokenItemStack: the sound for the others; the particles draw from
+            // the player's random.
+            let pitch = BREAK_PITCH_BASE + self.world_rand.next_float() * BREAK_PITCH_SPREAD;
+            let p = &mut self.players[i];
+            for _ in 0..BREAK_PARTICLES * 3 {
+                p.rand.next_float();
+            }
+            let (pos, conn) = (p.pos, p.conn_id);
+            self.play_sound_near_except(Some(conn), "random.break", pos, BREAK_VOLUME, pitch);
+            let p = &mut self.players[i];
+            if let Some(name) = krol_world::items::name_for_id(stack.id) {
+                p.stats
+                    .add(&format!("stat.breakItem.{}", name.replace(':', ".")), 1);
+            }
+            stack.count = (stack.count - 1).max(0);
+            stack.damage = 0;
+        } else {
+            stack.damage = damage as i16;
+        }
+        self.players[i].inventory[slot] = Some(stack);
+    }
+
     /// Vanilla `EntityPlayer.dropItem(stack, false, traced)`: thrown along the look
     /// direction from eye height; `traced` drops count `stat.drop`.
     pub(super) fn toss(&mut self, i: usize, stack: ItemStack, traced: bool) {
@@ -546,6 +610,18 @@ pub fn add_to_inventory_mapped(
     }
     stack.count < start
 }
+
+/// The armor items (helmets to boots, leather to gold): unbreaking helps them less.
+const ARMOR_FIRST: i16 = 298;
+const ARMOR_LAST: i16 = 317;
+/// `EnchantmentDurability.negateDamage`: armor ignores unbreaking 60% of the time.
+const ARMOR_UNBREAKING_IGNORED: f32 = 0.6;
+/// `random.break` when an item breaks.
+const BREAK_VOLUME: f32 = 0.8;
+const BREAK_PITCH_BASE: f32 = 0.8;
+const BREAK_PITCH_SPREAD: f32 = 0.4;
+/// Item crumbs shown when an item breaks.
+const BREAK_PARTICLES: usize = 5;
 
 #[cfg(test)]
 mod tests {

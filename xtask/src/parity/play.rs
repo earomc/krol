@@ -152,6 +152,8 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
                     | "game.player.swim"
                     | "game.player.swim.splash"
                     | "game.neutral.swim.splash"
+                    | "fire.ignite"
+                    | "random.break"
             );
             // The pickup sound plays where the player is when an item's random arc
             // brings it into reach.

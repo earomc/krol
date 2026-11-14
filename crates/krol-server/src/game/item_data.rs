@@ -70,6 +70,9 @@ pub fn container_item(id: i16) -> Option<i16> {
     table().get(&id).and_then(|i| i.container)
 }
 
+/// `Enchantment.unbreaking`'s id.
+pub const UNBREAKING: i16 = 34;
+
 /// `Enchantment.respiration`'s id.
 pub const RESPIRATION: i16 = 5;
 

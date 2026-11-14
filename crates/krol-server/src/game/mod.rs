@@ -5,6 +5,7 @@
 //! scheduled packet tasks at the start of each tick. Packets to clients go through each
 //! player's [`Outgoing`] queue.
 
+mod biome;
 pub mod block_data;
 mod block_update;
 pub mod blocks;
@@ -17,6 +18,7 @@ mod death;
 mod digging;
 mod dispenser;
 mod falling_block;
+mod fire;
 mod furnace;
 mod hopper;
 pub mod ids;
@@ -26,6 +28,7 @@ mod item_entity;
 mod light_data;
 mod liquids;
 mod movement;
+mod noise;
 mod note_block;
 pub mod physics;
 mod pistons;
@@ -1491,6 +1494,10 @@ impl Game {
             return;
         }
         if self.place_door(i, stack.id, pos, face as u8) {
+            return;
+        }
+        if stack.id == ids::item::FLINT_AND_STEEL {
+            self.use_flint_and_steel(i, pos, face as u8);
             return;
         }
         if stack.id == ids::item::REPEATER {
