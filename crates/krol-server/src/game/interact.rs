@@ -9,6 +9,7 @@
 use krol_protocol::packets::play::ClientboundPlay;
 
 use super::Game;
+use super::ids::block;
 use super::placement::{self, is_normal_cube, offset};
 
 /// Blocks whose `onBlockActivated` returns true without krol modeling what they do yet
@@ -148,15 +149,15 @@ impl Game {
                 self.aux_effect_except(i, if new & 4 != 0 { 1003 } else { 1006 }, pos);
                 true
             }
-            58 => {
+            block::CRAFTING_TABLE => {
                 self.open_workbench(i, pos);
                 true
             }
-            54 | 146 => {
+            block::CHEST | block::TRAPPED_CHEST => {
                 self.activate_chest(i, pos, id);
                 true
             }
-            61 | 62 => {
+            block::FURNACE | block::LIT_FURNACE => {
                 self.activate_furnace(i, pos);
                 true
             }

@@ -135,8 +135,17 @@ fn write_payload(writer: &mut impl Write, tag: &Tag) -> Result<()> {
     Ok(())
 }
 
+/// Writes a compound's entries in the order vanilla's `NBTTagCompound` (a Java
+/// `HashMap`) iterates them, taking the entry order as insertion order. Compounds read
+/// from vanilla files are already in that order, so they round-trip byte for byte.
 fn write_compound(writer: &mut impl Write, compound: &Compound) -> Result<()> {
-    for (name, tag) in compound {
+    let entries: Vec<(&String, &Tag)> = compound.iter().collect();
+    let hashes: Vec<i32> = entries
+        .iter()
+        .map(|(k, _)| krol_java::java_string_hash(k))
+        .collect();
+    for k in krol_java::java_hash_order(&hashes) {
+        let (name, tag) = entries[k];
         writer.write_all(&[tag.tag_type().id()])?;
         write_string(writer, name)?;
         write_payload(writer, tag)?;

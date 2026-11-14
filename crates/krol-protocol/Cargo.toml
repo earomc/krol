@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+krol-java = { path = "../krol-java" }
 krol-nbt = { path = "../krol-nbt" }
 aes = "0.8"
 flate2.workspace = true

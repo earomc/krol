@@ -267,9 +267,9 @@ impl<'a> IntoIterator for &'a List {
 
 /// A map of named tags.
 ///
-/// Entries keep their insertion (or file) order, so files round-trip byte for byte.
-/// Vanilla itself uses an unordered `HashMap`; entry order carries no meaning and the
-/// parity suite compares compounds semantically.
+/// Entries keep their insertion (or file) order. Vanilla stores compounds in a Java
+/// `HashMap`, so the writer emits entries in that map's iteration order (see
+/// [`crate::write`]); files written by vanilla round-trip byte for byte.
 ///
 /// The `get_*` accessors follow vanilla's lenient getters: a missing key or a tag of the
 /// wrong type yields a default (`0`, `""`, an empty compound, ...), and any numeric tag is

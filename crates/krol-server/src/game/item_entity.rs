@@ -135,6 +135,9 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
         78 => (i32::from(m & 7) + 1, Some(332), 0),
         103 => ((3 + rand.next_int_bounded(5)).min(9), Some(360), 0),
         62 => (1, Some(61), 0),
+        super::ids::block::STANDING_SIGN | super::ids::block::WALL_SIGN => {
+            (1, Some(super::ids::item::SIGN), 0)
+        }
         20 | 79 | 102 | 160 | 52 | 97 | 18 | 161 => (0, None, 0),
         31 => (1, None, 0), // seeds, decided per drop below
         _ => {

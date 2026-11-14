@@ -168,3 +168,39 @@ impl<V> JavaHashMap<V> {
             .flat_map(|bucket| bucket.iter().map(|(_, k, v)| (k, v)))
     }
 }
+
+/// The order in which a Java 8 `HashMap` iterates distinct keys with these
+/// `hashCode()`s, inserted in the given order (indices into `hashes`).
+///
+/// Used for maps keyed by other types than strings, e.g. a chunk's tile entities by
+/// `BlockPos`.
+///
+/// ```
+/// use krol_java::java_hash_order;
+///
+/// // Bucket order (hash & 15), then insertion order within a bucket.
+/// assert_eq!(java_hash_order(&[17, 2, 1]), vec![0, 2, 1]);
+/// ```
+pub fn java_hash_order(hashes: &[i32]) -> Vec<usize> {
+    let mut table: Vec<Vec<(i32, usize)>> = (0..DEFAULT_CAPACITY).map(|_| Vec::new()).collect();
+    for (k, &h) in hashes.iter().enumerate() {
+        let hash = spread(h);
+        let n = table.len();
+        table[(hash as u32 as usize) & (n - 1)].push((hash, k));
+        if k + 1 > n * 3 / 4 {
+            let mut grown: Vec<Vec<(i32, usize)>> = (0..n * 2).map(|_| Vec::new()).collect();
+            for (j, bucket) in table.into_iter().enumerate() {
+                for entry in bucket {
+                    let target = if (entry.0 as u32 as usize) & n == 0 {
+                        j
+                    } else {
+                        j + n
+                    };
+                    grown[target].push(entry);
+                }
+            }
+            table = grown;
+        }
+    }
+    table.into_iter().flatten().map(|(_, k)| k).collect()
+}

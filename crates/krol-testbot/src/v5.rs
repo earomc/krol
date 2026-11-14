@@ -161,6 +161,17 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
         ServerboundPlay::CloseWindow { window } => {
             w.varint(0x0d).i8(*window);
         }
+        ServerboundPlay::UpdateSign { pos, lines } => {
+            w.varint(0x12).i32(pos.0).i16(pos.1 as i16).i32(pos.2);
+            for line in lines {
+                // 1.8 lines are JSON strings; 1.7 sends the text.
+                let text = line
+                    .strip_prefix('"')
+                    .and_then(|l| l.strip_suffix('"'))
+                    .unwrap_or(line);
+                w.string(text)?;
+            }
+        }
         ServerboundPlay::ClientStatus { action } => {
             w.varint(0x16).i8(*action as i8);
         }
@@ -283,6 +294,37 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
             x: r.i16()?,
             y: r.i16()?,
             z: r.i16()?,
+        }),
+        0x33 => {
+            // 1.7 lines are plain text; shown as the JSON strings a 1.8 client gets.
+            let pos = (r.i32()?, i32::from(r.i16()?), r.i32()?);
+            let mut line = || -> Result<String, BotError> {
+                let text = r.string(15)?;
+                Ok(format!(
+                    "\"{}\"",
+                    text.replace('\\', "\\\\").replace('"', "\\\"")
+                ))
+            };
+            Some(ClientboundPlay::UpdateSign {
+                pos,
+                lines: [line()?, line()?, line()?, line()?],
+            })
+        }
+        0x35 => Some(ClientboundPlay::UpdateTileEntity {
+            pos: (r.i32()?, i32::from(r.i16()?), r.i32()?),
+            action: r.u8()?,
+            nbt: {
+                let len = r.i16()?;
+                if len < 0 {
+                    None
+                } else {
+                    let bytes = r.bytes(len as usize)?;
+                    krol_nbt::read_gzip(bytes).ok().map(|(_, c)| c)
+                }
+            },
+        }),
+        0x36 => Some(ClientboundPlay::SignEditorOpen {
+            pos: (r.i32()?, r.i32()?, r.i32()?),
         }),
         0x31 => Some(ClientboundPlay::WindowProperty {
             window: r.u8()?,

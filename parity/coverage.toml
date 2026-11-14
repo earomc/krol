@@ -244,6 +244,11 @@ description = "Furnaces: tile entity, window with fuel/input/output slot rules a
 scenarios = ["play/furnace"]
 
 [[feature]]
+id = "blocks.signs"
+description = "Signs: standing and wall placement, sign editor, Update Sign handling (formatting stripped, editable by the placer), sign text and other tile entity data sent after block changes and chunk sends"
+scenarios = ["play/signs"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

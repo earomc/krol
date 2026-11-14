@@ -432,6 +432,12 @@ impl ServerboundPlay {
             Self::CloseWindow { window } => {
                 w.varint(0x0d).i8(*window);
             }
+            Self::UpdateSign { pos, lines } => {
+                w.varint(0x12).position(pos.0, pos.1, pos.2);
+                for line in lines {
+                    w.string(line)?;
+                }
+            }
             _ => return Ok(None),
         }
         Ok(Some(w.into_bytes()))
@@ -702,6 +708,17 @@ pub enum ClientboundPlay {
         gamemode: u8,
         level_type: String,
     },
+    /// `0x33`: a sign's four lines (JSON chat).
+    UpdateSign { pos: BlockPos, lines: [String; 4] },
+    /// `0x35`: tile entity data (spawners, command blocks, beacons, skulls, flower pots,
+    /// banners).
+    UpdateTileEntity {
+        pos: BlockPos,
+        action: u8,
+        nbt: Option<krol_nbt::Compound>,
+    },
+    /// `0x36`: opens the sign editor.
+    SignEditorOpen { pos: BlockPos },
     /// `0x31`: a window property (furnace progress, enchantment levels, ...).
     WindowProperty {
         window: u8,
@@ -857,6 +874,9 @@ impl ClientboundPlay {
             Self::Particle { .. } => 0x2a,
             Self::BlockAction { .. } => 0x24,
             Self::WindowProperty { .. } => 0x31,
+            Self::UpdateSign { .. } => 0x33,
+            Self::UpdateTileEntity { .. } => 0x35,
+            Self::SignEditorOpen { .. } => 0x36,
             Self::BlockBreakAnimation { .. } => 0x25,
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
@@ -1228,6 +1248,20 @@ impl ClientboundPlay {
             } => {
                 w.u8(*window).i16(*property).i16(*value);
             }
+            Self::UpdateSign { pos, lines } => {
+                w.position(pos.0, pos.1, pos.2);
+                for line in lines {
+                    w.string(line)?;
+                }
+            }
+            Self::UpdateTileEntity { pos, action, nbt } => {
+                w.position(pos.0, pos.1, pos.2)
+                    .u8(*action)
+                    .nbt(nbt.as_ref())?;
+            }
+            Self::SignEditorOpen { pos } => {
+                w.position(pos.0, pos.1, pos.2);
+            }
             Self::BlockAction {
                 pos,
                 action,
@@ -1410,6 +1444,21 @@ impl ClientboundPlay {
                     velocity,
                 }
             }
+            0x33 => Self::UpdateSign {
+                pos: r.position()?,
+                lines: [
+                    r.string(32767)?,
+                    r.string(32767)?,
+                    r.string(32767)?,
+                    r.string(32767)?,
+                ],
+            },
+            0x35 => Self::UpdateTileEntity {
+                pos: r.position()?,
+                action: r.u8()?,
+                nbt: r.nbt()?,
+            },
+            0x36 => Self::SignEditorOpen { pos: r.position()? },
             0x31 => Self::WindowProperty {
                 window: r.u8()?,
                 property: r.i16()?,

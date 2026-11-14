@@ -24,7 +24,7 @@ mod strict_math;
 mod string;
 
 pub use concurrent_map::JavaConcurrentHashMap;
-pub use hashmap::JavaHashMap;
+pub use hashmap::{JavaHashMap, java_hash_order};
 pub use hashtable::JavaHashtable;
 pub use random::JavaRandom;
 pub use strict_math::strict_log;

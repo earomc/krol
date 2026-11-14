@@ -186,8 +186,13 @@ pub fn craft(grid: &[Option<ItemStack>], size: usize) -> Option<ItemStack> {
 
 /// What an ingredient leaves in the grid (`Item.getContainerItem`): buckets.
 pub fn container_item(id: i16) -> Option<ItemStack> {
-    matches!(id, 326 | 327 | 335).then_some(ItemStack {
-        id: 325,
+    use super::ids::item;
+    matches!(
+        id,
+        item::WATER_BUCKET | item::LAVA_BUCKET | item::MILK_BUCKET
+    )
+    .then_some(ItemStack {
+        id: item::BUCKET,
         count: 1,
         damage: 0,
         nbt: None,

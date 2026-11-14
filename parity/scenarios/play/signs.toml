@@ -1,0 +1,48 @@
+description = "Signs: a standing sign placed and edited (formatting codes stripped), a wall sign on the side of a block, the first sign edited again by its placer"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. Each placement opens the sign editor; the bot answers with the lines.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 8
+chat = [
+    "@2500 !creative 36 323 2 0",
+    "@2800 !place -470 3 -433 1",
+    "@3100 !sign -470 4 -433 Hello|§cRed|krol|",
+    "@3400 !creative 37 1 1 0",
+    "@3700 !hold 1",
+    "@4000 !place -468 3 -433 1",
+    "@4300 !hold 0",
+    "@4600 !place -468 4 -433 2",
+    "@4900 !sign -468 4 -434 Wall|sign||end",
+    "@5500 !sign -470 4 -433 Again|||",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 7700
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-468, 4, -433], [-468, 4, -434]]
+tile_entities = [[-470, 4, -433], [-468, 4, -434]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

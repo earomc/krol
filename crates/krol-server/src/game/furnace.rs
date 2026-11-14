@@ -13,7 +13,26 @@ use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 use super::Game;
 use super::block_data::{self, Material};
 use super::container::{Layout, OpenContainer};
+use super::ids::{block, item};
 use super::world::World;
+
+/// The input slot.
+pub const INPUT: usize = 0;
+/// The fuel slot.
+pub const FUEL: usize = 1;
+/// The output slot.
+pub const OUTPUT: usize = 2;
+/// Ticks to smelt one item (`getCookTime`).
+const COOK_TIME: i32 = 200;
+/// The window properties, in `getField` order.
+const FIELD_BURN: usize = 0;
+const FIELD_ITEM_BURN: usize = 1;
+const FIELD_COOK: usize = 2;
+const FIELD_TOTAL: usize = 3;
+/// The order `ContainerFurnace.detectAndSendChanges` checks the properties in.
+const FIELD_SEND_ORDER: [usize; 4] = [FIELD_COOK, FIELD_BURN, FIELD_ITEM_BURN, FIELD_TOTAL];
+/// The furnace's stack size limit (`getInventoryStackLimit`).
+const STACK_LIMIT: i8 = 64;
 
 /// A furnace's saved state.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -75,20 +94,20 @@ impl FurnaceData {
 
     /// `canSmelt`.
     fn can_smelt(&self) -> bool {
-        let Some(input) = &self.items[0] else {
+        let Some(input) = &self.items[INPUT] else {
             return false;
         };
         let Some(result) = super::recipes::smelting(input) else {
             return false;
         };
-        let Some(out) = &self.items[2] else {
+        let Some(out) = &self.items[OUTPUT] else {
             return true;
         };
         if out.id != result.output.0 || out.damage != result.output.2 {
             return false;
         }
         let max = super::item_entity::max_stack(out.id);
-        if out.count < 64 && out.count < max {
+        if out.count < STACK_LIMIT && out.count < max {
             true
         } else {
             out.count < super::item_entity::max_stack(result.output.0)
@@ -100,15 +119,15 @@ impl FurnaceData {
         if !self.can_smelt() {
             return;
         }
-        let Some(input) = self.items[0].clone() else {
+        let Some(input) = self.items[INPUT].clone() else {
             return;
         };
         let Some(result) = super::recipes::smelting(&input) else {
             return;
         };
-        match &mut self.items[2] {
+        match &mut self.items[OUTPUT] {
             None => {
-                self.items[2] = Some(ItemStack {
+                self.items[OUTPUT] = Some(ItemStack {
                     id: result.output.0,
                     count: result.output.1,
                     damage: result.output.2,
@@ -120,21 +139,23 @@ impl FurnaceData {
             Some(_) => {}
         }
         // A wet sponge fills a bucket in the fuel slot.
-        if input.id == 19
-            && input.damage == 1
-            && self.items[1].as_ref().is_some_and(|f| f.id == 325)
+        if input.id == item::SPONGE
+            && input.damage == item::WET_SPONGE_DAMAGE
+            && self.items[FUEL]
+                .as_ref()
+                .is_some_and(|f| f.id == item::BUCKET)
         {
-            self.items[1] = Some(ItemStack {
-                id: 326,
+            self.items[FUEL] = Some(ItemStack {
+                id: item::WATER_BUCKET,
                 count: 1,
                 damage: 0,
                 nbt: None,
             });
         }
-        if let Some(s) = &mut self.items[0] {
+        if let Some(s) = &mut self.items[INPUT] {
             s.count -= 1;
             if s.count <= 0 {
-                self.items[0] = None;
+                self.items[INPUT] = None;
             }
         }
     }
@@ -146,32 +167,32 @@ pub fn burn_time(stack: Option<&ItemStack>) -> i32 {
         return 0;
     };
     if (1..256).contains(&s.id) {
-        let block = s.id as u16;
-        if block == 126 {
+        let id = s.id as u16;
+        if id == block::WOODEN_SLAB {
             return 150;
         }
-        if block_data::material(block) == Material::Wood {
+        if block_data::material(id) == Material::Wood {
             return 300;
         }
-        if block == 173 {
+        if id == block::COAL_BLOCK {
             return 16000;
         }
     }
     match s.id {
         // Wooden tools, sword and hoe.
-        268..=271 | 290 => 200,
-        280 => 100,
-        263 => 1600,
-        327 => 20000,
-        6 => 100,
-        369 => 2400,
+        item::WOODEN_SWORD..=item::WOODEN_AXE | item::WOODEN_HOE => 200,
+        item::STICK => 100,
+        item::COAL => 1600,
+        item::LAVA_BUCKET => 20000,
+        item::SAPLING => 100,
+        item::BLAZE_ROD => 2400,
         _ => 0,
     }
 }
 
 /// `SlotFurnaceFuel.isItemValid`: fuel or an empty bucket.
 pub fn fits_fuel_slot(stack: &ItemStack) -> bool {
-    burn_time(Some(stack)) > 0 || stack.id == 325
+    burn_time(Some(stack)) > 0 || stack.id == item::BUCKET
 }
 
 /// A furnace's state, if `pos` has a furnace tile entity.
@@ -188,7 +209,7 @@ impl Game {
         *self
             .furnace_burn
             .entry(pos)
-            .or_insert_with(|| burn_time(data.items[1].as_ref()))
+            .or_insert_with(|| burn_time(data.items[FUEL].as_ref()))
     }
 
     /// The window property values (`getField` 0-3).
@@ -197,7 +218,12 @@ impl Game {
             return [0; 4];
         };
         let current = self.current_burn(pos, &data);
-        [data.burn, current, data.cook, data.total]
+        let mut fields = [0; 4];
+        fields[FIELD_BURN] = data.burn;
+        fields[FIELD_ITEM_BURN] = current;
+        fields[FIELD_COOK] = data.cook;
+        fields[FIELD_TOTAL] = data.total;
+        fields
     }
 
     fn store_furnace(&mut self, pos: (i32, i32, i32), data: &FurnaceData) {
@@ -228,17 +254,21 @@ impl Game {
         let Some(mut data) = furnace_data(&self.level.overworld, pos) else {
             return;
         };
-        let before = data.items[0].clone();
-        let new = items[0].clone();
+        let before = data.items[INPUT].clone();
+        let new = items[INPUT].clone();
         let same = match (&new, &before) {
             (Some(a), Some(b)) => a.id == b.id && a.damage == b.damage && a.nbt == b.nbt,
             _ => false,
         };
         if put_input && !same {
-            data.total = 200;
+            data.total = COOK_TIME;
             data.cook = 0;
         }
-        data.items = [items[0].clone(), items[1].clone(), items[2].clone()];
+        data.items = [
+            items[INPUT].clone(),
+            items[FUEL].clone(),
+            items[OUTPUT].clone(),
+        ];
         self.store_furnace(pos, &data);
     }
 
@@ -267,7 +297,7 @@ impl Game {
             window: id as u8,
             kind: "minecraft:furnace".into(),
             title,
-            slots: 3,
+            slots: (OUTPUT + 1) as u8,
         });
         let layout = Layout::Furnace;
         self.players[i].window.open = Some(OpenContainer {
@@ -306,7 +336,7 @@ impl Game {
             return;
         };
         let now = self.furnace_fields(pos);
-        for property in [2usize, 0, 1, 3] {
+        for property in FIELD_SEND_ORDER {
             if sent[property] != now[property] {
                 self.players[i].send(ClientboundPlay::WindowProperty {
                     window: id as u8,
@@ -352,16 +382,16 @@ impl Game {
             if data.burning() {
                 data.burn -= 1;
             }
-            if data.burning() || (data.items[1].is_some() && data.items[0].is_some()) {
+            if data.burning() || (data.items[FUEL].is_some() && data.items[INPUT].is_some()) {
                 if !data.burning() && data.can_smelt() {
-                    data.burn = burn_time(data.items[1].as_ref());
+                    data.burn = burn_time(data.items[FUEL].as_ref());
                     current = data.burn;
                     if data.burning()
-                        && let Some(fuel) = &mut data.items[1]
+                        && let Some(fuel) = &mut data.items[FUEL]
                     {
                         fuel.count -= 1;
                         if fuel.count == 0 {
-                            data.items[1] = super::recipes::container_item(fuel.id);
+                            data.items[FUEL] = super::recipes::container_item(fuel.id);
                         }
                     }
                 }
@@ -369,7 +399,7 @@ impl Game {
                     data.cook += 1;
                     if data.cook == data.total {
                         data.cook = 0;
-                        data.total = 200;
+                        data.total = COOK_TIME;
                         data.smelt();
                     }
                 } else {
@@ -384,8 +414,12 @@ impl Game {
                 // BlockFurnace.setState: lit or unlit, same facing, same tile entity.
                 let w = &mut self.level.overworld;
                 let state = w.block(pos.0, pos.1, pos.2);
-                let block = if data.burning() { 62 } else { 61 };
-                w.set_block(pos.0, pos.1, pos.2, block << 4 | (state & 15));
+                let id = if data.burning() {
+                    block::LIT_FURNACE
+                } else {
+                    block::FURNACE
+                };
+                w.set_block(pos.0, pos.1, pos.2, id << 4 | (state & 15));
             }
         }
     }

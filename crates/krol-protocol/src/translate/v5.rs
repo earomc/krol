@@ -727,6 +727,38 @@ impl V5Translator {
                 w.i32(*collected).i32(*collector);
                 one(w);
             }
+            ClientboundPlay::UpdateSign { pos, lines } => {
+                let mut w = packet(0x33);
+                w.i32(pos.0).i16(pos.1 as i16).i32(pos.2);
+                for line in lines {
+                    w.string(&legacy_sign_line(line))?;
+                }
+                one(w);
+            }
+            ClientboundPlay::UpdateTileEntity { pos, action, nbt } => {
+                // Banners (action 6) do not exist in 1.7.
+                if *action <= 5 {
+                    let mut w = packet(0x35);
+                    w.i32(pos.0).i16(pos.1 as i16).i32(pos.2).u8(*action);
+                    match nbt {
+                        None => {
+                            w.i16(-1);
+                        }
+                        Some(nbt) => {
+                            let mut gz = GzEncoder::new(Vec::new(), Compression::default());
+                            krol_nbt::write(&mut gz, "", nbt).map_err(nbt_error)?;
+                            let bytes = gz.finish().map_err(|_| EncodeError::StringTooBig(0))?;
+                            w.short_byte_array(&bytes);
+                        }
+                    }
+                    one(w);
+                }
+            }
+            ClientboundPlay::SignEditorOpen { pos } => {
+                let mut w = packet(0x36);
+                w.i32(pos.0).i32(pos.1).i32(pos.2);
+                one(w);
+            }
             ClientboundPlay::WindowProperty {
                 window,
                 property,
@@ -1034,6 +1066,107 @@ fn gamemode_v5(gamemode: u8) -> u8 {
 }
 
 /// A JSON string literal (what a 1.8 client sends for a plain sign line).
+/// A 1.8 sign line (JSON chat) as the plain text a 1.7 sign shows: the text with `§`
+/// codes for styled parts, at most 15 characters (1.7 clients reject longer lines).
+fn legacy_sign_line(json: &str) -> String {
+    use krol_java::gson::JsonValue;
+
+    fn code(name: &str) -> Option<char> {
+        const NAMES: [(&str, char); 22] = [
+            ("black", '0'),
+            ("dark_blue", '1'),
+            ("dark_green", '2'),
+            ("dark_aqua", '3'),
+            ("dark_red", '4'),
+            ("dark_purple", '5'),
+            ("gold", '6'),
+            ("gray", '7'),
+            ("dark_gray", '8'),
+            ("blue", '9'),
+            ("green", 'a'),
+            ("aqua", 'b'),
+            ("red", 'c'),
+            ("light_purple", 'd'),
+            ("yellow", 'e'),
+            ("white", 'f'),
+            ("obfuscated", 'k'),
+            ("bold", 'l'),
+            ("strikethrough", 'm'),
+            ("underline", 'n'),
+            ("italic", 'o'),
+            ("reset", 'r'),
+        ];
+        NAMES.iter().find(|(n, _)| *n == name).map(|(_, c)| *c)
+    }
+
+    fn walk(v: &JsonValue, inherited: &[char], out: &mut String) {
+        match v {
+            JsonValue::String(s) => out.push_str(s),
+            JsonValue::Int(i) => out.push_str(&i.to_string()),
+            JsonValue::Bool(b) => out.push_str(&b.to_string()),
+            JsonValue::Array(items) => {
+                for item in items {
+                    walk(item, inherited, out);
+                }
+            }
+            JsonValue::Object(_) => {
+                let mut codes: Vec<char> = inherited.to_vec();
+                if let Some(c) = v.get("color").and_then(JsonValue::as_str).and_then(code) {
+                    codes.retain(|k| !matches!(k, '0'..='9' | 'a'..='f'));
+                    codes.insert(0, c);
+                }
+                for (key, c) in [
+                    ("obfuscated", 'k'),
+                    ("bold", 'l'),
+                    ("strikethrough", 'm'),
+                    ("underlined", 'n'),
+                    ("italic", 'o'),
+                ] {
+                    if v.get(key).and_then(JsonValue::as_bool) == Some(true) && !codes.contains(&c)
+                    {
+                        codes.push(c);
+                    }
+                }
+                for c in &codes {
+                    out.push('\u{a7}');
+                    out.push(*c);
+                }
+                let text = v
+                    .get("text")
+                    .or_else(|| v.get("translate"))
+                    .or_else(|| v.get("selector"))
+                    .or_else(|| v.get("score").and_then(|s| s.get("value")));
+                if let Some(t) = text {
+                    walk(t, &codes, out);
+                }
+                if let Some(JsonValue::Array(extra)) = v.get("extra") {
+                    for e in extra {
+                        walk(e, &codes, out);
+                    }
+                }
+                if !codes.is_empty() {
+                    out.push_str("\u{a7}r");
+                }
+            }
+            JsonValue::Null => {}
+        }
+    }
+
+    let mut out = String::new();
+    match JsonValue::parse(json) {
+        Ok(v) => walk(&v, &[], &mut out),
+        Err(_) => out.push_str(json),
+    }
+    // Java strings count UTF-16 units.
+    let mut units = 0;
+    out.chars()
+        .take_while(|c| {
+            units += c.len_utf16();
+            units <= 15
+        })
+        .collect()
+}
+
 fn json_string(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');
@@ -1230,6 +1363,21 @@ mod tests {
                 data: b"\x07vanilla".to_vec()
             }
         );
+    }
+
+    #[test]
+    fn sign_lines_become_plain_text() {
+        assert_eq!(legacy_sign_line("\"\""), "");
+        assert_eq!(legacy_sign_line("\"Hello\""), "Hello");
+        assert_eq!(
+            legacy_sign_line(r#"{"extra":[{"color":"red","text":"b"}],"text":"a"}"#),
+            "a\u{a7}cb\u{a7}r"
+        );
+        assert_eq!(
+            legacy_sign_line("\"0123456789abcdefgh\""),
+            "0123456789abcde"
+        );
+        assert_eq!(legacy_sign_line("not json"), "not json");
     }
 
     #[test]

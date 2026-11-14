@@ -136,3 +136,23 @@ fn string_too_long_is_rejected_on_write() {
         Err(Error::StringTooLong(65536))
     ));
 }
+
+/// Compounds written by vanilla 1.8.8 (whose `NBTTagCompound` is a `HashMap`) come back
+/// byte for byte: the file order is the map's iteration order.
+#[test]
+fn vanilla_file_round_trips_byte_for_byte() {
+    use std::io::Read;
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../parity/fixtures/worlds/flat/level.dat"
+    );
+    let gz = std::fs::read(path).expect("fixture level.dat");
+    let mut raw = Vec::new();
+    flate2::read::GzDecoder::new(&gz[..])
+        .read_to_end(&mut raw)
+        .expect("gzip");
+    let (name, root) = krol_nbt::read(&mut &raw[..]).expect("nbt");
+    let mut out = Vec::new();
+    krol_nbt::write(&mut out, &name, &root).expect("write");
+    assert_eq!(out, raw);
+}

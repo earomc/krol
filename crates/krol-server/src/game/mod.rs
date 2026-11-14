@@ -14,6 +14,7 @@ mod damage;
 mod death;
 mod digging;
 mod furnace;
+pub mod ids;
 mod interact;
 mod item_entity;
 mod movement;
@@ -21,6 +22,7 @@ pub mod physics;
 mod placement;
 pub mod player;
 mod recipes;
+mod sign;
 pub mod stats;
 mod tracker;
 pub mod world;
@@ -208,6 +210,9 @@ struct Game {
     items: std::collections::BTreeMap<i32, item_entity::ItemEntity>,
     /// Chests that are open or closing.
     chests: Vec<chest::ChestRuntime>,
+    /// Signs that can be edited, and by whom (`TileEntitySign.isEditable` and
+    /// `getPlayer`).
+    sign_editors: std::collections::HashMap<(i32, i32, i32), u64>,
     /// `currentItemBurnTime` of furnaces (not saved by vanilla).
     furnace_burn: std::collections::HashMap<(i32, i32, i32), i32>,
     /// Queued block events (`WorldServer.field_147490_S`).
@@ -255,6 +260,7 @@ pub fn start(
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),
+        sign_editors: Default::default(),
         world_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1043,7 +1049,9 @@ impl Game {
                 columns,
             });
         }
-        // TODO(M4): tile entity updates for the sent chunks.
+        for packet in self.chunk_descriptions(&batch) {
+            self.players[i].send(packet);
+        }
         self.chunks_sent(i, &batch);
     }
 
@@ -1051,8 +1059,38 @@ impl Game {
     /// changes to the players who have that chunk (one change: Block Change; up to 63:
     /// Multi Block Change; 64: the changed sections).
     fn flush_block_changes(&mut self) {
-        let changes = std::mem::take(&mut self.level.overworld.pending_changes);
-        for ((cx, cz), (blocks, section_mask)) in changes {
+        let mut changes = std::mem::take(&mut self.level.overworld.pending_changes);
+        let order = std::mem::take(&mut self.level.overworld.pending_order);
+        for (cx, cz) in order {
+            let Some((blocks, section_mask)) = changes.remove(&(cx, cz)) else {
+                continue;
+            };
+            // The changed blocks' tile entity data follows the block packet.
+            let mut tiles = Vec::new();
+            if blocks.len() < 64 {
+                for &b in &blocks {
+                    let pos = (
+                        cx * 16 + i32::from(b >> 12),
+                        i32::from(b & 0xff),
+                        cz * 16 + i32::from((b >> 8) & 15),
+                    );
+                    tiles.extend(self.block_description(pos));
+                }
+            } else {
+                for section in 0..16 {
+                    if section_mask & (1 << section) == 0 {
+                        continue;
+                    }
+                    for t in self.level.overworld.chunk(cx, cz).tile_entities.iter() {
+                        if let krol_nbt::Tag::Compound(c) = t
+                            && c.get_i32("y") >> 4 == section
+                            && let Some(p) = sign::description(c)
+                        {
+                            tiles.push(p);
+                        }
+                    }
+                }
+            }
             let packet = if blocks.len() == 1 {
                 let b = blocks[0];
                 let (x, y, z) = (
@@ -1103,6 +1141,9 @@ impl Game {
             for p in &self.players {
                 if p.watching.contains(&(cx, cz)) && !p.chunk_queue.contains(&(cx, cz)) {
                     p.send(packet.clone());
+                    for t in &tiles {
+                        p.send(t.clone());
+                    }
                 }
             }
         }
@@ -1319,6 +1360,10 @@ impl Game {
         if self.place_door(i, stack.id, pos, face as u8) {
             return;
         }
+        if stack.id == ids::item::SIGN {
+            self.place_sign(i, pos, face as u8);
+            return;
+        }
         let player = &self.players[i];
         let click = placement::Click {
             face: face as u8,
@@ -1383,11 +1428,11 @@ impl Game {
         }
         self.finish_placement(i, target, state);
         // BlockChest.onBlockPlacedBy: line up with a neighboring chest.
-        if matches!(state >> 4, 54 | 146) {
+        if ids::block::is_chest(state >> 4) {
             self.align_chests(target, state);
         }
         // onBlockPlacedBy of chests and furnaces: a renamed item names the container.
-        if matches!(state >> 4, 54 | 146 | 61)
+        if (ids::block::is_chest(state >> 4) || state >> 4 == ids::block::FURNACE)
             && let Some(name) = stack
                 .nbt
                 .as_ref()
@@ -1546,6 +1591,7 @@ impl Game {
                 self.confirm_transaction(i, window, action);
             }
             ServerboundPlay::CloseWindow { .. } => self.close_window(i),
+            ServerboundPlay::UpdateSign { pos, lines } => self.update_sign(i, pos, &lines),
             ServerboundPlay::PlayerAbilities { flags, .. } => {
                 // processPlayerAbilities: flying only where it is allowed.
                 let p = &mut self.players[i];

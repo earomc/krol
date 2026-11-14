@@ -308,6 +308,19 @@ fn action_or_chat(
         Some("close") => vec![ServerboundPlay::CloseWindow {
             window: num(1) as i8,
         }],
+        // !sign <x> <y> <z> <line1>|<line2>|<line3>|<line4> (plain text lines)
+        Some("sign") => {
+            let text = parts.get(4..).map(|p| p.join(" ")).unwrap_or_default();
+            let mut lines = text.split('|').map(|l| {
+                let escaped = l.replace('\\', "\\\\").replace('"', "\\\"");
+                format!("\"{escaped}\"")
+            });
+            let mut line = || lines.next().unwrap_or_else(|| "\"\"".into());
+            vec![ServerboundPlay::UpdateSign {
+                pos: (num(1), num(2), num(3)),
+                lines: [line(), line(), line(), line()],
+            }]
+        }
         Some("look") => vec![ServerboundPlay::Look {
             yaw: parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(0.0),
             pitch: parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0.0),

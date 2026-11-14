@@ -15,6 +15,80 @@ pub enum Content {
         /// Arguments.
         with: Vec<Arg>,
     },
+    /// A scoreboard value (`ChatComponentScore`).
+    Score {
+        /// Score holder name.
+        name: String,
+        /// Objective name.
+        objective: String,
+        /// The resolved value.
+        value: String,
+    },
+    /// An entity selector (`ChatComponentSelector`).
+    Selector(String),
+}
+
+/// `EnumChatFormatting` names, as accepted for `color`.
+const FORMATTING_NAMES: [&str; 22] = [
+    "black",
+    "dark_blue",
+    "dark_green",
+    "dark_aqua",
+    "dark_red",
+    "dark_purple",
+    "gold",
+    "gray",
+    "dark_gray",
+    "blue",
+    "green",
+    "aqua",
+    "red",
+    "light_purple",
+    "yellow",
+    "white",
+    "obfuscated",
+    "bold",
+    "strikethrough",
+    "underline",
+    "italic",
+    "reset",
+];
+
+/// `JsonPrimitive.getAsString`.
+fn json_as_string(v: &JsonValue) -> Result<String, String> {
+    match v {
+        JsonValue::String(s) => Ok(s.clone()),
+        JsonValue::Int(i) => Ok(i.to_string()),
+        JsonValue::Bool(b) => Ok(b.to_string()),
+        _ => Err(format!("Not a primitive: {}", v.to_gson_string())),
+    }
+}
+
+/// `JsonPrimitive.getAsBoolean`: booleans, or strings equal to "true" in any case.
+fn json_as_bool(v: &JsonValue) -> Result<bool, String> {
+    match v {
+        JsonValue::Bool(b) => Ok(*b),
+        JsonValue::String(s) => Ok(s.eq_ignore_ascii_case("true")),
+        JsonValue::Int(_) => Ok(false),
+        _ => Err(format!("Not a primitive: {}", v.to_gson_string())),
+    }
+}
+
+/// Removes `§` formatting codes (`EnumChatFormatting.getTextWithoutFormattingCodes`).
+pub fn strip_formatting(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\u{a7}'
+            && let Some(&next) = chars.peek()
+            && matches!(next.to_ascii_lowercase(), '0'..='9' | 'a'..='f' | 'k'..='o' | 'r')
+        {
+            chars.next();
+            continue;
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// A translation argument: vanilla passes either components or plain strings.
@@ -54,6 +128,58 @@ pub struct Style {
 impl Style {
     fn is_empty(&self) -> bool {
         *self == Style::default()
+    }
+
+    /// `ChatStyle.Serializer.deserialize` on a component object.
+    fn from_json(json: &JsonValue) -> Result<Self, String> {
+        let mut s = Style::default();
+        let flag = |k: &str| json.get(k).map(json_as_bool).transpose();
+        s.bold = flag("bold")?;
+        s.italic = flag("italic")?;
+        s.underlined = flag("underlined")?;
+        s.strikethrough = flag("strikethrough")?;
+        s.obfuscated = flag("obfuscated")?;
+        if let Some(c) = json.get("color") {
+            let name = json_as_string(c)?.to_lowercase();
+            s.color = FORMATTING_NAMES.iter().find(|n| **n == name).copied();
+        }
+        if let Some(i) = json.get("insertion") {
+            s.insertion = Some(json_as_string(i)?);
+        }
+        if let Some(click) = json
+            .get("clickEvent")
+            .filter(|c| matches!(c, JsonValue::Object(_)))
+        {
+            let action = click.get("action").map(json_as_string).transpose()?;
+            let value = click.get("value").map(json_as_string).transpose()?;
+            if let (Some(action), Some(value)) = (action, value)
+                && matches!(
+                    action.as_str(),
+                    "open_url" | "run_command" | "suggest_command" | "change_page"
+                )
+            {
+                s.click = Some((action, value));
+            }
+        }
+        if let Some(hover) = json
+            .get("hoverEvent")
+            .filter(|c| matches!(c, JsonValue::Object(_)))
+        {
+            let action = hover.get("action").map(json_as_string).transpose()?;
+            let value = match hover.get("value") {
+                Some(v) => Some(Component::from_json(v)?),
+                None => None,
+            };
+            if let (Some(action), Some(value)) = (action, value)
+                && matches!(
+                    action.as_str(),
+                    "show_text" | "show_achievement" | "show_item" | "show_entity"
+                )
+            {
+                s.hover = Some((action, Box::new(value)));
+            }
+        }
+        Ok(s)
     }
 }
 
@@ -130,6 +256,102 @@ impl Component {
         c
     }
 
+    /// Parses chat JSON like vanilla's `IChatComponent.Serializer.jsonToComponent`.
+    ///
+    /// # Errors
+    ///
+    /// Vanilla's `JsonParseException` cases: invalid JSON, or JSON that is not a
+    /// component.
+    pub fn parse_json(text: &str) -> Result<Self, String> {
+        let json = JsonValue::parse(text)?;
+        Self::from_json(&json)
+    }
+
+    /// `IChatComponent.Serializer.deserialize`.
+    ///
+    /// # Errors
+    ///
+    /// JSON that does not describe a component.
+    pub fn from_json(json: &JsonValue) -> Result<Self, String> {
+        match json {
+            JsonValue::Array(items) => {
+                let mut items = items.iter();
+                let mut first = Self::from_json(items.next().ok_or("empty component array")?)?;
+                for item in items {
+                    first.extra.push(Self::from_json(item)?);
+                }
+                Ok(first)
+            }
+            JsonValue::Object(_) => {
+                let get = |k: &str| json.get(k);
+                let content = if let Some(t) = get("text") {
+                    Content::Text(json_as_string(t)?)
+                } else if let Some(key) = get("translate") {
+                    let key = json_as_string(key)?;
+                    let mut with = Vec::new();
+                    if let Some(args) = get("with") {
+                        let JsonValue::Array(args) = args else {
+                            return Err("'with' is not an array".into());
+                        };
+                        for a in args {
+                            let c = Self::from_json(a)?;
+                            with.push(match c {
+                                Self {
+                                    content: Content::Text(t),
+                                    ref style,
+                                    ref extra,
+                                } if style.is_empty() && extra.is_empty() => Arg::Str(t),
+                                c => Arg::Component(c),
+                            });
+                        }
+                    }
+                    Content::Translate { key, with }
+                } else if let Some(score) = get("score") {
+                    let (Some(name), Some(objective)) = (score.get("name"), score.get("objective"))
+                    else {
+                        return Err(
+                            "A score component needs a least a name and an objective".into()
+                        );
+                    };
+                    Content::Score {
+                        name: json_as_string(name)?,
+                        objective: json_as_string(objective)?,
+                        value: match score.get("value") {
+                            Some(v) => json_as_string(v)?,
+                            None => String::new(),
+                        },
+                    }
+                } else if let Some(selector) = get("selector") {
+                    Content::Selector(json_as_string(selector)?)
+                } else {
+                    return Err(format!(
+                        "Don't know how to turn {} into a Component",
+                        json.to_gson_string()
+                    ));
+                };
+                let mut extra = Vec::new();
+                if let Some(e) = get("extra") {
+                    let JsonValue::Array(items) = e else {
+                        return Err("'extra' is not an array".into());
+                    };
+                    if items.is_empty() {
+                        return Err("Unexpected empty array of components".into());
+                    }
+                    for item in items {
+                        extra.push(Self::from_json(item)?);
+                    }
+                }
+                Ok(Self {
+                    content,
+                    style: Style::from_json(json)?,
+                    extra,
+                })
+            }
+            JsonValue::Null => Err("Don't know how to turn null into a Component".into()),
+            primitive => Ok(Self::text(json_as_string(primitive)?)),
+        }
+    }
+
     fn to_json(&self) -> JsonValue {
         if let Content::Text(t) = &self.content
             && self.style.is_empty()
@@ -183,6 +405,18 @@ impl Component {
         }
         match &self.content {
             Content::Text(t) => o.with("text", t.as_str()),
+            Content::Score {
+                name,
+                objective,
+                value,
+            } => o.with(
+                "score",
+                JsonValue::object()
+                    .with("name", name.as_str())
+                    .with("objective", objective.as_str())
+                    .with("value", value.as_str()),
+            ),
+            Content::Selector(s) => o.with("selector", s.as_str()),
             Content::Translate { key, with } => {
                 let mut o = o.with("translate", key.as_str());
                 if !with.is_empty() {
@@ -210,6 +444,8 @@ impl Component {
     pub fn unformatted(&self) -> String {
         let mut out = match &self.content {
             Content::Text(t) => t.clone(),
+            Content::Score { value, .. } => value.clone(),
+            Content::Selector(s) => s.clone(),
             Content::Translate { key, with } => {
                 let args: Vec<String> = with
                     .iter()
@@ -236,6 +472,16 @@ impl Component {
         match &self.content {
             Content::Text(t) => format!(
                 "TextComponent{{text='{t}', siblings=[{}], style={STYLE}}}",
+                siblings.join(", ")
+            ),
+            Content::Score {
+                name, objective, ..
+            } => format!(
+                "ScoreComponent{{name='{name}', objective='{objective}', siblings=[{}], style={STYLE}}}",
+                siblings.join(", ")
+            ),
+            Content::Selector(s) => format!(
+                "SelectorComponent{{pattern='{s}', siblings=[{}], style={STYLE}}}",
                 siblings.join(", ")
             ),
             Content::Translate { key, with } => {
@@ -266,6 +512,30 @@ mod tests {
     use super::*;
 
     const NOTCH_UUID: &str = "b50ad385-829d-3141-a216-7e7d7539ba7f";
+
+    /// Parsing then serializing normalizes like vanilla's Gson round trip.
+    #[test]
+    fn parses_like_vanilla() {
+        let round = |json: &str| Component::parse_json(json).map(|c| c.to_json_string());
+        assert_eq!(round("\"\"").as_deref(), Ok("\"\""));
+        assert_eq!(round(r#"{"text":"hi"}"#).as_deref(), Ok("\"hi\""));
+        assert_eq!(round("42").as_deref(), Ok("\"42\""));
+        assert_eq!(
+            round(r#"["a",{"text":"b","bold":true}]"#).as_deref(),
+            Ok(r#"{"extra":[{"bold":true,"text":"b"}],"text":"a"}"#)
+        );
+        assert_eq!(
+            round(r#"{"translate":"x","with":[{"text":"p"},"q"],"color":"RED"}"#).as_deref(),
+            Ok(r#"{"color":"red","translate":"x","with":["p","q"]}"#)
+        );
+        assert!(Component::parse_json(r#"{"extra":[]}"#).is_err());
+        assert!(Component::parse_json(r#"{"text":"a","extra":[]}"#).is_err());
+        assert!(Component::parse_json("not json").is_err());
+        assert_eq!(
+            strip_formatting("\u{a7}cRed\u{a7}r \u{a7}zX"),
+            "Red \u{a7}zX"
+        );
+    }
 
     /// The chat message vanilla 1.8.8 sent in parity/golden/play/join_flat.json.
     #[test]

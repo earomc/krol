@@ -15,8 +15,24 @@ use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
 use super::Game;
 use super::container::{Layout, OpenContainer};
+use super::ids::block;
 use super::placement::{self, is_normal_cube, offset};
 use super::world::World;
+
+/// Slots in one chest.
+pub const CHEST_SLOTS: usize = 27;
+/// The block event a chest sends with its number of viewers.
+const EVENT_VIEWERS: u8 = 1;
+/// How often (in ticks) an open chest recounts the players using it.
+const RECOUNT_INTERVAL: i32 = 200;
+/// Players within this distance of a chest count in the recount.
+const RECOUNT_RANGE: f32 = 5.0;
+/// How far the lid moves per tick (fully open is 1).
+const LID_STEP: f32 = 0.1;
+/// The lid angle below which closing plays the sound.
+const LID_CLOSE_SOUND: f32 = 0.5;
+/// Volume of the lid sounds.
+const LID_VOLUME: f32 = 0.5;
 
 /// Tile entity state of a chest that is open or whose lid is still moving.
 #[derive(Debug, Clone)]
@@ -40,7 +56,7 @@ pub struct BlockEvent {
 
 /// The 27 slots of a chest's tile entity (`TileEntityChest.readFromNBT`).
 pub fn chest_items(world: &World, pos: (i32, i32, i32)) -> Vec<Option<ItemStack>> {
-    let mut items = vec![None; 27];
+    let mut items = vec![None; CHEST_SLOTS];
     if let Some(list) = world
         .tile_entity(pos)
         .and_then(|c| c.get_list("Items", TagType::Compound))
@@ -48,7 +64,7 @@ pub fn chest_items(world: &World, pos: (i32, i32, i32)) -> Vec<Option<ItemStack>
         for tag in list.iter() {
             let Tag::Compound(c) = tag else { continue };
             let slot = usize::from(c.get_i8("Slot") as u8);
-            if slot < 27 {
+            if slot < CHEST_SLOTS {
                 items[slot] = super::player::item_from_nbt(c);
             }
         }
@@ -90,7 +106,7 @@ fn title(world: &World, parts: &[(i32, i32, i32)]) -> String {
     });
     let component = match custom {
         Some(name) => crate::chat::Component::text(name),
-        None if parts.len() == 2 => {
+        None if parts.len() > 1 => {
             crate::chat::Component::translate("container.chestDouble", vec![])
         }
         None => crate::chat::Component::translate("container.chest", vec![]),
@@ -162,7 +178,11 @@ impl Game {
         items: &[Option<ItemStack>],
     ) {
         for (k, &p) in parts.iter().enumerate() {
-            set_chest_items(&mut self.level.overworld, p, &items[k * 27..(k + 1) * 27]);
+            set_chest_items(
+                &mut self.level.overworld,
+                p,
+                &items[k * CHEST_SLOTS..(k + 1) * CHEST_SLOTS],
+            );
         }
     }
 
@@ -172,7 +192,7 @@ impl Game {
             return;
         };
         self.open_chest(i, pos, parts);
-        let stat = if block == 54 {
+        let stat = if block == block::CHEST {
             "stat.chestOpened"
         } else {
             "stat.trappedChestTriggered"
@@ -185,7 +205,7 @@ impl Game {
         if self.players[i].window.open.is_some() {
             self.close_screen(i);
         }
-        let rows = parts.len() as u8 * 3;
+        let rows = (parts.len() * CHEST_SLOTS / 9) as u8;
         let title = title(&self.level.overworld, &parts);
         let id = self.players[i].window.next_window_id();
         self.players[i].send(ClientboundPlay::OpenWindow {
@@ -237,7 +257,7 @@ impl Game {
         let event = BlockEvent {
             pos,
             block,
-            action: 1,
+            action: EVENT_VIEWERS,
             param: c.viewers,
         };
         // World.addBlockEvent: identical queued events are not added twice.
@@ -256,7 +276,10 @@ impl Game {
                     continue;
                 }
                 // TileEntityChest.receiveClientEvent.
-                if !matches!(e.block, 54 | 146) || e.action != 1 || w.tile_entity(e.pos).is_none() {
+                if !block::is_chest(e.block)
+                    || e.action != EVENT_VIEWERS
+                    || w.tile_entity(e.pos).is_none()
+                {
                     continue;
                 }
                 if let Some(c) = self.chests.iter_mut().find(|c| c.pos == e.pos) {
@@ -297,28 +320,28 @@ impl Game {
         let mut k = 0;
         while k < self.chests.len() {
             let pos = self.chests[k].pos;
-            let block = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
-            if !matches!(block, 54 | 146) || self.level.overworld.tile_entity(pos).is_none() {
+            let id = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
+            if !block::is_chest(id) || self.level.overworld.tile_entity(pos).is_none() {
                 self.chests.remove(k);
                 continue;
             }
-            let west = self.adjacent_chest(pos, block, placement::WEST);
-            let east = self.adjacent_chest(pos, block, placement::EAST);
-            let north = self.adjacent_chest(pos, block, placement::NORTH);
-            let south = self.adjacent_chest(pos, block, placement::SOUTH);
+            let west = self.adjacent_chest(pos, id, placement::WEST);
+            let east = self.adjacent_chest(pos, id, placement::EAST);
+            let north = self.adjacent_chest(pos, id, placement::NORTH);
+            let south = self.adjacent_chest(pos, id, placement::SOUTH);
             let c = &mut self.chests[k];
             c.ticks += 1;
-            if c.viewers != 0 && (c.ticks + pos.0 + pos.1 + pos.2) % 200 == 0 {
+            if c.viewers != 0 && (c.ticks + pos.0 + pos.1 + pos.2) % RECOUNT_INTERVAL == 0 {
                 let area = super::physics::Aabb {
                     min: [
-                        f64::from(pos.0 as f32 - 5.0),
-                        f64::from(pos.1 as f32 - 5.0),
-                        f64::from(pos.2 as f32 - 5.0),
+                        f64::from(pos.0 as f32 - RECOUNT_RANGE),
+                        f64::from(pos.1 as f32 - RECOUNT_RANGE),
+                        f64::from(pos.2 as f32 - RECOUNT_RANGE),
                     ],
                     max: [
-                        f64::from((pos.0 + 1) as f32 + 5.0),
-                        f64::from((pos.1 + 1) as f32 + 5.0),
-                        f64::from((pos.2 + 1) as f32 + 5.0),
+                        f64::from((pos.0 + 1) as f32 + RECOUNT_RANGE),
+                        f64::from((pos.1 + 1) as f32 + RECOUNT_RANGE),
+                        f64::from((pos.2 + 1) as f32 + RECOUNT_RANGE),
                     ],
                 };
                 let count = self
@@ -344,17 +367,27 @@ impl Game {
             let (viewers, lid) = (c.viewers, c.lid);
             if viewers > 0 && lid == 0.0 && primary {
                 let pitch = self.world_rand.next_float() * 0.1 + 0.9;
-                self.play_sound_near_except(None, "random.chestopen", sound_pos, 0.5, pitch);
+                self.play_sound_near_except(None, "random.chestopen", sound_pos, LID_VOLUME, pitch);
             }
             if (viewers == 0 && lid > 0.0) || (viewers > 0 && lid < 1.0) {
                 let before = lid;
-                let mut lid = if viewers > 0 { lid + 0.1 } else { lid - 0.1 };
+                let mut lid = if viewers > 0 {
+                    lid + LID_STEP
+                } else {
+                    lid - LID_STEP
+                };
                 if lid > 1.0 {
                     lid = 1.0;
                 }
-                if lid < 0.5 && before >= 0.5 && primary {
+                if lid < LID_CLOSE_SOUND && before >= LID_CLOSE_SOUND && primary {
                     let pitch = self.world_rand.next_float() * 0.1 + 0.9;
-                    self.play_sound_near_except(None, "random.chestclosed", sound_pos, 0.5, pitch);
+                    self.play_sound_near_except(
+                        None,
+                        "random.chestclosed",
+                        sound_pos,
+                        LID_VOLUME,
+                        pitch,
+                    );
                 }
                 if lid < 0.0 {
                     lid = 0.0;
@@ -375,11 +408,11 @@ impl Game {
     pub(super) fn drop_container_contents(&mut self, pos: (i32, i32, i32)) {
         let block = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
         let contents: Vec<ItemStack> = match block {
-            54 | 146 => chest_items(&self.level.overworld, pos)
+            id if block::is_chest(id) => chest_items(&self.level.overworld, pos)
                 .into_iter()
                 .flatten()
                 .collect(),
-            61 | 62 => {
+            id if block::is_furnace(id) => {
                 let items = self.furnace_contents(pos);
                 self.furnace_burn.remove(&pos);
                 items

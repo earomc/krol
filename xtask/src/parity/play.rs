@@ -428,6 +428,16 @@ pub fn summarize(o: &PlayObservation) -> Value {
         }
         packets.push(entry);
     }
+    // Gaining experience raises the player's score: the experience bar goes out when the
+    // server next handles a movement packet, the score metadata with the next tracker
+    // update. Whether a movement packet arrives in between is network timing, so an
+    // adjacent pair is put in one order.
+    for k in 1..sequence.len() {
+        if sequence[k - 1] == "entity_metadata" && sequence[k] == "set_experience" {
+            sequence.swap(k - 1, k);
+            packets.swap(k - 1, k);
+        }
+    }
     json!({
         "login": o.login.iter().map(login_json).collect::<Vec<_>>(),
         "sequence": sequence,

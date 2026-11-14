@@ -42,8 +42,8 @@
         "player_abilities",
         "chat",
         "set_experience",
-        "entity_metadata",
         "set_experience",
+        "entity_metadata",
         "position_look",
         "disconnect"
       ],
@@ -189,12 +189,12 @@
           "packet": "set_experience"
         },
         {
-          "hex": "00520000000a7f",
-          "packet": "entity_metadata"
-        },
-        {
           "hex": "3eaaaaac040a",
           "packet": "set_experience"
+        },
+        {
+          "hex": "00520000000a7f",
+          "packet": "entity_metadata"
         },
         {
           "x": -449.5,

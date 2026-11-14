@@ -5,12 +5,40 @@ use std::path::{Path, PathBuf};
 
 use krol_nbt::{Compound, List, Tag};
 use krol_world::chunk::Chunk;
+
+use super::ids::block;
 use krol_world::level::LevelData;
 use krol_world::region::{RegionFile, region_file_name};
 use tracing::{error, info};
 
+/// `BlockPos.hashCode` (`Vec3i`).
+fn block_pos_hash(x: i32, y: i32, z: i32) -> i32 {
+    y.wrapping_add(z.wrapping_mul(31))
+        .wrapping_mul(31)
+        .wrapping_add(x)
+}
+
+/// Puts a chunk's tile entities in the order vanilla's `chunkTileEntityMap` (a
+/// `HashMap<BlockPos, TileEntity>`) iterates them: the order they join the world's
+/// lists when the chunk loads, and the order they are saved in.
+fn sort_tile_entities(list: &mut List) {
+    let tags: Vec<Tag> = list.iter().cloned().collect();
+    let hashes: Vec<i32> = tags
+        .iter()
+        .map(|t| match t {
+            Tag::Compound(c) => block_pos_hash(c.get_i32("x"), c.get_i32("y"), c.get_i32("z")),
+            _ => 0,
+        })
+        .collect();
+    let mut sorted = List::new();
+    for k in krol_java::java_hash_order(&hashes) {
+        let _ = sorted.push(tags[k].clone());
+    }
+    *list = sorted;
+}
+
 /// Blocks with a tile entity (`ITileEntityProvider`).
-fn has_tile_entity(id: u16) -> bool {
+pub fn has_tile_entity(id: u16) -> bool {
     matches!(
         id,
         23 | 25
@@ -48,6 +76,9 @@ pub struct World {
     /// Block changes per chunk since the last flush, as vanilla's `PlayerInstance`
     /// records them (`x << 12 | z << 8 | y`, at most 64; 64 means "resend sections").
     pub pending_changes: HashMap<(i32, i32), (Vec<u16>, u16)>,
+    /// The chunks in `pending_changes`, in the order they first changed (vanilla's
+    /// `playerInstancesToUpdate`).
+    pub pending_order: Vec<(i32, i32)>,
     /// Dimension id (0 overworld, -1 nether, 1 end).
     pub dimension: i8,
     /// Directory holding this dimension's `region/` folder.
@@ -81,6 +112,7 @@ impl World {
             chunks: HashMap::new(),
             regions: HashMap::new(),
             pending_changes: HashMap::new(),
+            pending_order: Vec::new(),
             furnaces: Vec::new(),
         }
     }
@@ -105,8 +137,17 @@ impl World {
             has_sky,
         );
         self.update_tile_entity((x, y, z), old, state);
-        // Vanilla PlayerInstance.flagChunkForUpdate.
-        let entry = self.pending_changes.entry((x >> 4, z >> 4)).or_default();
+        self.mark_block_for_update(x, y, z);
+    }
+
+    /// Records a block for the end-of-tick flush to watching players (vanilla
+    /// `markBlockForUpdate` / `PlayerInstance.flagChunkForUpdate`).
+    pub fn mark_block_for_update(&mut self, x: i32, y: i32, z: i32) {
+        let key = (x >> 4, z >> 4);
+        if !self.pending_changes.contains_key(&key) {
+            self.pending_order.push(key);
+        }
+        let entry = self.pending_changes.entry(key).or_default();
         entry.1 |= 1 << (y >> 4);
         if entry.0.len() < 64 {
             let packed = ((x & 15) as u16) << 12 | ((z & 15) as u16) << 8 | y as u16;
@@ -161,7 +202,8 @@ impl World {
                     }
                 });
             let from_disk = loaded.is_some();
-            let chunk = loaded.unwrap_or_else(|| Chunk::empty(cx, cz));
+            let mut chunk = loaded.unwrap_or_else(|| Chunk::empty(cx, cz));
+            sort_tile_entities(&mut chunk.tile_entities);
             // Chunk.onChunkLoad: the tile entities join the world's lists.
             for t in chunk.tile_entities.iter() {
                 if let Tag::Compound(c) = t
@@ -320,35 +362,42 @@ impl World {
     /// TODO(M4): create the tile entities of the other blocks (signs, dispensers, ...).
     fn update_tile_entity(&mut self, pos: (i32, i32, i32), old: u16, new: u16) {
         let (old, new) = (old >> 4, new >> 4);
-        let furnace_swap = matches!(old, 61 | 62) && matches!(new, 61 | 62);
+        let furnace_swap = block::is_furnace(old) && block::is_furnace(new);
         if old != new && has_tile_entity(old) && !furnace_swap {
             self.remove_tile_entity(pos);
         }
-        if !matches!(new, 54 | 146 | 61 | 62) || self.tile_entity_index(pos).is_some() {
+        // writeToNBT of a new TileEntityChest / TileEntityFurnace / TileEntitySign.
+        let id = match new {
+            n if block::is_furnace(n) => "Furnace",
+            n if block::is_sign(n) => "Sign",
+            n if block::is_chest(n) => "Chest",
+            _ => return,
+        };
+        if self.tile_entity_index(pos).is_some() {
             return;
         }
-        // writeToNBT of a new TileEntityChest / TileEntityFurnace.
-        let furnace = matches!(new, 61 | 62);
         let mut c = Compound::new();
-        c.insert(
-            "id",
-            Tag::String(if furnace { "Furnace" } else { "Chest" }.into()),
-        );
+        c.insert("id", Tag::String(id.into()));
         c.insert("x", Tag::Int(pos.0));
         c.insert("y", Tag::Int(pos.1));
         c.insert("z", Tag::Int(pos.2));
-        c.insert("Lock", Tag::String(String::new()));
-        if furnace {
-            c.insert("BurnTime", Tag::Short(0));
-            c.insert("CookTime", Tag::Short(0));
-            c.insert("CookTimeTotal", Tag::Short(0));
-            self.furnaces.push(pos);
+        if id == "Sign" {
+            for k in 1..=4 {
+                c.insert(format!("Text{k}"), Tag::String("\"\"".into()));
+            }
+        } else {
+            c.insert("Lock", Tag::String(String::new()));
+            if id == "Furnace" {
+                c.insert("BurnTime", Tag::Short(0));
+                c.insert("CookTime", Tag::Short(0));
+                c.insert("CookTimeTotal", Tag::Short(0));
+                self.furnaces.push(pos);
+            }
+            c.insert("Items", Tag::List(List::new()));
         }
-        c.insert("Items", Tag::List(List::new()));
-        let _ = self
-            .chunk_mut(pos.0 >> 4, pos.2 >> 4)
-            .tile_entities
-            .push(Tag::Compound(c));
+        let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
+        let _ = list.push(Tag::Compound(c));
+        sort_tile_entities(list);
     }
 
     /// Whether the chunk is loaded (vanilla `isBlockLoaded`), without loading it.

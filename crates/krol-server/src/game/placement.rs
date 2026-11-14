@@ -9,6 +9,7 @@
 //! cactus and mushrooms.
 
 use super::block_data::{self, Material};
+use super::ids;
 use super::world::World;
 
 /// Faces in vanilla's order (`EnumFacing` index).
@@ -280,7 +281,7 @@ pub fn placed_state(
         }
         // BlockChest.canPlaceBlockAt: at most one neighboring chest of the same kind,
         // and that one must not be part of a double chest already.
-        54 | 146 => {
+        ids::block::CHEST | ids::block::TRAPPED_CHEST => {
             let is_chest =
                 |p: (i32, i32, i32), world: &mut World| world.block(p.0, p.1, p.2) >> 4 == id;
             let mut count = 0;

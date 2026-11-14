@@ -9,6 +9,7 @@
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
 use super::Game;
+use super::ids::{block, item};
 use super::item_entity::max_stack;
 
 /// A window's slot layout.
@@ -104,7 +105,7 @@ impl Layout {
     /// bucket.
     fn limit(self, k: usize, stack: &ItemStack) -> i8 {
         if (self == Self::Player && (5..=8).contains(&k))
-            || (self == Self::Furnace && k == 1 && stack.id == 325)
+            || (self == Self::Furnace && k == super::furnace::FUEL && stack.id == item::BUCKET)
         {
             1
         } else {
@@ -962,16 +963,18 @@ impl Game {
         };
         let w = &mut self.level.overworld;
         let still = match layout {
-            Layout::Workbench => w.block(pos.0, pos.1, pos.2) >> 4 == 58 && near(pos),
+            Layout::Workbench => {
+                w.block(pos.0, pos.1, pos.2) >> 4 == block::CRAFTING_TABLE && near(pos)
+            }
             // TileEntityChest.isUseableByPlayer, for each half.
             Layout::Chest(_) => parts.iter().all(|&p| {
-                matches!(w.block(p.0, p.1, p.2) >> 4, 54 | 146)
+                block::is_chest(w.block(p.0, p.1, p.2) >> 4)
                     && w.tile_entity(p).is_some()
                     && near(p)
             }),
             // TileEntityFurnace.isUseableByPlayer.
             Layout::Furnace => {
-                matches!(w.block(pos.0, pos.1, pos.2) >> 4, 61 | 62)
+                block::is_furnace(w.block(pos.0, pos.1, pos.2) >> 4)
                     && w.tile_entity(pos).is_some()
                     && near(pos)
             }
