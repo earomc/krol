@@ -296,6 +296,8 @@ impl Game {
                 // onBlockEventReceived: whether clients get the event.
                 let send = if super::pistons::is_piston(e.block) {
                     self.piston_event(e.pos, state, e.action, e.param)
+                } else if e.block == block::NOTEBLOCK {
+                    self.note_event(e.pos, e.action, e.param)
                 } else if block::is_chest(e.block) && e.action == EVENT_VIEWERS {
                     // TileEntityChest.receiveClientEvent.
                     let has_te = self.level.overworld.tile_entity(e.pos).is_some();

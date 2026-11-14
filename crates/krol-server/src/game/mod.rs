@@ -21,6 +21,7 @@ mod interact;
 mod item_data;
 mod item_entity;
 mod movement;
+mod note_block;
 pub mod physics;
 mod pistons;
 mod placement;
@@ -219,6 +220,8 @@ struct Game {
     wire_gives_power: bool,
     /// `BlockRedstoneWire.blocksNeedingUpdate`, in insertion order.
     wire_queue: Vec<(i32, i32, i32)>,
+    /// `TileEntityNote.previousRedstoneState` (not saved).
+    note_powered: std::collections::HashMap<(i32, i32, i32), bool>,
     /// The current `progress` of moving piston blocks (only `lastProgress` is saved).
     moving_progress: std::collections::HashMap<(i32, i32, i32), f32>,
     /// Scheduled ticks still waiting in the batch being run (`pendingTickListEntriesThisTick`).
@@ -287,6 +290,7 @@ pub fn start(
         torch_toggles: Vec::new(),
         ticks_this_tick: Vec::new(),
         moving_progress: Default::default(),
+        note_powered: Default::default(),
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),

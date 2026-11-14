@@ -328,7 +328,10 @@ impl Game {
         dig.initial = dig.ticks;
         let mut hardness = 1.0;
         if b != 0 {
-            // TODO(M5): Block.onBlockClicked (note blocks, redstone ore, dragon egg).
+            // Block.onBlockClicked. TODO(M5): redstone ore lighting up, dragon eggs.
+            if b == super::ids::block::NOTEBLOCK {
+                self.click_note_block(i, pos);
+            }
             hardness = self.relative_hardness_for(i, pos);
         }
         if b != 0 && hardness >= 1.0 {

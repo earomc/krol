@@ -13,6 +13,8 @@ pub mod block {
     pub const DIRT: u16 = 3;
     /// `sapling`.
     pub const SAPLING: u16 = 6;
+    /// `noteblock`.
+    pub const NOTEBLOCK: u16 = 25;
     /// `bed`.
     pub const BED: u16 = 26;
     /// `golden_rail` (powered rail).

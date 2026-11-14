@@ -294,6 +294,11 @@ description = "Pistons and sticky pistons: structure helper (12-block limit, sli
 scenarios = ["play/pistons"]
 
 [[feature]]
+id = "redstone.note_blocks"
+description = "Note blocks: tuning, instruments by the block below, playing on right-click, survival left-click and rising redstone edges, Music tile entity, block events and sounds"
+scenarios = ["play/note_blocks"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

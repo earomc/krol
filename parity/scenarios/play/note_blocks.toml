@@ -1,0 +1,51 @@
+description = "Note blocks: tuned twice by right-clicking (harp on grass), and played by redstone on a rising edge only (bass drum on stone, lever on, off, on)"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. The lever is on the side of the stone under the second note block, so it
+# powers the stone and through it the note block.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 8
+chat = [
+    "@2500 !creative 36 25 8 0",
+    "@2600 !creative 37 1 8 0",
+    "@2700 !creative 38 69 8 0",
+    "@3000 !place -470 3 -433 1",
+    "@3300 !place -470 4 -433 1",
+    "@3600 !place -470 4 -433 1",
+    "@3800 !hold 1",
+    "@4000 !place -468 3 -433 1",
+    "@4200 !hold 0",
+    "@4400 !place -468 4 -433 1",
+    "@4600 !hold 2",
+    "@4800 !place -468 4 -433 5",
+    "@5200 !place -467 4 -433 1",
+    "@5600 !place -467 4 -433 1",
+    "@6000 !place -467 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 7700
+
+[observe]
+log = true
+tile_entities = [[-470, 4, -433], [-468, 5, -433]]
+files = [
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+]

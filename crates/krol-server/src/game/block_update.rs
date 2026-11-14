@@ -174,6 +174,10 @@ impl Game {
                 return;
             }
             block::PISTON_EXTENSION => return,
+            block::NOTEBLOCK => {
+                self.note_block_changed(pos);
+                return;
+            }
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR

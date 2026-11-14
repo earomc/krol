@@ -161,6 +161,10 @@ impl Game {
                 self.activate_lever(pos);
                 true
             }
+            block::NOTEBLOCK => {
+                self.activate_note_block(i, pos);
+                true
+            }
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 if self.players[i].gamemode == 2 {
                     return false;
