@@ -24,6 +24,7 @@ mod movement;
 pub mod physics;
 mod placement;
 pub mod player;
+mod powered_blocks;
 mod recipes;
 mod redstone;
 mod scheduler;

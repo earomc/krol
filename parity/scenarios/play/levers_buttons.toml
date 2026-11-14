@@ -3,7 +3,8 @@ subsystem = "play"
 
 # jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
 # the console. The blocks that pop off are more than two blocks from the player, so
-# their drops land out of pickup reach whatever their random arc.
+# their drops land out of pickup reach whatever their random arc. No scripted action
+# comes within 200 ms of a button's release (20 or 30 ticks after its press).
 
 [setup]
 world = "fixtures/worlds/flat"
@@ -27,19 +28,19 @@ chat = [
     "@4500 !place -468 4 -433 1",
     "@4800 !creative 38 143 1 0",
     "@5000 !hold 2",
-    "@5300 !place -466 3 -433 1",
-    "@5600 !place -466 4 -433 1",
+    "@5200 !place -466 3 -433 1",
+    "@5800 !place -466 4 -433 1",
     "@6000 !creative 39 38 1 0",
     "@6200 !hold 3",
     "@6400 !place -475 3 -433 1",
-    "@6700 !creative 40 50 1 0",
-    "@6900 !hold 4",
-    "@7100 !place -476 3 -433 1",
-    "@7400 !hold 0",
-    "@7600 !place -475 3 -431 1",
-    "@8000 !dig -475 3 -433 1",
-    "@8300 !dig -476 3 -433 1",
-    "@8600 !dig -475 3 -431 1",
+    "@6600 !creative 40 50 1 0",
+    "@6800 !hold 4",
+    "@7000 !place -476 3 -433 1",
+    "@7600 !hold 0",
+    "@7800 !place -475 3 -431 1",
+    "@8200 !dig -475 3 -433 1",
+    "@8500 !dig -476 3 -433 1",
+    "@8800 !dig -475 3 -431 1",
 ]
 
 [[steps]]

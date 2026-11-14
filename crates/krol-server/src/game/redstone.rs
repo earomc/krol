@@ -109,6 +109,11 @@ impl Game {
         }
     }
 
+    /// `Block.canProvidePower` for other modules.
+    pub(super) fn block_provides_power(&self, id: u16) -> bool {
+        self.provides_power(id)
+    }
+
     /// `Block.getWeakPower` of the block at `pos`, asked from side `side`.
     fn weak_power(&mut self, pos: (i32, i32, i32), side: u8) -> i32 {
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);

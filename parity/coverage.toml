@@ -279,6 +279,11 @@ description = "Repeaters: placement facing away from the player, delay cycling, 
 scenarios = ["play/repeaters"]
 
 [[feature]]
+id = "redstone.doors"
+description = "Doors, trapdoors and fence gates opened and closed by redstone (powered bits, effects 1003/1006), doors and trapdoors breaking without support, door halves breaking together, doors dropping from the lower half"
+scenarios = ["play/powered_doors"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

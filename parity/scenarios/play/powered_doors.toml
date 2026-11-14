@@ -1,0 +1,56 @@
+description = "Redstone consumers: a door, a fence gate and a trapdoor opened and closed by levers; a door and a trapdoor breaking off when the block holding them is removed"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. The blocks that break off are out of pickup reach.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 10
+chat = [
+    "@2500 !creative 36 324 8 0",
+    "@2600 !creative 37 69 8 0",
+    "@2700 !creative 38 107 8 0",
+    "@2800 !creative 39 3 8 0",
+    "@2900 !creative 40 96 8 0",
+    "@3100 !place -470 3 -433 1",
+    "@3300 !hold 1",
+    "@3500 !place -469 3 -433 1",
+    "@3700 !hold 2",
+    "@3900 !place -467 3 -433 1",
+    "@4100 !hold 1",
+    "@4300 !place -466 3 -433 1",
+    "@4500 !hold 3",
+    "@4700 !place -476 3 -433 1",
+    "@4900 !hold 4",
+    "@5100 !place -476 4 -433 5",
+    "@5300 !hold 1",
+    "@5500 !place -476 4 -433 1",
+    "@5700 !hold 0",
+    "@5900 !place -474 3 -431 1",
+    "@6200 !place -469 4 -433 1",
+    "@6500 !place -466 4 -433 1",
+    "@6800 !place -476 5 -433 1",
+    "@7100 !place -469 4 -433 1",
+    "@7400 !place -466 4 -433 1",
+    "@7700 !place -476 5 -433 1",
+    "@8000 !dig -474 3 -431 1",
+    "@8400 !dig -476 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 9700
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-470, 5, -433], [-467, 4, -433], [-475, 4, -433], [-474, 4, -431], [-474, 5, -431], [-476, 5, -433]]

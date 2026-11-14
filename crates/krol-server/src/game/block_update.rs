@@ -125,12 +125,15 @@ impl Game {
     }
 
     /// `onNeighborBlockChange` of the block at `pos` (`notifyBlockOfStateChange`).
-    pub(super) fn neighbor_changed(&mut self, pos: (i32, i32, i32), _source: u16) {
+    pub(super) fn neighbor_changed(&mut self, pos: (i32, i32, i32), source: u16) {
         let w = &mut self.level.overworld;
         let state = w.block(pos.0, pos.1, pos.2);
         let (id, meta) = (state >> 4, state & 15);
         if super::falling_block::falls(id) {
             self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
+            return;
+        }
+        if self.powered_block_changed(pos, state, source) {
             return;
         }
         match id {

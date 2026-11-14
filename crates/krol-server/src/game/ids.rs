@@ -43,6 +43,24 @@ pub mod block {
     pub const DIAMOND_ORE: u16 = 56;
     /// `crafting_table`.
     pub const CRAFTING_TABLE: u16 = 58;
+    /// `wooden_door` (oak).
+    pub const WOODEN_DOOR: u16 = 64;
+    /// `iron_door`.
+    pub const IRON_DOOR: u16 = 71;
+    /// `trapdoor` (wooden).
+    pub const TRAPDOOR: u16 = 96;
+    /// `fence_gate` (oak).
+    pub const OAK_FENCE_GATE: u16 = 107;
+    /// `iron_trapdoor`.
+    pub const IRON_TRAPDOOR: u16 = 167;
+    /// `spruce_fence_gate`; birch, jungle, dark oak and acacia gates follow (183-187).
+    pub const SPRUCE_FENCE_GATE: u16 = 183;
+    /// `acacia_fence_gate`.
+    pub const ACACIA_FENCE_GATE: u16 = 187;
+    /// `spruce_door`; birch, jungle, acacia and dark oak doors follow (193-197).
+    pub const SPRUCE_DOOR: u16 = 193;
+    /// `dark_oak_door`.
+    pub const DARK_OAK_DOOR: u16 = 197;
     /// `wheat` (the crop).
     pub const WHEAT: u16 = 59;
     /// `farmland`.

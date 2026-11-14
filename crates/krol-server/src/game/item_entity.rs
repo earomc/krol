@@ -113,6 +113,11 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
         75 => (1, Some(76), 0),
         124 => (1, Some(123), 0),
         93 | 94 => (1, Some(356), 0),
+        // Doors drop from their lower half only.
+        64 | 71 | 193..=197 if m & 8 != 0 => (0, None, 0),
+        64 => (1, Some(324), 0),
+        71 => (1, Some(330), 0),
+        193..=197 => (1, Some(427 + b as i16 - 193), 0),
         super::ids::block::STANDING_SIGN | super::ids::block::WALL_SIGN => {
             (1, Some(super::ids::item::SIGN), 0)
         }
