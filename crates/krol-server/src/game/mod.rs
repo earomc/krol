@@ -10,6 +10,7 @@ pub mod blocks;
 pub mod commands;
 mod damage;
 mod digging;
+mod item_entity;
 mod movement;
 pub mod physics;
 pub mod player;
@@ -184,6 +185,10 @@ struct Game {
     pending_removals: Vec<(u64, Component)>,
     /// Entity tracker entries.
     tracker: tracker::Tracker,
+    /// Dropped items by entity id.
+    items: std::collections::BTreeMap<i32, item_entity::ItemEntity>,
+    /// The world's random (`World.rand`, unseeded in vanilla).
+    world_rand: krol_java::JavaRandom,
     /// `save-on` / `save-off`.
     saving_enabled: bool,
     /// The world's unseeded `Random` (weather durations).
@@ -221,6 +226,12 @@ pub fn start(
         stopping: false,
         pending_removals: Vec::new(),
         tracker: Default::default(),
+        items: Default::default(),
+        world_rand: krol_java::JavaRandom::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_nanos() as i64),
+        ),
         user_cache: crate::usercache::UserCache::load("usercache.json"),
         saving_enabled: true,
         weather_rand: krol_java::JavaRandom::new(
@@ -337,6 +348,7 @@ impl Game {
                 );
             }
         }
+        self.tick_items();
         self.update_tracked_entities();
         for line in commands {
             self.console_command(&line);
@@ -606,7 +618,13 @@ impl Game {
         // Vanilla reads what is stored and keeps defaults for everything missing, then
         // writes a complete record back.
         let mut data = default_player_data(gamemode);
+        let mut stored_game_type = false;
         if let Some(stored) = stored {
+            // Entity.readFromNBT reads a missing "Air" as 0 (getShort's default).
+            if !stored.contains_key("Air") {
+                data.insert("Air", krol_nbt::Tag::Short(0));
+            }
+            stored_game_type = stored.contains_key("playerGameType");
             for (k, v) in &stored {
                 data.insert(k.clone(), v.clone());
             }
@@ -638,8 +656,12 @@ impl Game {
         let update = ClientboundPlay::PlayerListItem(PlayerListAction::UpdateGamemode(vec![(
             profile_id, gamemode,
         )]));
-        for p in &self.players {
-            p.send(update.clone());
+        // Vanilla quirk: reading a stored game type already set it once
+        // (EntityPlayerMP.readEntityFromNBT), so stored players announce it twice.
+        for _ in 0..if stored_game_type { 2 } else { 1 } {
+            for p in &self.players {
+                p.send(update.clone());
+            }
         }
         // A new entity starts off the ground; stored players read `OnGround`.
         let on_ground = loaded && data.get_bool("OnGround");
@@ -710,6 +732,7 @@ impl Game {
             ),
             last_health_sent: None,
             dig: digging::DigState::new(),
+            pending_destroy: Vec::new(),
             chat_spam: 0,
             data,
         };
@@ -844,6 +867,11 @@ impl Game {
                     item: player.inventory[slot].clone(),
                 });
             }
+        }
+        // EntityPlayerMP.onUpdate: entities removed since the last update.
+        if !player.pending_destroy.is_empty() {
+            let ids = std::mem::take(&mut player.pending_destroy);
+            player.send(ClientboundPlay::DestroyEntities(ids));
         }
         player.ticks += 1;
         // EntityPlayerMP.onUpdate.

@@ -1,7 +1,7 @@
 //! Which clients see which entities, and the packets that keep them in sync
 //! (vanilla: `EntityTracker`, `EntityTrackerEntry`).
 //!
-//! Only players are tracked so far. Every tracked entity has an entry holding what its
+//! Players and dropped items are tracked so far. Every tracked entity has an entry holding what its
 //! viewers were last told (position in 1/32 blocks, angles in 1/256 turns). Each tick,
 //! after the entity updates, every entry:
 //!
@@ -28,6 +28,9 @@ use super::player::Player;
 const PLAYER_RANGE: i32 = 512;
 /// Players are updated every 2 ticks.
 const PLAYER_FREQUENCY: u32 = 2;
+/// Items: range 64, every 20 ticks, with velocity updates.
+const ITEM_RANGE: i32 = 64;
+const ITEM_FREQUENCY: u32 = 20;
 
 /// One tracked entity (vanilla `EntityTrackerEntry`).
 #[derive(Debug)]
@@ -42,6 +45,8 @@ pub struct TrackerEntry {
     update_counter: u32,
     ticks_since_teleport: u32,
     on_ground: bool,
+    velocity_updates: bool,
+    last_motion: (f64, f64, f64),
     /// Entity ids of the players that see this entity (vanilla `trackingPlayers`).
     tracking: BTreeSet<i32>,
 }
@@ -109,9 +114,55 @@ pub fn equipment(p: &Player) -> [Option<ItemStack>; 5] {
     ]
 }
 
+/// What the tracker needs to know about a tracked entity.
+struct View {
+    pos: (f64, f64, f64),
+    yaw: f32,
+    pitch: f32,
+    head: f32,
+    on_ground: bool,
+    motion: (f64, f64, f64),
+    chunk: (i32, i32),
+    airborne: bool,
+    metadata_changed: bool,
+    /// Index into `players` for players.
+    player: Option<usize>,
+}
+
 impl Game {
     fn player_by_entity(&self, entity_id: i32) -> Option<usize> {
         self.players.iter().position(|p| p.entity_id == entity_id)
+    }
+
+    fn view(&self, entity_id: i32) -> Option<View> {
+        if let Some(i) = self.player_by_entity(entity_id) {
+            let p = &self.players[i];
+            return Some(View {
+                pos: p.pos,
+                yaw: p.rotation.0,
+                pitch: p.rotation.1,
+                head: p.rotation.0,
+                on_ground: p.on_ground,
+                motion: p.motion,
+                chunk: p.entity_chunk,
+                airborne: p.airborne,
+                metadata_changed: !p.dirty_metadata.is_empty(),
+                player: Some(i),
+            });
+        }
+        let it = self.items.get(&entity_id)?;
+        Some(View {
+            pos: it.body.pos,
+            yaw: it.yaw,
+            pitch: 0.0,
+            head: 0.0,
+            on_ground: it.body.on_ground,
+            motion: it.body.motion,
+            chunk: it.chunk,
+            airborne: false,
+            metadata_changed: !it.dirty_metadata.is_empty(),
+            player: None,
+        })
     }
 
     /// The tracking range after vanilla's clamp to `view-distance * 16 - 16`.
@@ -139,36 +190,52 @@ impl Game {
         self.send_to_tracking(entity_id, packet);
     }
 
-    /// Starts tracking the player at index `i` (vanilla `EntityTracker.trackEntity`, run
-    /// when the player is added to the world).
-    pub(super) fn track_player(&mut self, i: usize) {
-        let p = &self.players[i];
-        let entity_id = p.entity_id;
+    /// Starts tracking an entity (vanilla `EntityTracker.trackEntity`, run when it is
+    /// added to the world).
+    pub(super) fn track_entity(&mut self, entity_id: i32) {
+        let Some(v) = self.view(entity_id) else {
+            return;
+        };
+        let (range, frequency, velocity_updates) = if v.player.is_some() {
+            (PLAYER_RANGE, PLAYER_FREQUENCY, false)
+        } else {
+            (ITEM_RANGE, ITEM_FREQUENCY, true)
+        };
         let entry = TrackerEntry {
-            range: self.tracking_range(PLAYER_RANGE),
-            frequency: PLAYER_FREQUENCY,
-            encoded_pos: (fixed(p.pos.0), fixed(p.pos.1), fixed(p.pos.2)),
-            encoded_rot: (angle(p.rotation.0), angle(p.rotation.1)),
-            last_head: angle(p.rotation.0),
+            range: self.tracking_range(range),
+            frequency,
+            encoded_pos: (fixed(v.pos.0), fixed(v.pos.1), fixed(v.pos.2)),
+            encoded_rot: (angle(v.yaw), angle(v.pitch)),
+            last_head: angle(v.head),
             last_tracked: (0.0, 0.0, 0.0),
             first_update_done: false,
             update_counter: 0,
             ticks_since_teleport: 0,
-            on_ground: p.on_ground,
+            on_ground: v.on_ground,
+            velocity_updates,
+            last_motion: v.motion,
             tracking: BTreeSet::new(),
         };
         self.tracker.insert(entity_id, entry);
         self.update_player_entities(entity_id);
-        // A new player is checked against every other entity.
-        let others: Vec<i32> = self
-            .tracker
-            .keys()
-            .copied()
-            .filter(|&e| e != entity_id)
-            .collect();
-        for other in others {
-            self.update_player_entity(other, i);
+        if let Some(i) = v.player {
+            // A new player is checked against every other entity.
+            let others: Vec<i32> = self
+                .tracker
+                .keys()
+                .copied()
+                .filter(|&e| e != entity_id)
+                .collect();
+            for other in others {
+                self.update_player_entity(other, i);
+            }
         }
+    }
+
+    /// Starts tracking the player at index `i`.
+    pub(super) fn track_player(&mut self, i: usize) {
+        let id = self.players[i].entity_id;
+        self.track_entity(id);
     }
 
     /// Stops tracking the player at index `i` (vanilla `EntityTracker.untrackEntity`):
@@ -187,16 +254,28 @@ impl Game {
         }
     }
 
+    /// Stops tracking a non-player entity; its viewers destroy it on their next update
+    /// (`EntityPlayerMP.removeEntity` queues it in `destroyedItemsNetCache`).
+    pub(super) fn untrack_entity(&mut self, entity_id: i32) {
+        if let Some(entry) = self.tracker.remove(&entity_id) {
+            for p in &mut self.players {
+                if entry.tracking.contains(&p.entity_id) {
+                    p.pending_destroy.push(entity_id);
+                }
+            }
+        }
+    }
+
     /// Spawns the entities in freshly sent chunks for the player at index `viewer`
     /// (vanilla `EntityTracker.func_85172_a`).
     pub(super) fn chunks_sent(&mut self, viewer: usize, chunks: &[(i32, i32)]) {
+        let me = self.players[viewer].entity_id;
         for &c in chunks {
             let in_chunk: Vec<i32> = self
-                .players
-                .iter()
-                .filter(|p| p.entity_chunk == c && p.entity_id != self.players[viewer].entity_id)
-                .map(|p| p.entity_id)
-                .filter(|e| self.tracker.contains_key(e))
+                .tracker
+                .keys()
+                .copied()
+                .filter(|&e| e != me && self.view(e).is_some_and(|v| v.chunk == c))
                 .collect();
             for e in in_chunk {
                 self.update_player_entity(e, viewer);
@@ -211,33 +290,14 @@ impl Game {
         }
     }
 
-    /// Spawns or despawns the entity for one player (`updatePlayerEntity`).
-    fn update_player_entity(&mut self, entity_id: i32, viewer: usize) {
-        let Some(target) = self.player_by_entity(entity_id) else {
-            return;
-        };
-        if target == viewer {
-            return;
-        }
-        let Some(entry) = self.tracker.get(&entity_id) else {
-            return;
-        };
-        let v = &self.players[viewer];
-        // Vanilla quirk: the encoded position is divided as an integer (truncating).
-        let dx = v.pos.0 - f64::from(entry.encoded_pos.0 / 32);
-        let dz = v.pos.2 - f64::from(entry.encoded_pos.2 / 32);
-        let range = f64::from(entry.range);
-        let in_range = dx >= -range && dx <= range && dz >= -range && dz <= range;
-        // TODO(M5): spectators are only visible to spectators (`isSpectatedByPlayer`).
-        let viewer_id = v.entity_id;
-        if in_range {
-            let t = &self.players[target];
-            let chunk = t.entity_chunk;
-            let sent = v.watching.contains(&chunk) && !v.chunk_queue.contains(&chunk);
-            if entry.tracking.contains(&viewer_id) || !sent {
-                return;
-            }
-            let mut packets = vec![ClientboundPlay::SpawnPlayer {
+    /// The packets that make an entity appear for a player (`func_151260_c` and the
+    /// rest of `updatePlayerEntity`).
+    fn spawn_packets(&self, entity_id: i32, v: &View) -> Vec<ClientboundPlay> {
+        let speed = |m: f64| (m.clamp(-3.9, 3.9) * 8000.0) as i32 as i16;
+        let mut packets = Vec::new();
+        if let Some(i) = v.player {
+            let t = &self.players[i];
+            packets.push(ClientboundPlay::SpawnPlayer {
                 entity_id,
                 uuid: t.profile.id,
                 x: fixed(t.pos.0),
@@ -247,7 +307,7 @@ impl Game {
                 pitch: (t.rotation.1 * 256.0 / 360.0) as i32 as i8,
                 current_item: t.held().map_or(0, |s| s.id),
                 metadata: player_metadata(t),
-            }];
+            });
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,
                 metadata: player_metadata(t),
@@ -269,18 +329,75 @@ impl Game {
                 }
             }
             // TODO(M5): use bed, potion effects.
-            for packet in packets {
+        } else if let Some(it) = self.items.get(&entity_id) {
+            let velocity = (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2));
+            packets.push(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind: 2,
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                pitch: angle(v.pitch) as i8,
+                yaw: angle(v.yaw) as i8,
+                data: 1,
+                velocity: Some(velocity),
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: it.metadata(),
+            });
+            packets.push(ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: velocity.0,
+                y: velocity.1,
+                z: velocity.2,
+            });
+        }
+        packets
+    }
+
+    /// Spawns or despawns the entity for one player (`updatePlayerEntity`).
+    fn update_player_entity(&mut self, entity_id: i32, viewer: usize) {
+        let Some(v) = self.view(entity_id) else {
+            return;
+        };
+        if v.player == Some(viewer) {
+            return;
+        }
+        let Some(entry) = self.tracker.get(&entity_id) else {
+            return;
+        };
+        let viewer_pos = self.players[viewer].pos;
+        // Vanilla quirk: the encoded position is divided as an integer (truncating).
+        let dx = viewer_pos.0 - f64::from(entry.encoded_pos.0 / 32);
+        let dz = viewer_pos.2 - f64::from(entry.encoded_pos.2 / 32);
+        let range = f64::from(entry.range);
+        let in_range = dx >= -range && dx <= range && dz >= -range && dz <= range;
+        // TODO(M5): spectators are only visible to spectators (`isSpectatedByPlayer`).
+        let viewer_id = self.players[viewer].entity_id;
+        if in_range {
+            let vp = &self.players[viewer];
+            let sent = vp.watching.contains(&v.chunk) && !vp.chunk_queue.contains(&v.chunk);
+            if entry.tracking.contains(&viewer_id) || !sent {
+                return;
+            }
+            for packet in self.spawn_packets(entity_id, &v) {
                 self.players[viewer].send(packet);
             }
             if let Some(entry) = self.tracker.get_mut(&entity_id) {
                 entry.tracking.insert(viewer_id);
+                entry.last_motion = v.motion;
             }
         } else if entry.tracking.contains(&viewer_id) {
             if let Some(entry) = self.tracker.get_mut(&entity_id) {
                 entry.tracking.remove(&viewer_id);
             }
-            // Players are destroyed right away (`EntityPlayerMP.removeEntity`).
-            self.players[viewer].send(ClientboundPlay::DestroyEntities(vec![entity_id]));
+            if v.player.is_some() {
+                // Players are destroyed right away (`EntityPlayerMP.removeEntity`).
+                self.players[viewer].send(ClientboundPlay::DestroyEntities(vec![entity_id]));
+            } else {
+                self.players[viewer].pending_destroy.push(entity_id);
+            }
         }
     }
 
@@ -290,7 +407,7 @@ impl Game {
         let ids: Vec<i32> = self.tracker.keys().copied().collect();
         let mut updated_players = Vec::new();
         for id in ids {
-            if self.update_entry(id) {
+            if self.update_entry(id) && self.player_by_entity(id).is_some() {
                 updated_players.push(id);
             }
         }
@@ -310,14 +427,16 @@ impl Game {
     /// One entry's update (`EntityTrackerEntry.updatePlayerList`); returns whether it
     /// re-checked its viewers.
     fn update_entry(&mut self, entity_id: i32) -> bool {
-        let Some(i) = self.player_by_entity(entity_id) else {
+        let Some(v) = self.view(entity_id) else {
             return false;
         };
         // Vanilla adds players in the network phase, after the tracker pass of that tick.
-        if self.players[i].joined_tick == self.tick_count {
+        if let Some(i) = v.player
+            && self.players[i].joined_tick == self.tick_count
+        {
             return false;
         }
-        let pos = self.players[i].pos;
+        let pos = v.pos;
         let mut rechecked = false;
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
             let (lx, ly, lz) = entry.last_tracked;
@@ -332,17 +451,14 @@ impl Game {
             self.update_player_entities(entity_id);
         }
 
-        let p = &self.players[i];
-        let metadata_changed = !p.dirty_metadata.is_empty();
-        let airborne = p.airborne;
         let Some(entry) = self.tracker.get_mut(&entity_id) else {
             return rechecked;
         };
         let counter = entry.update_counter;
-        if counter % entry.frequency == 0 || airborne || metadata_changed {
+        if counter % entry.frequency == 0 || v.airborne || v.metadata_changed {
             entry.ticks_since_teleport += 1;
-            let (x, y, z) = (fixed(p.pos.0), fixed(p.pos.1), fixed(p.pos.2));
-            let (yaw, pitch) = (angle(p.rotation.0), angle(p.rotation.1));
+            let (x, y, z) = (fixed(v.pos.0), fixed(v.pos.1), fixed(v.pos.2));
+            let (yaw, pitch) = (angle(v.yaw), angle(v.pitch));
             let (dx, dy, dz) = (
                 x - entry.encoded_pos.0,
                 y - entry.encoded_pos.1,
@@ -358,9 +474,9 @@ impl Game {
                     && small(dy)
                     && small(dz)
                     && entry.ticks_since_teleport <= 400
-                    && entry.on_ground == p.on_ground
+                    && entry.on_ground == v.on_ground
                 {
-                    let on_ground = p.on_ground;
+                    let on_ground = v.on_ground;
                     packet = match (moved, turned) {
                         (true, true) => Some(ClientboundPlay::EntityLookMove {
                             entity_id,
@@ -387,7 +503,7 @@ impl Game {
                         (false, false) => None,
                     };
                 } else {
-                    entry.on_ground = p.on_ground;
+                    entry.on_ground = v.on_ground;
                     entry.ticks_since_teleport = 0;
                     packet = Some(ClientboundPlay::EntityTeleport {
                         entity_id,
@@ -396,7 +512,27 @@ impl Game {
                         z,
                         yaw: yaw as i8,
                         pitch: pitch as i8,
-                        on_ground: p.on_ground,
+                        on_ground: v.on_ground,
+                    });
+                }
+            }
+            let mut velocity = None;
+            if entry.velocity_updates {
+                let d = (
+                    v.motion.0 - entry.last_motion.0,
+                    v.motion.1 - entry.last_motion.1,
+                    v.motion.2 - entry.last_motion.2,
+                );
+                let change = d.0 * d.0 + d.1 * d.1 + d.2 * d.2;
+                let stopped = v.motion == (0.0, 0.0, 0.0);
+                if change > 0.02 * 0.02 || (change > 0.0 && stopped) {
+                    entry.last_motion = v.motion;
+                    let s = |m: f64| (m.clamp(-3.9, 3.9) * 8000.0) as i16;
+                    velocity = Some(ClientboundPlay::EntityVelocity {
+                        entity_id,
+                        x: s(v.motion.0),
+                        y: s(v.motion.1),
+                        z: s(v.motion.2),
                     });
                 }
             }
@@ -406,7 +542,7 @@ impl Game {
             if turned {
                 entry.encoded_rot = (yaw, pitch);
             }
-            let head = angle(p.rotation.0);
+            let head = angle(v.head);
             let head_packet = ((head - entry.last_head).abs() >= 4).then(|| {
                 entry.last_head = head;
                 ClientboundPlay::EntityHeadLook {
@@ -417,51 +553,72 @@ impl Game {
             if let Some(packet) = packet {
                 self.send_to_tracking(entity_id, &packet);
             }
-            self.send_dirty_data(i);
+            if let Some(packet) = velocity {
+                self.send_to_tracking(entity_id, &packet);
+            }
+            self.send_dirty_data(entity_id, &v);
             if let Some(packet) = head_packet {
                 self.send_to_tracking(entity_id, &packet);
             }
-            self.players[i].airborne = false;
+            if let Some(i) = v.player {
+                self.players[i].airborne = false;
+            }
         }
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
             entry.update_counter += 1;
         }
-        let p = &mut self.players[i];
-        if std::mem::take(&mut p.velocity_changed) {
-            let m = p.motion;
-            let v = |m: f64| (m.clamp(-3.9, 3.9) * 8000.0) as i16;
-            let packet = ClientboundPlay::EntityVelocity {
-                entity_id,
-                x: v(m.0),
-                y: v(m.1),
-                z: v(m.2),
-            };
-            self.send_to_tracking_and_self(entity_id, &packet);
+        if let Some(i) = v.player {
+            let p = &mut self.players[i];
+            if std::mem::take(&mut p.velocity_changed) {
+                let m = p.motion;
+                let s = |m: f64| (m.clamp(-3.9, 3.9) * 8000.0) as i16;
+                let packet = ClientboundPlay::EntityVelocity {
+                    entity_id,
+                    x: s(m.0),
+                    y: s(m.1),
+                    z: s(m.2),
+                };
+                self.send_to_tracking_and_self(entity_id, &packet);
+            }
         }
         rechecked
     }
 
     /// Changed metadata and attributes go to the viewers and the player itself
     /// (`sendMetadataToAllAssociatedPlayers`).
-    fn send_dirty_data(&mut self, i: usize) {
-        let p = &mut self.players[i];
-        let entity_id = p.entity_id;
+    fn send_dirty_data(&mut self, entity_id: i32, v: &View) {
         let mut packets = Vec::new();
-        if !p.dirty_metadata.is_empty() {
-            let dirty = std::mem::take(&mut p.dirty_metadata);
-            let metadata = player_metadata(p)
+        if let Some(i) = v.player {
+            let p = &mut self.players[i];
+            if !p.dirty_metadata.is_empty() {
+                let dirty = std::mem::take(&mut p.dirty_metadata);
+                let metadata = player_metadata(p)
+                    .into_iter()
+                    .filter(|m| dirty.contains(&m.index))
+                    .collect();
+                packets.push(ClientboundPlay::EntityMetadata {
+                    entity_id,
+                    metadata,
+                });
+            }
+            if std::mem::take(&mut p.dirty_attributes) {
+                packets.push(ClientboundPlay::EntityProperties {
+                    entity_id,
+                    properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32))],
+                });
+            }
+        } else if let Some(it) = self.items.get_mut(&entity_id)
+            && !it.dirty_metadata.is_empty()
+        {
+            let dirty = std::mem::take(&mut it.dirty_metadata);
+            let metadata = it
+                .metadata()
                 .into_iter()
                 .filter(|m| dirty.contains(&m.index))
                 .collect();
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,
                 metadata,
-            });
-        }
-        if std::mem::take(&mut p.dirty_attributes) {
-            packets.push(ClientboundPlay::EntityProperties {
-                entity_id,
-                properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32))],
             });
         }
         for packet in packets {

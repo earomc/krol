@@ -395,10 +395,8 @@ impl Game {
                 d.destroying = false;
                 return;
             }
-            // Vanilla quirk: the hardness is looked up at the position of the last
-            // "finished" block (field_180241_i), not the block being dug.
-            let progress = self.relative_hardness_for(i, dig.finish_pos)
-                * (dig.ticks - dig.initial + 1) as f32;
+            let progress =
+                self.relative_hardness_for(i, dig.pos) * (dig.ticks - dig.initial + 1) as f32;
             let stage = (progress * 10.0) as i32;
             if stage != dig.progress_sent {
                 self.send_break_progress(i, dig.pos, stage);
@@ -447,10 +445,6 @@ impl Game {
             }
         }
     }
-
-    /// Drops the block's items into the world (`dropBlockAsItem`).
-    /// TODO(M4): item entities.
-    fn drop_block_items(&mut self, _pos: (i32, i32, i32), _state: u16) {}
 }
 
 #[cfg(test)]

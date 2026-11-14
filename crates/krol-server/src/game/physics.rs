@@ -301,6 +301,23 @@ fn clip(boxes: &[Aabb], bb: &Aabb, axis: usize, mut d: f64) -> f64 {
 /// noclipping. `walks` is `canTriggerWalking` and that the entity is a player for the
 /// sneak edge check.
 pub fn move_entity(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64) -> MoveOutcome {
+    move_entity_inner(world, body, dx, dy, dz, true)
+}
+
+/// `moveEntity` for entities that do not trigger walking (`canTriggerWalking` false,
+/// e.g. items): no step sounds.
+pub fn move_entity_quiet(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64) {
+    move_entity_inner(world, body, dx, dy, dz, false);
+}
+
+fn move_entity_inner(
+    world: &mut World,
+    body: &mut Body,
+    dx: f64,
+    dy: f64,
+    dz: f64,
+    walks: bool,
+) -> MoveOutcome {
     let mut outcome = MoveOutcome::default();
     let start = body.pos;
     let (mut x, mut y, mut z) = (dx, dy, dz);
@@ -415,7 +432,7 @@ pub fn move_entity(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64
         }
     }
 
-    if !edge {
+    if walks && !edge {
         let wx = body.pos.0 - start.0;
         let mut wy = body.pos.1 - start.1;
         let wz = body.pos.2 - start.2;

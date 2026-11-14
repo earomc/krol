@@ -136,6 +136,13 @@ impl Game {
             self.any_block_in(&bb, 8..=9)
         };
         self.players[i].in_water = water;
+        // Entity.onEntityUpdate: air refills out of water.
+        // TODO(M5): drowning.
+        let p = &mut self.players[i];
+        if p.data.get_i16("Air") != 300 && !water {
+            p.data.insert("Air", Tag::Short(300));
+            p.dirty_metadata.insert(1);
+        }
         let p = &mut self.players[i];
         for m in [&mut p.motion.0, &mut p.motion.1, &mut p.motion.2] {
             if m.abs() < 0.005 {
@@ -206,6 +213,8 @@ impl Game {
         let end = self.players[i].pos;
         self.add_movement_stat(i, (end.0 - start.0, end.1 - start.1, end.2 - start.2));
         self.push_nearby(i);
+        // EntityPlayer.onLivingUpdate: touching items.
+        self.pick_up_items(i);
     }
 
     /// Vanilla `collideWithNearbyEntities`: overlapping entities push each other apart

@@ -202,3 +202,13 @@ scenarios = ["play/join_flat"]
 id = "worldgen.overworld"
 description = "Seed-exact overworld chunk generation"
 scenarios = []
+
+[[feature]]
+id = "blocks.survival_digging"
+description = "Survival digging: stop at 70%, server-side completion, break animations, effects, mining stats"
+scenarios = ["play/survival_mining"]
+
+[[feature]]
+id = "entity.items"
+description = "Item entities: block drops, spawn/metadata/velocity, physics, pickup (collect, pop sound, inventory), destroy"
+scenarios = ["play/survival_mining"]

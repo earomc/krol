@@ -138,12 +138,26 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
             volume,
             pitch,
         } => {
-            let random_pitch = matches!(name.as_str(), "game.player.hurt" | "game.player.die");
+            let random_pitch = matches!(
+                name.as_str(),
+                "game.player.hurt" | "game.player.die" | "random.pop"
+            );
             json!({
                 "name": name, "x": x, "y": y, "z": z, "volume": volume,
                 "pitch": if random_pitch { Value::Null } else { json!(pitch) },
             })
         }
+        // Item positions, angles and speeds come from unseeded randoms in vanilla.
+        ClientboundPlay::SpawnObject {
+            entity_id,
+            kind,
+            data,
+            ..
+        } => json!({ "entity_id": entity_id, "kind": kind, "data": data }),
+        ClientboundPlay::CollectItem {
+            collected,
+            collector,
+        } => json!({ "collected": collected, "collector": collector }),
         ClientboundPlay::EntityStatus { entity_id, status } => {
             json!({ "entity_id": entity_id, "status": status })
         }
@@ -326,6 +340,7 @@ fn apply_movement(entities: &mut BTreeMap<i32, EntityState>, p: &ClientboundPlay
 /// Turns a play session into a comparable observation.
 pub fn summarize(o: &PlayObservation) -> Value {
     let mut entities: BTreeMap<i32, EntityState> = BTreeMap::new();
+    let mut objects: BTreeSet<i32> = BTreeSet::new();
     let mut sequence = Vec::new();
     let mut packets: Vec<Value> = Vec::new();
     let mut chunks = BTreeSet::new();
@@ -346,6 +361,42 @@ pub fn summarize(o: &PlayObservation) -> Value {
             0x15..=0x19 => {
                 if let Some(d) = &p.decoded {
                     apply_movement(&mut entities, d);
+                }
+                continue;
+            }
+            0x0e => {
+                if let Some(ClientboundPlay::SpawnObject { entity_id, .. }) = &p.decoded {
+                    objects.insert(*entity_id);
+                }
+                sequence.push(Value::String(n.clone()));
+            }
+            // Object velocities depend on their random start (see above).
+            0x12 if matches!(&p.decoded,
+                Some(ClientboundPlay::EntityVelocity { entity_id, .. }) if objects.contains(entity_id)) =>
+            {
+                continue;
+            }
+            // Break animation stages come one per tick, so how many arrive before the
+            // client's "stop digging" depends on timing; a run is kept as its block and
+            // final stage (-1: broken or cancelled, 10: broken by the server).
+            0x25 => {
+                if let Some(ClientboundPlay::BlockBreakAnimation { pos, stage, .. }) = &p.decoded {
+                    let same_run = packets.last().is_some_and(|l: &Value| {
+                        l["packet"] == "block_break_animation"
+                            && l["pos"] == json!([pos.0, pos.1, pos.2])
+                    });
+                    if same_run {
+                        if let Some(last) = packets.last_mut() {
+                            last["last"] = json!(stage);
+                        }
+                    } else {
+                        sequence.push(Value::String("block_break_animation".into()));
+                        packets.push(json!({
+                            "packet": "block_break_animation",
+                            "pos": [pos.0, pos.1, pos.2],
+                            "last": stage,
+                        }));
+                    }
                 }
                 continue;
             }
@@ -378,6 +429,7 @@ pub fn summarize(o: &PlayObservation) -> Value {
         "periodic": periodic,
         "entities": entities
             .iter()
+            .filter(|(id, _)| !objects.contains(id))
             .map(|(id, e)| {
                 (
                     id.to_string(),

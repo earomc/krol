@@ -222,6 +222,44 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
             body = w.into_bytes();
             None
         }
+        0x0e => {
+            let entity_id = r.varint()?;
+            let kind = r.i8()?;
+            let (x, y, z) = (r.i32()?, r.i32()?, r.i32()?);
+            let (pitch, yaw) = (r.i8()?, r.i8()?);
+            let data = r.i32()?;
+            let velocity = if data != 0 {
+                Some((r.i16()?, r.i16()?, r.i16()?))
+            } else {
+                None
+            };
+            Some(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind,
+                x,
+                y,
+                z,
+                pitch,
+                yaw,
+                data,
+                velocity,
+            })
+        }
+        0x0d => Some(ClientboundPlay::CollectItem {
+            collected: r.i32()?,
+            collector: r.i32()?,
+        }),
+        0x12 => Some(ClientboundPlay::EntityVelocity {
+            entity_id: r.i32()?,
+            x: r.i16()?,
+            y: r.i16()?,
+            z: r.i16()?,
+        }),
+        0x25 => Some(ClientboundPlay::BlockBreakAnimation {
+            entity_id: r.varint()?,
+            pos: (r.i32()?, r.i32()?, r.i32()?),
+            stage: r.i8()?,
+        }),
         0x15 => Some(ClientboundPlay::EntityRelMove {
             entity_id: r.i32()?,
             dx: r.i8()?,

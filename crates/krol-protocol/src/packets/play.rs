@@ -640,6 +640,20 @@ pub enum ClientboundPlay {
     },
     /// `0x19`
     EntityHeadLook { entity_id: i32, yaw: i8 },
+    /// `0x0E` (velocity present when `data` is not 0)
+    SpawnObject {
+        entity_id: i32,
+        kind: i8,
+        x: i32,
+        y: i32,
+        z: i32,
+        pitch: i8,
+        yaw: i8,
+        data: i32,
+        velocity: Option<(i16, i16, i16)>,
+    },
+    /// `0x0D`
+    CollectItem { collected: i32, collector: i32 },
     /// `0x25`
     BlockBreakAnimation {
         entity_id: i32,
@@ -781,6 +795,8 @@ impl ClientboundPlay {
             Self::EntityVelocity { .. } => 0x12,
             Self::Particle { .. } => 0x2a,
             Self::BlockBreakAnimation { .. } => 0x25,
+            Self::SpawnObject { .. } => 0x0e,
+            Self::CollectItem { .. } => 0x0d,
         }
     }
 
@@ -1078,6 +1094,36 @@ impl ClientboundPlay {
             Self::EntityVelocity { entity_id, x, y, z } => {
                 w.varint(*entity_id).i16(*x).i16(*y).i16(*z);
             }
+            Self::SpawnObject {
+                entity_id,
+                kind,
+                x,
+                y,
+                z,
+                pitch,
+                yaw,
+                data,
+                velocity,
+            } => {
+                w.varint(*entity_id)
+                    .i8(*kind)
+                    .i32(*x)
+                    .i32(*y)
+                    .i32(*z)
+                    .i8(*pitch)
+                    .i8(*yaw)
+                    .i32(*data);
+                if *data != 0 {
+                    let v = velocity.unwrap_or_default();
+                    w.i16(v.0).i16(v.1).i16(v.2);
+                }
+            }
+            Self::CollectItem {
+                collected,
+                collector,
+            } => {
+                w.varint(*collected).varint(*collector);
+            }
             Self::BlockBreakAnimation {
                 entity_id,
                 pos,
@@ -1226,6 +1272,38 @@ impl ClientboundPlay {
                     properties,
                 }
             }
+            0x0e => {
+                let entity_id = r.varint()?;
+                let kind = r.i8()?;
+                let (x, y, z) = (r.i32()?, r.i32()?, r.i32()?);
+                let (pitch, yaw) = (r.i8()?, r.i8()?);
+                let data = r.i32()?;
+                let velocity = if data != 0 {
+                    Some((r.i16()?, r.i16()?, r.i16()?))
+                } else {
+                    None
+                };
+                Self::SpawnObject {
+                    entity_id,
+                    kind,
+                    x,
+                    y,
+                    z,
+                    pitch,
+                    yaw,
+                    data,
+                    velocity,
+                }
+            }
+            0x25 => Self::BlockBreakAnimation {
+                entity_id: r.varint()?,
+                pos: r.position()?,
+                stage: r.i8()?,
+            },
+            0x0d => Self::CollectItem {
+                collected: r.varint()?,
+                collector: r.varint()?,
+            },
             0x12 => Self::EntityVelocity {
                 entity_id: r.varint()?,
                 x: r.i16()?,

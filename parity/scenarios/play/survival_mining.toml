@@ -1,0 +1,51 @@
+description = "Survival mining by hand: one block broken on stop, one finished by the server, break animations, drops picked up"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data) stands 6 blocks south and 2 west of the spawn: the
+# watcher does not overlap him, and the first drop is out of reach until it settled
+# (how long its arc takes is random). Then he walks into its hole; the second drop lands
+# next to him and is picked up when its pickup delay ends. Item positions and speeds are random in vanilla (unseeded
+# randoms); the summary leaves them out.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_survival.dat"
+
+[[steps]]
+id = "watcher"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 11
+
+[[steps]]
+id = "miner"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 8
+chat = [
+    "@800 !dig -471 3 -441 1",
+    "@1600 !dig -471 3 -441 1 2",
+    "@4500 !dig -471 3 -440 1",
+    "@4800 !dig -471 3 -440 1 2",
+]
+moves = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [1, 0, 0], [2, 0, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0], [3, -1, 0]]
+
+[observe]
+log = true
+blocks = [[-471, 3, -441], [-471, 3, -440]]
+files = [
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
+]
+ignore = [
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]

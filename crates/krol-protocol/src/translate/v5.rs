@@ -636,6 +636,40 @@ impl V5Translator {
                     .i8(*pitch);
                 one(w);
             }
+            ClientboundPlay::SpawnObject {
+                entity_id,
+                kind,
+                x,
+                y,
+                z,
+                pitch,
+                yaw,
+                data,
+                velocity,
+            } => {
+                let mut w = packet(0x0e);
+                w.varint(*entity_id)
+                    .i8(*kind)
+                    .i32(*x)
+                    .i32(*y)
+                    .i32(*z)
+                    .i8(*pitch)
+                    .i8(*yaw)
+                    .i32(*data);
+                if *data != 0 {
+                    let v = velocity.unwrap_or_default();
+                    w.i16(v.0).i16(v.1).i16(v.2);
+                }
+                one(w);
+            }
+            ClientboundPlay::CollectItem {
+                collected,
+                collector,
+            } => {
+                let mut w = packet(0x0d);
+                w.i32(*collected).i32(*collector);
+                one(w);
+            }
             ClientboundPlay::BlockBreakAnimation {
                 entity_id,
                 pos,
