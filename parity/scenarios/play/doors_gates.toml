@@ -1,0 +1,54 @@
+description = "Placing a door (two halves, hinge), a trapdoor on a wall and a fence gate, then opening and closing them (effects for others, gates swing away)"
+subsystem = "blocks"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+# The watcher (Notch) stands 3 blocks south of the spawn; the builder (jeb_) joins at the
+# spawn in adventure mode (no spawn offset) and is made creative from the console.
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_away.dat"
+
+[[steps]]
+id = "watcher"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 12
+
+[[steps]]
+id = "builder"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 10
+chat = [
+    "@2500 !creative 36 324 1 0",
+    "@2800 !look 0 0",
+    "@3100 !place -470 3 -433 1",
+    "@3400 !place -470 4 -433 2",
+    "@3700 !place -470 5 -433 2",
+    "@4000 !creative 36 1 1 0",
+    "@4300 !place -468 3 -433 1",
+    "@4600 !creative 36 96 1 0",
+    "@4900 !place -468 4 -433 4",
+    "@5200 !place -469 4 -433 1",
+    "@5500 !creative 36 107 1 0",
+    "@5800 !look 90 0",
+    "@6100 !place -470 3 -431 1",
+    "@6400 !look -90 0",
+    "@6700 !place -470 4 -431 2",
+    "@7000 !place -470 4 -431 2",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 9000
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-470, 5, -433], [-469, 4, -433], [-468, 4, -433], [-470, 4, -431]]

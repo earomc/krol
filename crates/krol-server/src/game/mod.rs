@@ -11,6 +11,7 @@ pub mod commands;
 mod damage;
 mod death;
 mod digging;
+mod interact;
 mod item_entity;
 mod movement;
 pub mod physics;
@@ -1262,9 +1263,19 @@ impl Game {
     /// Vanilla `ItemBlock.onItemUse` / `ItemSlab.onItemUse` for the block items krol
     /// supports (see `placement`).
     fn place_block(&mut self, i: usize, pos: (i32, i32, i32), face: i8, cursor: (i8, i8, i8)) {
-        // TODO(M4): block activation (chests, doors, crafting tables, ...).
         let player = &self.players[i];
-        if player.gamemode == 2 || player.gamemode == 3 {
+        // TODO(M5): spectators open containers instead.
+        if player.gamemode == 3 {
+            return;
+        }
+        // activateBlockOrUseItem: the block reacts first unless the player sneaks with an
+        // item in hand.
+        if !(player.sneaking && player.held().is_some()) && self.activate_block(i, pos) {
+            return;
+        }
+        let player = &self.players[i];
+        // Adventure players may not place blocks (no CanPlaceOn support yet).
+        if player.gamemode == 2 {
             return;
         }
         let Some(stack) = player.held().cloned() else {
@@ -1273,6 +1284,10 @@ impl Game {
         if stack.count <= 0 {
             return;
         }
+        if self.place_door(i, stack.id, pos, face as u8) {
+            return;
+        }
+        let player = &self.players[i];
         let click = placement::Click {
             face: face as u8,
             hit: (

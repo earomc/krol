@@ -145,7 +145,7 @@ pub fn is_normal_cube(state: u16) -> bool {
 
 /// `World.doesBlockHaveSolidTopSurface`: opaque full cubes, upside-down stairs and
 /// slabs, hoppers, snow layers of 8.
-fn solid_top(state: u16) -> bool {
+pub fn solid_top(state: u16) -> bool {
     let (id, meta) = (state >> 4, state & 15);
     match id {
         53 | 67 | 108 | 109 | 114 | 128 | 134..=136 | 156 | 163 | 164 | 180 => meta & 4 != 0,

@@ -227,3 +227,13 @@ scenarios = ["play/death_respawn"]
 id = "blocks.placement_orientation"
 description = "Block placement rules: logs/pillars by face, stairs and slabs by yaw and click height, slab merging, torches, ladders, furnaces, chests (neighbors), pumpkins, gates, anvils, pistons, hoppers, trapdoors, plant support"
 scenarios = ["play/place_oriented"]
+
+[[feature]]
+id = "blocks.activation_doors"
+description = "Right-click activation before placement; doors (placement with hinge, open/close), trapdoors, fence gates (swing away), effects 1003/1006"
+scenarios = ["play/doors_gates"]
+
+[[feature]]
+id = "blocks.containers"
+description = "Container GUIs (chests, furnaces, crafting tables, ...): open window, slots, clicks, closing"
+scenarios = []
