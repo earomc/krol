@@ -154,6 +154,11 @@ pub struct Observe {
     /// `status_5.parsed.version`. Each entry should carry a comment in the TOML saying why.
     #[serde(default)]
     pub ignore: Vec<String>,
+    /// Absolute tolerances for numbers at observation paths (and below them), for
+    /// values that depend on how network packets interleave with ticks. Each entry
+    /// should carry a comment in the TOML saying why.
+    #[serde(default)]
+    pub tolerance: super::diff::Tolerances,
 }
 
 /// Loads all scenarios under `root`, optionally filtered by a name substring.

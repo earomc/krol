@@ -16,6 +16,11 @@ use krol_protocol::packets::play::{ChunkColumn, ClientboundPlay};
 use super::Game;
 use super::physics::{self, Aabb, Body, MoveOutcome};
 
+/// Splash volume per unit of (weighted) speed (`resetHeight`).
+const SPLASH_VOLUME_FACTOR: f32 = 0.2;
+/// Random pitch spread of swim and splash sounds.
+const SPLASH_PITCH_SPREAD: f32 = 0.4;
+
 /// `(double) 0.98F`.
 const DRAG_Y: f64 = 0.980_000_019_073_486_3;
 
@@ -28,6 +33,7 @@ impl Game {
         b.sneaking = p.sneaking;
         b.distance_walked_on_step = p.distance_walked_on_step;
         b.next_step_distance = p.next_step_distance;
+        b.in_water = p.in_water;
         b
     }
 
@@ -43,6 +49,12 @@ impl Game {
         p.collided_horizontally = body.collided_horizontally;
         p.distance_walked_on_step = body.distance_walked_on_step;
         p.next_step_distance = body.next_step_distance;
+        if let Some(volume) = outcome.swim {
+            let pitch = 1.0 + (p.rand.next_float() - p.rand.next_float()) * SPLASH_PITCH_SPREAD;
+            let (pos, conn) = (p.pos, p.conn_id);
+            self.play_sound_near_except(Some(conn), "game.player.swim", pos, volume, pitch);
+        }
+        let p = &self.players[i];
         if let Some(step) = &outcome.step {
             let (pos, conn) = (p.pos, p.conn_id);
             self.play_sound_near_except(Some(conn), &step.name, pos, step.volume, step.pitch);
@@ -155,6 +167,20 @@ impl Game {
         }
     }
 
+    /// `Entity.resetHeight` for a player entering water: the splash sound for the
+    /// others nearby (the particles are client-side).
+    fn water_splash(&mut self, i: usize) {
+        let p = &mut self.players[i];
+        let m = p.motion;
+        let volume = (krol_java::math::sqrt_f64(
+            m.0 * m.0 * f64::from(0.2f32) + m.1 * m.1 + m.2 * m.2 * f64::from(0.2f32),
+        ) * SPLASH_VOLUME_FACTOR)
+            .min(1.0);
+        let pitch = 1.0 + (p.rand.next_float() - p.rand.next_float()) * SPLASH_PITCH_SPREAD;
+        let (pos, conn) = (p.pos, p.conn_id);
+        self.play_sound_near_except(Some(conn), "game.player.swim.splash", pos, volume, pitch);
+    }
+
     fn living_move(&mut self, i: usize) {
         // EntityPlayer.onUpdate, before the living update.
         let p = &mut self.players[i];
@@ -162,13 +188,30 @@ impl Game {
             p.xp_cooldown -= 1;
         }
         self.send_equipment_changes(i);
-        let water = {
-            let bb = Aabb::at(self.players[i].pos, 0.6, 1.8)
-                .expand([0.0, -0.4, 0.0])
+        // Entity.handleWaterMovement: flowing water pushes players who are not flying.
+        let (water, push) = {
+            let p = &self.players[i];
+            let bb = Aabb::at(p.pos, 0.6, 1.8)
+                .expand([0.0, f64::from(-0.4f32), 0.0])
                 .contract([0.001, 0.001, 0.001]);
-            self.any_block_in(&bb, 8..=9)
+            let pushed = !p.flying;
+            super::liquids::water_movement(&mut self.level.overworld, &bb, pushed)
         };
-        self.players[i].in_water = water;
+        let p = &mut self.players[i];
+        p.motion.0 += push.0;
+        p.motion.1 += push.1;
+        p.motion.2 += push.2;
+        if water {
+            if !p.in_water && !p.first_update {
+                self.water_splash(i);
+            }
+            let p = &mut self.players[i];
+            p.fall_distance = 0.0;
+            // TODO(M5): extinguishing (fire = 0).
+        }
+        let p = &mut self.players[i];
+        p.in_water = water;
+        p.first_update = false;
         // Entity.onEntityUpdate: air refills out of water.
         // TODO(M5): drowning.
         let p = &mut self.players[i];

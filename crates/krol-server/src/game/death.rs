@@ -229,6 +229,8 @@ impl Game {
         p.motion = (0.0, 0.0, 0.0);
         p.on_ground = false;
         p.fall_distance = 0.0;
+        p.first_update = true;
+        p.in_water = false;
         p.sneaking = false;
         p.sprinting = false;
         p.combat = CombatTracker::default();

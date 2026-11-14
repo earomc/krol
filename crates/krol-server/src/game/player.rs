@@ -92,6 +92,9 @@ pub struct Player {
     pub fall_distance: f32,
     /// In water (`inWater`).
     pub in_water: bool,
+    /// No living update has run yet (`Entity.firstUpdate`): entering water then does
+    /// not splash.
+    pub first_update: bool,
     /// The last move was blocked horizontally.
     pub collided_horizontally: bool,
     /// Distance walked, for step sounds (`distanceWalkedOnStepModified`).

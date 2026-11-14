@@ -329,6 +329,11 @@ description = "Liquids: water and lava flow (levels, falling columns, new source
 scenarios = ["play/liquids"]
 
 [[feature]]
+id = "entity.water_movement"
+description = "Entities in water: handleWaterMovement (surface height, flow vector, push of 0.014 per tick for players not flying and for items), fall distance reset, entry splash, swim sounds on steps, swim statistics. Not yet: drowning, items and orbs in lava, extinguishing"
+scenarios = ["play/water_push"]
+
+[[feature]]
 id = "item.buckets"
 description = "Buckets: use-item packets (face 255), the server's block ray trace, filling and emptying water and lava buckets in survival (stack handling, statistics, inventory resend). Not yet: milk, creative use, selection boxes of stairs, fences and other shaped blocks"
 scenarios = ["play/buckets"]

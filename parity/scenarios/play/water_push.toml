@@ -1,0 +1,49 @@
+description = "Players in flowing water: a water source placed next to a standing player spreads into their block, the flow pushes them on every movement packet (the stationary client puts them back), swim statistics and exhaustion count"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and never moves on the
+# client; the water flows east through the player's block.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+wait_ms = 3000
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -435 flowing_water"
+wait_ms = 11500
+
+[observe]
+log = true
+# Logged while the spawn area loads, depending on how fast that goes.
+log_ignore_prefixes = ["Preparing spawn area"]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
+
+# The client never moves, so the server pushes the player once per movement packet and
+# the next packet puts them back: the swim distance and exhaustion count the packets
+# sent while in water, which varies by a few with the session's timing (like
+# playOneMinute). About 5.6 cm and 0.00084 exhaustion per packet.
+[observe.tolerance]
+"file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.swimOneCm" = 30
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel" = 0.005

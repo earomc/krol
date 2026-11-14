@@ -1,7 +1,7 @@
 //! Dropped items (vanilla: `EntityItem`, `Block.dropBlockAsItemWithChance`,
 //! `Block.spawnAsEntity`, `InventoryPlayer.addItemStackToInventory`).
 //!
-//! TODO(M5): items in lava and water, being pushed out of solid blocks, despawn and
+//! TODO(M5): items in lava, being pushed out of solid blocks, despawn and
 //! merge rules for items with NBT, saving items with their chunk, thrown items.
 
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack, Metadata, MetadataValue};
@@ -239,6 +239,29 @@ impl Game {
             return;
         };
         it.ticks += 1;
+        // Entity.handleWaterMovement.
+        let bb = it
+            .body
+            .bb()
+            .expand([0.0, f64::from(-0.4f32), 0.0])
+            .contract([0.001, 0.001, 0.001]);
+        let (water, push) = super::liquids::water_movement(&mut self.level.overworld, &bb, true);
+        it.body.motion.0 += push.0;
+        it.body.motion.1 += push.1;
+        it.body.motion.2 += push.2;
+        if water && !it.body.in_water && it.ticks > 1 {
+            // resetHeight: the splash (particles are client-side).
+            let m = it.body.motion;
+            let volume = (krol_java::math::sqrt_f64(
+                m.0 * m.0 * f64::from(0.2f32) + m.1 * m.1 + m.2 * m.2 * f64::from(0.2f32),
+            ) * 0.2)
+                .min(1.0);
+            let r = &mut self.world_rand;
+            let pitch = 1.0 + (r.next_float() - r.next_float()) * 0.4;
+            let pos = it.body.pos;
+            self.play_sound_near_except(None, "game.neutral.swim.splash", pos, volume, pitch);
+        }
+        it.body.in_water = water;
         if it.pickup_delay > 0 && it.pickup_delay != 32767 {
             it.pickup_delay -= 1;
         }

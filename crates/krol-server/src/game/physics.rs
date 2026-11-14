@@ -246,6 +246,8 @@ pub struct Body {
     pub distance_walked_on_step: f32,
     /// Distance of the next step sound.
     pub next_step_distance: i32,
+    /// In water (`inWater`, from the last `handleWaterMovement`): steps also splash.
+    pub in_water: bool,
 }
 
 impl Body {
@@ -263,6 +265,7 @@ impl Body {
             collided_vertically: false,
             distance_walked_on_step: 0.0,
             next_step_distance: 1,
+            in_water: false,
         }
     }
 
@@ -288,6 +291,8 @@ pub struct StepSound {
 pub struct MoveOutcome {
     /// Step sound to play, if the entity made a step.
     pub step: Option<StepSound>,
+    /// Volume of the swim sound to play before the step sound (steps in water).
+    pub swim: Option<f32>,
 }
 
 fn creep(d: f64) -> f64 {
@@ -456,13 +461,22 @@ fn move_entity_inner(
             (f64::from(body.distance_walked_on_step) + f64::from(step) * 0.6) as f32;
         if body.distance_walked_on_step > body.next_step_distance as f32 && below_state >> 4 != 0 {
             body.next_step_distance = body.distance_walked_on_step as i32 + 1;
-            // TODO(M5): swim sounds in water.
+            if body.in_water {
+                let m = body.motion;
+                let speed = krol_java::math::sqrt_f64(
+                    m.0 * m.0 * f64::from(0.2f32) + m.1 * m.1 + m.2 * m.2 * f64::from(0.2f32),
+                ) * SWIM_VOLUME_FACTOR;
+                outcome.swim = Some(speed.min(1.0));
+            }
             outcome.step = step_sound(world, below, below_state);
         }
     }
     // TODO(M5): doBlockCollisions (webs, portals, pressure plates, cactus), fire.
     outcome
 }
+
+/// Swim sound volume per unit of (weighted) speed.
+const SWIM_VOLUME_FACTOR: f32 = 0.35;
 
 /// Vanilla `Entity.playStepSound`.
 fn step_sound(world: &mut World, pos: (i32, i32, i32), state: u16) -> Option<StepSound> {

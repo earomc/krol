@@ -9,6 +9,7 @@ use super::Game;
 use super::block_data::{Material, material};
 use super::block_update::flags;
 use super::ids::block;
+use super::world::World;
 
 /// `BlockLiquid.tickRate` of water.
 const WATER_TICK_RATE: i32 = 5;
@@ -377,4 +378,124 @@ impl Game {
         }
         best
     }
+}
+
+/// How strongly flowing water pushes entities (`handleMaterialAcceleration`).
+const WATER_PUSH: f64 = 0.014;
+/// `Vec3.normalize` returns zero below this length.
+const MIN_NORMAL_LENGTH: f64 = 1.0e-4;
+/// The downward pull added to falling water next to a wall (`getFlowVector`).
+const FALLING_PULL: f64 = -6.0;
+
+fn normalize(v: (f64, f64, f64)) -> (f64, f64, f64) {
+    let len = (v.0 * v.0 + v.1 * v.1 + v.2 * v.2).sqrt();
+    if len < MIN_NORMAL_LENGTH {
+        (0.0, 0.0, 0.0)
+    } else {
+        (v.0 / len, v.1 / len, v.2 / len)
+    }
+}
+
+/// `BlockLiquid.getLiquidHeightPercent`: how much of the block a level leaves empty.
+pub fn liquid_height_percent(level: u16) -> f32 {
+    let level = if i32::from(level) >= FALLING {
+        0
+    } else {
+        level
+    };
+    f32::from(level + 1) / 9.0
+}
+
+/// `BlockLiquid.getEffectiveFlowDecay`: the level (falling counts as 0), or -1 if the
+/// block is another material.
+fn effective_decay(world: &mut World, p: (i32, i32, i32), m: Material) -> i32 {
+    let s = world.block(p.0, p.1, p.2);
+    if material(s >> 4) != m {
+        return NOT_LIQUID;
+    }
+    let level = i32::from(s & 15);
+    if level >= FALLING { 0 } else { level }
+}
+
+/// `BlockLiquid.isBlockSolid` for a neighbor seen from the liquid along a horizontal
+/// face: the same liquid and ice are not solid.
+fn liquid_side_solid(world: &mut World, p: (i32, i32, i32), m: Material) -> bool {
+    let other = material(world.block(p.0, p.1, p.2) >> 4);
+    other != m && other != Material::Ice && other.is_solid()
+}
+
+/// `BlockLiquid.getFlowVector`: the normalized direction the liquid at `pos` flows.
+fn flow_vector(world: &mut World, pos: (i32, i32, i32), m: Material) -> (f64, f64, f64) {
+    let mut v = (0.0, 0.0, 0.0);
+    let own = effective_decay(world, pos, m);
+    for d in HORIZONTAL {
+        let n = add(pos, d);
+        let mut decay = effective_decay(world, n, m);
+        let weight = if decay < 0 {
+            if material(world.block(n.0, n.1, n.2) >> 4).blocks_movement() {
+                continue;
+            }
+            decay = effective_decay(world, down(n), m);
+            if decay < 0 {
+                continue;
+            }
+            decay - (own - FALLING)
+        } else {
+            decay - own
+        };
+        v.0 += f64::from(d.0 * weight);
+        v.2 += f64::from(d.1 * weight);
+    }
+    if i32::from(world.block(pos.0, pos.1, pos.2) & 15) >= FALLING {
+        for d in HORIZONTAL {
+            let n = add(pos, d);
+            if liquid_side_solid(world, n, m) || liquid_side_solid(world, (n.0, n.1 + 1, n.2), m) {
+                let u = normalize(v);
+                v = (u.0, u.1 + FALLING_PULL, u.2);
+                break;
+            }
+        }
+    }
+    normalize(v)
+}
+
+/// `World.handleMaterialAcceleration(bb, water, entity)`: whether the box touches water
+/// (by its surface height), and the push it gets from the flow (zero if `pushed` is
+/// false or nothing flows).
+pub fn water_movement(
+    world: &mut World,
+    bb: &super::physics::Aabb,
+    pushed: bool,
+) -> (bool, (f64, f64, f64)) {
+    let floor = krol_java::math::floor_f64;
+    let (x0, x1) = (floor(bb.min[0]), floor(bb.max[0] + 1.0));
+    let (y0, y1) = (floor(bb.min[1]), floor(bb.max[1] + 1.0));
+    let (z0, z1) = (floor(bb.min[2]), floor(bb.max[2] + 1.0));
+    let mut inside = false;
+    let mut acc = (0.0, 0.0, 0.0);
+    for x in x0..x1 {
+        for y in y0..y1 {
+            for z in z0..z1 {
+                let s = world.block(x, y, z);
+                if material(s >> 4) != Material::Water {
+                    continue;
+                }
+                let surface = f64::from((y + 1) as f32 - liquid_height_percent(s & 15));
+                if f64::from(y1) >= surface {
+                    inside = true;
+                    let f = flow_vector(world, (x, y, z), Material::Water);
+                    acc = (acc.0 + f.0, acc.1 + f.1, acc.2 + f.2);
+                }
+            }
+        }
+    }
+    let len = (acc.0 * acc.0 + acc.1 * acc.1 + acc.2 * acc.2).sqrt();
+    if len > 0.0 && pushed {
+        let n = normalize(acc);
+        return (
+            inside,
+            (n.0 * WATER_PUSH, n.1 * WATER_PUSH, n.2 * WATER_PUSH),
+        );
+    }
+    (inside, (0.0, 0.0, 0.0))
 }

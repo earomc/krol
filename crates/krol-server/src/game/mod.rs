@@ -893,6 +893,7 @@ impl Game {
             airborne: false,
             fall_distance: data.get_f32("FallDistance"),
             in_water: false,
+            first_update: true,
             collided_horizontally: false,
             distance_walked_on_step: 0.0,
             next_step_distance: 1,

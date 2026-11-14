@@ -277,7 +277,12 @@ fn run_one(
         actual_observations: Some(actual_path.display().to_string()),
     };
     if let Some(expected) = expected {
-        let diffs = diff::diff(&expected, &actual, &sc.observe.ignore);
+        let diffs = diff::diff(
+            &expected,
+            &actual,
+            &sc.observe.ignore,
+            &sc.observe.tolerance,
+        );
         report.status = if diffs.is_empty() { "pass" } else { "fail" }.into();
         report.first_divergence = diffs.first().map(|d| d.path.clone());
         report.diff_count = diffs.len();
