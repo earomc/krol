@@ -785,6 +785,7 @@
         "sound_effect",
         "0x0d",
         "destroy_entities",
+        "sound_effect",
         "chat",
         "destroy_entities",
         "player_list_item"
@@ -1048,6 +1049,15 @@
         {
           "debug": "DestroyEntities([3])",
           "packet": "destroy_entities"
+        },
+        {
+          "name": "step.gravel",
+          "x": -3764,
+          "y": 24,
+          "z": -3520,
+          "volume": 0.15000000596046448,
+          "pitch": 63,
+          "packet": "sound_effect"
         },
         {
           "json": "{\"color\":\"yellow\",\"translate\":\"multiplayer.player.left\",\"with\":[{\"insertion\":\"Notch\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/msg Notch \"},\"hoverEvent\":{\"action\":\"show_entity\",\"value\":\"{name:\\\"Notch\\\",id:\\\"b50ad385-829d-3141-a216-7e7d7539ba7f\\\"}\"},\"text\":\"Notch\"}]}",
@@ -1525,7 +1535,7 @@
           "pos": [
             -15056,
             96,
-            -14096
+            -14064
           ],
           "yaw": 0,
           "pitch": 0,
@@ -1633,7 +1643,7 @@
       "Pos": [
         "-470.5d",
         "3d",
-        "-440.5d"
+        "-439.5d"
       ],
       "Rotation": [
         "0f",
@@ -1652,7 +1662,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": -865961279,
+      "XpSeed": 2015361061,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -1663,7 +1673,7 @@
         "mayfly": "0b",
         "walkSpeed": "0.1f"
       },
-      "foodExhaustionLevel": "0.08f",
+      "foodExhaustionLevel": "0.08999999f",
       "foodLevel": 20,
       "foodSaturationLevel": "5f",
       "foodTickTimer": 0,
@@ -1679,7 +1689,7 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.walkOneCm": 300,
+        "stat.walkOneCm": 400,
         "stat.playOneMinute": 161,
         "stat.leaveGame": 1,
         "stat.timeSinceDeath": 161,
