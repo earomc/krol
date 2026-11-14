@@ -2,6 +2,16 @@
 //!
 //! TODO(M4/M5): grow into a full block registry (hardness, materials, shapes, behaviors).
 
+/// `Block.slipperiness`: ice and packed ice 0.98, slime 0.8, everything else 0.6.
+pub fn slipperiness(id: u16) -> f32 {
+    use super::ids::block;
+    match id {
+        block::ICE | block::PACKED_ICE => 0.98,
+        block::SLIME => 0.8,
+        _ => 0.6,
+    }
+}
+
 /// A block's step sound (vanilla `Block.SoundType`): `(name, volume, frequency)`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SoundType {

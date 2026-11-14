@@ -145,6 +145,7 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
                     | "random.pop"
                     | "random.chestopen"
                     | "random.chestclosed"
+                    | "random.orb"
             );
             // The pickup sound plays where the player is when an item's random arc
             // brings it into reach.
@@ -162,6 +163,10 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
             data,
             ..
         } => json!({ "entity_id": entity_id, "kind": kind, "data": data }),
+        // Orb positions are random too (Math.random start motion).
+        ClientboundPlay::SpawnExperienceOrb {
+            entity_id, count, ..
+        } => json!({ "entity_id": entity_id, "count": count }),
         ClientboundPlay::CollectItem {
             collected,
             collector,
@@ -372,8 +377,12 @@ pub fn summarize(o: &PlayObservation) -> Value {
                 }
                 continue;
             }
-            0x0e => {
-                if let Some(ClientboundPlay::SpawnObject { entity_id, .. }) = &p.decoded {
+            0x0e | 0x11 => {
+                if let Some(
+                    ClientboundPlay::SpawnObject { entity_id, .. }
+                    | ClientboundPlay::SpawnExperienceOrb { entity_id, .. },
+                ) = &p.decoded
+                {
                     objects.insert(*entity_id);
                 }
                 sequence.push(Value::String(n.clone()));

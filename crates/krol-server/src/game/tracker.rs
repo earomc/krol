@@ -1,7 +1,7 @@
 //! Which clients see which entities, and the packets that keep them in sync
 //! (vanilla: `EntityTracker`, `EntityTrackerEntry`).
 //!
-//! Players and dropped items are tracked so far. Every tracked entity has an entry holding what its
+//! Players, dropped items and experience orbs are tracked so far. Every tracked entity has an entry holding what its
 //! viewers were last told (position in 1/32 blocks, angles in 1/256 turns). Each tick,
 //! after the entity updates, every entry:
 //!
@@ -31,6 +31,9 @@ const PLAYER_FREQUENCY: u32 = 2;
 /// Items: range 64, every 20 ticks, with velocity updates.
 const ITEM_RANGE: i32 = 64;
 const ITEM_FREQUENCY: u32 = 20;
+/// Experience orbs: range 160, every 20 ticks, with velocity updates.
+const ORB_RANGE: i32 = 160;
+const ORB_FREQUENCY: u32 = 20;
 
 /// One tracked entity (vanilla `EntityTrackerEntry`).
 #[derive(Debug)]
@@ -162,6 +165,20 @@ impl Game {
                 player: Some(i),
             });
         }
+        if let Some(o) = self.orbs.get(&entity_id) {
+            return Some(View {
+                pos: o.body.pos,
+                yaw: 0.0,
+                pitch: 0.0,
+                head: 0.0,
+                on_ground: o.body.on_ground,
+                motion: o.body.motion,
+                chunk: o.chunk,
+                airborne: false,
+                metadata_changed: false,
+                player: None,
+            });
+        }
         let it = self.items.get(&entity_id)?;
         Some(View {
             pos: it.body.pos,
@@ -210,6 +227,8 @@ impl Game {
         };
         let (range, frequency, velocity_updates) = if v.player.is_some() {
             (PLAYER_RANGE, PLAYER_FREQUENCY, false)
+        } else if self.orbs.contains_key(&entity_id) {
+            (ORB_RANGE, ORB_FREQUENCY, true)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
         };
@@ -341,6 +360,24 @@ impl Game {
                 }
             }
             // TODO(M5): use bed, potion effects.
+        } else if let Some(o) = self.orbs.get(&entity_id) {
+            packets.push(ClientboundPlay::SpawnExperienceOrb {
+                entity_id,
+                x: floor_f64(v.pos.0 * 32.0),
+                y: floor_f64(v.pos.1 * 32.0),
+                z: floor_f64(v.pos.2 * 32.0),
+                count: o.value as i16,
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: super::xp_orb::XpOrb::metadata(),
+            });
+            packets.push(ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: speed(v.motion.0),
+                y: speed(v.motion.1),
+                z: speed(v.motion.2),
+            });
         } else if let Some(it) = self.items.get(&entity_id) {
             let velocity = (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2));
             packets.push(ClientboundPlay::SpawnObject {

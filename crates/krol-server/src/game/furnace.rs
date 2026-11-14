@@ -4,8 +4,8 @@
 //! The furnace's items and timers live in its tile entity NBT; only
 //! `currentItemBurnTime`, which vanilla does not save, is kept on the side.
 //!
-//! TODO(M5): experience orbs for taken output, the acquireIron and cookFish
-//! achievements. TODO(M4): hoppers, comparators.
+//! TODO(M5): the acquireIron and cookFish achievements. TODO(M4): hoppers,
+//! comparators.
 
 use krol_nbt::{Compound, List, Tag, TagType};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
@@ -353,7 +353,13 @@ impl Game {
     /// `SlotFurnaceOutput`: items taken from the output count as crafted
     /// (`ItemStack.onCrafting`) once the slot reports a pickup; a double click only
     /// adds to the count.
-    pub(super) fn furnace_output_taken(&mut self, i: usize, item: i16, amount: i32, pickup: bool) {
+    pub(super) fn furnace_output_taken(
+        &mut self,
+        i: usize,
+        output: &ItemStack,
+        amount: i32,
+        pickup: bool,
+    ) {
         let Some(o) = &mut self.players[i].window.open else {
             return;
         };
@@ -362,12 +368,12 @@ impl Game {
             return;
         }
         let taken = std::mem::take(&mut o.taken);
-        if let Some(name) = krol_world::items::name_for_id(item) {
+        if let Some(name) = krol_world::items::name_for_id(output.id) {
             self.players[i]
                 .stats
                 .add(&format!("stat.craftItem.{}", name.replace(':', ".")), taken);
         }
-        // TODO(M5): experience orbs (Math.random rounding of the smelting xp).
+        self.furnace_xp(i, output, taken);
     }
 
     /// `TileEntityFurnace.update` for every furnace, in load order.

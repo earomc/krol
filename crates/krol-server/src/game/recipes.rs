@@ -42,7 +42,6 @@ pub struct Smelting {
     /// Output item, count and damage.
     pub output: (i16, i8, i16),
     /// Experience per item.
-    #[allow(dead_code)] // experience orbs: TODO(M5)
     pub xp: f32,
 }
 
@@ -197,6 +196,15 @@ pub fn container_item(id: i16) -> Option<ItemStack> {
         damage: 0,
         nbt: None,
     })
+}
+
+/// The experience per item for a smelting output (`getSmeltingExperience`).
+pub fn smelting_xp(output: &ItemStack) -> f32 {
+    recipes()
+        .smelting
+        .iter()
+        .find(|r| r.output.0 == output.id && (r.output.2 == ANY || r.output.2 == output.damage))
+        .map_or(0.0, |r| r.xp)
 }
 
 /// The smelting recipe for an input (`FurnaceRecipes.getSmeltingResult`).

@@ -150,6 +150,11 @@ impl Game {
     }
 
     fn living_move(&mut self, i: usize) {
+        // EntityPlayer.onUpdate, before the living update.
+        let p = &mut self.players[i];
+        if p.xp_cooldown > 0 {
+            p.xp_cooldown -= 1;
+        }
         self.send_equipment_changes(i);
         let water = {
             let bb = Aabb::at(self.players[i].pos, 0.6, 1.8)

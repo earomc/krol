@@ -9,8 +9,14 @@ pub mod block {
     pub const SAPLING: u16 = 6;
     /// `sponge`.
     pub const SPONGE: u16 = 19;
+    /// `coal_ore`.
+    pub const COAL_ORE: u16 = 16;
+    /// `lapis_ore`.
+    pub const LAPIS_ORE: u16 = 21;
     /// `chest`.
     pub const CHEST: u16 = 54;
+    /// `diamond_ore`.
+    pub const DIAMOND_ORE: u16 = 56;
     /// `crafting_table`.
     pub const CRAFTING_TABLE: u16 = 58;
     /// `furnace`.
@@ -21,14 +27,28 @@ pub mod block {
     pub const STANDING_SIGN: u16 = 63;
     /// `wall_sign`.
     pub const WALL_SIGN: u16 = 68;
+    /// `redstone_ore`.
+    pub const REDSTONE_ORE: u16 = 73;
+    /// `lit_redstone_ore`.
+    pub const LIT_REDSTONE_ORE: u16 = 74;
+    /// `ice`.
+    pub const ICE: u16 = 79;
     /// `cactus`.
     pub const CACTUS: u16 = 81;
     /// `wooden_slab`.
     pub const WOODEN_SLAB: u16 = 126;
+    /// `emerald_ore`.
+    pub const EMERALD_ORE: u16 = 129;
     /// `trapped_chest`.
     pub const TRAPPED_CHEST: u16 = 146;
+    /// `quartz_ore`.
+    pub const QUARTZ_ORE: u16 = 153;
+    /// `slime`.
+    pub const SLIME: u16 = 165;
     /// `coal_block`.
     pub const COAL_BLOCK: u16 = 173;
+    /// `packed_ice`.
+    pub const PACKED_ICE: u16 = 174;
 
     /// Chests of either kind.
     pub fn is_chest(id: u16) -> bool {

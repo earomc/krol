@@ -249,6 +249,11 @@ description = "Signs: standing and wall placement, sign editor, Update Sign hand
 scenarios = ["play/signs"]
 
 [[feature]]
+id = "entities.xp_orbs"
+description = "Experience orbs: spawning (splits), tracking, flying to the nearest player, collection (cooldown, sound, experience); experience from furnace output and mined ores"
+scenarios = ["play/xp_orbs"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

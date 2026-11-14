@@ -436,6 +436,8 @@ impl Game {
             }
             self.add_exhaustion(i, 0.025);
             self.drop_block_items(pos, state);
+            // TODO(M5): not with silk touch (the ore drops itself).
+            self.drop_block_xp(pos, b);
         }
     }
 

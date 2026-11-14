@@ -275,12 +275,7 @@ impl Game {
                 krol_java::math::floor_f64(p.1) - 1,
                 krol_java::math::floor_f64(p.2),
             ) >> 4;
-            let slip = match below {
-                79 | 174 => 0.98,
-                165 => 0.8,
-                _ => 0.6,
-            };
-            friction = slip * 0.98;
+            friction = super::blocks::slipperiness(below) * 0.98;
         }
         it.body.motion.0 *= f64::from(friction);
         it.body.motion.1 *= f64::from(0.98f32);
@@ -423,13 +418,26 @@ impl Game {
             return;
         }
         let area = Aabb::at(p.pos, 0.6, 1.8).expand([1.0, 0.5, 1.0]);
-        let near: Vec<i32> = self
+        let mut near: Vec<i32> = self
             .items
             .iter()
             .filter(|(_, it)| !it.dead && it.body.bb().intersects(&area))
             .map(|(id, _)| *id)
+            .chain(
+                self.orbs
+                    .iter()
+                    .filter(|(_, o)| !o.dead && o.body.bb().intersects(&area))
+                    .map(|(id, _)| *id),
+            )
             .collect();
+        // TODO(M5): vanilla goes through the chunk's entity lists; entity id order is
+        // the order they were added.
+        near.sort_unstable();
         for id in near {
+            if self.orbs.contains_key(&id) {
+                self.collect_orb(i, id);
+                continue;
+            }
             let Some(it) = self.items.get(&id) else {
                 continue;
             };

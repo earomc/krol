@@ -1,0 +1,48 @@
+description = "Experience orbs: diamond ore smelted (1.0 experience each), the output shift-clicked out spawns an orb at the player, who collects it (sound, collect, experience bar, score)"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. Smelting experience below 1 per item is rounded at random
+# (Math.random), so diamond ore (exactly 1.0) is used. Two sticks burn exactly as long
+# as one item takes to smelt, so the furnace has settled before the output is taken.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 19
+chat = [
+    "@2500 !creative 36 61 1 0",
+    "@2800 !place -470 3 -433 1",
+    "@3100 !creative 9 56 1 0",
+    "@3300 !creative 10 280 2 0",
+    "@3600 !place -470 4 -433 1",
+    "@3900 !click 1 3 0 1 1 56 1 0",
+    "@4200 !click 1 4 0 2 1 280 2 0",
+    "@16000 !click 1 2 0 3 1 264 1 0",
+    "@17500 !close 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 18700
+
+[observe]
+log = true
+tile_entities = [[-470, 4, -433]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

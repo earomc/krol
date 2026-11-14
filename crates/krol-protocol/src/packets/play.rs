@@ -708,6 +708,14 @@ pub enum ClientboundPlay {
         gamemode: u8,
         level_type: String,
     },
+    /// `0x11`: an experience orb appears (position in 1/32 blocks).
+    SpawnExperienceOrb {
+        entity_id: i32,
+        x: i32,
+        y: i32,
+        z: i32,
+        count: i16,
+    },
     /// `0x33`: a sign's four lines (JSON chat).
     UpdateSign { pos: BlockPos, lines: [String; 4] },
     /// `0x35`: tile entity data (spawners, command blocks, beacons, skulls, flower pots,
@@ -874,6 +882,7 @@ impl ClientboundPlay {
             Self::Particle { .. } => 0x2a,
             Self::BlockAction { .. } => 0x24,
             Self::WindowProperty { .. } => 0x31,
+            Self::SpawnExperienceOrb { .. } => 0x11,
             Self::UpdateSign { .. } => 0x33,
             Self::UpdateTileEntity { .. } => 0x35,
             Self::SignEditorOpen { .. } => 0x36,
@@ -1248,6 +1257,15 @@ impl ClientboundPlay {
             } => {
                 w.u8(*window).i16(*property).i16(*value);
             }
+            Self::SpawnExperienceOrb {
+                entity_id,
+                x,
+                y,
+                z,
+                count,
+            } => {
+                w.varint(*entity_id).i32(*x).i32(*y).i32(*z).i16(*count);
+            }
             Self::UpdateSign { pos, lines } => {
                 w.position(pos.0, pos.1, pos.2);
                 for line in lines {
@@ -1444,6 +1462,13 @@ impl ClientboundPlay {
                     velocity,
                 }
             }
+            0x11 => Self::SpawnExperienceOrb {
+                entity_id: r.varint()?,
+                x: r.i32()?,
+                y: r.i32()?,
+                z: r.i32()?,
+                count: r.i16()?,
+            },
             0x33 => Self::UpdateSign {
                 pos: r.position()?,
                 lines: [

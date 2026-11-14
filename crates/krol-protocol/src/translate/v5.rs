@@ -727,6 +727,17 @@ impl V5Translator {
                 w.i32(*collected).i32(*collector);
                 one(w);
             }
+            ClientboundPlay::SpawnExperienceOrb {
+                entity_id,
+                x,
+                y,
+                z,
+                count,
+            } => {
+                let mut w = packet(0x11);
+                w.varint(*entity_id).i32(*x).i32(*y).i32(*z).i16(*count);
+                one(w);
+            }
             ClientboundPlay::UpdateSign { pos, lines } => {
                 let mut w = packet(0x33);
                 w.i32(pos.0).i16(pos.1 as i16).i32(pos.2);

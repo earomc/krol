@@ -688,7 +688,7 @@ impl Game {
         let left = now.filter(|s| s.id == out.id).map_or(0, |s| s.count);
         let amount = i32::from(out.count - left);
         if amount > 0 {
-            self.furnace_output_taken(i, out.id, amount, mode != 6);
+            self.furnace_output_taken(i, out, amount, mode != 6);
         }
     }
 

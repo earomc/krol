@@ -326,6 +326,13 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
         0x36 => Some(ClientboundPlay::SignEditorOpen {
             pos: (r.i32()?, r.i32()?, r.i32()?),
         }),
+        0x11 => Some(ClientboundPlay::SpawnExperienceOrb {
+            entity_id: r.varint()?,
+            x: r.i32()?,
+            y: r.i32()?,
+            z: r.i32()?,
+            count: r.i16()?,
+        }),
         0x31 => Some(ClientboundPlay::WindowProperty {
             window: r.u8()?,
             property: r.i16()?,

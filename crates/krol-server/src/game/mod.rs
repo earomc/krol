@@ -26,6 +26,7 @@ mod sign;
 pub mod stats;
 mod tracker;
 pub mod world;
+mod xp_orb;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -206,6 +207,8 @@ struct Game {
     pending_removals: Vec<(u64, Component)>,
     /// Entity tracker entries.
     tracker: tracker::Tracker,
+    /// Experience orbs by entity id.
+    orbs: std::collections::BTreeMap<i32, xp_orb::XpOrb>,
     /// Dropped items by entity id.
     items: std::collections::BTreeMap<i32, item_entity::ItemEntity>,
     /// Chests that are open or closing.
@@ -257,6 +260,7 @@ pub fn start(
         pending_removals: Vec::new(),
         tracker: Default::default(),
         items: Default::default(),
+        orbs: Default::default(),
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),
@@ -386,10 +390,15 @@ impl Game {
         // entity id order; dead items are removed when the loop reaches them.
         let mut order: Vec<i32> = self.players.iter().map(|p| p.entity_id).collect();
         order.extend(self.items.keys().copied());
+        order.extend(self.orbs.keys().copied());
         order.sort_unstable();
         for id in order {
             if self.items.contains_key(&id) {
                 self.update_item(id);
+                continue;
+            }
+            if self.orbs.contains_key(&id) {
+                self.update_orb(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -834,6 +843,7 @@ impl Game {
             distance_walked_on_step: 0.0,
             next_step_distance: 1,
             hurt_resistant_time: 0,
+            xp_cooldown: 0,
             last_damage: 0.0,
             velocity_changed: false,
             respawn_invulnerability: 60,

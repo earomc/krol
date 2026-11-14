@@ -101,6 +101,8 @@ pub struct Player {
     /// Ticks left in which new damage only counts above the last hit
     /// (`hurtResistantTime`).
     pub hurt_resistant_time: i32,
+    /// Ticks until the player can collect another experience orb (`xpCooldown`).
+    pub xp_cooldown: i32,
     /// The last damage taken (`lastDamage`).
     pub last_damage: f32,
     /// The tracker sends the velocity on its next pass (`velocityChanged`).
