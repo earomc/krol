@@ -16,13 +16,18 @@ properties = { online-mode = "false", level-type = "FLAT", generate-structures =
 action = "console"
 command = "setblock -472 3 -431 air"
 
+# Grass would spread onto the dirt in the pit at a random time.
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
 [[steps]]
 id = "player"
 action = "play"
 background = true
 protocol = 47
 name = "jeb_"
-seconds = 13
+seconds = 18
 chat = [
     "@2500 !creative 36 325 2 0",
     "@2700 !creative 37 326 1 0",
@@ -45,7 +50,7 @@ wait_ms = 3300
 [[steps]]
 action = "console"
 command = "gamemode 0 jeb_"
-wait_ms = 10000
+wait_ms = 15000
 
 [observe]
 log = true

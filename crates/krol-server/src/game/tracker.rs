@@ -96,7 +96,11 @@ pub fn player_metadata(p: &Player) -> Vec<Metadata> {
     vec![
         md(
             0,
-            Byte((i8::from(p.sneaking) << 1) | (i8::from(p.sprinting) << 3)),
+            Byte(
+                i8::from(p.data.get_i16("Fire") > 0)
+                    | (i8::from(p.sneaking) << 1)
+                    | (i8::from(p.sprinting) << 3),
+            ),
         ),
         md(
             1,

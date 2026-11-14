@@ -84,6 +84,7 @@ impl Game {
         if p.gamemode != 3 {
             let bb = Aabb::at(p.pos, 0.6, 1.8);
             self.block_collisions(&bb);
+            self.player_move_fire(i);
         }
         outcome
     }
@@ -324,7 +325,17 @@ impl Game {
         let p = &mut self.players[i];
         p.in_water = water;
         p.first_update = false;
+        let in_lava = {
+            let bb = Aabb::at(self.players[i].pos, 0.6, 1.8).expand([
+                f64::from(-0.1f32),
+                f64::from(-0.4f32),
+                f64::from(-0.1f32),
+            ]);
+            self.any_block_in(&bb, 10..=11)
+        };
+        self.player_fire_update(i, in_lava);
         self.air_tick(i);
+        self.player_extinguish_if_wet(i);
         let p = &mut self.players[i];
         let hurt = p.data.get_i16("HurtTime");
         if hurt > 0 {

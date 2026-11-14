@@ -28,8 +28,6 @@ wait_ms = 11500
 
 [observe]
 log = true
-# Logged while the spawn area loads, depending on how fast that goes.
-log_ignore_prefixes = ["Preparing spawn area"]
 files = [
     "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
     "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",

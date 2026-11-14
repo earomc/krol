@@ -272,8 +272,10 @@ fn normalize_log(lines: &[String], observe: &Observe) -> Value {
                 _ => line.as_str(),
             };
             let message = line.split_once("]: ").map_or(line, |(_, m)| m);
-            // Depends on how fast the machine is, not on behavior.
-            if message.starts_with("Can't keep up!") {
+            // These depend on how fast the machine is, not on behavior.
+            // Spawn area progress is logged once a second while it loads.
+            if message.starts_with("Can't keep up!") || message.starts_with("Preparing spawn area")
+            {
                 return None;
             }
             if observe

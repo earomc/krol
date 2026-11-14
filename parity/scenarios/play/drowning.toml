@@ -69,7 +69,6 @@ wait_ms = 31500
 
 [observe]
 log = true
-log_ignore_prefixes = ["Preparing spawn area"]
 files = [
     "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
     "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",

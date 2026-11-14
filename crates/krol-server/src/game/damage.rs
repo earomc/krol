@@ -18,6 +18,12 @@ pub enum DamageSource {
     /// Running out of air under water (`DamageSource.drown`: bypasses armor, no
     /// exhaustion, no knockback).
     Drown,
+    /// Burning (`DamageSource.onFire`: bypasses armor, no exhaustion).
+    OnFire,
+    /// Standing in fire or lava blocks (`DamageSource.inFire`).
+    InFire,
+    /// Touching lava (`DamageSource.lava`).
+    Lava,
 }
 
 impl DamageSource {
@@ -26,6 +32,9 @@ impl DamageSource {
         match self {
             Self::Fall => "fall",
             Self::Drown => "drown",
+            Self::OnFire => "onFire",
+            Self::InFire => "inFire",
+            Self::Lava => "lava",
         }
     }
 
@@ -37,10 +46,14 @@ impl DamageSource {
     /// Exhaustion added to the victim (`getHungerDamage`).
     fn hunger_damage(self) -> f32 {
         match self {
-            Self::Fall | Self::Drown => 0.0,
+            Self::Fall | Self::Drown | Self::OnFire => 0.0,
+            Self::InFire | Self::Lava => DEFAULT_HUNGER_DAMAGE,
         }
     }
 }
+
+/// `DamageSource.hungerDamage` of damage that armor can block.
+const DEFAULT_HUNGER_DAMAGE: f32 = 0.3;
 
 /// `EntityLivingBase.maxHurtTime`: how long the hurt animation lasts.
 pub const MAX_HURT_TIME: i16 = 10;

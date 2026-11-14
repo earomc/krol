@@ -59,7 +59,11 @@
         "set_slot",
         "block_change",
         "multi_block_change",
-        "multi_block_change"
+        "multi_block_change",
+        "multi_block_change",
+        "block_change",
+        "multi_block_change",
+        "block_change"
       ],
       "packets": [
         {
@@ -274,6 +278,22 @@
         {
           "hex": "ffffffe2ffffffe40d4c04a2014b04a4013c04a4015c04a4014d04b0014e04a2014f04a4013e04a4015e04a4013d04a2012d04a4015d04a2016d04a401",
           "packet": "multi_block_change"
+        },
+        {
+          "hex": "ffffffe2ffffffe4174b04a4014a04a6013b04a6015b04a6014c04b2013c04a4012c04a6015c04a4016c04a6014f04a4013f04a6015f04a6014e04b2013e04a4012e04a6015e04a4016e04a6012d04a4011d04a6013d04b2016d04a4017d04a6015d04b201",
+          "packet": "multi_block_change"
+        },
+        {
+          "hex": "ffff890013fffe50a601",
+          "packet": "block_change"
+        },
+        {
+          "hex": "ffffffe2ffffffe4134a04b6014b04b4013b04b6015b04b6012c04b6013c04b4016c04b6015c04b4014f04b4013f04b6015f04b6012e04b6013e04b4016e04b6015e04b4011d04b6012d04b4017d04b6016d04b401",
+          "packet": "multi_block_change"
+        },
+        {
+          "hex": "ffff890013fffe50b601",
+          "packet": "block_change"
         }
       ],
       "chat": [
@@ -759,6 +779,7 @@
       "[Server thread/INFO]: Preparing start region for level 0",
       "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
       "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Game rule has been updated",
       "[Server thread/INFO]: jeb_[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
       "[Server thread/INFO]: jeb_ joined the game",
       "[Server thread/INFO]: Set jeb_'s game mode to Creative Mode",
@@ -887,9 +908,9 @@
         "stat.useItem.minecraft.water_bucket"
       ],
       "value": {
-        "stat.playOneMinute": 256,
+        "stat.playOneMinute": 355,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 256,
+        "stat.timeSinceDeath": 355,
         "stat.useItem.minecraft.lava_bucket": 1,
         "achievement.exploreAllBiomes": {
           "value": 0,

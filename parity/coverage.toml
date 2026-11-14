@@ -340,8 +340,13 @@ scenarios = ["play/drowning"]
 
 [[feature]]
 id = "world.fire"
-description = "Fire: support rules, ageing and burning out, spreading and burning flammable blocks (vanilla encouragement/flammability table, difficulty, humid biomes), dying in the rain (canLightningStrike with precipitation height and biome weather), netherrack; flint and steel with item wear (unbreaking, breaking). Not yet: entities burning, lava setting fire, TNT, portals"
+description = "Fire: support rules, ageing and burning out, spreading and burning flammable blocks (vanilla encouragement/flammability table, difficulty, humid biomes), dying in the rain (canLightningStrike with precipitation height and biome weather), netherrack; flint and steel with item wear (unbreaking, breaking). Not yet: TNT, portals"
 scenarios = ["play/fire"]
+
+[[feature]]
+id = "entity.burning"
+description = "Burning players: the fire counter (Fire), damage every 20 ticks, fire and lava contact (dealFireDamage, catching fire after the fire resistance), lava damage and 15 s of fire, fire protection, putting it out in water or rain (fizz), the burning metadata flag; still lava setting fire near flammable blocks; flowing liquids' random ticks. Not yet: armor, burning items and mobs"
+scenarios = ["play/lava"]
 
 [[feature]]
 id = "item.buckets"

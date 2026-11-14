@@ -1,0 +1,44 @@
+description = "Lava: still lava placed at a standing player's feet hurts for 4 every 10 ticks, sets them on fire (burning flag) and kills them (\"tried to swim in lava\")"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode (no spawn offset; it still takes damage) and never moves. Damage
+# and the fire counter advance once per movement packet, so the packet stream is not
+# compared; the outcome is.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 9
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+wait_ms = 3000
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -435 lava"
+wait_ms = 6500
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    # Timing-dependent (see above).
+    "player",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Fire",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.DeathTime",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
