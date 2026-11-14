@@ -31,6 +31,7 @@ enum Inv {
     Chest(Vec<(i32, i32, i32)>),
     Furnace((i32, i32, i32)),
     Hopper((i32, i32, i32)),
+    Dispenser((i32, i32, i32)),
 }
 
 /// The facing of a hopper (`EnumFacing.getFront(meta & 7)`).
@@ -136,6 +137,7 @@ impl Game {
             _ if block::is_chest(id) => self.chest_parts(pos).map(Inv::Chest),
             _ if block::is_furnace(id) => Some(Inv::Furnace(pos)),
             block::HOPPER => Some(Inv::Hopper(pos)),
+            _ if super::dispenser::is_dispenser(id) => Some(Inv::Dispenser(pos)),
             _ => None,
         }
     }
@@ -145,6 +147,7 @@ impl Game {
             Inv::Chest(parts) => self.chest_contents(parts),
             Inv::Furnace(pos) => self.furnace_items(*pos),
             Inv::Hopper(pos) => self.hopper_items(*pos),
+            Inv::Dispenser(pos) => self.dispenser_items(*pos),
         }
     }
 
@@ -155,6 +158,7 @@ impl Game {
             Inv::Chest(parts) => self.set_chest_contents(parts, items),
             Inv::Furnace(pos) => self.set_furnace_items(*pos, items, put_input),
             Inv::Hopper(pos) => self.set_hopper_items(*pos, items),
+            Inv::Dispenser(pos) => self.set_dispenser_items(*pos, items),
         }
     }
 
@@ -251,6 +255,18 @@ impl Game {
         });
         let empty = slots.iter().all(|&k| items[k].is_none());
         (full, empty)
+    }
+
+    /// `putStackInInventoryAllSlots` into the inventory at `pos` (droppers): `None`
+    /// without an inventory, else whether all of `stack` went in.
+    pub(super) fn insert_into_inventory_at(
+        &mut self,
+        pos: (i32, i32, i32),
+        stack: ItemStack,
+        face: u8,
+    ) -> Option<bool> {
+        let inv = self.inventory_at(pos)?;
+        Some(self.put_stack(&inv, stack, Some(face)).is_none())
     }
 
     /// `TileEntityHopper.transferItemsOut`: one item into the inventory it faces.

@@ -57,10 +57,15 @@ fn trapdoor_support(state: u16) -> bool {
 impl Game {
     /// `playAuxSFXAtEntity(null, id, pos, 0)`: the effect to everyone within 64 blocks.
     pub(super) fn block_effect(&self, id: i32, pos: (i32, i32, i32)) {
+        self.block_effect_data(id, pos, 0);
+    }
+
+    /// `playAuxSFX(id, pos, data)` to everyone within 64 blocks.
+    pub(super) fn block_effect_data(&self, id: i32, pos: (i32, i32, i32), data: i32) {
         let packet = ClientboundPlay::Effect {
             id,
             pos,
-            data: 0,
+            data,
             disable_relative_volume: false,
         };
         for p in &self.players {

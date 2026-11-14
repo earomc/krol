@@ -422,6 +422,8 @@ impl World {
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => "Comparator",
             block::NOTEBLOCK => "Music",
             block::HOPPER => "Hopper",
+            block::DISPENSER => "Trap",
+            block::DROPPER => "Dropper",
             _ => return,
         };
         if self.tile_entity_index(pos).is_some() {

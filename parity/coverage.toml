@@ -309,8 +309,13 @@ description = "Hoppers: pulling from the inventory above or item entities, pushi
 scenarios = ["play/hoppers"]
 
 [[feature]]
+id = "redstone.dispensers"
+description = "Dispensers and droppers: rising-edge trigger (also through the block above), 4-tick delay, random slot, default dispensing with effects, droppers inserting into the inventory in front, windows, comparator signal, hopper access. Not yet: the special dispense behaviors (projectiles, buckets, bone meal, TNT, armor, ...)"
+scenarios = ["play/dispensers"]
+
+[[feature]]
 id = "blocks.containers"
-description = "Other container GUIs (dispensers, droppers, brewing stands, enchanting tables, anvils, beacons, ...): open window, slots, clicks, closing"
+description = "Other container GUIs (brewing stands, enchanting tables, anvils, beacons, ...): open window, slots, clicks, closing"
 scenarios = []
 
 [[feature]]

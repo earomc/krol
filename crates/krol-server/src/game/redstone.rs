@@ -790,6 +790,9 @@ impl Game {
         if id == block::HOPPER {
             return Some(container_signal(&self.hopper_items(pos)));
         }
+        if super::dispenser::is_dispenser(id) {
+            return Some(container_signal(&self.dispenser_items(pos)));
+        }
         None
     }
 

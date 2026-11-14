@@ -169,6 +169,10 @@ impl Game {
                 self.activate_hopper(i, pos);
                 true
             }
+            block::DISPENSER | block::DROPPER => {
+                self.activate_dispenser(i, pos, id);
+                true
+            }
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 if self.players[i].gamemode == 2 {
                     return false;

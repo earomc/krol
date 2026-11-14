@@ -13,6 +13,8 @@ pub mod block {
     pub const DIRT: u16 = 3;
     /// `sapling`.
     pub const SAPLING: u16 = 6;
+    /// `dispenser`.
+    pub const DISPENSER: u16 = 23;
     /// `noteblock`.
     pub const NOTEBLOCK: u16 = 25;
     /// `bed`.
@@ -157,6 +159,8 @@ pub mod block {
     pub const REDSTONE_BLOCK: u16 = 152;
     /// `hopper`.
     pub const HOPPER: u16 = 154;
+    /// `dropper`.
+    pub const DROPPER: u16 = 158;
     /// `activator_rail`.
     pub const ACTIVATOR_RAIL: u16 = 157;
     /// `quartz_ore`.

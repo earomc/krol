@@ -95,6 +95,7 @@ impl Game {
             if super::ids::block::is_chest(id)
                 || super::ids::block::is_furnace(id)
                 || id == super::ids::block::HOPPER
+                || super::dispenser::is_dispenser(id)
             {
                 self.update_comparators(pos);
             }
@@ -183,6 +184,10 @@ impl Game {
             }
             block::HOPPER => {
                 self.hopper_update_state(pos, state);
+                return;
+            }
+            block::DISPENSER | block::DROPPER => {
+                self.dispenser_changed(pos, state);
                 return;
             }
             _ if super::pressure_plates::is_plate(id) => {
@@ -403,6 +408,7 @@ impl Game {
             block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => self.torch_tick(pos, state),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
             _ if super::pressure_plates::is_plate(id) => self.plate_tick(pos, state),
+            block::DISPENSER | block::DROPPER => self.dispense(pos, state),
             block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_tick(pos, state),
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 self.comparator_tick(pos, state);

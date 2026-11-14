@@ -444,6 +444,7 @@ impl Game {
                 items
             }
             block::HOPPER => self.hopper_contents(pos),
+            block::DISPENSER | block::DROPPER => self.dispenser_contents(pos),
             _ => return,
         };
         for stack in contents {

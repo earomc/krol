@@ -14,6 +14,7 @@ mod container;
 mod damage;
 mod death;
 mod digging;
+mod dispenser;
 mod falling_block;
 mod furnace;
 mod hopper;

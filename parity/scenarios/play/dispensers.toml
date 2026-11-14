@@ -1,0 +1,60 @@
+description = "Dispensers and droppers: a dropper moving one item into the chest in front per rising edge (lever on, off, on), and a dispenser dropping an item (with its click and smoke effects)"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. Facing south, he places the dropper and dispenser facing north, away
+# from him; the dispensed item lands out of his reach.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 11
+chat = [
+    "@1500 !creative 36 54 1 0",
+    "@1700 !creative 37 158 1 0",
+    "@1900 !creative 38 23 1 0",
+    "@2100 !creative 39 69 8 0",
+    "@2300 !creative 9 4 3 0",
+    "@2500 !creative 10 3 2 0",
+    "@2900 !place -474 3 -434 1",
+    "@3000 !hold 1",
+    "@3100 !place -474 3 -433 1",
+    "@3200 !hold 2",
+    "@3300 !place -477 3 -433 1",
+    "@3400 !hold 3",
+    "@3500 !place -473 3 -433 1",
+    "@3700 !place -478 3 -433 1",
+    "@4000 !place -474 4 -433 1",
+    "@4300 !click 1 9 0 1 0 4 3 0",
+    "@4600 !click 1 0 0 2 0",
+    "@4900 !close 1",
+    "@5200 !place -477 4 -433 1",
+    "@5500 !click 2 10 0 1 0 3 2 0",
+    "@5800 !click 2 4 0 2 0",
+    "@6100 !close 2",
+    "@6500 !place -473 4 -433 1",
+    "@7000 !place -473 4 -433 1",
+    "@7500 !place -473 4 -433 1",
+    "@8200 !place -478 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 10700
+
+[observe]
+log = true
+blocks = [[-474, 4, -433], [-477, 4, -433]]
+tile_entities = [[-474, 4, -434], [-474, 4, -433], [-477, 4, -433]]
