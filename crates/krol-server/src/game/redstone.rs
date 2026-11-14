@@ -787,6 +787,9 @@ impl Game {
         if block::is_furnace(id) {
             return Some(container_signal(&self.furnace_items(pos)));
         }
+        if id == block::HOPPER {
+            return Some(container_signal(&self.hopper_items(pos)));
+        }
         None
     }
 

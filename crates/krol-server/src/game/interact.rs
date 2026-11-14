@@ -165,6 +165,10 @@ impl Game {
                 self.activate_note_block(i, pos);
                 true
             }
+            block::HOPPER => {
+                self.activate_hopper(i, pos);
+                true
+            }
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 if self.players[i].gamemode == 2 {
                     return false;

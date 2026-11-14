@@ -16,6 +16,7 @@ mod death;
 mod digging;
 mod falling_block;
 mod furnace;
+mod hopper;
 pub mod ids;
 mod interact;
 mod item_data;
@@ -456,6 +457,7 @@ impl Game {
         // World.updateEntities: then the tile entities.
         self.tick_chests();
         self.tick_furnaces();
+        self.tick_hoppers();
         self.tick_moving();
         self.update_tracked_entities();
         for event in late {

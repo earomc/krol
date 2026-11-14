@@ -92,7 +92,10 @@ impl Game {
             self.notify_neighbors(pos, old >> 4);
             // hasComparatorInputOverride: containers update the comparators reading them.
             let id = state >> 4;
-            if super::ids::block::is_chest(id) || super::ids::block::is_furnace(id) {
+            if super::ids::block::is_chest(id)
+                || super::ids::block::is_furnace(id)
+                || id == super::ids::block::HOPPER
+            {
                 self.update_comparators(pos);
             }
         }
@@ -178,6 +181,10 @@ impl Game {
                 self.note_block_changed(pos);
                 return;
             }
+            block::HOPPER => {
+                self.hopper_update_state(pos, state);
+                return;
+            }
             _ if super::pressure_plates::is_plate(id) => {
                 if !self.plate_can_stay(pos) {
                     self.pop_off(pos, state);
@@ -254,6 +261,7 @@ impl Game {
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
             // BlockPistonBase.onBlockAdded (pistons never have a tile entity).
             block::PISTON | block::STICKY_PISTON => self.piston_check(pos, state),
+            block::HOPPER => self.hopper_update_state(pos, state),
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR

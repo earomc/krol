@@ -443,6 +443,7 @@ impl Game {
                 self.furnace_burn.remove(&pos);
                 items
             }
+            block::HOPPER => self.hopper_contents(pos),
             _ => return,
         };
         for stack in contents {

@@ -155,6 +155,8 @@ pub mod block {
     pub const DAYLIGHT_DETECTOR: u16 = 151;
     /// `redstone_block`.
     pub const REDSTONE_BLOCK: u16 = 152;
+    /// `hopper`.
+    pub const HOPPER: u16 = 154;
     /// `activator_rail`.
     pub const ACTIVATOR_RAIL: u16 = 157;
     /// `quartz_ore`.

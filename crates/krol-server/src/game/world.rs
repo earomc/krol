@@ -88,6 +88,8 @@ pub struct World {
     /// Furnace tile entities in the order they were loaded or created (vanilla's
     /// `tickableTileEntities`, of which krol ticks furnaces this way).
     pub furnaces: Vec<(i32, i32, i32)>,
+    /// Hopper tile entities in the order they were loaded or created.
+    pub hoppers: Vec<(i32, i32, i32)>,
     /// Moving piston blocks in the order they were created (`TileEntityPiston` in
     /// vanilla's `tickableTileEntities`).
     pub moving: Vec<(i32, i32, i32)>,
@@ -122,6 +124,7 @@ impl World {
             pending_changes: HashMap::new(),
             pending_order: Vec::new(),
             furnaces: Vec::new(),
+            hoppers: Vec::new(),
             scheduler: Default::default(),
             moving: Vec::new(),
             total_time: 0,
@@ -230,11 +233,13 @@ impl World {
             }
             // Chunk.onChunkLoad: the tile entities join the world's lists.
             for t in chunk.tile_entities.iter() {
-                if let Tag::Compound(c) = t
-                    && c.get_str("id") == "Furnace"
-                {
-                    self.furnaces
-                        .push((c.get_i32("x"), c.get_i32("y"), c.get_i32("z")));
+                if let Tag::Compound(c) = t {
+                    let p = (c.get_i32("x"), c.get_i32("y"), c.get_i32("z"));
+                    match c.get_str("id") {
+                        "Furnace" => self.furnaces.push(p),
+                        "Hopper" => self.hoppers.push(p),
+                        _ => {}
+                    }
                 }
             }
             self.chunks.insert(
@@ -389,6 +394,7 @@ impl World {
     pub fn remove_tile_entity(&mut self, pos: (i32, i32, i32)) {
         self.chunk(pos.0 >> 4, pos.2 >> 4);
         self.furnaces.retain(|&p| p != pos);
+        self.hoppers.retain(|&p| p != pos);
         if let Some(index) = self.tile_entity_index(pos) {
             self.chunk_mut(pos.0 >> 4, pos.2 >> 4)
                 .tile_entities
@@ -415,6 +421,7 @@ impl World {
             n if block::is_chest(n) => "Chest",
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => "Comparator",
             block::NOTEBLOCK => "Music",
+            block::HOPPER => "Hopper",
             _ => return,
         };
         if self.tile_entity_index(pos).is_some() {
@@ -448,6 +455,11 @@ impl World {
             }
         } else {
             c.insert("Lock", Tag::String(String::new()));
+            if id == "Hopper" {
+                // A new hopper's transferCooldown is -1.
+                c.insert("TransferCooldown", Tag::Int(-1));
+                self.hoppers.push(pos);
+            }
             if id == "Furnace" {
                 c.insert("BurnTime", Tag::Short(0));
                 c.insert("CookTime", Tag::Short(0));

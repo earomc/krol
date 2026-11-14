@@ -304,8 +304,13 @@ description = "Pressure plates (stone, wooden, weighted): entity-block collision
 scenarios = ["play/pressure_plates"]
 
 [[feature]]
+id = "redstone.hoppers"
+description = "Hoppers: pulling from the inventory above or item entities, pushing into the inventory they face (furnace sides, double chests, other hoppers), 8-tick cooldown, redstone lock, window, comparator signal, contents dropped when broken. Not yet: minecarts, dispensers, droppers, brewing stands"
+scenarios = ["play/hoppers"]
+
+[[feature]]
 id = "blocks.containers"
-description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
+description = "Other container GUIs (dispensers, droppers, brewing stands, enchanting tables, anvils, beacons, ...): open window, slots, clicks, closing"
 scenarios = []
 
 [[feature]]

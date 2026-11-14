@@ -23,6 +23,8 @@ pub enum Layout {
     Chest(u8),
     /// A furnace: input, fuel, output, main, hotbar.
     Furnace,
+    /// A hopper: five slots, main, hotbar.
+    Hopper,
 }
 
 impl Layout {
@@ -32,12 +34,13 @@ impl Layout {
             Self::Workbench => 46,
             Self::Chest(rows) => usize::from(rows) * 9 + 36,
             Self::Furnace => 39,
+            Self::Hopper => super::hopper::HOPPER_SLOTS + 36,
         }
     }
 
     /// Whether slot 0 is a crafting result.
     fn has_result(self) -> bool {
-        !matches!(self, Self::Chest(_) | Self::Furnace)
+        !matches!(self, Self::Chest(_) | Self::Furnace | Self::Hopper)
     }
 
     /// The crafting grid's slots and width.
@@ -45,7 +48,7 @@ impl Layout {
         match self {
             Self::Player => (1..5, 2),
             Self::Workbench => (1..10, 3),
-            Self::Chest(_) | Self::Furnace => (0..0, 0),
+            Self::Chest(_) | Self::Furnace | Self::Hopper => (0..0, 0),
         }
     }
 
@@ -56,6 +59,7 @@ impl Layout {
             Self::Workbench => 10,
             Self::Chest(rows) => usize::from(rows) * 9,
             Self::Furnace => 3,
+            Self::Hopper => super::hopper::HOPPER_SLOTS,
         }
     }
 
@@ -75,6 +79,7 @@ impl Layout {
             Self::Workbench => k >= 10,
             Self::Chest(rows) => k >= usize::from(rows) * 9,
             Self::Furnace => k >= 3,
+            Self::Hopper => k >= super::hopper::HOPPER_SLOTS,
         }
     }
 
@@ -137,6 +142,15 @@ impl Layout {
                 37..=45 => merge(slots, &mut stack, 10, 37, false),
                 _ => merge(slots, &mut stack, 10, 46, false),
             },
+            // ContainerHopper.transferStackInSlot.
+            Self::Hopper => {
+                let own = super::hopper::HOPPER_SLOTS;
+                if index < own {
+                    merge(slots, &mut stack, own, own + 36, true)
+                } else {
+                    merge(slots, &mut stack, 0, own, false)
+                }
+            }
             Self::Furnace => match index {
                 2 => merge(slots, &mut stack, 3, 39, true),
                 0 | 1 => merge(slots, &mut stack, 3, 39, false),
@@ -338,6 +352,11 @@ impl Game {
                 flat.extend(p.inventory[9..45].iter().cloned());
                 flat
             }
+            Some(o) if o.layout == Layout::Hopper => {
+                let mut flat = self.hopper_items(o.pos);
+                flat.extend(p.inventory[9..45].iter().cloned());
+                flat
+            }
             Some(o) if !o.parts.is_empty() => {
                 let mut flat = self.chest_contents(&o.parts);
                 flat.extend(p.inventory[9..45].iter().cloned());
@@ -363,6 +382,18 @@ impl Game {
         {
             self.set_furnace_items(pos, &flat[..3], put_input);
             self.players[i].inventory[9..45].clone_from_slice(&flat[3..]);
+            return;
+        }
+        if let Some(pos) = self.players[i]
+            .window
+            .open
+            .as_ref()
+            .filter(|o| o.layout == Layout::Hopper)
+            .map(|o| o.pos)
+        {
+            let own = super::hopper::HOPPER_SLOTS;
+            self.set_hopper_items(pos, &flat[..own]);
+            self.players[i].inventory[9..45].clone_from_slice(&flat[own..]);
             return;
         }
         if let Some(parts) = self.players[i]
@@ -1003,6 +1034,12 @@ impl Game {
             // TileEntityFurnace.isUseableByPlayer.
             Layout::Furnace => {
                 block::is_furnace(w.block(pos.0, pos.1, pos.2) >> 4)
+                    && w.tile_entity(pos).is_some()
+                    && near(pos)
+            }
+            // TileEntityHopper.isUseableByPlayer.
+            Layout::Hopper => {
+                w.block(pos.0, pos.1, pos.2) >> 4 == block::HOPPER
                     && w.tile_entity(pos).is_some()
                     && near(pos)
             }
