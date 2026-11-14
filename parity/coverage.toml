@@ -269,6 +269,11 @@ description = "Falling sand and gravel: scheduled checks on placement and neighb
 scenarios = ["play/falling_blocks"]
 
 [[feature]]
+id = "redstone.basics"
+description = "Redstone power queries (strong/weak, normal cubes relaying), redstone wire (power levels, connections, update order via HashSet<BlockPos> order), redstone torches (delay, burnout), lamps; levers, buttons and redstone blocks as sources. Not yet: repeaters, comparators, pistons, power-driven doors and the other consumers"
+scenarios = ["play/redstone_basics"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

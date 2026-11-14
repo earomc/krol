@@ -51,7 +51,9 @@ impl Scheduler {
     /// `scheduleBlockUpdate`: adds an entry unless one for the position and block is
     /// pending. Air entries get time 0 (they run at once).
     pub fn schedule(&mut self, pos: Pos, block: u16, delay: i32, priority: i32, now: i64) {
-        if self.present.contains(&(pos, block)) {
+        // Lit and unlit variants count as the same block (`Block.isEqualTo`).
+        let key = (pos, super::redstone::associated(block));
+        if self.present.contains(&key) {
             return;
         }
         let time = if block == 0 {
@@ -61,7 +63,7 @@ impl Scheduler {
         };
         let id = self.next_id;
         self.next_id += 1;
-        self.present.insert((pos, block));
+        self.present.insert(key);
         self.pending.insert((time, priority, id), (pos, block));
     }
 
@@ -76,7 +78,8 @@ impl Scheduler {
                 break;
             }
             if let Some(entry) = self.pending.remove(&key) {
-                self.present.remove(&entry);
+                self.present
+                    .remove(&(entry.0, super::redstone::associated(entry.1)));
                 due.push(entry);
             }
         }

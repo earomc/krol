@@ -35,29 +35,7 @@ const CLICK_VOLUME: f32 = 0.3;
 const CLICK_ON: f32 = 0.6;
 const CLICK_OFF: f32 = 0.5;
 
-/// The face a button or lever is mounted on (`FACING`), from its metadata. Levers on
-/// the floor or ceiling come in two rotations.
-fn mount_facing(id: u16, meta: u16) -> u8 {
-    if id == block::LEVER {
-        match meta & 7 {
-            0 | 7 => DOWN,
-            1 => EAST,
-            2 => WEST,
-            3 => SOUTH,
-            4 => NORTH,
-            _ => UP,
-        }
-    } else {
-        match meta & 7 {
-            0 => DOWN,
-            1 => EAST,
-            2 => WEST,
-            3 => SOUTH,
-            4 => NORTH,
-            _ => UP,
-        }
-    }
-}
+use super::redstone::mount_facing;
 
 /// `BlockButton.func_181088_a`: the block on side `dir` can hold a button or lever
 /// (solid top when below, else a normal cube).
@@ -137,6 +115,30 @@ impl Game {
             self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
             return;
         }
+        match id {
+            block::REDSTONE_WIRE => {
+                if self.wire_can_stay(pos) {
+                    self.wire_neighbor_changed(pos, state);
+                } else {
+                    self.pop_off(pos, state);
+                }
+                return;
+            }
+            block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => {
+                let face = super::redstone::torch_facing(meta);
+                if placement::torch_can_attach(&mut self.level.overworld, pos, face) {
+                    self.torch_neighbor_changed(pos, state);
+                } else {
+                    self.pop_off(pos, state);
+                }
+                return;
+            }
+            block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => {
+                self.lamp_neighbor_changed(pos, id);
+                return;
+            }
+            _ => {}
+        }
         let w = &mut self.level.overworld;
         let below = w.block(pos.0, pos.1 - 1, pos.2);
         let stays = if let Some(ok) = plant_soil(id, below >> 4) {
@@ -181,8 +183,14 @@ impl Game {
     /// `onBlockAdded` of the new block: sand and gravel check whether to fall.
     fn block_added(&mut self, pos: (i32, i32, i32), state: u16) {
         let id = state >> 4;
-        if super::falling_block::falls(id) {
-            self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
+        match id {
+            _ if super::falling_block::falls(id) => {
+                self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
+            }
+            block::REDSTONE_WIRE => self.wire_added(pos, state),
+            block::REDSTONE_TORCH => self.torch_notify(pos, id),
+            block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
+            _ => {}
         }
     }
 
@@ -190,12 +198,13 @@ impl Game {
     /// itself and the block it was on.
     fn block_removed(&mut self, pos: (i32, i32, i32), old: u16) {
         let (id, meta) = (old >> 4, old & 15);
-        if matches!(
-            id,
-            block::LEVER | block::STONE_BUTTON | block::WOODEN_BUTTON
-        ) && meta & POWERED != 0
-        {
-            self.notify_mounted(pos, id, meta);
+        match id {
+            block::LEVER | block::STONE_BUTTON | block::WOODEN_BUTTON if meta & POWERED != 0 => {
+                self.notify_mounted(pos, id, meta);
+            }
+            block::REDSTONE_WIRE => self.wire_removed(pos, old),
+            block::REDSTONE_TORCH => self.torch_notify(pos, id),
+            _ => {}
         }
     }
 
@@ -262,7 +271,8 @@ impl Game {
         self.level.overworld.total_time = now;
         for (pos, id) in self.level.overworld.scheduler.take_due(now) {
             let state = self.level.overworld.block(pos.0, pos.1, pos.2);
-            if state >> 4 != 0 && state >> 4 == id {
+            let associated = super::redstone::associated;
+            if state >> 4 != 0 && associated(state >> 4) == associated(id) {
                 self.update_tick(pos, state);
             }
         }
@@ -280,6 +290,8 @@ impl Game {
                 self.click(pos, CLICK_OFF);
             }
             _ if super::falling_block::falls(id) => self.check_fallable(pos, state),
+            block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => self.torch_tick(pos, state),
+            block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
             _ => {
                 let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
                 if plant_soil(id, below) == Some(false) {

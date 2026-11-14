@@ -25,6 +25,7 @@ pub mod physics;
 mod placement;
 pub mod player;
 mod recipes;
+mod redstone;
 mod scheduler;
 mod sign;
 mod special_recipes;
@@ -212,6 +213,12 @@ struct Game {
     pending_removals: Vec<(u64, Component)>,
     /// Entity tracker entries.
     tracker: tracker::Tracker,
+    /// `BlockRedstoneWire.canProvidePower`: off while a wire computes its input.
+    wire_gives_power: bool,
+    /// `BlockRedstoneWire.blocksNeedingUpdate`, in insertion order.
+    wire_queue: Vec<(i32, i32, i32)>,
+    /// `BlockRedstoneTorch.toggles`: recent torch toggles (position, total time).
+    torch_toggles: Vec<((i32, i32, i32), i64)>,
     /// Falling blocks by entity id.
     falling: std::collections::BTreeMap<i32, falling_block::FallingBlock>,
     /// Experience orbs by entity id.
@@ -269,6 +276,9 @@ pub fn start(
         items: Default::default(),
         orbs: Default::default(),
         falling: Default::default(),
+        wire_gives_power: true,
+        wire_queue: Vec::new(),
+        torch_toggles: Vec::new(),
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),
@@ -1382,6 +1392,10 @@ impl Game {
             return;
         }
         if self.place_door(i, stack.id, pos, face as u8) {
+            return;
+        }
+        if stack.id == ids::item::REDSTONE {
+            self.place_wire(i, pos, face as u8);
             return;
         }
         if stack.id == ids::item::SIGN {

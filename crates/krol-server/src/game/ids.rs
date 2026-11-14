@@ -11,6 +11,8 @@ pub mod block {
     pub const DIRT: u16 = 3;
     /// `sapling`.
     pub const SAPLING: u16 = 6;
+    /// `detector_rail`.
+    pub const DETECTOR_RAIL: u16 = 28;
     /// `sand`.
     pub const SAND: u16 = 12;
     /// `gravel`.
@@ -35,6 +37,8 @@ pub mod block {
     pub const FIRE: u16 = 51;
     /// `chest`.
     pub const CHEST: u16 = 54;
+    /// `redstone_wire`.
+    pub const REDSTONE_WIRE: u16 = 55;
     /// `diamond_ore`.
     pub const DIAMOND_ORE: u16 = 56;
     /// `crafting_table`.
@@ -55,10 +59,18 @@ pub mod block {
     pub const WALL_SIGN: u16 = 68;
     /// `lever`.
     pub const LEVER: u16 = 69;
+    /// `stone_pressure_plate`.
+    pub const STONE_PRESSURE_PLATE: u16 = 70;
+    /// `wooden_pressure_plate`.
+    pub const WOODEN_PRESSURE_PLATE: u16 = 72;
     /// `redstone_ore`.
     pub const REDSTONE_ORE: u16 = 73;
     /// `lit_redstone_ore`.
     pub const LIT_REDSTONE_ORE: u16 = 74;
+    /// `unlit_redstone_torch`.
+    pub const UNLIT_REDSTONE_TORCH: u16 = 75;
+    /// `redstone_torch` (lit).
+    pub const REDSTONE_TORCH: u16 = 76;
     /// `stone_button`.
     pub const STONE_BUTTON: u16 = 77;
     /// `ice`.
@@ -67,12 +79,24 @@ pub mod block {
     pub const CACTUS: u16 = 81;
     /// `soul_sand`.
     pub const SOUL_SAND: u16 = 88;
+    /// `glowstone`.
+    pub const GLOWSTONE: u16 = 89;
+    /// `unpowered_repeater`.
+    pub const UNPOWERED_REPEATER: u16 = 93;
+    /// `powered_repeater`.
+    pub const POWERED_REPEATER: u16 = 94;
     /// `nether_wart`.
     pub const NETHER_WART: u16 = 115;
+    /// `redstone_lamp` (off).
+    pub const REDSTONE_LAMP: u16 = 123;
+    /// `lit_redstone_lamp`.
+    pub const LIT_REDSTONE_LAMP: u16 = 124;
     /// `wooden_slab`.
     pub const WOODEN_SLAB: u16 = 126;
     /// `emerald_ore`.
     pub const EMERALD_ORE: u16 = 129;
+    /// `tripwire_hook`.
+    pub const TRIPWIRE_HOOK: u16 = 131;
     /// `carrots`.
     pub const CARROTS: u16 = 141;
     /// `potatoes`.
@@ -81,6 +105,18 @@ pub mod block {
     pub const WOODEN_BUTTON: u16 = 143;
     /// `trapped_chest`.
     pub const TRAPPED_CHEST: u16 = 146;
+    /// `light_weighted_pressure_plate`.
+    pub const LIGHT_PRESSURE_PLATE: u16 = 147;
+    /// `heavy_weighted_pressure_plate`.
+    pub const HEAVY_PRESSURE_PLATE: u16 = 148;
+    /// `unpowered_comparator`.
+    pub const UNPOWERED_COMPARATOR: u16 = 149;
+    /// `powered_comparator`.
+    pub const POWERED_COMPARATOR: u16 = 150;
+    /// `daylight_detector`.
+    pub const DAYLIGHT_DETECTOR: u16 = 151;
+    /// `redstone_block`.
+    pub const REDSTONE_BLOCK: u16 = 152;
     /// `quartz_ore`.
     pub const QUARTZ_ORE: u16 = 153;
     /// `stained_hardened_clay`.
@@ -93,6 +129,8 @@ pub mod block {
     pub const COAL_BLOCK: u16 = 173;
     /// `packed_ice`.
     pub const PACKED_ICE: u16 = 174;
+    /// `daylight_detector_inverted`.
+    pub const DAYLIGHT_DETECTOR_INVERTED: u16 = 178;
 
     /// Chests of either kind.
     pub fn is_chest(id: u16) -> bool {
@@ -138,6 +176,8 @@ pub mod item {
     pub const LAVA_BUCKET: i16 = 327;
     /// `milk_bucket`.
     pub const MILK_BUCKET: i16 = 335;
+    /// `redstone` (the dust).
+    pub const REDSTONE: i16 = 331;
     /// `blaze_rod`.
     pub const BLAZE_ROD: i16 = 369;
 }

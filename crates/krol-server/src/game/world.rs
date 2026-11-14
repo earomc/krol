@@ -12,7 +12,7 @@ use krol_world::region::{RegionFile, region_file_name};
 use tracing::{error, info};
 
 /// `BlockPos.hashCode` (`Vec3i`).
-fn block_pos_hash(x: i32, y: i32, z: i32) -> i32 {
+pub fn block_pos_hash(x: i32, y: i32, z: i32) -> i32 {
     y.wrapping_add(z.wrapping_mul(31))
         .wrapping_mul(31)
         .wrapping_add(x)

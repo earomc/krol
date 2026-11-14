@@ -108,6 +108,10 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
         78 => (i32::from(m & 7) + 1, Some(332), 0),
         103 => ((3 + rand.next_int_bounded(5)).min(9), Some(360), 0),
         62 => (1, Some(61), 0),
+        // Redstone: wire drops dust, unlit torches and lit lamps their normal item.
+        55 => (1, Some(331), 0),
+        75 => (1, Some(76), 0),
+        124 => (1, Some(123), 0),
         super::ids::block::STANDING_SIGN | super::ids::block::WALL_SIGN => {
             (1, Some(super::ids::item::SIGN), 0)
         }
