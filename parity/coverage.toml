@@ -314,6 +314,11 @@ description = "Dispensers and droppers: rising-edge trigger (also through the bl
 scenarios = ["play/dispensers"]
 
 [[feature]]
+id = "world.lighting"
+description = "Lighting: sky and block light updates on block changes (checkLightFor with vanilla's queue and reach), height map and column relighting, sky light maps for new sections, gap rechecks on chunk ticks; light block properties extracted from vanilla"
+scenarios = ["play/lighting"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (brewing stands, enchanting tables, anvils, beacons, ...): open window, slots, clicks, closing"
 scenarios = []

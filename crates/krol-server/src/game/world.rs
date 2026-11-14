@@ -7,8 +7,11 @@ use krol_nbt::{Compound, List, Tag};
 use krol_world::chunk::Chunk;
 
 use super::ids::block;
+
+mod light;
 use krol_world::level::LevelData;
 use krol_world::region::{RegionFile, region_file_name};
+pub use light::LightType;
 use tracing::{error, info};
 
 /// `BlockPos.hashCode` (`Vec3i`).
@@ -110,6 +113,13 @@ struct LoadedChunk {
     from_disk: bool,
     /// Ticked at least once by the world (vanilla: `Chunk.field_150815_m`).
     ticked: bool,
+    /// Columns whose sky light needs a gap recheck (`updateSkylightColumns`).
+    gap_columns: [bool; 256],
+    /// `isGapLightingUpdated`.
+    gap_pending: bool,
+    /// `heightMapMinimum` (0 for chunks loaded from disk, which vanilla does not
+    /// recompute).
+    height_minimum: i32,
 }
 
 impl World {
@@ -134,7 +144,9 @@ impl World {
     /// Sets a block (vanilla `setBlockState` with update flags 3) and records the change
     /// for the end-of-tick flush to watching players.
     pub fn set_block(&mut self, x: i32, y: i32, z: i32, state: u16) {
+        let old = self.block(x, y, z);
         if self.set_block_unmarked(x, y, z, state) {
+            self.check_light_if_changed((x, y, z), old, state);
             self.mark_block_for_update(x, y, z);
         }
     }
@@ -146,11 +158,17 @@ impl World {
         if !(0..256).contains(&y) {
             return false;
         }
-        // Chunk.setBlockState: setting the same state changes nothing.
+        // Chunk.setBlockState: setting the same state changes nothing, and air in a
+        // missing section changes nothing either.
         let old = self.block(x, y, z);
         if old == state {
             return false;
         }
+        let new_section = self.chunk(x >> 4, z >> 4).sections[(y >> 4) as usize].is_none();
+        if new_section && state >> 4 == block::AIR {
+            return false;
+        }
+        let old_height = self.chunk(x >> 4, z >> 4).height_map[((z & 15) << 4 | (x & 15)) as usize];
         let has_sky = self.has_sky;
         self.chunk_mut(x >> 4, z >> 4).set_block(
             (x & 15) as usize,
@@ -159,6 +177,7 @@ impl World {
             state,
             has_sky,
         );
+        self.chunk_light_after_set((x, y, z), old, state, old_height, new_section);
         self.update_tile_entity((x, y, z), old, state);
         true
     }
@@ -249,6 +268,9 @@ impl World {
                     modified: false,
                     from_disk,
                     ticked: false,
+                    gap_columns: [false; 256],
+                    gap_pending: false,
+                    height_minimum: 0,
                 },
             );
             self.populate_around(cx, cz);
@@ -299,6 +321,10 @@ impl World {
     pub fn tick_chunk(&mut self, cx: i32, cz: i32) {
         self.chunk(cx, cz);
         let neighbours_loaded = (-1..=1).all(|dx| (-1..=1).all(|dz| self.loaded(cx + dx, cz + dz)));
+        // Chunk.func_150804_b: pending gap lighting first.
+        if self.has_sky && self.chunks.get(&(cx, cz)).is_some_and(|c| c.gap_pending) {
+            self.recheck_gaps(cx, cz);
+        }
         let c = self.chunks.get_mut(&(cx, cz)).expect("loaded above");
         c.ticked = true;
         if c.from_disk

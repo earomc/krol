@@ -71,6 +71,12 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
             saved_blocks(&dir.join("world"), &scenario.observe.blocks),
         );
     }
+    if !scenario.observe.light.is_empty() {
+        obs.insert(
+            "light".into(),
+            saved_light(&dir.join("world"), &scenario.observe.light),
+        );
+    }
     if !scenario.observe.tile_entities.is_empty() {
         obs.insert(
             "tile_entities".into(),
@@ -183,6 +189,30 @@ fn saved_blocks(world: &Path, positions: &[[i32; 3]]) -> Value {
             .map(|c| {
                 let s = c.block((x & 15) as usize, y as usize, (z & 15) as usize);
                 Value::String(format!("{}:{}", s >> 4, s & 15))
+            })
+            .unwrap_or(Value::Null);
+        out.insert(format!("{x},{y},{z}"), value);
+    }
+    Value::Object(out)
+}
+
+/// Reads light levels from the saved region files.
+fn saved_light(world: &Path, positions: &[[i32; 3]]) -> Value {
+    use krol_world::chunk::{Chunk, Section};
+    use krol_world::region::{RegionFile, region_file_name};
+    let mut out = serde_json::Map::new();
+    for &[x, y, z] in positions {
+        let (cx, cz) = (x >> 4, z >> 4);
+        let path = world.join("region").join(region_file_name(cx, cz));
+        let value = RegionFile::open(&path)
+            .ok()
+            .and_then(|mut r| r.read_chunk(cx & 31, cz & 31).ok().flatten())
+            .and_then(|root| Chunk::from_nbt(&root, cx, cz, true).ok())
+            .and_then(|c| {
+                let s = c.sections.get((y >> 4) as usize)?.as_ref()?;
+                let i = Section::index((x & 15) as usize, (y & 15) as usize, (z & 15) as usize);
+                let sky = s.sky_light.as_ref().map_or(0, |l| l.get(i));
+                Some(Value::String(format!("{sky}:{}", s.block_light.get(i))))
             })
             .unwrap_or(Value::Null);
         out.insert(format!("{x},{y},{z}"), value);

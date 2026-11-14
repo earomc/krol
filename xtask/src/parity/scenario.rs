@@ -142,6 +142,10 @@ pub struct Observe {
     /// reported as `id:meta`.
     #[serde(default)]
     pub blocks: Vec<[i32; 3]>,
+    /// Light levels read from the saved world after shutdown, reported as
+    /// `sky:block` (null where the section is missing).
+    #[serde(default)]
+    pub light: Vec<[i32; 3]>,
     /// Tile entities read from the saved world after shutdown, reported as NBT (or
     /// null when there is none).
     #[serde(default)]

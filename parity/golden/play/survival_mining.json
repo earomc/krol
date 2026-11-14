@@ -975,9 +975,9 @@
           "packet": "entity_metadata"
         },
         {
-          "name": "step.grass",
-          "x": -3772,
-          "y": 32,
+          "name": "step.gravel",
+          "x": -3764,
+          "y": 24,
           "z": -3524,
           "volume": 0.15000000596046448,
           "pitch": 63,
@@ -1662,7 +1662,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": 2015361061,
+      "XpSeed": 1684395343,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -1690,9 +1690,9 @@
       ],
       "value": {
         "stat.walkOneCm": 400,
-        "stat.playOneMinute": 161,
+        "stat.playOneMinute": 160,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 161,
+        "stat.timeSinceDeath": 160,
         "stat.mineBlock.minecraft.dirt": 2,
         "achievement.exploreAllBiomes": {
           "value": 0,

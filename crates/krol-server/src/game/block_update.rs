@@ -78,11 +78,15 @@ impl Game {
         if old == state {
             return;
         }
-        w.set_block_unmarked(pos.0, pos.1, pos.2, state);
+        if !w.set_block_unmarked(pos.0, pos.1, pos.2, state) {
+            return;
+        }
         if old >> 4 != state >> 4 {
             self.block_removed(pos, old);
             self.block_added(pos, state);
         }
+        // World.setBlockState: the light check before the update.
+        self.level.overworld.check_light_if_changed(pos, old, state);
         if flags & flags::SEND != 0 {
             self.level
                 .overworld

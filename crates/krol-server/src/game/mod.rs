@@ -22,6 +22,7 @@ pub mod ids;
 mod interact;
 mod item_data;
 mod item_entity;
+mod light_data;
 mod movement;
 mod note_block;
 pub mod physics;

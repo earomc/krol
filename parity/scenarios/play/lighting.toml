@@ -1,0 +1,50 @@
+description = "Lighting: a torch spreading block light, a stone column with an overhang shading the ground, a dug hole lowering the height map, and a second torch placed and removed again; light levels compared from the saved world"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. Random block ticks are off (the grass under the column would turn into
+# dirt at a random time).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 8
+chat = [
+    "@2500 !creative 36 50 8 0",
+    "@2700 !creative 37 1 8 0",
+    "@2900 !place -470 3 -433 1",
+    "@3100 !hold 1",
+    "@3300 !place -474 3 -433 1",
+    "@3500 !place -474 4 -433 1",
+    "@3700 !place -474 5 -433 1",
+    "@3900 !place -474 6 -433 4",
+    "@4200 !dig -472 3 -433 1",
+    "@4400 !hold 0",
+    "@4600 !place -468 3 -431 1",
+    "@5000 !dig -468 4 -431 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 7700
+
+[observe]
+log = true
+light = [
+    [-470, 4, -433], [-469, 4, -433], [-468, 4, -433], [-466, 4, -433], [-470, 5, -433],
+    [-470, 4, -432], [-471, 4, -434], [-475, 5, -433], [-475, 4, -433], [-476, 5, -433],
+    [-474, 7, -433], [-475, 7, -433], [-472, 3, -433], [-473, 3, -433], [-468, 4, -431],
+    [-467, 4, -431], [-475, 6, -434], [-474, 4, -432],
+]
