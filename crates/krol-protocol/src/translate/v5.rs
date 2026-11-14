@@ -727,6 +727,15 @@ impl V5Translator {
                 w.i32(*collected).i32(*collector);
                 one(w);
             }
+            ClientboundPlay::WindowProperty {
+                window,
+                property,
+                value,
+            } => {
+                let mut w = packet(0x31);
+                w.u8(*window).i16(*property).i16(*value);
+                one(w);
+            }
             ClientboundPlay::BlockAction {
                 pos,
                 action,

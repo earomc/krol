@@ -156,6 +156,10 @@ impl Game {
                 self.activate_chest(i, pos, id);
                 true
             }
+            61 | 62 => {
+                self.activate_furnace(i, pos);
+                true
+            }
             _ => consumes_click(state),
         }
     }

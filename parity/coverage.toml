@@ -239,6 +239,11 @@ description = "Chests: tile entities, placement rules and pairing, single and do
 scenarios = ["play/chests"]
 
 [[feature]]
+id = "blocks.furnaces"
+description = "Furnaces: tile entity, window with fuel/input/output slot rules and shift-click, burning and cooking timers, lit/unlit block swap keeping the tile entity, window properties, smelting recipes extracted from vanilla"
+scenarios = ["play/furnace"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

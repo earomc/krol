@@ -54,6 +54,9 @@ pub struct World {
     pub dir: PathBuf,
     /// Whether the dimension has sky light.
     pub has_sky: bool,
+    /// Furnace tile entities in the order they were loaded or created (vanilla's
+    /// `tickableTileEntities`, of which krol ticks furnaces this way).
+    pub furnaces: Vec<(i32, i32, i32)>,
     chunks: HashMap<(i32, i32), LoadedChunk>,
     regions: HashMap<(i32, i32), RegionFile>,
 }
@@ -78,6 +81,7 @@ impl World {
             chunks: HashMap::new(),
             regions: HashMap::new(),
             pending_changes: HashMap::new(),
+            furnaces: Vec::new(),
         }
     }
 
@@ -158,6 +162,15 @@ impl World {
                 });
             let from_disk = loaded.is_some();
             let chunk = loaded.unwrap_or_else(|| Chunk::empty(cx, cz));
+            // Chunk.onChunkLoad: the tile entities join the world's lists.
+            for t in chunk.tile_entities.iter() {
+                if let Tag::Compound(c) = t
+                    && c.get_str("id") == "Furnace"
+                {
+                    self.furnaces
+                        .push((c.get_i32("x"), c.get_i32("y"), c.get_i32("z")));
+                }
+            }
             self.chunks.insert(
                 (cx, cz),
                 LoadedChunk {
@@ -291,6 +304,7 @@ impl World {
     /// Removes the tile entity at `pos` (`World.removeTileEntity`).
     pub fn remove_tile_entity(&mut self, pos: (i32, i32, i32)) {
         self.chunk(pos.0 >> 4, pos.2 >> 4);
+        self.furnaces.retain(|&p| p != pos);
         if let Some(index) = self.tile_entity_index(pos) {
             self.chunk_mut(pos.0 >> 4, pos.2 >> 4)
                 .tile_entities
@@ -299,28 +313,42 @@ impl World {
     }
 
     /// Keeps tile entities in step with a block change (`Chunk.setBlockState`): the old
-    /// block's tile entity goes away when the block changes, and a new chest gets an
-    /// empty one.
+    /// block's tile entity goes away when the block changes, and new chests and
+    /// furnaces get an empty one. A furnace lighting up or going out keeps its tile
+    /// entity (`BlockFurnace.setState`).
     ///
-    /// TODO(M4): create the tile entities of the other blocks (furnaces, signs, ...).
+    /// TODO(M4): create the tile entities of the other blocks (signs, dispensers, ...).
     fn update_tile_entity(&mut self, pos: (i32, i32, i32), old: u16, new: u16) {
-        if old >> 4 != new >> 4 && has_tile_entity(old >> 4) {
+        let (old, new) = (old >> 4, new >> 4);
+        let furnace_swap = matches!(old, 61 | 62) && matches!(new, 61 | 62);
+        if old != new && has_tile_entity(old) && !furnace_swap {
             self.remove_tile_entity(pos);
         }
-        if matches!(new >> 4, 54 | 146) && self.tile_entity_index(pos).is_none() {
-            // TileEntityChest.writeToNBT of a new chest.
-            let mut c = Compound::new();
-            c.insert("id", Tag::String("Chest".into()));
-            c.insert("x", Tag::Int(pos.0));
-            c.insert("y", Tag::Int(pos.1));
-            c.insert("z", Tag::Int(pos.2));
-            c.insert("Lock", Tag::String(String::new()));
-            c.insert("Items", Tag::List(List::new()));
-            let _ = self
-                .chunk_mut(pos.0 >> 4, pos.2 >> 4)
-                .tile_entities
-                .push(Tag::Compound(c));
+        if !matches!(new, 54 | 146 | 61 | 62) || self.tile_entity_index(pos).is_some() {
+            return;
         }
+        // writeToNBT of a new TileEntityChest / TileEntityFurnace.
+        let furnace = matches!(new, 61 | 62);
+        let mut c = Compound::new();
+        c.insert(
+            "id",
+            Tag::String(if furnace { "Furnace" } else { "Chest" }.into()),
+        );
+        c.insert("x", Tag::Int(pos.0));
+        c.insert("y", Tag::Int(pos.1));
+        c.insert("z", Tag::Int(pos.2));
+        c.insert("Lock", Tag::String(String::new()));
+        if furnace {
+            c.insert("BurnTime", Tag::Short(0));
+            c.insert("CookTime", Tag::Short(0));
+            c.insert("CookTimeTotal", Tag::Short(0));
+            self.furnaces.push(pos);
+        }
+        c.insert("Items", Tag::List(List::new()));
+        let _ = self
+            .chunk_mut(pos.0 >> 4, pos.2 >> 4)
+            .tile_entities
+            .push(Tag::Compound(c));
     }
 
     /// Whether the chunk is loaded (vanilla `isBlockLoaded`), without loading it.

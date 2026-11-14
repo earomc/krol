@@ -35,7 +35,6 @@ enum Recipe {
 }
 
 /// A smelting recipe: input, output, experience.
-#[allow(dead_code)] // furnaces: TODO(M4)
 #[derive(Debug, Clone)]
 pub struct Smelting {
     /// Input item and damage (or any).
@@ -43,10 +42,10 @@ pub struct Smelting {
     /// Output item, count and damage.
     pub output: (i16, i8, i16),
     /// Experience per item.
+    #[allow(dead_code)] // experience orbs: TODO(M5)
     pub xp: f32,
 }
 
-#[allow(dead_code)] // smelting is for furnaces: TODO(M4)
 struct Recipes {
     crafting: Vec<Recipe>,
     smelting: Vec<Smelting>,
@@ -196,7 +195,6 @@ pub fn container_item(id: i16) -> Option<ItemStack> {
 }
 
 /// The smelting recipe for an input (`FurnaceRecipes.getSmeltingResult`).
-#[allow(dead_code)] // furnaces: TODO(M4)
 pub fn smelting(stack: &ItemStack) -> Option<&'static Smelting> {
     recipes().smelting.iter().find(|r| matches(r.input, stack))
 }

@@ -702,6 +702,12 @@ pub enum ClientboundPlay {
         gamemode: u8,
         level_type: String,
     },
+    /// `0x31`: a window property (furnace progress, enchantment levels, ...).
+    WindowProperty {
+        window: u8,
+        property: i16,
+        value: i16,
+    },
     /// `0x24`: a block event (chest lid, note block, piston).
     BlockAction {
         pos: BlockPos,
@@ -850,6 +856,7 @@ impl ClientboundPlay {
             Self::EntityVelocity { .. } => 0x12,
             Self::Particle { .. } => 0x2a,
             Self::BlockAction { .. } => 0x24,
+            Self::WindowProperty { .. } => 0x31,
             Self::BlockBreakAnimation { .. } => 0x25,
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
@@ -1214,6 +1221,13 @@ impl ClientboundPlay {
             Self::CloseWindow { window } => {
                 w.u8(*window);
             }
+            Self::WindowProperty {
+                window,
+                property,
+                value,
+            } => {
+                w.u8(*window).i16(*property).i16(*value);
+            }
             Self::BlockAction {
                 pos,
                 action,
@@ -1396,6 +1410,11 @@ impl ClientboundPlay {
                     velocity,
                 }
             }
+            0x31 => Self::WindowProperty {
+                window: r.u8()?,
+                property: r.i16()?,
+                value: r.i16()?,
+            },
             0x24 => Self::BlockAction {
                 pos: r.position()?,
                 action: r.u8()?,

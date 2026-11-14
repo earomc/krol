@@ -4,7 +4,7 @@
 //!
 //! A click works on a flat view of the open window (container slots followed by the
 //! player's main inventory and hotbar), which is written back afterwards.
-//! TODO(M4): furnaces and the other containers.
+//! TODO(M4): dispensers, hoppers, brewing stands and the other containers.
 
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
@@ -20,6 +20,8 @@ pub enum Layout {
     Workbench,
     /// A chest with this many rows (3 or 6), then main and hotbar.
     Chest(u8),
+    /// A furnace: input, fuel, output, main, hotbar.
+    Furnace,
 }
 
 impl Layout {
@@ -28,12 +30,13 @@ impl Layout {
             Self::Player => 45,
             Self::Workbench => 46,
             Self::Chest(rows) => usize::from(rows) * 9 + 36,
+            Self::Furnace => 39,
         }
     }
 
     /// Whether slot 0 is a crafting result.
     fn has_result(self) -> bool {
-        !matches!(self, Self::Chest(_))
+        !matches!(self, Self::Chest(_) | Self::Furnace)
     }
 
     /// The crafting grid's slots and width.
@@ -41,7 +44,7 @@ impl Layout {
         match self {
             Self::Player => (1..5, 2),
             Self::Workbench => (1..10, 3),
-            Self::Chest(_) => (0..0, 0),
+            Self::Chest(_) | Self::Furnace => (0..0, 0),
         }
     }
 
@@ -51,6 +54,7 @@ impl Layout {
             Self::Player => 9,
             Self::Workbench => 10,
             Self::Chest(rows) => usize::from(rows) * 9,
+            Self::Furnace => 3,
         }
     }
 
@@ -69,6 +73,7 @@ impl Layout {
             Self::Player => k >= 5,
             Self::Workbench => k >= 10,
             Self::Chest(rows) => k >= usize::from(rows) * 9,
+            Self::Furnace => k >= 3,
         }
     }
 
@@ -76,6 +81,13 @@ impl Layout {
     fn accepts(self, k: usize, stack: &ItemStack) -> bool {
         if k == 0 && self.has_result() {
             return false; // crafting results
+        }
+        if self == Self::Furnace {
+            return match k {
+                1 => super::furnace::fits_fuel_slot(stack),
+                2 => false,
+                _ => true,
+            };
         }
         if self == Self::Player && (5..=8).contains(&k) {
             let slot = k - 5;
@@ -88,9 +100,12 @@ impl Layout {
         true
     }
 
-    /// `Slot.getItemStackLimit`: armor slots hold one item.
-    fn limit(self, k: usize) -> i8 {
-        if self == Self::Player && (5..=8).contains(&k) {
+    /// `Slot.getItemStackLimit`: armor slots hold one item, a furnace's fuel slot one
+    /// bucket.
+    fn limit(self, k: usize, stack: &ItemStack) -> i8 {
+        if (self == Self::Player && (5..=8).contains(&k))
+            || (self == Self::Furnace && k == 1 && stack.id == 325)
+        {
             1
         } else {
             64
@@ -120,6 +135,18 @@ impl Layout {
                 10..=36 => merge(slots, &mut stack, 37, 46, false),
                 37..=45 => merge(slots, &mut stack, 10, 37, false),
                 _ => merge(slots, &mut stack, 10, 46, false),
+            },
+            Self::Furnace => match index {
+                2 => merge(slots, &mut stack, 3, 39, true),
+                0 | 1 => merge(slots, &mut stack, 3, 39, false),
+                _ if super::recipes::smelting(&stack).is_some() => {
+                    merge(slots, &mut stack, 0, 1, false)
+                }
+                _ if super::furnace::burn_time(Some(&stack)) > 0 => {
+                    merge(slots, &mut stack, 1, 2, false)
+                }
+                3..=29 => merge(slots, &mut stack, 30, 39, false),
+                _ => merge(slots, &mut stack, 3, 30, false),
             },
             Self::Chest(rows) => {
                 let own = usize::from(rows) * 9;
@@ -153,8 +180,12 @@ pub struct OpenContainer {
     /// The container's own slots (for a workbench: result and grid; empty for chests,
     /// whose items stay in their tile entities).
     pub slots: Vec<Option<ItemStack>>,
-    /// The tile entities whose inventories the window shows (chests).
+    /// The tile entities whose inventories the window shows (chests, furnaces).
     pub parts: Vec<(i32, i32, i32)>,
+    /// Window properties last sent (furnaces).
+    pub fields: [i32; 4],
+    /// Items taken from a furnace's output not yet counted (`SlotFurnaceOutput`).
+    pub taken: i32,
     /// What the client was last told (`inventoryItemStacks`), for the whole window.
     pub sent: Vec<Option<ItemStack>>,
 }
@@ -176,6 +207,8 @@ pub struct WindowState {
     pub open: Option<OpenContainer>,
     /// The last window id handed out.
     window_id: i32,
+    /// The click put a stack into a furnace's input slot (`putStack` on slot 0).
+    put_input: bool,
 }
 
 impl WindowState {
@@ -281,6 +314,11 @@ impl Game {
         let p = &self.players[i];
         match &p.window.open {
             None => p.inventory.clone(),
+            Some(o) if o.layout == Layout::Furnace => {
+                let mut flat = self.furnace_items(o.pos);
+                flat.extend(p.inventory[9..45].iter().cloned());
+                flat
+            }
             Some(o) if !o.parts.is_empty() => {
                 let mut flat = self.chest_contents(&o.parts);
                 flat.extend(p.inventory[9..45].iter().cloned());
@@ -296,6 +334,18 @@ impl Game {
 
     /// Writes a slot list back into the open window.
     fn scatter(&mut self, i: usize, flat: Vec<Option<ItemStack>>) {
+        let put_input = std::mem::take(&mut self.players[i].window.put_input);
+        if let Some(pos) = self.players[i]
+            .window
+            .open
+            .as_ref()
+            .filter(|o| o.layout == Layout::Furnace)
+            .map(|o| o.pos)
+        {
+            self.set_furnace_items(pos, &flat[..3], put_input);
+            self.players[i].inventory[9..45].clone_from_slice(&flat[3..]);
+            return;
+        }
         if let Some(parts) = self.players[i]
             .window
             .open
@@ -326,6 +376,8 @@ impl Game {
         let (_, layout) = self.current_window(i);
         let mut flat = self.gather(i);
         let result_before = flat[0].clone();
+        let furnace_before =
+            (layout == Layout::Furnace).then(|| (flat[0].clone(), flat[2].clone()));
         let n = layout.len();
         let index = |s: i16| (s >= 0 && (s as usize) < n).then_some(s as usize);
         let mut result = None;
@@ -376,7 +428,7 @@ impl Game {
                                 _ => i32::from(max_stack(cursor.id)),
                             } + had;
                             amount = amount.min(i32::from(max_stack(cursor.id)));
-                            amount = amount.min(i32::from(layout.limit(k)));
+                            amount = amount.min(i32::from(layout.limit(k, &cursor)));
                             left -= amount - had;
                             flat[k] = Some(ItemStack {
                                 count: amount as i8,
@@ -419,7 +471,10 @@ impl Game {
                 let k = index(slot)?;
                 if let Some(moved) = layout.transfer(&mut flat, k) {
                     result = Some(moved.clone());
+                    let after = (flat[0].clone(), flat.get(2).cloned().flatten());
+                    self.furnace_click(i, &furnace_before, &after, mode, k);
                     self.scatter(i, flat);
+                    self.furnace_output_click(i, &furnace_before, mode);
                     // The crafting result is consumed before the retry check.
                     self.result_taken(i, &result_before);
                     let again = self.gather(i);
@@ -438,7 +493,7 @@ impl Game {
                 }
                 match (in_slot, cursor) {
                     (None, Some(mut c)) if layout.accepts(k, &c) => {
-                        let amount = if button == 0 { c.count } else { 1 }.min(layout.limit(k));
+                        let amount = if button == 0 { c.count } else { 1 }.min(layout.limit(k, &c));
                         if c.count >= amount {
                             flat[k] = Some(ItemStack {
                                 count: amount,
@@ -466,13 +521,13 @@ impl Game {
                         if layout.accepts(k, &c) {
                             if s.id == c.id && s.damage == c.damage && s.nbt == c.nbt {
                                 let mut amount = if button == 0 { c.count } else { 1 };
-                                amount = amount.min(layout.limit(k) - s.count);
+                                amount = amount.min(layout.limit(k, &c) - s.count);
                                 amount = amount.min(max_stack(c.id) - s.count);
                                 c.count -= amount;
                                 s.count += amount;
                                 flat[k] = Some(s);
                                 w.cursor = (c.count != 0).then_some(c);
-                            } else if c.count <= layout.limit(k) {
+                            } else if c.count <= layout.limit(k, &c) {
                                 flat[k] = Some(c);
                                 w.cursor = Some(s);
                             }
@@ -581,12 +636,59 @@ impl Game {
                 w.cursor = Some(c);
             }
         }
+        let after = (flat[0].clone(), flat.get(2).cloned().flatten());
+        let k = index(slot).unwrap_or(usize::MAX);
+        self.furnace_click(i, &furnace_before, &after, mode, k);
         self.scatter(i, flat);
+        self.furnace_output_click(i, &furnace_before, mode);
         for stack in drops {
             self.drop_from_window(i, stack);
         }
         self.result_taken(i, &result_before);
         result
+    }
+
+    /// Whether a click on a furnace window put a stack into the input slot
+    /// (`putStack(0, ...)`): placing into an empty slot or swapping, a shift-click
+    /// emptying it, or a number key swap on it.
+    fn furnace_click(
+        &mut self,
+        i: usize,
+        before: &Option<(Option<ItemStack>, Option<ItemStack>)>,
+        after: &(Option<ItemStack>, Option<ItemStack>),
+        mode: i8,
+        k: usize,
+    ) {
+        let Some((input, _)) = before else {
+            return;
+        };
+        let new_kind = match (&after.0, input) {
+            (Some(a), Some(b)) => !same_kind(a, b),
+            (Some(_), None) => true,
+            _ => false,
+        };
+        let put = new_kind
+            || (mode == 1 && k == 0 && after.0.is_none() && input.is_some())
+            || (mode == 2 && k == 0 && after.0 != *input);
+        self.players[i].window.put_input = put;
+    }
+
+    /// Items taken from a furnace's output slot by a click.
+    fn furnace_output_click(
+        &mut self,
+        i: usize,
+        before: &Option<(Option<ItemStack>, Option<ItemStack>)>,
+        mode: i8,
+    ) {
+        let Some((_, Some(out))) = before else {
+            return;
+        };
+        let now = self.gather(i)[2].clone();
+        let left = now.filter(|s| s.id == out.id).map_or(0, |s| s.count);
+        let amount = i32::from(out.count - left);
+        if amount > 0 {
+            self.furnace_output_taken(i, out.id, amount, mode != 6);
+        }
     }
 
     /// `SlotCrafting.onPickupFromSlot` when the result was taken (counting the crafted
@@ -697,6 +799,8 @@ impl Game {
                 Some(o) => o.sent = flat,
                 None => p.sent_inventory = flat,
             }
+            // Window properties are still sent.
+            self.send_furnace_fields(i);
         } else {
             let p = &mut self.players[i];
             p.window.pending = Some((window, action));
@@ -750,6 +854,7 @@ impl Game {
         for packet in packets {
             p.send(packet);
         }
+        self.send_furnace_fields(i);
         Some(())
     }
 
@@ -785,6 +890,7 @@ impl Game {
         self.players[i].window.locked = false;
         // ContainerChest.onContainerClosed: the chests lose a viewer.
         if let Some(o) = closed
+            && matches!(o.layout, Layout::Chest(_))
             && self.players[i].gamemode != 3
         {
             for p in o.parts {
@@ -824,6 +930,8 @@ impl Game {
             slots: vec![None; 10],
             parts: Vec::new(),
             sent: vec![None; Layout::Workbench.len()],
+            fields: [0; 4],
+            taken: 0,
         });
         p.stats.add("stat.craftingTableInteraction", 1);
         self.open_container_gui(i);
@@ -861,6 +969,12 @@ impl Game {
                     && w.tile_entity(p).is_some()
                     && near(p)
             }),
+            // TileEntityFurnace.isUseableByPlayer.
+            Layout::Furnace => {
+                matches!(w.block(pos.0, pos.1, pos.2) >> 4, 61 | 62)
+                    && w.tile_entity(pos).is_some()
+                    && near(pos)
+            }
             Layout::Player => true,
         };
         if !still {

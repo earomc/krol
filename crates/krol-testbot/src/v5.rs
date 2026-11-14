@@ -284,6 +284,11 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
             y: r.i16()?,
             z: r.i16()?,
         }),
+        0x31 => Some(ClientboundPlay::WindowProperty {
+            window: r.u8()?,
+            property: r.i16()?,
+            value: r.i16()?,
+        }),
         0x24 => Some(ClientboundPlay::BlockAction {
             pos: (r.i32()?, i32::from(r.i16()?), r.i32()?),
             action: r.u8()?,

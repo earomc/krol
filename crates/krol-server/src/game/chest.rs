@@ -208,6 +208,8 @@ impl Game {
             slots: Vec::new(),
             parts,
             sent: vec![None; layout.len()],
+            fields: [0; 4],
+            taken: 0,
         });
         self.open_container_gui(i);
     }
@@ -368,17 +370,23 @@ impl Game {
         }
     }
 
-    /// `BlockContainer.breakBlock` for chests (`InventoryHelper.dropInventoryItems`):
-    /// the contents spill out in random clumps of 10-30 items.
+    /// `breakBlock` of chests and furnaces (`InventoryHelper.dropInventoryItems`): the
+    /// contents spill out in random clumps of 10-30 items.
     pub(super) fn drop_container_contents(&mut self, pos: (i32, i32, i32)) {
         let block = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
-        if !matches!(block, 54 | 146) {
-            return;
-        }
-        for stack in chest_items(&self.level.overworld, pos)
-            .into_iter()
-            .flatten()
-        {
+        let contents: Vec<ItemStack> = match block {
+            54 | 146 => chest_items(&self.level.overworld, pos)
+                .into_iter()
+                .flatten()
+                .collect(),
+            61 | 62 => {
+                let items = self.furnace_contents(pos);
+                self.furnace_burn.remove(&pos);
+                items
+            }
+            _ => return,
+        };
+        for stack in contents {
             // InventoryHelper keeps its own unseeded Random.
             let r = &mut self.world_rand;
             let fx = r.next_float() * 0.8 + 0.1;

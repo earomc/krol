@@ -13,6 +13,7 @@ mod container;
 mod damage;
 mod death;
 mod digging;
+mod furnace;
 mod interact;
 mod item_entity;
 mod movement;
@@ -207,6 +208,8 @@ struct Game {
     items: std::collections::BTreeMap<i32, item_entity::ItemEntity>,
     /// Chests that are open or closing.
     chests: Vec<chest::ChestRuntime>,
+    /// `currentItemBurnTime` of furnaces (not saved by vanilla).
+    furnace_burn: std::collections::HashMap<(i32, i32, i32), i32>,
     /// Queued block events (`WorldServer.field_147490_S`).
     block_events: Vec<chest::BlockEvent>,
     /// The world's random (`World.rand`, unseeded in vanilla).
@@ -251,6 +254,7 @@ pub fn start(
         items: Default::default(),
         chests: Vec::new(),
         block_events: Vec::new(),
+        furnace_burn: Default::default(),
         world_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -399,6 +403,7 @@ impl Game {
         }
         // World.updateEntities: then the tile entities.
         self.tick_chests();
+        self.tick_furnaces();
         self.update_tracked_entities();
         for event in late {
             self.handle_event(event);
@@ -1380,6 +1385,18 @@ impl Game {
         // BlockChest.onBlockPlacedBy: line up with a neighboring chest.
         if matches!(state >> 4, 54 | 146) {
             self.align_chests(target, state);
+        }
+        // onBlockPlacedBy of chests and furnaces: a renamed item names the container.
+        if matches!(state >> 4, 54 | 146 | 61)
+            && let Some(name) = stack
+                .nbt
+                .as_ref()
+                .and_then(|t| t.get_compound("display"))
+                .filter(|d| d.contains_key_of("Name", Some(krol_nbt::TagType::String)))
+                .map(|d| d.get_str("Name").to_owned())
+            && let Some(te) = self.level.overworld.tile_entity_mut(target)
+        {
+            te.insert("CustomName", krol_nbt::Tag::String(name));
         }
     }
 
