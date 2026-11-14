@@ -198,6 +198,14 @@ impl Game {
     /// `Entity.doBlockCollisions`: every block the entity's box (shrunk by 0.001)
     /// touches reacts (`onEntityCollidedWithBlock`).
     pub(super) fn block_collisions(&mut self, bb: &Aabb) {
+        self.block_collisions_of(bb, None);
+    }
+
+    /// [`Self::block_collisions`] for a player (at that index), which cactus also
+    /// pricks.
+    ///
+    /// TODO(M5): items touching cactus are hurt too (and break).
+    pub(super) fn block_collisions_of(&mut self, bb: &Aabb, player: Option<usize>) {
         let min = (
             floor_f64(bb.min[0] + COLLISION_EPSILON),
             floor_f64(bb.min[1] + COLLISION_EPSILON),
@@ -225,6 +233,12 @@ impl Game {
                     // BlockBasePressurePlate.onEntityCollidedWithBlock.
                     if is_plate(state >> 4) && plate_strength(state) == 0 {
                         self.update_plate((x, y, z), state);
+                    }
+                    // BlockCactus.onEntityCollidedWithBlock.
+                    if state >> 4 == super::ids::block::CACTUS
+                        && let Some(i) = player
+                    {
+                        self.attack_player(i, super::damage::DamageSource::Cactus, 1.0);
                     }
                 }
             }

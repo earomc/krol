@@ -1,9 +1,9 @@
-description = "Armor: an iron chestplate equipped by right-click (use item) in survival, then fire at the player's feet: each fire hit is reduced by its 6 armor points and wears it; the burning that follows bypasses armor"
+description = "Armor: an iron chestplate equipped by right-click (use item) in survival, then a cactus at the player's feet: each cactus hit is reduced by its 6 armor points and wears it"
 subsystem = "play"
 
 # jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, gets the chestplate in
-# creative mode and equips it in survival mode. The fire stands on netherrack (it would
-# go out at random elsewhere) for 3 s; water then puts the player out.
+# creative mode and equips it in survival mode. A cactus pricks the player for 3 s (fire
+# would race its own burning against the hurt cooldown, at random).
 
 [setup]
 world = "fixtures/worlds/flat"
@@ -13,9 +13,10 @@ properties = { online-mode = "false", level-type = "FLAT", generate-structures =
 action = "console"
 command = "gamerule randomTickSpeed 0"
 
+# Healing would add exhaustion at times that depend on the packets.
 [[steps]]
 action = "console"
-command = "setblock -472 3 -435 netherrack"
+command = "gamerule naturalRegeneration false"
 
 [[steps]]
 id = "player"
@@ -41,12 +42,12 @@ wait_ms = 4000
 
 [[steps]]
 action = "console"
-command = "setblock -472 4 -435 fire"
+command = "setblock -472 4 -435 cactus"
 wait_ms = 3000
 
 [[steps]]
 action = "console"
-command = "setblock -472 4 -435 water"
+command = "setblock -472 4 -435 air"
 wait_ms = 5000
 
 [observe]
@@ -56,15 +57,15 @@ files = [
     "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
 ]
 ignore = [
-    # Hits come once per movement packet in fire, so the packet stream is not compared.
+    # Hits come with the movement packets, so the packet stream is not compared.
     "player",
     "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
     "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
     "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
 ]
 
-# How many fire hits land depends on how the movement packets fall into the 3 s:
-# about 0.76 health and 1 durability per hit.
+# How many hits land depends on how the movement packets fall into the 3 s (one more or
+# less): about 0.76 health, 1 durability and 0.3 exhaustion per hit.
 [observe.tolerance]
 "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Health" = 2
 "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.HealF" = 1.6

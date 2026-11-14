@@ -83,7 +83,7 @@ impl Game {
         let p = &self.players[i];
         if p.gamemode != 3 {
             let bb = Aabb::at(p.pos, 0.6, 1.8);
-            self.block_collisions(&bb);
+            self.block_collisions_of(&bb, Some(i));
             self.player_move_fire(i);
         }
         outcome

@@ -54,6 +54,7 @@
         "entity_velocity",
         "entity_status",
         "update_health",
+        "set_slot",
         "entity_metadata",
         "entity_velocity",
         "entity_status",
@@ -63,6 +64,7 @@
         "entity_velocity",
         "entity_status",
         "update_health",
+        "set_slot",
         "entity_metadata",
         "entity_velocity",
         "entity_status",
@@ -72,12 +74,10 @@
         "entity_velocity",
         "entity_status",
         "update_health",
+        "set_slot",
         "entity_metadata",
         "entity_velocity",
-        "block_change",
-        "entity_metadata",
-        "update_health",
-        "entity_metadata"
+        "block_change"
       ],
       "packets": [
         {
@@ -247,7 +247,7 @@
           "packet": "update_health"
         },
         {
-          "hex": "ffff8a0013fffe4db006",
+          "hex": "ffff8a0013fffe4d900a",
           "packet": "block_change"
         },
         {
@@ -271,27 +271,7 @@
           "packet": "entity_status"
         },
         {
-          "hex": "4191eb851440a00000",
-          "packet": "update_health"
-        },
-        {
-          "hex": "000001664191eb857f",
-          "packet": "entity_metadata"
-        },
-        {
-          "entity_id": 0,
-          "x": 0,
-          "y": -627,
-          "z": 0,
-          "packet": "entity_velocity"
-        },
-        {
-          "entity_id": 0,
-          "status": 2,
-          "packet": "entity_status"
-        },
-        {
-          "hex": "418bd70a1440a00000",
+          "hex": "4193d70a1440a00000",
           "packet": "update_health"
         },
         {
@@ -299,7 +279,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "0066418bd70a7f",
+          "hex": "00664193d70a7f",
           "packet": "entity_metadata"
         },
         {
@@ -315,27 +295,7 @@
           "packet": "entity_status"
         },
         {
-          "hex": "4183d70a1440a00000",
-          "packet": "update_health"
-        },
-        {
-          "hex": "00664183d70a7f",
-          "packet": "entity_metadata"
-        },
-        {
-          "entity_id": 0,
-          "x": 0,
-          "y": -627,
-          "z": 0,
-          "packet": "entity_velocity"
-        },
-        {
-          "entity_id": 0,
-          "status": 2,
-          "packet": "entity_status"
-        },
-        {
-          "hex": "417b851e1440a00000",
+          "hex": "418dc28f1440a00000",
           "packet": "update_health"
         },
         {
@@ -343,7 +303,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "0066417b851e7f",
+          "hex": "0066418dc28f7f",
           "packet": "entity_metadata"
         },
         {
@@ -359,11 +319,15 @@
           "packet": "entity_status"
         },
         {
-          "hex": "416b851e1440a00000",
+          "hex": "4187ae141440a00000",
           "packet": "update_health"
         },
         {
-          "hex": "0066416b851e7f",
+          "hex": "000006013301000400",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "00664187ae147f",
           "packet": "entity_metadata"
         },
         {
@@ -374,20 +338,56 @@
           "packet": "entity_velocity"
         },
         {
-          "hex": "ffff8a0013fffe4d9001",
-          "packet": "block_change"
+          "entity_id": 0,
+          "status": 2,
+          "packet": "entity_status"
         },
         {
-          "hex": "0000007f",
-          "packet": "entity_metadata"
-        },
-        {
-          "hex": "417b851e1440a00000",
+          "hex": "418199991440a00000",
           "packet": "update_health"
         },
         {
-          "hex": "0066417b851e7f",
+          "hex": "000006013301000500",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "0066418199997f",
           "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 0,
+          "x": 0,
+          "y": -627,
+          "z": 0,
+          "packet": "entity_velocity"
+        },
+        {
+          "entity_id": 0,
+          "status": 2,
+          "packet": "entity_status"
+        },
+        {
+          "hex": "41770a3c1440a00000",
+          "packet": "update_health"
+        },
+        {
+          "hex": "000006013301000600",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "006641770a3c7f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 0,
+          "x": 0,
+          "y": -627,
+          "z": 0,
+          "packet": "entity_velocity"
+        },
+        {
+          "hex": "ffff8a0013fffe4d00",
+          "packet": "block_change"
         }
       ],
       "chat": [
@@ -873,7 +873,7 @@
       "[Server thread/INFO]: Preparing start region for level 0",
       "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
       "[Server thread/INFO]: Game rule has been updated",
-      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Game rule has been updated",
       "[Server thread/INFO]: jeb_[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
       "[Server thread/INFO]: jeb_ joined the game",
       "[Server thread/INFO]: Set jeb_'s game mode to Creative Mode",
@@ -916,14 +916,14 @@
       "EnderItems": [],
       "FallDistance": "0f",
       "Fire": "-20s",
-      "HealF": "15.719999f",
+      "HealF": "15.439999f",
       "Health": "16s",
       "HurtByTimestamp": 0,
       "HurtTime": "0s",
       "Inventory": [
         {
           "Count": "1b",
-          "Damage": "3s",
+          "Damage": "6s",
           "Slot": "102b",
           "id": "minecraft:iron_chestplate"
         }
@@ -931,7 +931,7 @@
       "Invulnerable": "0b",
       "Motion": [
         "0d",
-        "-0.02d",
+        "-0.0784000015258789d",
         "0d"
       ],
       "OnGround": "1b",
@@ -964,10 +964,10 @@
         "mayfly": "0b",
         "walkSpeed": "0.1f"
       },
-      "foodExhaustionLevel": "3.9f",
+      "foodExhaustionLevel": "1.8f",
       "foodLevel": 20,
       "foodSaturationLevel": "5f",
-      "foodTickTimer": 61,
+      "foodTickTimer": 0,
       "playerGameType": 0
     },
     "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json": {
@@ -981,7 +981,7 @@
       "value": {
         "stat.playOneMinute": 316,
         "stat.leaveGame": 1,
-        "stat.damageTaken": 54,
+        "stat.damageTaken": 48,
         "stat.timeSinceDeath": 316,
         "achievement.exploreAllBiomes": {
           "value": 0,

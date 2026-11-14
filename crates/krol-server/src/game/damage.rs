@@ -28,6 +28,8 @@ pub enum DamageSource {
     Magic,
     /// The wither effect (`DamageSource.wither`: bypasses armor).
     Wither,
+    /// Touching a cactus (`DamageSource.cactus`).
+    Cactus,
 }
 
 impl DamageSource {
@@ -41,6 +43,7 @@ impl DamageSource {
             Self::Lava => "lava",
             Self::Magic => "magic",
             Self::Wither => "wither",
+            Self::Cactus => "cactus",
         }
     }
 
@@ -66,7 +69,7 @@ impl DamageSource {
     fn hunger_damage(self) -> f32 {
         match self {
             Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither => 0.0,
-            Self::InFire | Self::Lava => DEFAULT_HUNGER_DAMAGE,
+            Self::InFire | Self::Lava | Self::Cactus => DEFAULT_HUNGER_DAMAGE,
         }
     }
 }
