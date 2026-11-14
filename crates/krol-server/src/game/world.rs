@@ -3,10 +3,44 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use krol_nbt::{Compound, List, Tag};
 use krol_world::chunk::Chunk;
 use krol_world::level::LevelData;
 use krol_world::region::{RegionFile, region_file_name};
 use tracing::{error, info};
+
+/// Blocks with a tile entity (`ITileEntityProvider`).
+fn has_tile_entity(id: u16) -> bool {
+    matches!(
+        id,
+        23 | 25
+            | 36
+            | 52
+            | 54
+            | 61
+            | 62
+            | 63
+            | 68
+            | 84
+            | 116
+            | 117
+            | 119
+            | 130
+            | 137
+            | 138
+            | 140
+            | 144
+            | 146
+            | 149
+            | 150
+            | 151
+            | 154
+            | 158
+            | 176
+            | 177
+            | 178
+    )
+}
 
 /// One dimension's chunk storage.
 #[derive(Debug)]
@@ -54,7 +88,8 @@ impl World {
             return;
         }
         // Chunk.setBlockState: setting the same state changes nothing.
-        if self.block(x, y, z) == state {
+        let old = self.block(x, y, z);
+        if old == state {
             return;
         }
         let has_sky = self.has_sky;
@@ -65,6 +100,7 @@ impl World {
             state,
             has_sky,
         );
+        self.update_tile_entity((x, y, z), old, state);
         // Vanilla PlayerInstance.flagChunkForUpdate.
         let entry = self.pending_changes.entry((x >> 4, z >> 4)).or_default();
         entry.1 |= 1 << (y >> 4);
@@ -218,6 +254,73 @@ impl World {
         }
         self.chunk(x >> 4, z >> 4)
             .block((x & 15) as usize, y as usize, (z & 15) as usize)
+    }
+
+    /// The index of the tile entity at `pos` in its (loaded) chunk's list.
+    fn tile_entity_index(&self, pos: (i32, i32, i32)) -> Option<usize> {
+        let c = &self.chunks.get(&(pos.0 >> 4, pos.2 >> 4))?.chunk;
+        c.tile_entities.iter().position(|t| {
+            matches!(t, Tag::Compound(c)
+                if (c.get_i32("x"), c.get_i32("y"), c.get_i32("z")) == pos)
+        })
+    }
+
+    /// The tile entity NBT at `pos`, if its chunk is loaded (`World.getTileEntity`).
+    pub fn tile_entity(&self, pos: (i32, i32, i32)) -> Option<&Compound> {
+        let index = self.tile_entity_index(pos)?;
+        let c = &self.chunks.get(&(pos.0 >> 4, pos.2 >> 4))?.chunk;
+        match c.tile_entities.get(index)? {
+            Tag::Compound(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    /// Mutable tile entity NBT at `pos` (marks the chunk modified).
+    pub fn tile_entity_mut(&mut self, pos: (i32, i32, i32)) -> Option<&mut Compound> {
+        let index = self.tile_entity_index(pos)?;
+        match self
+            .chunk_mut(pos.0 >> 4, pos.2 >> 4)
+            .tile_entities
+            .get_mut(index)?
+        {
+            Tag::Compound(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    /// Removes the tile entity at `pos` (`World.removeTileEntity`).
+    pub fn remove_tile_entity(&mut self, pos: (i32, i32, i32)) {
+        self.chunk(pos.0 >> 4, pos.2 >> 4);
+        if let Some(index) = self.tile_entity_index(pos) {
+            self.chunk_mut(pos.0 >> 4, pos.2 >> 4)
+                .tile_entities
+                .remove(index);
+        }
+    }
+
+    /// Keeps tile entities in step with a block change (`Chunk.setBlockState`): the old
+    /// block's tile entity goes away when the block changes, and a new chest gets an
+    /// empty one.
+    ///
+    /// TODO(M4): create the tile entities of the other blocks (furnaces, signs, ...).
+    fn update_tile_entity(&mut self, pos: (i32, i32, i32), old: u16, new: u16) {
+        if old >> 4 != new >> 4 && has_tile_entity(old >> 4) {
+            self.remove_tile_entity(pos);
+        }
+        if matches!(new >> 4, 54 | 146) && self.tile_entity_index(pos).is_none() {
+            // TileEntityChest.writeToNBT of a new chest.
+            let mut c = Compound::new();
+            c.insert("id", Tag::String("Chest".into()));
+            c.insert("x", Tag::Int(pos.0));
+            c.insert("y", Tag::Int(pos.1));
+            c.insert("z", Tag::Int(pos.2));
+            c.insert("Lock", Tag::String(String::new()));
+            c.insert("Items", Tag::List(List::new()));
+            let _ = self
+                .chunk_mut(pos.0 >> 4, pos.2 >> 4)
+                .tile_entities
+                .push(Tag::Compound(c));
+        }
     }
 
     /// Whether the chunk is loaded (vanilla `isBlockLoaded`), without loading it.

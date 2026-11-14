@@ -727,6 +727,21 @@ impl V5Translator {
                 w.i32(*collected).i32(*collector);
                 one(w);
             }
+            ClientboundPlay::BlockAction {
+                pos,
+                action,
+                param,
+                block,
+            } => {
+                let mut w = packet(0x24);
+                w.i32(pos.0)
+                    .i16(pos.1 as i16)
+                    .i32(pos.2)
+                    .u8(*action)
+                    .u8(*param)
+                    .varint(*block);
+                one(w);
+            }
             ClientboundPlay::BlockBreakAnimation {
                 entity_id,
                 pos,

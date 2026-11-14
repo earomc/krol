@@ -440,7 +440,7 @@ pub fn inventory_window(data: &Compound) -> Vec<Option<krol_protocol::packets::p
 }
 
 /// An item stack as NBT (vanilla `ItemStack.writeToNBT`), without a slot.
-fn item_to_nbt(item: &krol_protocol::packets::play::ItemStack) -> Option<Compound> {
+pub fn item_to_nbt(item: &krol_protocol::packets::play::ItemStack) -> Option<Compound> {
     let name = krol_world::items::name_for_id(item.id)?;
     let mut c = Compound::new();
     c.insert("id", Tag::String(name.to_owned()));

@@ -7,6 +7,7 @@
 
 pub mod block_data;
 pub mod blocks;
+mod chest;
 pub mod commands;
 mod container;
 mod damage;
@@ -204,6 +205,10 @@ struct Game {
     tracker: tracker::Tracker,
     /// Dropped items by entity id.
     items: std::collections::BTreeMap<i32, item_entity::ItemEntity>,
+    /// Chests that are open or closing.
+    chests: Vec<chest::ChestRuntime>,
+    /// Queued block events (`WorldServer.field_147490_S`).
+    block_events: Vec<chest::BlockEvent>,
     /// The world's random (`World.rand`, unseeded in vanilla).
     world_rand: krol_java::JavaRandom,
     /// `save-on` / `save-off`.
@@ -244,6 +249,8 @@ pub fn start(
         pending_removals: Vec::new(),
         tracker: Default::default(),
         items: Default::default(),
+        chests: Vec::new(),
+        block_events: Vec::new(),
         world_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -364,6 +371,7 @@ impl Game {
         let radius = self.config.view_distance;
         self.tick_active_chunks(radius);
         self.flush_block_changes();
+        self.send_block_events();
         // World.updateEntities: entities update in the order they were added, which is
         // entity id order; dead items are removed when the loop reaches them.
         let mut order: Vec<i32> = self.players.iter().map(|p| p.entity_id).collect();
@@ -389,6 +397,8 @@ impl Game {
                 );
             }
         }
+        // World.updateEntities: then the tile entities.
+        self.tick_chests();
         self.update_tracked_entities();
         for event in late {
             self.handle_event(event);
@@ -1204,6 +1214,7 @@ impl Game {
         }
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         self.break_effect(i, pos, state);
+        self.drop_container_contents(pos);
         self.level.overworld.set_block(pos.0, pos.1, pos.2, 0);
         self.send_block(i, pos);
     }

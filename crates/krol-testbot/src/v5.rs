@@ -284,6 +284,12 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
             y: r.i16()?,
             z: r.i16()?,
         }),
+        0x24 => Some(ClientboundPlay::BlockAction {
+            pos: (r.i32()?, i32::from(r.i16()?), r.i32()?),
+            action: r.u8()?,
+            param: r.u8()?,
+            block: r.varint()?,
+        }),
         0x25 => Some(ClientboundPlay::BlockBreakAnimation {
             entity_id: r.varint()?,
             pos: (r.i32()?, r.i32()?, r.i32()?),

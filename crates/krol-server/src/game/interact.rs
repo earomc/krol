@@ -152,6 +152,10 @@ impl Game {
                 self.open_workbench(i, pos);
                 true
             }
+            54 | 146 => {
+                self.activate_chest(i, pos, id);
+                true
+            }
             _ => consumes_click(state),
         }
     }

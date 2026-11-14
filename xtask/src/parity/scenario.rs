@@ -142,6 +142,10 @@ pub struct Observe {
     /// reported as `id:meta`.
     #[serde(default)]
     pub blocks: Vec<[i32; 3]>,
+    /// Tile entities read from the saved world after shutdown, reported as NBT (or
+    /// null when there is none).
+    #[serde(default)]
+    pub tile_entities: Vec<[i32; 3]>,
     /// Observation paths excluded from comparison (known, documented deviations), e.g.
     /// `status_5.parsed.version`. Each entry should carry a comment in the TOML saying why.
     #[serde(default)]

@@ -702,6 +702,13 @@ pub enum ClientboundPlay {
         gamemode: u8,
         level_type: String,
     },
+    /// `0x24`: a block event (chest lid, note block, piston).
+    BlockAction {
+        pos: BlockPos,
+        action: u8,
+        param: u8,
+        block: i32,
+    },
     /// `0x25`
     BlockBreakAnimation {
         entity_id: i32,
@@ -842,6 +849,7 @@ impl ClientboundPlay {
             Self::EntityHeadLook { .. } => 0x19,
             Self::EntityVelocity { .. } => 0x12,
             Self::Particle { .. } => 0x2a,
+            Self::BlockAction { .. } => 0x24,
             Self::BlockBreakAnimation { .. } => 0x25,
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
@@ -1206,6 +1214,17 @@ impl ClientboundPlay {
             Self::CloseWindow { window } => {
                 w.u8(*window);
             }
+            Self::BlockAction {
+                pos,
+                action,
+                param,
+                block,
+            } => {
+                w.position(pos.0, pos.1, pos.2)
+                    .u8(*action)
+                    .u8(*param)
+                    .varint(*block);
+            }
             Self::BlockBreakAnimation {
                 entity_id,
                 pos,
@@ -1377,6 +1396,12 @@ impl ClientboundPlay {
                     velocity,
                 }
             }
+            0x24 => Self::BlockAction {
+                pos: r.position()?,
+                action: r.u8()?,
+                param: r.u8()?,
+                block: r.varint()?,
+            },
             0x25 => Self::BlockBreakAnimation {
                 entity_id: r.varint()?,
                 pos: r.position()?,

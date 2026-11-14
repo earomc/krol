@@ -234,8 +234,13 @@ description = "Right-click activation before placement; doors (placement with hi
 scenarios = ["play/doors_gates"]
 
 [[feature]]
+id = "blocks.chests"
+description = "Chests: tile entities, placement rules and pairing, single and double chest windows, shared contents, viewer block events, lid sounds, contents dropped when broken"
+scenarios = ["play/chests"]
+
+[[feature]]
 id = "blocks.containers"
-description = "Container GUIs (chests, furnaces, crafting tables, ...): open window, slots, clicks, closing"
+description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []
 
 [[feature]]

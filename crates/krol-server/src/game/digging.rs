@@ -426,6 +426,7 @@ impl Game {
         let b = state >> 4;
         self.break_effect(i, pos, state);
         // TODO(M5): onBlockHarvested / onBlockDestroyedByPlayer (doors, beds, ice).
+        self.drop_container_contents(pos);
         self.level.overworld.set_block(pos.0, pos.1, pos.2, 0);
         // TODO(M5): tool durability (ItemStack.onBlockDestroyed).
         if can_harvest(self.held_id(i), b) {

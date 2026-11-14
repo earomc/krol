@@ -140,7 +140,11 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
         } => {
             let random_pitch = matches!(
                 name.as_str(),
-                "game.player.hurt" | "game.player.die" | "random.pop"
+                "game.player.hurt"
+                    | "game.player.die"
+                    | "random.pop"
+                    | "random.chestopen"
+                    | "random.chestclosed"
             );
             // The pickup sound plays where the player is when an item's random arc
             // brings it into reach.

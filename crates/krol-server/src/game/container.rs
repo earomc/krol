@@ -4,7 +4,7 @@
 //!
 //! A click works on a flat view of the open window (container slots followed by the
 //! player's main inventory and hotbar), which is written back afterwards.
-//! TODO(M4): chests, furnaces and the other containers.
+//! TODO(M4): furnaces and the other containers.
 
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
@@ -18,14 +18,22 @@ pub enum Layout {
     Player,
     /// A crafting table: result, 3x3 grid, main, hotbar.
     Workbench,
+    /// A chest with this many rows (3 or 6), then main and hotbar.
+    Chest(u8),
 }
 
 impl Layout {
-    fn len(self) -> usize {
+    pub fn len(self) -> usize {
         match self {
             Self::Player => 45,
             Self::Workbench => 46,
+            Self::Chest(rows) => usize::from(rows) * 9 + 36,
         }
+    }
+
+    /// Whether slot 0 is a crafting result.
+    fn has_result(self) -> bool {
+        !matches!(self, Self::Chest(_))
     }
 
     /// The crafting grid's slots and width.
@@ -33,6 +41,7 @@ impl Layout {
         match self {
             Self::Player => (1..5, 2),
             Self::Workbench => (1..10, 3),
+            Self::Chest(_) => (0..0, 0),
         }
     }
 
@@ -41,6 +50,7 @@ impl Layout {
         match self {
             Self::Player => 9,
             Self::Workbench => 10,
+            Self::Chest(rows) => usize::from(rows) * 9,
         }
     }
 
@@ -58,12 +68,13 @@ impl Layout {
         match self {
             Self::Player => k >= 5,
             Self::Workbench => k >= 10,
+            Self::Chest(rows) => k >= usize::from(rows) * 9,
         }
     }
 
     /// `Slot.isItemValid`.
     fn accepts(self, k: usize, stack: &ItemStack) -> bool {
-        if k == 0 {
+        if k == 0 && self.has_result() {
             return false; // crafting results
         }
         if self == Self::Player && (5..=8).contains(&k) {
@@ -110,6 +121,14 @@ impl Layout {
                 37..=45 => merge(slots, &mut stack, 10, 37, false),
                 _ => merge(slots, &mut stack, 10, 46, false),
             },
+            Self::Chest(rows) => {
+                let own = usize::from(rows) * 9;
+                if index < own {
+                    merge(slots, &mut stack, own, own + 36, true)
+                } else {
+                    merge(slots, &mut stack, 0, own, false)
+                }
+            }
         };
         if !ok {
             return None;
@@ -131,8 +150,11 @@ pub struct OpenContainer {
     pub layout: Layout,
     /// The block it belongs to.
     pub pos: (i32, i32, i32),
-    /// The container's own slots (for a workbench: result and grid).
+    /// The container's own slots (for a workbench: result and grid; empty for chests,
+    /// whose items stay in their tile entities).
     pub slots: Vec<Option<ItemStack>>,
+    /// The tile entities whose inventories the window shows (chests).
+    pub parts: Vec<(i32, i32, i32)>,
     /// What the client was last told (`inventoryItemStacks`), for the whole window.
     pub sent: Vec<Option<ItemStack>>,
 }
@@ -154,6 +176,14 @@ pub struct WindowState {
     pub open: Option<OpenContainer>,
     /// The last window id handed out.
     window_id: i32,
+}
+
+impl WindowState {
+    /// `EntityPlayerMP.getNextWindowId`.
+    pub fn next_window_id(&mut self) -> i8 {
+        self.window_id = self.window_id % 100 + 1;
+        self.window_id as i8
+    }
 }
 
 /// Armor type of an item (`ItemArmor.armorType`: 0 helmet .. 3 boots).
@@ -251,6 +281,11 @@ impl Game {
         let p = &self.players[i];
         match &p.window.open {
             None => p.inventory.clone(),
+            Some(o) if !o.parts.is_empty() => {
+                let mut flat = self.chest_contents(&o.parts);
+                flat.extend(p.inventory[9..45].iter().cloned());
+                flat
+            }
             Some(o) => {
                 let mut flat = o.slots.clone();
                 flat.extend(p.inventory[9..45].iter().cloned());
@@ -261,6 +296,18 @@ impl Game {
 
     /// Writes a slot list back into the open window.
     fn scatter(&mut self, i: usize, flat: Vec<Option<ItemStack>>) {
+        if let Some(parts) = self.players[i]
+            .window
+            .open
+            .as_ref()
+            .map(|o| o.parts.clone())
+            .filter(|parts| !parts.is_empty())
+        {
+            let own = parts.len() * 27;
+            self.set_chest_contents(&parts, &flat[..own]);
+            self.players[i].inventory[9..45].clone_from_slice(&flat[own..]);
+            return;
+        }
         let p = &mut self.players[i];
         match &mut p.window.open {
             None => p.inventory = flat,
@@ -518,7 +565,7 @@ impl Game {
                     while s >= 0 && (s as usize) < n && c.count < max_stack(c.id) {
                         let idx = s as usize;
                         // canMergeSlot: never from a crafting result.
-                        if idx != 0
+                        if (idx != 0 || !layout.has_result())
                             && let Some(st) = flat[idx].clone()
                             && can_add(&flat[idx], Some(&c), true)
                             && (pass != 0 || st.count != max_stack(st.id))
@@ -547,6 +594,9 @@ impl Game {
     /// then `onCraftMatrixChanged`.
     fn result_taken(&mut self, i: usize, before: &Option<ItemStack>) {
         let (_, layout) = self.current_window(i);
+        if !layout.has_result() {
+            return;
+        }
         let (grid, _) = layout.grid();
         let mut flat = self.gather(i);
         let mut extra = Vec::new();
@@ -597,6 +647,9 @@ impl Game {
     /// `onCraftMatrixChanged`: the result slot follows the grid.
     pub(super) fn update_craft_result(&mut self, i: usize) {
         let (_, layout) = self.current_window(i);
+        if !layout.has_result() {
+            return;
+        }
         let (grid, width) = layout.grid();
         let mut flat = self.gather(i);
         flat[0] = super::recipes::craft(&flat[grid], width);
@@ -680,11 +733,12 @@ impl Game {
         let flat = self.gather(i);
         let p = &mut self.players[i];
         let o = p.window.open.as_mut()?;
+        let skip_result = o.layout.has_result();
         let mut packets = Vec::new();
         for (k, item) in flat.into_iter().enumerate() {
             if o.sent[k] != item {
                 o.sent[k] = item.clone();
-                if k != 0 {
+                if k != 0 || !skip_result {
                     packets.push(ClientboundPlay::SetSlot {
                         window: o.id,
                         slot: k as i16,
@@ -723,10 +777,20 @@ impl Game {
                 drops.push(s);
             }
         }
-        flat[0] = None;
+        if layout.has_result() {
+            flat[0] = None;
+        }
         self.scatter(i, flat);
-        self.players[i].window.open = None;
+        let closed = self.players[i].window.open.take();
         self.players[i].window.locked = false;
+        // ContainerChest.onContainerClosed: the chests lose a viewer.
+        if let Some(o) = closed
+            && self.players[i].gamemode != 3
+        {
+            for p in o.parts {
+                self.change_chest_viewers(p, -1);
+            }
+        }
         for stack in drops {
             self.drop_from_window(i, stack);
         }
@@ -744,8 +808,7 @@ impl Game {
     /// `EntityPlayerMP.displayGui` for a crafting table.
     pub(super) fn open_workbench(&mut self, i: usize, pos: (i32, i32, i32)) {
         let p = &mut self.players[i];
-        p.window.window_id = p.window.window_id % 100 + 1;
-        let id = p.window.window_id as i8;
+        let id = p.window.next_window_id();
         let title =
             crate::chat::Component::translate("tile.workbench.name", vec![]).to_json_string();
         p.send(ClientboundPlay::OpenWindow {
@@ -759,10 +822,15 @@ impl Game {
             layout: Layout::Workbench,
             pos,
             slots: vec![None; 10],
+            parts: Vec::new(),
             sent: vec![None; Layout::Workbench.len()],
         });
         p.stats.add("stat.craftingTableInteraction", 1);
-        // onCraftGuiOpened: the whole window, the cursor, then the first change check.
+        self.open_container_gui(i);
+    }
+
+    /// `onCraftGuiOpened`: the whole window, the cursor, then the first change check.
+    pub(super) fn open_container_gui(&mut self, i: usize) {
         self.resend_window(i);
         self.detect_container_changes(i);
     }
@@ -774,18 +842,28 @@ impl Game {
             return;
         };
         let (pos, layout) = (o.pos, o.layout);
-        let block = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
-        let p = &self.players[i];
-        let d = (
-            f64::from(pos.0) + 0.5 - p.pos.0,
-            f64::from(pos.1) + 0.5 - p.pos.1,
-            f64::from(pos.2) + 0.5 - p.pos.2,
-        );
+        let parts = o.parts.clone();
+        let player = self.players[i].pos;
+        let near = |pos: (i32, i32, i32)| {
+            let d = (
+                f64::from(pos.0) + 0.5 - player.0,
+                f64::from(pos.1) + 0.5 - player.1,
+                f64::from(pos.2) + 0.5 - player.2,
+            );
+            d.0 * d.0 + d.1 * d.1 + d.2 * d.2 <= 64.0
+        };
+        let w = &mut self.level.overworld;
         let still = match layout {
-            Layout::Workbench => block == 58,
+            Layout::Workbench => w.block(pos.0, pos.1, pos.2) >> 4 == 58 && near(pos),
+            // TileEntityChest.isUseableByPlayer, for each half.
+            Layout::Chest(_) => parts.iter().all(|&p| {
+                matches!(w.block(p.0, p.1, p.2) >> 4, 54 | 146)
+                    && w.tile_entity(p).is_some()
+                    && near(p)
+            }),
             Layout::Player => true,
         };
-        if !still || d.0 * d.0 + d.1 * d.1 + d.2 * d.2 > 64.0 {
+        if !still {
             self.close_screen(i);
         }
     }

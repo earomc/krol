@@ -1,0 +1,56 @@
+description = "Chests: a single chest filled by click and shift-click, a second chest making it a double chest, items moved between the halves, one half broken (its contents spill out)"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. Stacks stay below 10 items so the broken chest drops each stack as one
+# item entity (vanilla splits larger stacks at random).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 11
+chat = [
+    "@2500 !creative 36 54 3 0",
+    "@2800 !place -470 3 -433 1",
+    "@3100 !creative 9 4 9 0",
+    "@3300 !creative 10 3 5 0",
+    "@3600 !place -470 4 -433 1",
+    "@3900 !click 1 27 0 1 0 4 9 0",
+    "@4200 !click 1 0 0 2 0",
+    "@4500 !click 1 28 0 3 1 3 5 0",
+    "@4800 !close 1",
+    "@5600 !place -469 3 -433 1",
+    "@5900 !place -469 4 -433 1",
+    "@6200 !click 2 1 0 1 0 3 5 0",
+    "@6500 !click 2 30 0 2 0",
+    "@6800 !click 2 0 1 3 0 4 9 0",
+    "@7100 !click 2 2 0 4 0",
+    "@7400 !close 2",
+    "@8400 !dig -469 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 10700
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-469, 4, -433]]
+tile_entities = [[-470, 4, -433], [-469, 4, -433]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

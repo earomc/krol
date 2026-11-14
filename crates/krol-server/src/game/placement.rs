@@ -278,7 +278,30 @@ pub fn placed_state(
             };
             state(face)
         }
-        61 | 130 | 54 | 146 => state(opposite(click.facing())),
+        // BlockChest.canPlaceBlockAt: at most one neighboring chest of the same kind,
+        // and that one must not be part of a double chest already.
+        54 | 146 => {
+            let is_chest =
+                |p: (i32, i32, i32), world: &mut World| world.block(p.0, p.1, p.2) >> 4 == id;
+            let mut count = 0;
+            for f in [WEST, EAST, NORTH, SOUTH] {
+                let n = offset(at, f);
+                if is_chest(n, world) {
+                    if [WEST, EAST, NORTH, SOUTH]
+                        .iter()
+                        .any(|&g| is_chest(offset(n, g), world))
+                    {
+                        return None;
+                    }
+                    count += 1;
+                }
+            }
+            if count > 1 {
+                return None;
+            }
+            state(opposite(click.facing()))
+        }
+        61 | 130 => state(opposite(click.facing())),
         86 | 91 => state(horizontal_index(opposite(click.facing()))),
         107 | 183..=187 => state(horizontal_index(click.facing())),
         145 => state(horizontal_index(rotate_y(click.facing())) | (((damage as u8) & 3) << 2)),
