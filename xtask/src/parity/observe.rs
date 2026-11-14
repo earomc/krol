@@ -208,6 +208,10 @@ fn normalize_log(lines: &[String], observe: &Observe) -> Value {
                 _ => line.as_str(),
             };
             let message = line.split_once("]: ").map_or(line, |(_, m)| m);
+            // Depends on how fast the machine is, not on behavior.
+            if message.starts_with("Can't keep up!") {
+                return None;
+            }
             if observe
                 .log_ignore_prefixes
                 .iter()

@@ -49,4 +49,6 @@ jobs:
         if: always()
         with:
           name: parity-report
-          path: parity/report.json
+          path: |
+            parity/report.json
+            parity/report-v5.json

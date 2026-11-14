@@ -252,30 +252,39 @@ pub fn start(
 }
 
 impl Game {
-    /// Vanilla's main loop: accumulate elapsed time and run one tick per 50 ms.
+    /// Vanilla's main loop (`MinecraftServer.run`): accumulate elapsed milliseconds and
+    /// run one tick per 50 ms. A delay of more than 2 s is cut to 2 s with a warning,
+    /// at most once every 15 s; otherwise the whole backlog is caught up.
     fn run(mut self, mut rx: UnboundedReceiver<GameEvent>) {
-        let mut last = Instant::now();
-        let mut pending = Duration::ZERO;
+        let start = Instant::now();
+        let millis = || start.elapsed().as_millis() as i64;
+        let mut current = millis();
+        let mut last_warning: Option<i64> = None;
+        let mut pending: i64 = 0;
         loop {
-            let now = Instant::now();
-            pending += now - last;
-            last = now;
-            // Vanilla quirk: after a 2 s lag spike it drops the backlog ("Can't keep up!").
-            if pending > Duration::from_secs(2) {
-                pending = Duration::ZERO;
+            let now = millis();
+            let mut elapsed = now - current;
+            if elapsed > 2000 && last_warning.is_none_or(|w| current - w >= 15_000) {
+                tracing::warn!(
+                    "Can't keep up! Did the system time change, or is the server overloaded? Running {}ms behind, skipping {} tick(s)",
+                    elapsed,
+                    elapsed / 50
+                );
+                elapsed = 2000;
+                last_warning = Some(current);
             }
-            while pending > Duration::from_millis(TICK_MS) {
-                pending -= Duration::from_millis(TICK_MS);
+            pending += elapsed;
+            current = now;
+            while pending > TICK_MS as i64 {
+                pending -= TICK_MS as i64;
                 if !self.tick(&mut rx) {
                     self.shutdown();
                     return;
                 }
             }
-            std::thread::sleep(
-                Duration::from_millis(TICK_MS)
-                    .saturating_sub(pending)
-                    .max(Duration::from_millis(1)),
-            );
+            std::thread::sleep(Duration::from_millis(
+                (TICK_MS as i64 - pending).max(1) as u64
+            ));
         }
     }
 

@@ -1,6 +1,7 @@
 /target
 /reference/
 /parity/report.json
+/parity/report-v5.json
 *.swp
 .idea/
 .vscode/

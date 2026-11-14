@@ -181,7 +181,8 @@ fn run(filter: Option<&str>, v5: bool) -> Result<ExitCode> {
 
     let summary = summarize(&reports);
     let report = json!({ "summary": summary, "scenarios": reports });
-    let path = parity_root().join("report.json");
+    // The 1.7 replay keeps its own report so both survive a CI run.
+    let path = parity_root().join(if v5 { "report-v5.json" } else { "report.json" });
     std::fs::write(&path, serde_json::to_string_pretty(&report)? + "\n")?;
 
     println!();
