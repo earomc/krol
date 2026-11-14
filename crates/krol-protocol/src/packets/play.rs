@@ -640,6 +640,12 @@ pub enum ClientboundPlay {
     },
     /// `0x19`
     EntityHeadLook { entity_id: i32, yaw: i8 },
+    /// `0x25`
+    BlockBreakAnimation {
+        entity_id: i32,
+        pos: BlockPos,
+        stage: i8,
+    },
     /// `0x2A`
     Particle {
         id: i32,
@@ -774,6 +780,7 @@ impl ClientboundPlay {
             Self::EntityHeadLook { .. } => 0x19,
             Self::EntityVelocity { .. } => 0x12,
             Self::Particle { .. } => 0x2a,
+            Self::BlockBreakAnimation { .. } => 0x25,
         }
     }
 
@@ -1070,6 +1077,15 @@ impl ClientboundPlay {
             }
             Self::EntityVelocity { entity_id, x, y, z } => {
                 w.varint(*entity_id).i16(*x).i16(*y).i16(*z);
+            }
+            Self::BlockBreakAnimation {
+                entity_id,
+                pos,
+                stage,
+            } => {
+                w.varint(*entity_id)
+                    .position(pos.0, pos.1, pos.2)
+                    .i8(*stage);
             }
             Self::Particle {
                 id,

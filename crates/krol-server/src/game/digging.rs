@@ -1,0 +1,504 @@
+//! Survival digging (vanilla: `ItemInWorldManager`, `Block.getPlayerRelativeBlockHardness`,
+//! `EntityPlayer.getToolDigEfficiency`, `ItemTool`/`ItemPickaxe`/`ItemAxe`/`ItemSpade`/
+//! `ItemSword`/`ItemShears`, `Block.harvestBlock`, `StatList` mining statistics).
+//!
+//! The client sends "start digging" and "stop digging"; the server tracks how many ticks
+//! passed in between. Stopping counts if the block would be at least 70% broken by
+//! then; otherwise the server keeps counting and breaks the block itself once it is
+//! fully broken. Other players see the progress as block break animations.
+//!
+//! TODO(M5): efficiency enchantment, haste and mining fatigue, aqua affinity, adventure
+//! mode `CanDestroy` tags, tool durability, block-specific harvest effects.
+
+use krol_protocol::packets::play::ClientboundPlay;
+
+use super::Game;
+use super::block_data::{self, Material};
+
+/// Per-player digging state (`ItemInWorldManager` fields).
+#[derive(Debug, Default, Clone)]
+pub struct DigState {
+    /// Ticks counted (`curblockDamage`).
+    pub ticks: i32,
+    destroying: bool,
+    initial: i32,
+    pos: (i32, i32, i32),
+    finish_received: bool,
+    finish_pos: (i32, i32, i32),
+    finish_initial: i32,
+    progress_sent: i32,
+}
+
+impl DigState {
+    /// A fresh state (`durabilityRemainingOnBlock` starts at -1).
+    pub fn new() -> Self {
+        Self {
+            progress_sent: -1,
+            ..Self::default()
+        }
+    }
+}
+
+/// A tool's kind and material, from the held item id.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Tool {
+    Pickaxe(u8),
+    Axe(u8),
+    Shovel(u8),
+    Sword,
+    Shears,
+}
+
+/// Tool materials: (harvest level, efficiency) for wood, stone, iron, diamond, gold.
+const TOOL_MATERIALS: [(u8, f32); 5] = [(0, 2.0), (1, 4.0), (2, 6.0), (3, 8.0), (0, 12.0)];
+
+fn tool(id: i16) -> Option<Tool> {
+    Some(match id {
+        270 => Tool::Pickaxe(0),
+        274 => Tool::Pickaxe(1),
+        257 => Tool::Pickaxe(2),
+        278 => Tool::Pickaxe(3),
+        285 => Tool::Pickaxe(4),
+        271 => Tool::Axe(0),
+        275 => Tool::Axe(1),
+        258 => Tool::Axe(2),
+        279 => Tool::Axe(3),
+        286 => Tool::Axe(4),
+        269 => Tool::Shovel(0),
+        273 => Tool::Shovel(1),
+        256 => Tool::Shovel(2),
+        277 => Tool::Shovel(3),
+        284 => Tool::Shovel(4),
+        268 | 272 | 267 | 276 | 283 => Tool::Sword,
+        359 => Tool::Shears,
+        _ => return None,
+    })
+}
+
+/// Blocks a pickaxe is fast on regardless of material (`ItemPickaxe.EFFECTIVE_ON`).
+fn pickaxe_effective(b: u16) -> bool {
+    matches!(
+        b,
+        157 | 16
+            | 4
+            | 28
+            | 57
+            | 56
+            | 43
+            | 27
+            | 41
+            | 14
+            | 79
+            | 42
+            | 15
+            | 22
+            | 21
+            | 74
+            | 48
+            | 87
+            | 174
+            | 66
+            | 73
+            | 24
+            | 179
+            | 1
+            | 44
+    )
+}
+
+/// `ItemAxe.EFFECTIVE_ON`.
+fn axe_effective(b: u16) -> bool {
+    matches!(b, 5 | 47 | 17 | 162 | 54 | 86 | 91 | 103 | 65)
+}
+
+/// `ItemSpade.EFFECTIVE_ON`.
+fn shovel_effective(b: u16) -> bool {
+    matches!(b, 82 | 3 | 60 | 2 | 13 | 110 | 12 | 80 | 78 | 88)
+}
+
+/// How fast the held item breaks the block (`getStrVsBlock`).
+fn strength(held: Option<i16>, b: u16) -> f32 {
+    let m = block_data::material(b);
+    match held.and_then(tool) {
+        Some(Tool::Pickaxe(t)) => {
+            if matches!(m, Material::Iron | Material::Anvil | Material::Rock)
+                || pickaxe_effective(b)
+            {
+                TOOL_MATERIALS[usize::from(t)].1
+            } else {
+                1.0
+            }
+        }
+        Some(Tool::Axe(t)) => {
+            if matches!(m, Material::Wood | Material::Plants | Material::Vine) || axe_effective(b) {
+                TOOL_MATERIALS[usize::from(t)].1
+            } else {
+                1.0
+            }
+        }
+        Some(Tool::Shovel(t)) => {
+            if shovel_effective(b) {
+                TOOL_MATERIALS[usize::from(t)].1
+            } else {
+                1.0
+            }
+        }
+        Some(Tool::Sword) => {
+            if b == 30 {
+                15.0
+            } else if matches!(
+                m,
+                Material::Plants
+                    | Material::Vine
+                    | Material::Coral
+                    | Material::Leaves
+                    | Material::Gourd
+            ) {
+                1.5
+            } else {
+                1.0
+            }
+        }
+        Some(Tool::Shears) => {
+            if b == 30 || m == Material::Leaves {
+                15.0
+            } else if b == 35 {
+                5.0
+            } else {
+                1.0
+            }
+        }
+        None => 1.0,
+    }
+}
+
+/// Whether the held item lets the player harvest the block (`canHeldItemHarvest`).
+pub fn can_harvest(held: Option<i16>, b: u16) -> bool {
+    let m = block_data::material(b);
+    if m.tool_not_required() {
+        return true;
+    }
+    match held.and_then(tool) {
+        Some(Tool::Pickaxe(t)) => {
+            let level = TOOL_MATERIALS[usize::from(t)].0;
+            match b {
+                49 => level == 3,
+                57 | 56 | 129 | 133 | 41 | 14 | 73 | 74 => level >= 2,
+                42 | 15 | 22 | 21 => level >= 1,
+                _ => matches!(m, Material::Rock | Material::Iron | Material::Anvil),
+            }
+        }
+        Some(Tool::Shovel(_)) => b == 78 || b == 80,
+        Some(Tool::Sword) => b == 30,
+        Some(Tool::Shears) => matches!(b, 30 | 55 | 132),
+        _ => false,
+    }
+}
+
+/// The share of the block broken per tick (`getPlayerRelativeBlockHardness`).
+pub fn relative_hardness(held: Option<i16>, b: u16, on_ground: bool, eyes_in_water: bool) -> f32 {
+    let hardness = block_data::hardness(b);
+    if hardness < 0.0 {
+        return 0.0;
+    }
+    let mut efficiency = strength(held, b);
+    if eyes_in_water {
+        efficiency /= 5.0;
+    }
+    if !on_ground {
+        efficiency /= 5.0;
+    }
+    if can_harvest(held, b) {
+        efficiency / hardness / 30.0
+    } else {
+        efficiency / hardness / 100.0
+    }
+}
+
+/// The statistic counted for mining a block (`StatList.mineBlockStatArray`): blocks
+/// with an item and enabled statistics count themselves; some blocks count as another
+/// (`mergeStatBases`: grass and farmland count as dirt, lit and double variants as the
+/// plain ones).
+pub fn mine_stat(b: u16) -> Option<String> {
+    const DISABLED: [u16; 32] = [
+        7, 8, 9, 10, 11, 26, 51, 52, 55, 59, 63, 64, 68, 71, 83, 92, 93, 94, 96, 141, 142, 149,
+        150, 166, 167, 176, 177, 193, 194, 195, 196, 197,
+    ];
+    let own = |id: u16| -> Option<String> {
+        if DISABLED.contains(&id) {
+            return None;
+        }
+        let name = krol_world::items::name_for_id(id as i16)?;
+        Some(format!("stat.mineBlock.{}", name.replace(':', ".")))
+    };
+    const MERGES: [(u16, u16); 14] = [
+        (9, 8),
+        (11, 10),
+        (91, 86),
+        (62, 61),
+        (74, 73),
+        (94, 93),
+        (150, 149),
+        (76, 75),
+        (124, 123),
+        (43, 44),
+        (125, 126),
+        (181, 182),
+        (2, 3),
+        (60, 3),
+    ];
+    let mut stat = own(b);
+    for (a, other) in MERGES {
+        if b == a {
+            stat = if own(a).is_some() && own(other).is_none() {
+                own(a)
+            } else {
+                own(other)
+            };
+        } else if b == other && own(a).is_some() && own(other).is_none() {
+            stat = own(a);
+        }
+    }
+    stat
+}
+
+impl Game {
+    fn held_id(&self, i: usize) -> Option<i16> {
+        self.players[i].held().map(|s| s.id)
+    }
+
+    fn relative_hardness_for(&mut self, i: usize, pos: (i32, i32, i32)) -> f32 {
+        let b = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
+        // TODO(M5): eyes in water.
+        relative_hardness(self.held_id(i), b, self.players[i].on_ground, false)
+    }
+
+    /// Sends a block break animation to the other players within 32 blocks
+    /// (`WorldManager.sendBlockBreakProgress`).
+    fn send_break_progress(&self, i: usize, pos: (i32, i32, i32), stage: i32) {
+        let p = &self.players[i];
+        let packet = ClientboundPlay::BlockBreakAnimation {
+            entity_id: p.entity_id,
+            pos,
+            stage: stage as i8,
+        };
+        for other in &self.players {
+            if other.entity_id == p.entity_id {
+                continue;
+            }
+            let d = (
+                f64::from(pos.0) - other.pos.0,
+                f64::from(pos.1) - other.pos.1,
+                f64::from(pos.2) - other.pos.2,
+            );
+            if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 < 1024.0 {
+                other.send(packet.clone());
+            }
+        }
+    }
+
+    /// Vanilla `ItemInWorldManager.onBlockClicked` for survival and adventure players.
+    pub(super) fn start_digging(&mut self, i: usize, pos: (i32, i32, i32)) {
+        let gamemode = self.players[i].gamemode;
+        if gamemode == 3 {
+            return;
+        }
+        if gamemode == 2 {
+            // TODO(M5): CanDestroy tags; without them adventure players cannot dig.
+            return;
+        }
+        // TODO(M5): punching out fire on the clicked face (extinguishFire).
+        let b = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
+        let dig = &mut self.players[i].dig;
+        dig.initial = dig.ticks;
+        let mut hardness = 1.0;
+        if b != 0 {
+            // TODO(M5): Block.onBlockClicked (note blocks, redstone ore, dragon egg).
+            hardness = self.relative_hardness_for(i, pos);
+        }
+        if b != 0 && hardness >= 1.0 {
+            self.harvest_survival(i, pos);
+        } else {
+            let stage = (hardness * 10.0) as i32;
+            let dig = &mut self.players[i].dig;
+            dig.destroying = true;
+            dig.pos = pos;
+            dig.progress_sent = stage;
+            self.send_break_progress(i, pos, stage);
+        }
+    }
+
+    /// Vanilla `ItemInWorldManager.blockRemoving` ("stop digging").
+    pub(super) fn stop_digging(&mut self, i: usize, pos: (i32, i32, i32)) {
+        let dig = &self.players[i].dig;
+        if pos != dig.pos {
+            return;
+        }
+        let elapsed = dig.ticks - dig.initial;
+        let b = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
+        if b == 0 {
+            return;
+        }
+        let progress = self.relative_hardness_for(i, pos) * (elapsed + 1) as f32;
+        if progress >= 0.7 {
+            self.players[i].dig.destroying = false;
+            self.send_break_progress(i, pos, -1);
+            self.harvest_survival(i, pos);
+        } else if !self.players[i].dig.finish_received {
+            let dig = &mut self.players[i].dig;
+            dig.destroying = false;
+            dig.finish_received = true;
+            dig.finish_pos = pos;
+            dig.finish_initial = dig.initial;
+        }
+    }
+
+    /// Vanilla `ItemInWorldManager.cancelDestroyingBlock`.
+    pub(super) fn cancel_digging(&mut self, i: usize) {
+        let dig = &mut self.players[i].dig;
+        dig.destroying = false;
+        let pos = dig.pos;
+        self.send_break_progress(i, pos, -1);
+    }
+
+    /// Vanilla `ItemInWorldManager.updateBlockRemoving`, run in the player's tick.
+    pub(super) fn tick_digging(&mut self, i: usize) {
+        self.players[i].dig.ticks += 1;
+        let dig = self.players[i].dig.clone();
+        if dig.finish_received {
+            let b =
+                self.level
+                    .overworld
+                    .block(dig.finish_pos.0, dig.finish_pos.1, dig.finish_pos.2)
+                    >> 4;
+            if b == 0 {
+                self.players[i].dig.finish_received = false;
+                return;
+            }
+            let progress = self.relative_hardness_for(i, dig.finish_pos)
+                * (dig.ticks - dig.finish_initial + 1) as f32;
+            let stage = (progress * 10.0) as i32;
+            if stage != dig.progress_sent {
+                self.send_break_progress(i, dig.finish_pos, stage);
+                self.players[i].dig.progress_sent = stage;
+            }
+            if progress >= 1.0 {
+                self.players[i].dig.finish_received = false;
+                self.harvest_survival(i, dig.finish_pos);
+            }
+        } else if dig.destroying {
+            let b = self.level.overworld.block(dig.pos.0, dig.pos.1, dig.pos.2) >> 4;
+            if b == 0 {
+                self.send_break_progress(i, dig.pos, -1);
+                let d = &mut self.players[i].dig;
+                d.progress_sent = -1;
+                d.destroying = false;
+                return;
+            }
+            // Vanilla quirk: the hardness is looked up at the position of the last
+            // "finished" block (field_180241_i), not the block being dug.
+            let progress = self.relative_hardness_for(i, dig.finish_pos)
+                * (dig.ticks - dig.initial + 1) as f32;
+            let stage = (progress * 10.0) as i32;
+            if stage != dig.progress_sent {
+                self.send_break_progress(i, dig.pos, stage);
+                self.players[i].dig.progress_sent = stage;
+            }
+        }
+    }
+
+    /// Vanilla `ItemInWorldManager.tryHarvestBlock` for survival players.
+    fn harvest_survival(&mut self, i: usize, pos: (i32, i32, i32)) {
+        let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+        let b = state >> 4;
+        self.break_effect(i, pos, state);
+        // TODO(M5): onBlockHarvested / onBlockDestroyedByPlayer (doors, beds, ice).
+        self.level.overworld.set_block(pos.0, pos.1, pos.2, 0);
+        // TODO(M5): tool durability (ItemStack.onBlockDestroyed).
+        if can_harvest(self.held_id(i), b) {
+            // Block.harvestBlock.
+            if let Some(stat) = mine_stat(b) {
+                self.players[i].stats.add(&stat, 1);
+            }
+            self.add_exhaustion(i, 0.025);
+            self.drop_block_items(pos, state);
+        }
+    }
+
+    /// `playAuxSFXAtEntity(player, 2001, ...)`: the break effect to everyone else within
+    /// 64 blocks.
+    pub(super) fn break_effect(&self, i: usize, pos: (i32, i32, i32), state: u16) {
+        let state_id = i32::from(state >> 4) + (i32::from(state & 15) << 12);
+        let effect = ClientboundPlay::Effect {
+            id: 2001,
+            pos,
+            data: state_id,
+            disable_relative_volume: false,
+        };
+        let conn = self.players[i].conn_id;
+        for p in &self.players {
+            let (dx, dy, dz) = (
+                f64::from(pos.0) - p.pos.0,
+                f64::from(pos.1) - p.pos.1,
+                f64::from(pos.2) - p.pos.2,
+            );
+            if p.conn_id != conn && dx * dx + dy * dy + dz * dz < 64.0 * 64.0 {
+                p.send(effect.clone());
+            }
+        }
+    }
+
+    /// Drops the block's items into the world (`dropBlockAsItem`).
+    /// TODO(M4): item entities.
+    fn drop_block_items(&mut self, _pos: (i32, i32, i32), _state: u16) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dig_rules() {
+        // Stone by hand: not harvestable, 1/1.5/100 per tick.
+        assert!(!can_harvest(None, 1));
+        assert_eq!(relative_hardness(None, 1, true, false), 1.0 / 1.5 / 100.0);
+        // Wooden pickaxe: 2/1.5/30.
+        assert_eq!(
+            relative_hardness(Some(270), 1, true, false),
+            2.0 / 1.5 / 30.0
+        );
+        // Dirt by hand and with a shovel.
+        assert_eq!(relative_hardness(None, 3, true, false), 1.0 / 0.5 / 30.0);
+        assert_eq!(
+            relative_hardness(Some(277), 3, true, false),
+            8.0 / 0.5 / 30.0
+        );
+        // Obsidian needs diamond.
+        assert!(!can_harvest(Some(257), 49));
+        assert!(can_harvest(Some(278), 49));
+        // Instant blocks and bedrock.
+        assert!(relative_hardness(None, 31, true, false) >= 1.0);
+        assert_eq!(relative_hardness(Some(278), 7, true, false), 0.0);
+    }
+
+    #[test]
+    fn mining_stats() {
+        assert_eq!(
+            mine_stat(1).as_deref(),
+            Some("stat.mineBlock.minecraft.stone")
+        );
+        assert_eq!(
+            mine_stat(2).as_deref(),
+            Some("stat.mineBlock.minecraft.dirt")
+        );
+        assert_eq!(
+            mine_stat(43).as_deref(),
+            Some("stat.mineBlock.minecraft.stone_slab")
+        );
+        assert_eq!(
+            mine_stat(74).as_deref(),
+            Some("stat.mineBlock.minecraft.redstone_ore")
+        );
+        assert_eq!(mine_stat(59), None);
+    }
+}

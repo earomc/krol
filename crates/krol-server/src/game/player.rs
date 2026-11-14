@@ -112,6 +112,8 @@ pub struct Player {
     /// Health, food and "saturation is zero" as last sent (`lastHealth`,
     /// `lastFoodLevel`, `wasHungry`).
     pub last_health_sent: Option<(f32, i32, bool)>,
+    /// Survival digging state (`ItemInWorldManager`).
+    pub dig: super::digging::DigState,
     /// Equipment as last announced to viewers (`previousEquipment`).
     pub last_equipment: [Option<krol_protocol::packets::play::ItemStack>; 5],
     /// Chat spam counter (vanilla: `chatSpamThresholdCount`).

@@ -636,6 +636,19 @@ impl V5Translator {
                     .i8(*pitch);
                 one(w);
             }
+            ClientboundPlay::BlockBreakAnimation {
+                entity_id,
+                pos,
+                stage,
+            } => {
+                let mut w = packet(0x25);
+                w.varint(*entity_id)
+                    .i32(pos.0)
+                    .i32(pos.1)
+                    .i32(pos.2)
+                    .i8(*stage);
+                one(w);
+            }
             ClientboundPlay::Particle {
                 id,
                 pos,

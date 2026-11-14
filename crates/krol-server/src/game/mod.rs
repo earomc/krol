@@ -5,9 +5,11 @@
 //! scheduled packet tasks at the start of each tick. Packets to clients go through each
 //! player's [`Outgoing`] queue.
 
+pub mod block_data;
 pub mod blocks;
 pub mod commands;
 mod damage;
+mod digging;
 mod movement;
 pub mod physics;
 pub mod player;
@@ -707,6 +709,7 @@ impl Game {
                     ^ i64::from(entity_id),
             ),
             last_health_sent: None,
+            dig: digging::DigState::new(),
             chat_spam: 0,
             data,
         };
@@ -844,6 +847,8 @@ impl Game {
         }
         player.ticks += 1;
         // EntityPlayerMP.onUpdate.
+        self.tick_digging(i);
+        let player = &mut self.players[i];
         player.respawn_invulnerability -= 1;
         if player.hurt_resistant_time > 0 {
             player.hurt_resistant_time -= 1;
@@ -1097,16 +1102,26 @@ impl Game {
         if d0 * d0 + d1 * d1 + d2 * d2 > 36.0 || pos.1 >= self.config.max_build_height {
             return;
         }
-        if status == 0 {
-            if self.is_block_protected(i, pos) {
-                self.send_block(i, pos);
-            } else {
-                self.block_clicked(i, pos);
+        match status {
+            0 => {
+                if self.is_block_protected(i, pos) {
+                    self.send_block(i, pos);
+                } else if self.players[i].gamemode == 1 {
+                    self.block_clicked(i, pos);
+                } else {
+                    self.start_digging(i, pos);
+                }
             }
-        }
-        // TODO(M4): survival digging (progress, hardness, tools, drops).
-        if self.level.overworld.block(pos.0, pos.1, pos.2) != 0 {
-            self.send_block(i, pos);
+            _ => {
+                if status == 2 {
+                    self.stop_digging(i, pos);
+                } else {
+                    self.cancel_digging(i);
+                }
+                if self.level.overworld.block(pos.0, pos.1, pos.2) != 0 {
+                    self.send_block(i, pos);
+                }
+            }
         }
     }
 
@@ -1129,25 +1144,7 @@ impl Game {
             return;
         }
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
-        // playAuxSFXAtEntity: break effect to everyone else within 64 blocks.
-        let state_id = i32::from(state >> 4) + (i32::from(state & 15) << 12);
-        let effect = ClientboundPlay::Effect {
-            id: 2001,
-            pos,
-            data: state_id,
-            disable_relative_volume: false,
-        };
-        let conn = self.players[i].conn_id;
-        for p in &self.players {
-            let (dx, dy, dz) = (
-                f64::from(pos.0) - p.pos.0,
-                f64::from(pos.1) - p.pos.1,
-                f64::from(pos.2) - p.pos.2,
-            );
-            if p.conn_id != conn && dx * dx + dy * dy + dz * dz < 64.0 * 64.0 {
-                p.send(effect.clone());
-            }
-        }
+        self.break_effect(i, pos, state);
         self.level.overworld.set_block(pos.0, pos.1, pos.2, 0);
         self.send_block(i, pos);
     }
