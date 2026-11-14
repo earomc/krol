@@ -334,6 +334,26 @@ impl V5Translator {
                 w.i32(*entity_id).i8(*status);
                 one(w);
             }
+            // 1.7 has a short duration (capped like its server does) and no particle flag.
+            ClientboundPlay::EntityEffect {
+                entity_id,
+                effect,
+                amplifier,
+                duration,
+                ..
+            } => {
+                let mut w = packet(0x1d);
+                w.i32(*entity_id)
+                    .i8(*effect)
+                    .i8(*amplifier)
+                    .i16((*duration).min(i32::from(i16::MAX)) as i16);
+                one(w);
+            }
+            ClientboundPlay::RemoveEntityEffect { entity_id, effect } => {
+                let mut w = packet(0x1e);
+                w.i32(*entity_id).i8(*effect);
+                one(w);
+            }
             ClientboundPlay::SetExperience { bar, level, total } => {
                 let mut w = packet(0x1f);
                 w.f32(*bar).i16(*level as i16).i16(*total as i16);

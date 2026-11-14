@@ -35,6 +35,7 @@ pub mod physics;
 mod pistons;
 mod placement;
 pub mod player;
+mod potions;
 mod powered_blocks;
 mod pressure_plates;
 mod random_ticks;
@@ -912,6 +913,12 @@ impl Game {
             in_water: false,
             first_update: true,
             using: None,
+            // Vanilla quirk: loaded effects do not set potionsNeedUpdate, so their
+            // particle color stays off until an effect changes.
+            effects: potions::read_effects(&data),
+            potions_dirty: false,
+            effect_color: 0,
+            effect_ambient: false,
             collided_horizontally: false,
             distance_walked_on_step: 0.0,
             next_step_distance: 1,
@@ -997,6 +1004,9 @@ impl Game {
         Self::set_player_location(player, pos, rot);
 
         self.send_time_and_weather(new_index);
+        for packet in self.effect_packets(new_index) {
+            self.players[new_index].send(packet);
+        }
         let player = &self.players[new_index];
         player.send(ClientboundPlay::WindowItems {
             window: 0,

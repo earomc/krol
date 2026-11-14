@@ -24,6 +24,10 @@ pub enum DamageSource {
     InFire,
     /// Touching lava (`DamageSource.lava`).
     Lava,
+    /// Poison and instant damage (`DamageSource.magic`: bypasses armor).
+    Magic,
+    /// The wither effect (`DamageSource.wither`: bypasses armor).
+    Wither,
 }
 
 impl DamageSource {
@@ -35,12 +39,17 @@ impl DamageSource {
             Self::OnFire => "onFire",
             Self::InFire => "inFire",
             Self::Lava => "lava",
+            Self::Magic => "magic",
+            Self::Wither => "wither",
         }
     }
 
     /// Armor does not reduce it (`isUnblockable`).
     pub fn unblockable(self) -> bool {
-        matches!(self, Self::Fall | Self::Drown | Self::OnFire)
+        matches!(
+            self,
+            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither
+        )
     }
 
     /// Fire damage (`isFireDamage`), reduced by fire protection.
@@ -56,7 +65,7 @@ impl DamageSource {
     /// Exhaustion added to the victim (`getHungerDamage`).
     fn hunger_damage(self) -> f32 {
         match self {
-            Self::Fall | Self::Drown | Self::OnFire => 0.0,
+            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither => 0.0,
             Self::InFire | Self::Lava => DEFAULT_HUNGER_DAMAGE,
         }
     }

@@ -364,6 +364,11 @@ description = "Eating: food values extracted from vanilla (tools/datagen/FoodDum
 scenarios = ["play/eating"]
 
 [[feature]]
+id = "entity.effects"
+description = "Status effects: the effect table extracted from vanilla (tools/datagen/PotionDump.java), adding and combining, ticking (regeneration, poison, wither, hunger, saturation, instant health and damage), absorption, effect packets (with vanilla's show-particles byte), particle color and ambient metadata, ActiveEffects NBT, /effect with its messages and errors. Not yet: attribute effects (speed, slowness, strength, weakness, health boost), invisibility, effect particles' random draws, potions, milk, food and golden apple effects, beacons"
+scenarios = ["play/effects"]
+
+[[feature]]
 id = "item.buckets"
 description = "Buckets: use-item packets (face 255), the server's block ray trace, filling and emptying water and lava buckets in survival (stack handling, statistics, inventory resend). Not yet: milk, creative use, selection boxes of stairs, fences and other shaped blocks"
 scenarios = ["play/buckets"]

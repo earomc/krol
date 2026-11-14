@@ -47,6 +47,7 @@ fn name(id: i32) -> String {
         0x1a => "entity_status",
         0x1c => "entity_metadata",
         0x1d => "entity_effect",
+        0x1e => "remove_entity_effect",
         0x1f => "set_experience",
         0x20 => "entity_properties",
         0x21 => "chunk_data",
@@ -185,6 +186,19 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
         } => json!({ "collected": collected, "collector": collector }),
         ClientboundPlay::EntityStatus { entity_id, status } => {
             json!({ "entity_id": entity_id, "status": status })
+        }
+        ClientboundPlay::EntityEffect {
+            entity_id,
+            effect,
+            amplifier,
+            duration,
+            show_particles,
+        } => json!({
+            "entity_id": entity_id, "effect": effect, "amplifier": amplifier,
+            "duration": duration, "show_particles": show_particles,
+        }),
+        ClientboundPlay::RemoveEntityEffect { entity_id, effect } => {
+            json!({ "entity_id": entity_id, "effect": effect })
         }
         ClientboundPlay::EntityVelocity { entity_id, x, y, z } => {
             json!({ "entity_id": entity_id, "x": x, "y": y, "z": z })

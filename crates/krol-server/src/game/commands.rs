@@ -857,6 +857,7 @@ impl Game {
             }
             "gamerule" => self.cmd_gamerule(sender, args),
             "setblock" => self.cmd_setblock(sender, args),
+            "effect" => self.cmd_effect(sender, args),
             "save-off" | "save-on" => {
                 let enable = name == "save-on";
                 if self.saving_enabled == enable {
@@ -1155,6 +1156,88 @@ impl Game {
             krol_java::math::floor_f64(y),
             krol_java::math::floor_f64(z),
         ))
+    }
+
+    /// Vanilla `CommandEffect` (on players).
+    fn cmd_effect(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        use super::potions::{Effect, effect_by_name, effect_type};
+        if args.len() < 2 {
+            return Err(usage("effect"));
+        }
+        let target = self.find_player(args[0])?;
+        let name = self.players[target].profile.name.clone();
+        if args[1] == "clear" {
+            if self.players[target].effects.is_empty() {
+                return Err(err("commands.effect.failure.notActive.all", vec![s(name)]));
+            }
+            self.clear_effects(target);
+            self.notify(
+                sender,
+                "effect",
+                false,
+                "commands.effect.success.removed.all",
+                vec![s(name)],
+            );
+            return Ok(());
+        }
+        let id = match parse_int(args[1], 1, i32::MAX) {
+            Ok(id) => id,
+            Err(e) => match effect_by_name(args[1]) {
+                Some(id) => i32::from(id),
+                None => return Err(e),
+            },
+        };
+        let Some(kind) = effect_type(id) else {
+            return Err(err("commands.effect.notFound", vec![s(id)]));
+        };
+        let mut seconds = DEFAULT_EFFECT_SECONDS;
+        let mut duration = DEFAULT_EFFECT_SECONDS * 20;
+        if args.len() >= 3 {
+            seconds = parse_int(args[2], 0, MAX_EFFECT_SECONDS)?;
+            duration = if kind.instant { seconds } else { seconds * 20 };
+        } else if kind.instant {
+            duration = 1;
+        }
+        let amplifier = if args.len() >= 4 {
+            parse_int(args[3], 0, 255)?
+        } else {
+            0
+        };
+        let particles = !(args.len() >= 5 && args[4].eq_ignore_ascii_case("true"));
+        let effect_name = Arg::Component(Component::translate(kind.name, vec![]));
+        if seconds > 0 {
+            self.add_effect(
+                target,
+                Effect {
+                    id: id as u8,
+                    amplifier: amplifier as u8,
+                    duration,
+                    ambient: false,
+                    particles,
+                },
+            );
+            self.notify(
+                sender,
+                "effect",
+                false,
+                "commands.effect.success",
+                vec![effect_name, s(id), s(amplifier), s(name), s(seconds)],
+            );
+        } else if self.remove_effect(target, id as u8) {
+            self.notify(
+                sender,
+                "effect",
+                false,
+                "commands.effect.success.removed",
+                vec![effect_name, s(name)],
+            );
+        } else {
+            return Err(err(
+                "commands.effect.failure.notActive",
+                vec![effect_name, s(name)],
+            ));
+        }
+        Ok(())
     }
 
     /// Vanilla `CommandSetBlock` (data tags are not supported yet).
@@ -1544,6 +1627,11 @@ fn parse_coordinate(base: f64, input: &str, center: bool) -> Result<f64, Command
     }
     Ok(if relative { base + value } else { value })
 }
+
+/// `/effect` without a duration: 30 seconds.
+const DEFAULT_EFFECT_SECONDS: i32 = 30;
+/// The longest `/effect` duration.
+const MAX_EFFECT_SECONDS: i32 = 1_000_000;
 
 /// The horizontal coordinate bounds of `parseBlockPos`.
 const COORD_LIMIT: (i32, i32) = (-30_000_000, 30_000_000);

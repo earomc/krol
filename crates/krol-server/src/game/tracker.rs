@@ -115,8 +115,8 @@ pub fn player_metadata(p: &Player) -> Vec<Metadata> {
         md(3, Byte(0)),
         md(4, Byte(0)),
         md(6, Float(d.get_f32("HealF"))),
-        md(7, Int(0)),
-        md(8, Byte(0)),
+        md(7, Int(p.effect_color)),
+        md(8, Byte(i8::from(p.effect_ambient))),
         md(9, Byte(0)),
         md(10, Byte(p.skin_parts as i8)),
         md(16, Byte(0)),
@@ -385,7 +385,8 @@ impl Game {
                     });
                 }
             }
-            // TODO(M5): use bed, potion effects.
+            // TODO(M5): use bed.
+            packets.extend(self.effect_packets(i));
         } else if let Some(f) = self.falling.get(&entity_id) {
             let velocity = (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2));
             packets.push(ClientboundPlay::SpawnObject {

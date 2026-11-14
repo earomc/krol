@@ -342,6 +342,7 @@ impl Game {
         if self.players[i].health() <= 0.0 {
             self.death_update(i);
         }
+        self.update_effects(i);
         let p = &mut self.players[i];
         for m in [&mut p.motion.0, &mut p.motion.1, &mut p.motion.2] {
             if m.abs() < 0.005 {

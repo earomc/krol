@@ -231,6 +231,10 @@ impl Game {
         p.fall_distance = 0.0;
         p.first_update = true;
         p.using = None;
+        p.effects.clear();
+        p.potions_dirty = false;
+        p.effect_color = 0;
+        p.effect_ambient = false;
         p.in_water = false;
         p.sneaking = false;
         p.sprinting = false;

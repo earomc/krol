@@ -380,6 +380,17 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
             pitch: r.i8()?,
             on_ground: false,
         }),
+        0x1d => Some(ClientboundPlay::EntityEffect {
+            entity_id: r.i32()?,
+            effect: r.i8()?,
+            amplifier: r.i8()?,
+            duration: i32::from(r.i16()?),
+            show_particles: true,
+        }),
+        0x1e => Some(ClientboundPlay::RemoveEntityEffect {
+            entity_id: r.i32()?,
+            effect: r.i8()?,
+        }),
         0x19 => Some(ClientboundPlay::EntityHeadLook {
             entity_id: r.i32()?,
             yaw: r.i8()?,

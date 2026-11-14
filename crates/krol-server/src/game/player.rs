@@ -97,6 +97,14 @@ pub struct Player {
     pub first_update: bool,
     /// The item being used (eaten), if any.
     pub using: Option<super::food::ItemUse>,
+    /// Active status effects (`activePotionsMap`).
+    pub effects: Vec<super::potions::Effect>,
+    /// The effects changed (`potionsNeedUpdate`).
+    pub potions_dirty: bool,
+    /// Metadata 7: the effect particle color.
+    pub effect_color: i32,
+    /// Metadata 8: whether all effects are ambient.
+    pub effect_ambient: bool,
     /// The last move was blocked horizontally.
     pub collided_horizontally: bool,
     /// Distance walked, for step sounds (`distanceWalkedOnStepModified`).
@@ -139,6 +147,12 @@ impl Player {
     /// Current health (`getHealth`, stored as `HealF`).
     pub fn health(&self) -> f32 {
         self.data.get_f32("HealF")
+    }
+
+    /// `getMaxHealth`.
+    /// TODO(M5): the max health attribute (health boost).
+    pub fn max_health(&self) -> f32 {
+        20.0
     }
 
     /// Vanilla `setHealth`: clamped to 0..=20, marks metadata index 6 changed.
@@ -341,6 +355,7 @@ impl Player {
 
     fn store_state(&mut self) {
         store_inventory(&mut self.data, &self.inventory);
+        super::potions::write_effects(&mut self.data, &self.effects);
         let m = self.motion;
         self.data.insert("Motion", doubles(&[m.0, m.1, m.2]));
         self.data

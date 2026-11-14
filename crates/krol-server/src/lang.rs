@@ -17,6 +17,8 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "death.attack.onFire" => "%1$s burned to death",
         "death.attack.inFire" => "%1$s went up in flames",
         "death.attack.lava" => "%1$s tried to swim in lava",
+        "death.attack.magic" => "%1$s was killed by magic",
+        "death.attack.wither" => "%1$s withered away",
         "death.fell.accident.generic" => "%1$s fell from a high place",
         "death.fell.accident.ladder" => "%1$s fell off a ladder",
         "death.fell.accident.vines" => "%1$s fell off some vines",
@@ -123,6 +125,40 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "commands.xp.success.negative.levels" => "Taken %s levels from %s",
         "commands.tp.success.coordinates" => "Teleported %s to %s, %s, %s",
         "commands.setblock.success" => "Block placed",
+        // Status effect names.
+        "potion.moveSpeed" => "Speed",
+        "potion.moveSlowdown" => "Slowness",
+        "potion.digSpeed" => "Haste",
+        "potion.digSlowDown" => "Mining Fatigue",
+        "potion.damageBoost" => "Strength",
+        "potion.heal" => "Instant Health",
+        "potion.harm" => "Instant Damage",
+        "potion.jump" => "Jump Boost",
+        "potion.confusion" => "Nausea",
+        "potion.regeneration" => "Regeneration",
+        "potion.resistance" => "Resistance",
+        "potion.fireResistance" => "Fire Resistance",
+        "potion.waterBreathing" => "Water Breathing",
+        "potion.invisibility" => "Invisibility",
+        "potion.blindness" => "Blindness",
+        "potion.nightVision" => "Night Vision",
+        "potion.hunger" => "Hunger",
+        "potion.weakness" => "Weakness",
+        "potion.poison" => "Poison",
+        "potion.wither" => "Wither",
+        "potion.healthBoost" => "Health Boost",
+        "potion.absorption" => "Absorption",
+        "potion.saturation" => "Saturation",
+        "commands.effect.success" => "Given %1$s (ID %2$d) * %3$d to %4$s for %5$d seconds",
+        "commands.effect.success.removed" => "Took %1$s from %2$s",
+        "commands.effect.success.removed.all" => "Took all effects from %s",
+        "commands.effect.failure.notActive" => {
+            "Couldn't take %1$s from %2$s as they do not have the effect"
+        }
+        "commands.effect.failure.notActive.all" => {
+            "Couldn't take any effects from %s as they do not have any"
+        }
+        "commands.effect.notFound" => "There is no such mob effect with ID %d",
         "commands.setblock.noChange" => "The block couldn't be placed",
         "commands.setblock.outOfWorld" => "Cannot place block outside of the world",
         "commands.give.block.notFound" => "There is no such block with name %s",
@@ -137,27 +173,40 @@ pub fn format(key: &str, args: &[String]) -> String {
     let Some(template) = en_us(key) else {
         return key.to_owned();
     };
+    // ChatComponentTranslation: `%[<index>$]<letter>` takes an argument whatever the
+    // letter (`%s`, `%d`), `%%` is a percent sign.
     let mut out = String::new();
     let mut next = 0;
     let mut rest = template;
     while let Some(i) = rest.find('%') {
         out.push_str(&rest[..i]);
         let after = &rest[i + 1..];
-        if let Some(r) = after.strip_prefix('s') {
-            out.push_str(args.get(next).map_or("", String::as_str));
-            next += 1;
-            rest = r;
-        } else if let Some((n, r)) = after.split_once("$s")
-            && let Ok(index) = n.parse::<usize>()
-        {
-            out.push_str(args.get(index - 1).map_or("", String::as_str));
-            rest = r;
-        } else if let Some(r) = after.strip_prefix('%') {
+        if let Some(r) = after.strip_prefix('%') {
             out.push('%');
             rest = r;
-        } else {
-            out.push('%');
-            rest = after;
+            continue;
+        }
+        let digits = after.len() - after.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        let (index, spec) = match after[digits..].strip_prefix('$') {
+            Some(spec) if digits > 0 => (after[..digits].parse::<usize>().ok(), spec),
+            _ => (None, after),
+        };
+        match spec.chars().next() {
+            Some(c) if c.is_ascii_alphabetic() => {
+                let k = match index {
+                    Some(n) => n.saturating_sub(1),
+                    None => {
+                        next += 1;
+                        next - 1
+                    }
+                };
+                out.push_str(args.get(k).map_or("", String::as_str));
+                rest = &spec[c.len_utf8()..];
+            }
+            _ => {
+                out.push('%');
+                rest = after;
+            }
         }
     }
     out.push_str(rest);

@@ -530,6 +530,17 @@ pub enum ClientboundPlay {
     HeldItemChange { slot: i8 },
     /// `0x1A`
     EntityStatus { entity_id: i32, status: i8 },
+    /// `0x1D`: a status effect on an entity (duration in ticks). Vanilla 1.8 writes
+    /// whether particles show into the byte documented as "hide particles".
+    EntityEffect {
+        entity_id: i32,
+        effect: i8,
+        amplifier: i8,
+        duration: i32,
+        show_particles: bool,
+    },
+    /// `0x1E`
+    RemoveEntityEffect { entity_id: i32, effect: i8 },
     /// `0x1F`
     SetExperience { bar: f32, level: i32, total: i32 },
     /// `0x21`
@@ -850,6 +861,8 @@ impl ClientboundPlay {
             Self::PositionLook { .. } => 0x08,
             Self::HeldItemChange { .. } => 0x09,
             Self::EntityStatus { .. } => 0x1a,
+            Self::EntityEffect { .. } => 0x1d,
+            Self::RemoveEntityEffect { .. } => 0x1e,
             Self::SetExperience { .. } => 0x1f,
             Self::ChunkData { .. } => 0x21,
             Self::MapChunkBulk { .. } => 0x26,
@@ -963,6 +976,22 @@ impl ClientboundPlay {
             }
             Self::EntityStatus { entity_id, status } => {
                 w.i32(*entity_id).i8(*status);
+            }
+            Self::EntityEffect {
+                entity_id,
+                effect,
+                amplifier,
+                duration,
+                show_particles,
+            } => {
+                w.varint(*entity_id)
+                    .i8(*effect)
+                    .i8(*amplifier)
+                    .varint(*duration)
+                    .bool(*show_particles);
+            }
+            Self::RemoveEntityEffect { entity_id, effect } => {
+                w.varint(*entity_id).i8(*effect);
             }
             Self::SetExperience { bar, level, total } => {
                 w.f32(*bar).varint(*level).varint(*total);
@@ -1514,6 +1543,17 @@ impl ClientboundPlay {
                 entity_id: r.i32()?,
                 status: r.i8()?,
             },
+            0x1d => Self::EntityEffect {
+                entity_id: r.varint()?,
+                effect: r.i8()?,
+                amplifier: r.i8()?,
+                duration: r.varint()?,
+                show_particles: r.bool()?,
+            },
+            0x1e => Self::RemoveEntityEffect {
+                entity_id: r.varint()?,
+                effect: r.i8()?,
+            },
             0x29 => Self::SoundEffect {
                 name: r.string(256)?,
                 x: r.i32()?,
@@ -1645,6 +1685,29 @@ mod tests {
             ServerboundPlay::decode(w.as_bytes(), V).unwrap(),
             ServerboundPlay::BlockPlacement { item: Some(_), .. }
         ));
+    }
+
+    #[test]
+    fn effect_packets_match_vanilla() {
+        // From parity/golden/play/effects.json (vanilla 1.8.8): regeneration II for 5 s
+        // with particles shown, then its removal.
+        let effect = ClientboundPlay::EntityEffect {
+            entity_id: 0,
+            effect: 10,
+            amplifier: 1,
+            duration: 100,
+            show_particles: true,
+        };
+        let bytes = effect.encode(V).unwrap();
+        assert_eq!(bytes, [0x1d, 0, 10, 1, 100, 1]);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(effect));
+        let remove = ClientboundPlay::RemoveEntityEffect {
+            entity_id: 0,
+            effect: 10,
+        };
+        let bytes = remove.encode(V).unwrap();
+        assert_eq!(bytes, [0x1e, 0, 10]);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(remove));
     }
 
     #[test]
