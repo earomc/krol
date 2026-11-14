@@ -118,6 +118,19 @@ impl Game {
         }
     }
 
+    /// `BlockBush.checkAndDropBlock`: a plant without its soil pops off.
+    pub(super) fn check_plant(&mut self, pos: (i32, i32, i32), state: u16) {
+        let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
+        if plant_soil(state >> 4, below) == Some(false) {
+            self.pop_off(pos, state);
+        }
+    }
+
+    /// `dropBlockAsItem` + `setBlockToAir` for other modules.
+    pub(super) fn pop_off_block(&mut self, pos: (i32, i32, i32), state: u16) {
+        self.pop_off(pos, state);
+    }
+
     /// `dropBlockAsItem` + `setBlockToAir`.
     fn pop_off(&mut self, pos: (i32, i32, i32), state: u16) {
         self.drop_block_items(pos, state);
@@ -152,6 +165,10 @@ impl Game {
             return;
         }
         match id {
+            _ if super::liquids::is_liquid(id) => {
+                self.liquid_neighbor_changed(pos, state);
+                return;
+            }
             block::REDSTONE_WIRE => {
                 if self.wire_can_stay(pos) {
                     self.wire_neighbor_changed(pos, state);
@@ -184,6 +201,17 @@ impl Game {
             block::PISTON_EXTENSION => return,
             block::NOTEBLOCK => {
                 self.note_block_changed(pos);
+                return;
+            }
+            // BlockCactus: destroyBlock without support; BlockReed: checkForDrop.
+            block::CACTUS | block::REEDS => {
+                if !self.cane_stays(pos, id == block::CACTUS) {
+                    if id == block::CACTUS {
+                        self.destroy_block(pos, state);
+                    } else {
+                        self.pop_off(pos, state);
+                    }
+                }
                 return;
             }
             block::HOPPER => {
@@ -265,6 +293,7 @@ impl Game {
             _ if super::falling_block::falls(id) => {
                 self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
             }
+            _ if super::liquids::is_liquid(id) => self.liquid_added(pos, state),
             block::REDSTONE_WIRE => self.wire_added(pos, state),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
@@ -409,6 +438,7 @@ impl Game {
                 self.click(pos, CLICK_OFF);
             }
             _ if super::falling_block::falls(id) => self.check_fallable(pos, state),
+            block::FLOWING_WATER | block::FLOWING_LAVA => self.flowing_liquid_tick(pos, state),
             block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => self.torch_tick(pos, state),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
             _ if super::pressure_plates::is_plate(id) => self.plate_tick(pos, state),

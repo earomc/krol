@@ -43,6 +43,42 @@ pub enum Material {
 }
 
 impl Material {
+    /// `Material.isSolid`: false for air, fire, liquids, portals and the "logic"
+    /// materials (plants, vines, circuits, carpet, snow layers).
+    pub fn is_solid(self) -> bool {
+        !matches!(
+            self,
+            Self::Air
+                | Self::Fire
+                | Self::Water
+                | Self::Lava
+                | Self::Portal
+                | Self::Plants
+                | Self::Vine
+                | Self::Circuits
+                | Self::Carpet
+                | Self::Snow
+        )
+    }
+
+    /// `Material.blocksMovement`: like [`Self::is_solid`], except that cobwebs do not.
+    pub fn blocks_movement(self) -> bool {
+        self.is_solid() && self != Self::Web
+    }
+
+    /// `Material.isLiquid`.
+    pub fn is_liquid(self) -> bool {
+        matches!(self, Self::Water | Self::Lava)
+    }
+
+    /// `Material.getCanBurn`.
+    pub fn can_burn(self) -> bool {
+        matches!(
+            self,
+            Self::Wood | Self::Leaves | Self::Vine | Self::Cloth | Self::Carpet | Self::Tnt
+        )
+    }
+
     /// Whether any player can harvest blocks of this material, with or without a tool
     /// (`isToolNotRequired`).
     pub fn tool_not_required(self) -> bool {

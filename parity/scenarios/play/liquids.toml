@@ -1,0 +1,104 @@
+description = "Liquids: flowing water spreading over grass toward a hole and washing away a torch, lava spreading, lava turning into obsidian and cobblestone next to water, lava flowing onto water making stone; placed with /setblock (also its noChange, keep, outOfWorld and unknown block errors)"
+subsystem = "play"
+
+# No player joins: the spawn chunks stay loaded and run their scheduled ticks. Lava only
+# uses the unseeded world random while it recedes, which never happens here.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false" }
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -445 air"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -466 2 -445 air"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -445 torch 5"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -445 flowing_water"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -460 flowing_lava"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -475 water"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -475 lava"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -490 water"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -490 flowing_lava 2"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -455 4 -460 water"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -455 5 -460 flowing_lava"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -460 0 -500 bedrock"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -460 stone keep"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock 0 300 0 stone"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -460 no_such_block"
+wait_ms = 15000
+
+[observe]
+log = true
+blocks = [
+    [-478, 4, -445], [-477, 4, -445], [-476, 4, -445], [-475, 4, -445], [-474, 4, -445],
+    [-473, 4, -445], [-472, 4, -445], [-471, 4, -445], [-470, 4, -445], [-469, 4, -445],
+    [-468, 4, -445], [-467, 4, -445], [-466, 4, -445], [-465, 4, -445], [-464, 4, -445],
+    [-463, 4, -445], [-462, 4, -445], [-470, 4, -453], [-470, 4, -452], [-470, 4, -451],
+    [-470, 4, -450], [-470, 4, -449], [-470, 4, -448], [-470, 4, -447], [-470, 4, -446],
+    [-470, 4, -444], [-470, 4, -443], [-470, 4, -442], [-470, 4, -441], [-470, 4, -440],
+    [-470, 4, -439], [-470, 4, -438], [-470, 4, -437], [-466, 3, -445], [-466, 2, -445],
+    [-466, 1, -445], [-473, 4, -448], [-467, 4, -442], [-475, 4, -460], [-474, 4, -460],
+    [-473, 4, -460], [-472, 4, -460], [-471, 4, -460], [-470, 4, -460], [-469, 4, -460],
+    [-468, 4, -460], [-467, 4, -460], [-466, 4, -460], [-465, 4, -460], [-470, 4, -465],
+    [-470, 4, -464], [-470, 4, -463], [-470, 4, -462], [-470, 4, -461], [-470, 4, -459],
+    [-470, 4, -458], [-470, 4, -457], [-470, 4, -456], [-470, 4, -475], [-469, 4, -475],
+    [-471, 4, -475], [-470, 4, -476], [-470, 4, -474], [-470, 4, -490], [-469, 4, -490],
+    [-468, 4, -490], [-471, 4, -490], [-455, 4, -460], [-455, 5, -460], [-454, 4, -460],
+    [-454, 5, -460], [-453, 4, -460], [-456, 4, -460], [-455, 4, -461],
+]

@@ -43,6 +43,12 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "commands.generic.num.tooSmall" => {
             "The number you have entered (%s) is too small, it must be at least %s"
         }
+        "commands.generic.double.tooBig" => {
+            "The number you have entered (%s) is too big, it must be at most %s"
+        }
+        "commands.generic.double.tooSmall" => {
+            "The number you have entered (%s) is too small, it must be at least %s"
+        }
         "commands.generic.player.notFound" => "That player cannot be found",
         "commands.generic.player.unspecified" => {
             "You must specify which player you wish to perform this action on."
@@ -112,6 +118,10 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "commands.xp.success.levels" => "Given %s levels to %s",
         "commands.xp.success.negative.levels" => "Taken %s levels from %s",
         "commands.tp.success.coordinates" => "Teleported %s to %s, %s, %s",
+        "commands.setblock.success" => "Block placed",
+        "commands.setblock.noChange" => "The block couldn't be placed",
+        "commands.setblock.outOfWorld" => "Cannot place block outside of the world",
+        "commands.give.block.notFound" => "There is no such block with name %s",
         _ => return crate::game::commands::usage_text(key),
     })
 }

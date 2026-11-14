@@ -10,6 +10,7 @@ use krol_protocol::packets::play::ClientboundPlay;
 use tracing::{info, warn};
 
 use super::Game;
+use super::ids::block;
 use crate::chat::{Arg, Component};
 use crate::status::java_uuid_string;
 use crate::userlist::{BanInfo, IpBan, OpEntry, PlayerBan, WhitelistEntry};
@@ -855,6 +856,7 @@ impl Game {
                 Ok(())
             }
             "gamerule" => self.cmd_gamerule(sender, args),
+            "setblock" => self.cmd_setblock(sender, args),
             "save-off" | "save-on" => {
                 let enable = name == "save-on";
                 if self.saving_enabled == enable {
@@ -1123,6 +1125,102 @@ impl Game {
             false,
             "commands.tp.success.coordinates",
             vec![s(name_t), s(f(x)), s(f(y)), s(f(z))],
+        );
+        Ok(())
+    }
+
+    /// `CommandBase.parseBlockPos` (not centered): relative to the sender's block
+    /// position (the origin for the console).
+    fn parse_block_pos(
+        &self,
+        sender: Sender,
+        args: &[&str],
+    ) -> Result<(i32, i32, i32), CommandError> {
+        let base = match sender {
+            Sender::Console => (0, 0, 0),
+            Sender::Player(i) => {
+                let p = self.players[i].pos;
+                (
+                    krol_java::math::floor_f64(p.0),
+                    krol_java::math::floor_f64(p.1 + 0.5),
+                    krol_java::math::floor_f64(p.2),
+                )
+            }
+        };
+        let x = parse_coordinate_bounded(f64::from(base.0), args[0], COORD_LIMIT)?;
+        let y = parse_coordinate_bounded(f64::from(base.1), args[1], (0, 256))?;
+        let z = parse_coordinate_bounded(f64::from(base.2), args[2], COORD_LIMIT)?;
+        Ok((
+            krol_java::math::floor_f64(x),
+            krol_java::math::floor_f64(y),
+            krol_java::math::floor_f64(z),
+        ))
+    }
+
+    /// Vanilla `CommandSetBlock` (data tags are not supported yet).
+    fn cmd_setblock(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        if args.len() < 4 {
+            return Err(usage("setblock"));
+        }
+        let pos = self.parse_block_pos(sender, args)?;
+        let id = block_by_text(args[3])?;
+        let meta = if args.len() >= 5 {
+            parse_int(args[4], 0, 15)?
+        } else {
+            0
+        };
+        let loaded = (0..256).contains(&pos.1)
+            && self.level.overworld.is_chunk_loaded(pos.0 >> 4, pos.2 >> 4);
+        if !loaded {
+            return Err(err("commands.setblock.outOfWorld", vec![]));
+        }
+        if args.len() >= 7 && super::world::has_tile_entity(id) {
+            return self.not_implemented(sender, "setblock (data tag)");
+        }
+        if args.len() >= 6 {
+            if args[5] == "destroy" {
+                let old = self.level.overworld.block(pos.0, pos.1, pos.2);
+                if old >> 4 != block::AIR {
+                    self.destroy_block(pos, old);
+                }
+                if id == block::AIR {
+                    self.notify(
+                        sender,
+                        "setblock",
+                        false,
+                        "commands.setblock.success",
+                        vec![],
+                    );
+                    return Ok(());
+                }
+            } else if args[5] == "keep"
+                && self.level.overworld.block(pos.0, pos.1, pos.2) >> 4 != block::AIR
+            {
+                return Err(err("commands.setblock.noChange", vec![]));
+            }
+        }
+        // An old tile entity is emptied (no drops) and removed first.
+        if let Some(te) = self.level.overworld.tile_entity_mut(pos) {
+            te.remove("Items");
+            let flags = if id == block::AIR {
+                super::block_update::flags::SEND
+            } else {
+                0
+            };
+            self.set_block_flags(pos, 0, flags);
+        }
+        let state = id << 4 | meta as u16;
+        if self.level.overworld.block(pos.0, pos.1, pos.2) == state {
+            return Err(err("commands.setblock.noChange", vec![]));
+        }
+        self.set_block_flags(pos, state, super::block_update::flags::SEND);
+        self.notify_neighbors(pos, id);
+        self.notify(
+            sender,
+            "setblock",
+            false,
+            "commands.setblock.success",
+            vec![],
         );
         Ok(())
     }
@@ -1445,6 +1543,49 @@ fn parse_coordinate(base: f64, input: &str, center: bool) -> Result<f64, Command
         value += 0.5;
     }
     Ok(if relative { base + value } else { value })
+}
+
+/// The horizontal coordinate bounds of `parseBlockPos`.
+const COORD_LIMIT: (i32, i32) = (-30_000_000, 30_000_000);
+
+/// Vanilla `CommandBase.parseDouble(base, input, min, max, false)`.
+fn parse_coordinate_bounded(
+    base: f64,
+    input: &str,
+    (min, max): (i32, i32),
+) -> Result<f64, CommandError> {
+    let v = parse_coordinate(base, input, false)?;
+    let f = krol_java::fmt::java_double;
+    if v < f64::from(min) {
+        return Err(err(
+            "commands.generic.double.tooSmall",
+            vec![s(f(v)), s(min)],
+        ));
+    }
+    if v > f64::from(max) {
+        return Err(err("commands.generic.double.tooBig", vec![s(f(v)), s(max)]));
+    }
+    Ok(v)
+}
+
+/// Vanilla `CommandBase.getBlockByText`: a block registry name (`minecraft:` is the
+/// default domain; only the domain is case-insensitive).
+fn block_by_text(text: &str) -> Result<u16, CommandError> {
+    let (domain, path) = match text.find(':') {
+        Some(i) if i > 1 => (text[..i].to_lowercase(), &text[i + 1..]),
+        Some(i) => ("minecraft".to_owned(), &text[i + 1..]),
+        None => ("minecraft".to_owned(), text),
+    };
+    let found = (domain == "minecraft")
+        .then(|| super::block_data::BLOCKS.iter().position(|b| b.0 == path))
+        .flatten()
+        .and_then(|id| u16::try_from(id).ok());
+    found.ok_or_else(|| {
+        err(
+            "commands.give.block.notFound",
+            vec![s(format!("{domain}:{path}"))],
+        )
+    })
 }
 
 /// Whether `s` would parse with Java's `UUID.fromString`.

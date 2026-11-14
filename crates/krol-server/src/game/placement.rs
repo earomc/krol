@@ -373,6 +373,23 @@ pub fn placed_state(
             };
             ok.then(|| id << 4 | u16::from(meta))
         }
+        // Farmland is an ordinary block item (dry when placed).
+        ids::block::FARMLAND => state(0),
+        // BlockCactus.canPlaceBlockAt: sand or cactus below, nothing solid beside.
+        ids::block::CACTUS => {
+            super::random_ticks::cane_can_stay(world, at, true).then_some(id << 4)
+        }
+        // BlockSnow.canPlaceBlockAt: not on ice; on leaves, a full snow layer, or an
+        // opaque block that blocks movement.
+        ids::block::SNOW_LAYER => {
+            let b = below >> 4;
+            let ok = b != ids::block::ICE
+                && b != ids::block::PACKED_ICE
+                && (matches!(b, ids::block::LEAVES | ids::block::LEAVES2)
+                    || (b == ids::block::SNOW_LAYER && below & 7 == 7)
+                    || is_normal_cube(below));
+            ok.then_some(id << 4)
+        }
         // Carpet needs something below; pressure plates a solid top or a fence.
         171 => (below >> 4 != 0).then(|| id << 4 | u16::from(meta)),
         70 | 72 | 147 | 148 => {

@@ -7,8 +7,20 @@
 pub mod block {
     /// `air`.
     pub const AIR: u16 = 0;
+    /// `stone`.
+    pub const STONE: u16 = 1;
     /// `grass`.
     pub const GRASS: u16 = 2;
+    /// `cobblestone`.
+    pub const COBBLESTONE: u16 = 4;
+    /// `flowing_water`.
+    pub const FLOWING_WATER: u16 = 8;
+    /// `water` (still).
+    pub const WATER: u16 = 9;
+    /// `flowing_lava`.
+    pub const FLOWING_LAVA: u16 = 10;
+    /// `lava` (still).
+    pub const LAVA: u16 = 11;
     /// `dirt`.
     pub const DIRT: u16 = 3;
     /// `sapling`.
@@ -39,6 +51,18 @@ pub mod block {
     pub const SPONGE: u16 = 19;
     /// `coal_ore`.
     pub const COAL_ORE: u16 = 16;
+    /// `brown_mushroom`.
+    pub const BROWN_MUSHROOM: u16 = 39;
+    /// `red_mushroom`.
+    pub const RED_MUSHROOM: u16 = 40;
+    /// `stone_slab`.
+    pub const STONE_SLAB: u16 = 44;
+    /// `carpet`.
+    pub const CARPET: u16 = 171;
+    /// `stone_slab2` (red sandstone).
+    pub const STONE_SLAB2: u16 = 182;
+    /// `leaves`.
+    pub const LEAVES: u16 = 18;
     /// `lapis_ore`.
     pub const LAPIS_ORE: u16 = 21;
     /// `tallgrass`.
@@ -113,12 +137,28 @@ pub mod block {
     pub const REDSTONE_TORCH: u16 = 76;
     /// `stone_button`.
     pub const STONE_BUTTON: u16 = 77;
+    /// `snow_layer`.
+    pub const SNOW_LAYER: u16 = 78;
     /// `ice`.
     pub const ICE: u16 = 79;
+    /// `snow` (the block).
+    pub const SNOW: u16 = 80;
     /// `cactus`.
     pub const CACTUS: u16 = 81;
+    /// `reeds` (sugar cane).
+    pub const REEDS: u16 = 83;
+    /// `pumpkin`.
+    pub const PUMPKIN: u16 = 86;
     /// `soul_sand`.
     pub const SOUL_SAND: u16 = 88;
+    /// `melon_block`.
+    pub const MELON_BLOCK: u16 = 103;
+    /// `pumpkin_stem`.
+    pub const PUMPKIN_STEM: u16 = 104;
+    /// `melon_stem`.
+    pub const MELON_STEM: u16 = 105;
+    /// `mycelium`.
+    pub const MYCELIUM: u16 = 110;
     /// `glowstone`.
     pub const GLOWSTONE: u16 = 89;
     /// `unpowered_repeater`.
@@ -167,6 +207,8 @@ pub mod block {
     pub const QUARTZ_ORE: u16 = 153;
     /// `stained_hardened_clay`.
     pub const STAINED_HARDENED_CLAY: u16 = 159;
+    /// `leaves2` (acacia and dark oak).
+    pub const LEAVES2: u16 = 161;
     /// `slime`.
     pub const SLIME: u16 = 165;
     /// `hardened_clay`.

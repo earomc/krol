@@ -1,0 +1,65 @@
+description = "Random block ticks (end state at a high randomTickSpeed): grass under a stone dies, a dirt-filled hole and dried-out farmland turn back into grass, a cactus on sand grows to three blocks, a snow layer next to a torch melts"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. Random tick positions come from an unseeded random in vanilla, so only the
+# end state is compared: the player's packets (block changes at random times) are
+# ignored. The view distance is small to keep the random ticks cheap.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2", view-distance = "3" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 18
+chat = [
+    "@2500 !creative 36 1 8 0",
+    "@2700 !creative 37 3 8 0",
+    "@2900 !creative 38 60 8 0",
+    "@3100 !creative 39 12 8 0",
+    "@3300 !creative 40 81 8 0",
+    "@3500 !creative 41 78 8 0",
+    "@3700 !creative 42 50 8 0",
+    "@3900 !place -474 3 -433 1",
+    "@4100 !dig -472 3 -433 1",
+    "@4300 !hold 1",
+    "@4500 !place -472 2 -433 1",
+    "@4700 !dig -470 3 -436 1",
+    "@4900 !hold 2",
+    "@5100 !place -470 2 -436 1",
+    "@5300 !hold 3",
+    "@5500 !place -476 3 -433 1",
+    "@5700 !hold 4",
+    "@5900 !place -476 4 -433 1",
+    "@6100 !hold 6",
+    "@6300 !place -470 3 -430 1",
+    "@6500 !hold 5",
+    "@6700 !place -469 3 -430 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 7500
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 1000"
+wait_ms = 10000
+
+[observe]
+log = true
+blocks = [
+    [-474, 3, -433], [-472, 3, -433], [-470, 3, -436], [-476, 5, -433], [-476, 6, -433],
+    [-476, 7, -433], [-476, 8, -433], [-469, 4, -430],
+]
+ignore = ["player"]

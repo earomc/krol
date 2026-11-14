@@ -50,7 +50,8 @@ pub struct PlayObservation {
 /// `!creative <slot> <id> <count> <damage>` (set a slot in creative mode),
 /// `!place <x> <y> <z> <face> [cx cy cz]` (use the held item, cursor 8/8/8 unless
 /// given in 1/16; sends the swing first),
-/// `!hold <slot>` (select hotbar slot), `!swing` (arm animation),
+/// `!use` (use the held item, face 255), `!hold <slot>` (select hotbar slot),
+/// `!swing` (arm animation),
 /// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0),
 /// `!click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]`,
 /// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`.
@@ -328,6 +329,13 @@ fn action_or_chat(
         }],
         Some("hold") => vec![ServerboundPlay::HeldItemChange {
             slot: num(1) as i16,
+        }],
+        // Using the held item, not at a block: what clients send for buckets, food, ...
+        Some("use") => vec![ServerboundPlay::BlockPlacement {
+            pos: (-1, -1, -1),
+            face: -1,
+            item: held.first().cloned().flatten(),
+            cursor: (0, 0, 0),
         }],
         Some("place") => vec![
             ServerboundPlay::Animation,

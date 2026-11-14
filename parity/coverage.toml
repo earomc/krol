@@ -319,6 +319,26 @@ description = "Lighting: sky and block light updates on block changes (checkLigh
 scenarios = ["play/lighting"]
 
 [[feature]]
+id = "world.random_ticks"
+description = "Random block ticks: active chunks in vanilla order, updateLCG positions, randomTickSpeed, skylightSubtracted; grass/mycelium spreading and dying, farmland, crops, stems, sugar cane, cactus, ice and snow melting, redstone ore, nether wart, plants without soil; farmland, cactus and snow layer placement. Not yet: saplings, leaf decay, fire, vines, mushrooms, lightning, freezing and snowfall"
+scenarios = ["play/random_ticks"]
+
+[[feature]]
+id = "world.liquids"
+description = "Liquids: water and lava flow (levels, falling columns, new sources, flow toward the nearest drop, washing away blocks), lava hardening into obsidian, cobblestone and stone next to water with the fizz sound. Not yet: lava setting fire, the nether's faster lava, entities in liquids"
+scenarios = ["play/liquids"]
+
+[[feature]]
+id = "item.buckets"
+description = "Buckets: use-item packets (face 255), the server's block ray trace, filling and emptying water and lava buckets in survival (stack handling, statistics, inventory resend). Not yet: milk, creative use, selection boxes of stairs, fences and other shaped blocks"
+scenarios = ["play/buckets"]
+
+[[feature]]
+id = "commands.setblock"
+description = "/setblock: block names, data values, replace/destroy/keep, relative coordinates, noChange, outOfWorld, coordinate bounds and unknown block errors. Not yet: data tags"
+scenarios = ["play/liquids"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (brewing stands, enchanting tables, anvils, beacons, ...): open window, slots, clicks, closing"
 scenarios = []

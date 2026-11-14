@@ -120,6 +120,8 @@ struct LoadedChunk {
     /// `heightMapMinimum` (0 for chunks loaded from disk, which vanilla does not
     /// recompute).
     height_minimum: i32,
+    /// Blocks that tick randomly per section (`ExtendedBlockStorage.tickRefCount`).
+    random_counts: [u16; 16],
 }
 
 impl World {
@@ -177,6 +179,15 @@ impl World {
             state,
             has_sky,
         );
+        if let Some(c) = self.chunks.get_mut(&(x >> 4, z >> 4)) {
+            let count = &mut c.random_counts[(y >> 4) as usize];
+            if super::light_data::ticks_randomly(old >> 4) {
+                *count = count.saturating_sub(1);
+            }
+            if super::light_data::ticks_randomly(state >> 4) {
+                *count += 1;
+            }
+        }
         self.chunk_light_after_set((x, y, z), old, state, old_height, new_section);
         self.update_tile_entity((x, y, z), old, state);
         true
@@ -246,6 +257,16 @@ impl World {
             let from_disk = loaded.is_some();
             let mut chunk = loaded.unwrap_or_else(|| Chunk::empty(cx, cz));
             sort_tile_entities(&mut chunk.tile_entities);
+            let mut random_counts = [0u16; 16];
+            for (k, s) in chunk.sections.iter().enumerate() {
+                if let Some(s) = s {
+                    random_counts[k] = s
+                        .blocks
+                        .iter()
+                        .filter(|&&b| super::light_data::ticks_randomly(b >> 4))
+                        .count() as u16;
+                }
+            }
             // AnvilChunkLoader.loadEntities: saved ticks go back into the scheduler.
             if let Some(ticks) = chunk.tile_ticks.take() {
                 self.scheduler.load(&ticks, self.total_time);
@@ -271,6 +292,7 @@ impl World {
                     gap_columns: [false; 256],
                     gap_pending: false,
                     height_minimum: 0,
+                    random_counts,
                 },
             );
             self.populate_around(cx, cz);
@@ -499,6 +521,13 @@ impl World {
         let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
         let _ = list.push(Tag::Compound(c));
         sort_tile_entities(list);
+    }
+
+    /// How many blocks in a section tick randomly (`getNeedsRandomTick` when above 0).
+    pub fn random_tick_count(&self, cx: i32, cz: i32, section: i32) -> u16 {
+        self.chunks
+            .get(&(cx, cz))
+            .map_or(0, |c| c.random_counts[section as usize])
     }
 
     /// Whether the chunk is loaded (vanilla `isBlockLoaded`), without loading it.

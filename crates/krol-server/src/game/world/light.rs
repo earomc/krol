@@ -84,6 +84,37 @@ impl World {
         })
     }
 
+    /// `World.canSeeSky` for other modules.
+    pub fn sees_sky(&self, pos: (i32, i32, i32)) -> bool {
+        self.can_see_sky(pos)
+    }
+
+    /// `Chunk.getLightSubtracted`: the brighter of sky light (less `subtracted`) and
+    /// block light.
+    pub fn light_subtracted(&self, pos: (i32, i32, i32), subtracted: i32) -> i32 {
+        let Some(c) = self.chunks.get(&(pos.0 >> 4, pos.2 >> 4)) else {
+            return 0;
+        };
+        match &c.chunk.sections[(pos.1 >> 4) as usize] {
+            None => {
+                if self.has_sky && subtracted < MAX_LIGHT {
+                    MAX_LIGHT - subtracted
+                } else {
+                    0
+                }
+            }
+            Some(s) => {
+                let i = section_index(pos.0, pos.1, pos.2);
+                let sky = if self.has_sky {
+                    s.sky_light.as_ref().map_or(0, |l| i32::from(l.get(i)))
+                } else {
+                    0
+                } - subtracted;
+                sky.max(i32::from(s.block_light.get(i)))
+            }
+        }
+    }
+
     /// `World.getLightFor`.
     pub fn light(&self, t: LightType, pos: (i32, i32, i32)) -> i32 {
         let pos = (pos.0, pos.1.max(0), pos.2);

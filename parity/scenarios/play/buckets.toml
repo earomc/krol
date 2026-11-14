@@ -1,0 +1,60 @@
+description = "Buckets in survival: a water bucket emptied into a pit in front of the player, the source picked up again with a stack of two empty buckets (the filled one goes to a free slot), a lava bucket emptied to the side; use-item packets (face 255) with the server's own ray trace"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset), gets the buckets in
+# creative mode and then uses them in survival mode. The lava is never picked up: lava
+# drying up waits a random time. The lava lands about 4.5 blocks away, out of the
+# player's reach (krol does not handle players in liquids yet).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+# A one-block pit where the water lands: it cannot spread, so picking it up does not
+# race with the flow ticks.
+[[steps]]
+action = "console"
+command = "setblock -472 3 -431 air"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 13
+chat = [
+    "@2500 !creative 36 325 2 0",
+    "@2700 !creative 37 326 1 0",
+    "@2900 !creative 38 327 1 0",
+    "@6300 !look 0 20",
+    "@6500 !hold 1",
+    "@6800 !use",
+    "@7200 !hold 0",
+    "@7400 !use",
+    "@9100 !look 90 20",
+    "@9300 !hold 2",
+    "@9600 !use",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 3300
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+wait_ms = 10000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

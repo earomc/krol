@@ -7,20 +7,20 @@ use std::sync::OnceLock;
 /// Block ids in the table (0-255).
 const IDS: usize = 256;
 
-/// `(opacity, light value, uses neighbor brightness)` per block id.
-fn table() -> &'static [(u8, u8, bool); IDS] {
-    static TABLE: OnceLock<[(u8, u8, bool); IDS]> = OnceLock::new();
+/// `(opacity, light value, uses neighbor brightness, ticks randomly)` per block id.
+fn table() -> &'static [(u8, u8, bool, bool); IDS] {
+    static TABLE: OnceLock<[(u8, u8, bool, bool); IDS]> = OnceLock::new();
     TABLE.get_or_init(|| {
-        let mut t = [(0u8, 0u8, false); IDS];
+        let mut t = [(0u8, 0u8, false, false); IDS];
         for line in include_str!("../../data/block_light.txt").lines() {
             let f: Vec<u32> = line
                 .split_whitespace()
                 .filter_map(|v| v.parse().ok())
                 .collect();
-            if let [id, opacity, light, neighbor] = f[..]
+            if let [id, opacity, light, neighbor, random] = f[..]
                 && (id as usize) < IDS
             {
-                t[id as usize] = (opacity as u8, light as u8, neighbor != 0);
+                t[id as usize] = (opacity as u8, light as u8, neighbor != 0, random != 0);
             }
         }
         t
@@ -37,8 +37,12 @@ pub fn light_value(id: u16) -> i32 {
     table().get(usize::from(id)).map_or(0, |e| i32::from(e.1))
 }
 
+/// `Block.getTickRandomly`.
+pub fn ticks_randomly(id: u16) -> bool {
+    table().get(usize::from(id)).is_some_and(|e| e.3)
+}
+
 /// `Block.getUseNeighborBrightness` (slabs, stairs, farmland, ...).
-#[allow(dead_code)] // getLightFromNeighbors for random ticks: TODO(M5)
 pub fn uses_neighbor_brightness(id: u16) -> bool {
     table().get(usize::from(id)).is_some_and(|e| e.2)
 }

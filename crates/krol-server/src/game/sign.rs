@@ -84,11 +84,7 @@ pub fn description(te: &Compound) -> Option<ClientboundPlay> {
 
 /// `Material.isSolid`.
 pub(super) fn solid_material(state: u16) -> bool {
-    use super::block_data::Material::*;
-    !matches!(
-        super::block_data::material(state >> 4),
-        Air | Water | Lava | Plants | Vine | Circuits | Carpet | Snow | Fire | Portal
-    )
+    super::block_data::material(state >> 4).is_solid()
 }
 
 impl Game {

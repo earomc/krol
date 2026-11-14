@@ -8,6 +8,7 @@
 pub mod block_data;
 mod block_update;
 pub mod blocks;
+mod buckets;
 mod chest;
 pub mod commands;
 mod container;
@@ -23,6 +24,7 @@ mod interact;
 mod item_data;
 mod item_entity;
 mod light_data;
+mod liquids;
 mod movement;
 mod note_block;
 pub mod physics;
@@ -31,6 +33,8 @@ mod placement;
 pub mod player;
 mod powered_blocks;
 mod pressure_plates;
+mod random_ticks;
+mod raytrace;
 mod recipes;
 mod redstone;
 mod scheduler;
@@ -230,6 +234,11 @@ struct Game {
     moving_progress: std::collections::HashMap<(i32, i32, i32), f32>,
     /// Scheduled ticks still waiting in the batch being run (`pendingTickListEntriesThisTick`).
     ticks_this_tick: Vec<((i32, i32, i32), u16)>,
+    /// `World.updateLCG`: picks random tick positions (vanilla starts it at random;
+    /// krol at 0).
+    update_lcg: i32,
+    /// `World.skylightSubtracted`: how much time and weather darken the sky.
+    skylight_subtracted: i32,
     /// `BlockRedstoneTorch.toggles`: recent torch toggles (position, total time).
     torch_toggles: Vec<((i32, i32, i32), i64)>,
     /// Falling blocks by entity id.
@@ -292,6 +301,8 @@ pub fn start(
         wire_gives_power: true,
         wire_queue: Vec::new(),
         torch_toggles: Vec::new(),
+        update_lcg: 0,
+        skylight_subtracted: 0,
         ticks_this_tick: Vec::new(),
         moving_progress: Default::default(),
         note_powered: Default::default(),
@@ -407,6 +418,7 @@ impl Game {
 
         self.refresh_status();
         self.tick_weather();
+        self.update_skylight_subtracted();
         self.tick_time();
         self.tick_scheduled();
         if self.tick_count % 900 == 0 && self.saving_enabled {
@@ -1202,7 +1214,7 @@ impl Game {
     }
 
     /// Vanilla `DedicatedServer.isBlockProtected` (spawn protection).
-    fn is_block_protected(&mut self, i: usize, pos: (i32, i32, i32)) -> bool {
+    pub(super) fn is_block_protected(&mut self, i: usize, pos: (i32, i32, i32)) -> bool {
         let key = crate::status::java_uuid_string(self.players[i].profile.id);
         let (ops_empty, is_op) = match self.shared.user_lists.lock() {
             Ok(mut l) => {
@@ -1335,7 +1347,11 @@ impl Game {
         cursor: (i8, i8, i8),
     ) {
         if face == -1 {
-            // TODO: using an item in the air (face 255).
+            let Some(held) = self.players[i].held().cloned() else {
+                return;
+            };
+            self.try_use_item(i, held);
+            self.after_placement(i, packet_item);
             return;
         }
         let offset = |p: (i32, i32, i32), f: i8| match f {
@@ -1373,6 +1389,16 @@ impl Game {
         }
         self.send_block(i, pos);
         self.send_block(i, offset(pos, face));
+        self.after_placement(i, packet_item);
+    }
+
+    /// The end of `processPlayerBlockPlacement`: an emptied held stack is cleared and
+    /// the held slot resynced if the client's stack differs.
+    fn after_placement(
+        &mut self,
+        i: usize,
+        packet_item: Option<krol_protocol::packets::play::ItemStack>,
+    ) {
         let player = &mut self.players[i];
         let held = 36 + player.selected;
         if player.inventory[held]
@@ -1394,6 +1420,49 @@ impl Game {
                 item,
             });
         }
+    }
+
+    /// `ItemInWorldManager.tryUseItem`: right-clicking with an item, not at a block.
+    fn try_use_item(&mut self, i: usize, held: krol_protocol::packets::play::ItemStack) {
+        if self.players[i].gamemode == 3 {
+            return;
+        }
+        let result = match held.id {
+            ids::item::BUCKET | ids::item::WATER_BUCKET | ids::item::LAVA_BUCKET => {
+                self.use_bucket(i, &held)
+            }
+            // TODO(M4): food, potions, bows, throwables and the other usable items.
+            _ => buckets::UseResult::Unchanged,
+        };
+        let slot = 36 + self.players[i].selected;
+        let mut new = match result {
+            buckets::UseResult::Unchanged => return,
+            buckets::UseResult::Resized => self.players[i].inventory[slot].clone(),
+            buckets::UseResult::Replaced(s) => s,
+        };
+        if self.players[i].gamemode == 1
+            && let Some(s) = new.as_mut()
+        {
+            s.count = held.count;
+            if item_data::max_damage(s.id) > 0 {
+                s.damage = held.damage;
+            }
+        }
+        if new.as_ref().is_some_and(|s| s.count == 0) {
+            new = None;
+        }
+        let p = &mut self.players[i];
+        p.inventory[slot] = new;
+        // sendContainerToPlayer(inventoryContainer).
+        p.send(ClientboundPlay::WindowItems {
+            window: 0,
+            items: p.inventory.clone(),
+        });
+        p.send(ClientboundPlay::SetSlot {
+            window: -1,
+            slot: -1,
+            item: p.window.cursor.clone(),
+        });
     }
 
     /// Vanilla `ItemBlock.onItemUse` / `ItemSlab.onItemUse` for the block items krol
@@ -1622,24 +1691,6 @@ impl Game {
         } else {
             let other = if hn { n } else { so };
             self.set_block_notify(other, state);
-        }
-    }
-
-    /// Vanilla `World.setActivePlayerChunksAndCheckLight` + `updateBlocks`: every chunk
-    /// within the view distance of a player (`floor(pos / 16)`) is ticked.
-    fn tick_active_chunks(&mut self, radius: i32) {
-        let mut active = std::collections::HashSet::new();
-        for p in &self.players {
-            let cx = krol_java::math::floor_f64(p.pos.0 / 16.0);
-            let cz = krol_java::math::floor_f64(p.pos.2 / 16.0);
-            for dx in -radius..=radius {
-                for dz in -radius..=radius {
-                    active.insert((cx + dx, cz + dz));
-                }
-            }
-        }
-        for (x, z) in active {
-            self.level.overworld.tick_chunk(x, z);
         }
     }
 
