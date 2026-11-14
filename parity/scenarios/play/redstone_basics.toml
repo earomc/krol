@@ -2,7 +2,8 @@ description = "Redstone: a lever powering three wires (15, 14, 13) into a lamp, 
 subsystem = "play"
 
 # jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
-# the console.
+# the console. Lever clicks are 1 s apart, so a short stall cannot merge a switch on
+# and off into one tick.
 
 [setup]
 world = "fixtures/worlds/flat"
@@ -14,7 +15,7 @@ action = "play"
 background = true
 protocol = 47
 name = "jeb_"
-seconds = 11
+seconds = 13
 chat = [
     "@2500 !creative 36 69 64 0",
     "@2600 !creative 37 331 64 0",
@@ -38,15 +39,15 @@ chat = [
     "@6200 !hold 0",
     "@6400 !place -474 4 -433 4",
     "@6800 !place -470 4 -433 1",
-    "@7300 !place -470 4 -433 1",
-    "@7800 !place -475 4 -433 1",
-    "@8600 !place -475 4 -433 1",
+    "@7800 !place -470 4 -433 1",
+    "@8800 !place -475 4 -433 1",
+    "@9800 !place -475 4 -433 1",
 ]
 
 [[steps]]
 action = "console"
 command = "gamemode 1 jeb_"
-wait_ms = 10700
+wait_ms = 12700
 
 [observe]
 log = true
