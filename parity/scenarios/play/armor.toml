@@ -1,0 +1,73 @@
+description = "Armor: an iron chestplate equipped by right-click (use item) in survival, then fire at the player's feet: each fire hit is reduced by its 6 armor points and wears it; the burning that follows bypasses armor"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, gets the chestplate in
+# creative mode and equips it in survival mode. The fire stands on netherrack (it would
+# go out at random elsewhere) for 3 s; water then puts the player out.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -472 3 -435 netherrack"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+chat = [
+    "@2500 !creative 36 307 1 0",
+    "@5500 !use",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 3500
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+wait_ms = 4000
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -435 fire"
+wait_ms = 3000
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -435 water"
+wait_ms = 5000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    # Hits come once per movement packet in fire, so the packet stream is not compared.
+    "player",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
+
+# How many fire hits land depends on how the movement packets fall into the 3 s:
+# about 0.76 health and 1 durability per hit.
+[observe.tolerance]
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Health" = 2
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.HealF" = 1.6
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Inventory" = 2
+"file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.damageTaken" = 16
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel" = 0.7

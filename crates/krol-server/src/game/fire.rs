@@ -256,13 +256,10 @@ impl Game {
     /// (`EnchantmentProtection.getFireTimeForEntity`).
     pub(super) fn ignite_player(&mut self, i: usize, seconds: i32) {
         let mut ticks = seconds * 20;
-        let level = super::tracker::equipment(&self.players[i])
-            .iter()
-            .map(|s| {
-                super::item_data::enchantment_level(s.as_ref(), super::item_data::FIRE_PROTECTION)
-            })
-            .max()
-            .unwrap_or(0);
+        let level = super::item_data::armor_enchantment(
+            &self.players[i].inventory,
+            super::item_data::FIRE_PROTECTION,
+        );
         if level > 0 {
             ticks -= (ticks as f32 * level as f32 * FIRE_PROTECTION_FACTOR).floor() as i32;
         }

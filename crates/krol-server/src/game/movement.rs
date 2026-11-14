@@ -238,11 +238,8 @@ impl Game {
             return;
         }
         // decreaseAirSupply: respiration can skip the decrease.
-        let respiration = super::tracker::equipment(p)
-            .iter()
-            .map(|s| super::item_data::enchantment_level(s.as_ref(), super::item_data::RESPIRATION))
-            .max()
-            .unwrap_or(0);
+        let respiration =
+            super::item_data::armor_enchantment(&p.inventory, super::item_data::RESPIRATION);
         let air = p.data.get_i16("Air");
         let keep = respiration > 0 && p.rand.next_int_bounded(respiration + 1) > 0;
         let air = if keep { air } else { air - 1 };

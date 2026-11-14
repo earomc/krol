@@ -144,6 +144,9 @@ pub enum GameEvent {
     Shutdown,
 }
 
+/// The first armor item (`leather_helmet`); armor comes in sets of four.
+const ARMOR_FIRST_ID: i16 = 298;
+
 /// Settings the game reads from `server.properties`.
 #[derive(Debug, Clone)]
 pub struct GameConfig {
@@ -261,6 +264,8 @@ struct Game {
     block_events: Vec<chest::BlockEvent>,
     /// The world's random (`World.rand`, unseeded in vanilla).
     world_rand: krol_java::JavaRandom,
+    /// `EnchantmentHelper.enchantmentRand` (unseeded in vanilla).
+    enchant_rand: krol_java::JavaRandom,
     /// `save-on` / `save-off`.
     saving_enabled: bool,
     /// The world's unseeded `Random` (weather durations).
@@ -317,6 +322,11 @@ pub fn start(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_nanos() as i64),
+        ),
+        enchant_rand: krol_java::JavaRandom::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(1, |d| d.as_nanos() as i64 ^ 0x5DEE_CE66),
         ),
         user_cache: crate::usercache::UserCache::load("usercache.json"),
         saving_enabled: true,
@@ -1435,6 +1445,7 @@ impl Game {
             ids::item::BUCKET | ids::item::WATER_BUCKET | ids::item::LAVA_BUCKET => {
                 self.use_bucket(i, &held)
             }
+            id if item_data::armor_points(id) > 0 => self.equip_armor(i, &held),
             // TODO(M4): food, potions, bows, throwables and the other usable items.
             _ => buckets::UseResult::Unchanged,
         };
@@ -1467,6 +1478,28 @@ impl Game {
             slot: -1,
             item: p.window.cursor.clone(),
         });
+    }
+
+    /// `ItemArmor.onItemRightClick`: the armor goes into its empty armor slot.
+    ///
+    /// TODO(M5): pumpkins and skulls go on the head too.
+    fn equip_armor(
+        &mut self,
+        i: usize,
+        held: &krol_protocol::packets::play::ItemStack,
+    ) -> buckets::UseResult {
+        // Helmet, chestplate, leggings, boots: window slots 5 to 8.
+        let slot = 5 + ((held.id - ARMOR_FIRST_ID) % 4) as usize;
+        let p = &mut self.players[i];
+        if p.inventory[slot].is_some() {
+            return buckets::UseResult::Unchanged;
+        }
+        p.inventory[slot] = Some(held.clone());
+        let hand = 36 + p.selected;
+        if let Some(s) = p.inventory[hand].as_mut() {
+            s.count = 0;
+        }
+        buckets::UseResult::Resized
     }
 
     /// Vanilla `ItemBlock.onItemUse` / `ItemSlab.onItemUse` for the block items krol

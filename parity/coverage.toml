@@ -354,6 +354,11 @@ description = "ItemStack.onBlockDestroyed when mining in survival: tools wear by
 scenarios = ["play/tool_wear"]
 
 [[feature]]
+id = "entity.armor"
+description = "Armor: armor points reducing blockable damage, armor wear (a quarter of the damage, boots first), protection, fire protection and feather falling (getEnchantmentModifierDamage), equipping armor with a right-click. Not yet: the resistance potion, blast and projectile protection, sword blocking, pumpkins and skulls as helmets, thorns"
+scenarios = ["play/armor"]
+
+[[feature]]
 id = "item.buckets"
 description = "Buckets: use-item packets (face 255), the server's block ray trace, filling and emptying water and lava buckets in survival (stack handling, statistics, inventory resend). Not yet: milk, creative use, selection boxes of stairs, fences and other shaped blocks"
 scenarios = ["play/buckets"]

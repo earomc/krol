@@ -402,14 +402,20 @@ impl Game {
         self.toss(i, stack, true);
     }
 
-    /// `ItemStack.damageItem(amount, player)` on the held item: wear (unless creative,
-    /// unbreakable or negated by unbreaking), breaking it past its maximum damage.
+    /// `ItemStack.damageItem(amount, player)` on the held item.
     pub(super) fn damage_held_item(&mut self, i: usize, amount: i32) {
+        let slot = 36 + self.players[i].selected;
+        self.damage_slot_item(i, slot, amount);
+    }
+
+    /// `ItemStack.damageItem(amount, player)` on the item in a player window slot: wear
+    /// (unless creative, unbreakable or negated by unbreaking), breaking it past its
+    /// maximum damage (the stack is left with count 0).
+    pub(super) fn damage_slot_item(&mut self, i: usize, slot: usize, amount: i32) {
         let p = &mut self.players[i];
         if p.gamemode == 1 {
             return;
         }
-        let slot = 36 + p.selected;
         let Some(stack) = p.inventory[slot].clone() else {
             return;
         };

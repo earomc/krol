@@ -38,6 +38,16 @@ impl DamageSource {
         }
     }
 
+    /// Armor does not reduce it (`isUnblockable`).
+    pub fn unblockable(self) -> bool {
+        matches!(self, Self::Fall | Self::Drown | Self::OnFire)
+    }
+
+    /// Fire damage (`isFireDamage`), reduced by fire protection.
+    pub fn fire(self) -> bool {
+        matches!(self, Self::OnFire | Self::InFire | Self::Lava)
+    }
+
     /// Damage creative and spectator players take too (`canHarmInCreative`).
     fn harms_in_creative(self) -> bool {
         false
@@ -50,6 +60,27 @@ impl DamageSource {
             Self::InFire | Self::Lava => DEFAULT_HUNGER_DAMAGE,
         }
     }
+}
+
+/// The armor slots of the player window: helmet, chestplate, leggings, boots
+/// (`armorInventory` is boots first).
+const ARMOR_SLOTS: [usize; 4] = [5, 6, 7, 8];
+
+/// `EnchantmentProtection.calcModifierDamage`.
+fn protection_modifier(id: i16, level: i32, source: DamageSource) -> i32 {
+    use super::item_data::{FEATHER_FALLING, FIRE_PROTECTION, PROTECTION};
+    if source.harms_in_creative() {
+        return 0;
+    }
+    let f = (6 + level * level) as f32 / 3.0;
+    let factor = match id {
+        PROTECTION => 0.75,
+        FIRE_PROTECTION if source.fire() => 1.25,
+        FEATHER_FALLING if source == DamageSource::Fall => 2.5,
+        // TODO(M5): blast (3) and projectile (4) protection.
+        _ => return 0,
+    };
+    krol_java::math::floor_f32(f * factor)
 }
 
 /// `DamageSource.hungerDamage` of damage that armor can block.
@@ -132,8 +163,71 @@ impl Game {
         (rand.next_float() - rand.next_float()) * 0.2 + 1.0
     }
 
-    /// Vanilla `EntityPlayer.damageEntity` (without armor, potions and enchantments).
+    /// `EntityLivingBase.applyArmorCalculations`: armor points reduce blockable damage
+    /// by 4% each, and the armor wears.
+    fn apply_armor(&mut self, i: usize, source: DamageSource, amount: f32) -> f32 {
+        if source.unblockable() {
+            return amount;
+        }
+        let armor: i32 = ARMOR_SLOTS
+            .iter()
+            .filter_map(|&s| self.players[i].inventory[s].as_ref())
+            .map(|s| super::item_data::armor_points(s.id))
+            .sum();
+        let reduced = amount * (25 - armor) as f32;
+        self.damage_armor(i, amount);
+        reduced / 25.0
+    }
+
+    /// `InventoryPlayer.damageArmor`: each armor piece (boots first) wears by a quarter
+    /// of the damage, at least 1.
+    fn damage_armor(&mut self, i: usize, amount: f32) {
+        let wear = (amount / 4.0).max(1.0) as i32;
+        for &slot in ARMOR_SLOTS.iter().rev() {
+            let is_armor = self.players[i].inventory[slot]
+                .as_ref()
+                .is_some_and(|s| super::item_data::armor_points(s.id) > 0);
+            if !is_armor {
+                continue;
+            }
+            self.damage_slot_item(i, slot, wear);
+            let p = &mut self.players[i];
+            if p.inventory[slot].as_ref().is_some_and(|s| s.count == 0) {
+                p.inventory[slot] = None;
+            }
+        }
+    }
+
+    /// `EntityLivingBase.applyPotionDamageCalculations` (without potions): protection
+    /// enchantments on the armor (`EnchantmentHelper.getEnchantmentModifierDamage`).
+    fn apply_protection(&mut self, i: usize, source: DamageSource, amount: f32) -> f32 {
+        // TODO(M5): the resistance potion.
+        if amount <= 0.0 {
+            return 0.0;
+        }
+        let mut modifier = 0;
+        for &slot in ARMOR_SLOTS.iter().rev() {
+            let Some(stack) = self.players[i].inventory[slot].as_ref() else {
+                continue;
+            };
+            for (id, level) in super::item_data::enchantments(stack) {
+                modifier += protection_modifier(id, level, source);
+            }
+        }
+        let modifier = modifier.clamp(0, 25);
+        let k = ((modifier + 1) >> 1) + self.enchant_rand.next_int_bounded((modifier >> 1) + 1);
+        let k = k.min(20);
+        if k > 0 {
+            amount * (25 - k) as f32 / 25.0
+        } else {
+            amount
+        }
+    }
+
+    /// Vanilla `EntityPlayer.damageEntity` (no sword blocking yet).
     fn damage_player(&mut self, i: usize, source: DamageSource, amount: f32) {
+        let amount = self.apply_armor(i, source, amount);
+        let amount = self.apply_protection(i, source, amount);
         let p = &mut self.players[i];
         let absorption = p.data.get_f32("AbsorptionAmount");
         let damage = (amount - absorption).max(0.0);
