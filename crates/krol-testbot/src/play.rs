@@ -51,7 +51,8 @@ pub struct PlayObservation {
 /// `!place <x> <y> <z> <face>` (use the held item, cursor 8/8/8; sends the swing first),
 /// `!hold <slot>` (select hotbar slot), `!swing` (arm animation),
 /// `!look <yaw> <pitch>` (Player Look, on ground). Optional
-/// `moves` (offsets from the first server-given position) replace the idle Player
+/// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
+/// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1) replace the idle Player
 /// packet, one Position packet per tick, after which the bot idles again.
 ///
 /// # Errors
@@ -63,7 +64,7 @@ pub async fn play_session(
     name: &str,
     duration: Duration,
     chat: &[String],
-    moves: &[[f64; 3]],
+    moves: &[Vec<f64>],
 ) -> Result<PlayObservation, BotError> {
     let version = ProtocolVersion::from_number(protocol).unwrap_or(ProtocolVersion::V47);
     let mut conn = Conn::connect(addr).await?;
@@ -118,10 +119,12 @@ pub async fn play_session(
             _ = tick.tick() => {
                 if positioned {
                     match (origin, moves.get(next_move)) {
-                        (Some((ox, oy, oz)), Some([dx, dy, dz])) => {
+                        (Some((ox, oy, oz)), Some(m)) => {
                             next_move += 1;
+                            let at = |k: usize| m.get(k).copied().unwrap_or(0.0);
                             send_play(&mut conn, v5_eid, &ServerboundPlay::Position {
-                                x: ox + dx, y: oy + dy, z: oz + dz, on_ground: true,
+                                x: ox + at(0), y: oy + at(1), z: oz + at(2),
+                                on_ground: m.get(3).is_none_or(|g| *g != 0.0),
                             }).await?;
                         }
                         _ => send_play(&mut conn, v5_eid, &ServerboundPlay::Player { on_ground: true }).await?,

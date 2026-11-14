@@ -1,0 +1,52 @@
+description = "Server-side movement: walking, a jump, a 3-block fall, pushing into the ground (collision rollback), step sounds heard by another player"
+subsystem = "physics"
+
+# Falls stay at 3 blocks or less: fall damage needs the damage system.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+# The watcher stands 3 blocks south: overlapping players push each other, and how often
+# depends on how their packets interleave.
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_away.dat"
+
+[[steps]]
+id = "watcher"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 9
+
+[[steps]]
+id = "mover"
+action = "play"
+protocol = 47
+name = "jeb_"
+seconds = 6
+moves = [
+    # walk two blocks east
+    [0.25, 0, 0], [0.5, 0, 0], [0.75, 0, 0], [1.0, 0, 0], [1.25, 0, 0], [1.5, 0, 0], [1.75, 0, 0], [2.0, 0, 0],
+    # a jump
+    [2.0, 0.42, 0, 0], [2.0, 0.75, 0, 0], [2.0, 1.0, 0, 0], [2.0, 1.2, 0, 0], [2.0, 1.0, 0, 0], [2.0, 0.6, 0, 0], [2.0, 0, 0, 1],
+    # up three blocks, then fall back down
+    [2.0, 1, 0, 0], [2.0, 2, 0, 0], [2.0, 3, 0, 0], [2.0, 2, 0, 0], [2.0, 1, 0, 0], [2.0, 0, 0, 1],
+    # into the ground: the server puts the player back
+    [2.0, -0.5, 0, 1],
+    [2.0, 0, 0], [2.0, 0, 0], [2.0, 0, 0], [2.0, 0, 0], [2.0, 0, 0], [2.0, 0, 0], [2.0, 0, 0], [2.0, 0, 0],
+    # two more blocks east
+    [2.25, 0, 0], [2.5, 0, 0], [2.75, 0, 0], [3.0, 0, 0], [3.25, 0, 0], [3.5, 0, 0], [3.75, 0, 0], [4.0, 0, 0],
+]
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+]

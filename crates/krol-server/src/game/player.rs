@@ -78,6 +78,26 @@ pub struct Player {
     pub entity_chunk: (i32, i32),
     /// Arm swing state (`isSwingInProgress`, `swingProgressInt`).
     pub swing: (bool, i32),
+    /// Motion per tick of the server's copy of the player (`motionX/Y/Z`).
+    pub motion: (f64, f64, f64),
+    /// Sneaking (entity flag 1).
+    pub sneaking: bool,
+    /// Sprinting (entity flag 3).
+    pub sprinting: bool,
+    /// Flying (`capabilities.isFlying`).
+    pub flying: bool,
+    /// Jumped since the tracker last ran (`isAirBorne`).
+    pub airborne: bool,
+    /// Distance fallen since last on the ground (`fallDistance`).
+    pub fall_distance: f32,
+    /// In water (`inWater`).
+    pub in_water: bool,
+    /// The last move was blocked horizontally.
+    pub collided_horizontally: bool,
+    /// Distance walked, for step sounds (`distanceWalkedOnStepModified`).
+    pub distance_walked_on_step: f32,
+    /// Distance of the next step sound (`nextStepDistance`).
+    pub next_step_distance: i32,
     /// Equipment as last announced to viewers (`previousEquipment`).
     pub last_equipment: [Option<krol_protocol::packets::play::ItemStack>; 5],
     /// Chat spam counter (vanilla: `chatSpamThresholdCount`).
@@ -270,6 +290,10 @@ impl Player {
 
     fn store_state(&mut self) {
         store_inventory(&mut self.data, &self.inventory);
+        let m = self.motion;
+        self.data.insert("Motion", doubles(&[m.0, m.1, m.2]));
+        self.data
+            .insert("FallDistance", Tag::Float(self.fall_distance));
         // Vanilla EntityPlayer.writeEntityToNBT also stores the held item on its own.
         match self.held().and_then(item_to_nbt) {
             Some(c) => {

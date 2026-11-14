@@ -130,12 +130,22 @@ scenarios = ["play/two_players"]
 
 [[feature]]
 id = "entity.step_sounds"
-description = "Step sounds of walking players heard by others (needs moveEntity)"
-scenarios = []
+description = "Step sounds of walking players heard by others"
+scenarios = ["play/physics"]
 
 [[feature]]
 id = "play.collision"
-description = "Moved wrongly / collision (needs entity physics)"
+description = "Server-side moveEntity: collision rollback, jump, fall distance, movement stats, exhaustion"
+scenarios = ["play/physics"]
+
+[[feature]]
+id = "play.fall_damage"
+description = "Fall damage, hurt sounds and particles (needs the damage system)"
+scenarios = []
+
+[[feature]]
+id = "entity.player_push"
+description = "Overlapping players push each other (timing dependent in vanilla)"
 scenarios = []
 
 [[feature]]

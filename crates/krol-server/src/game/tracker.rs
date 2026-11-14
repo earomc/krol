@@ -69,7 +69,10 @@ pub fn player_metadata(p: &Player) -> Vec<Metadata> {
     let md = |index, value| Metadata { index, value };
     let d = &p.data;
     vec![
-        md(0, Byte(0)),
+        md(
+            0,
+            Byte((i8::from(p.sneaking) << 1) | (i8::from(p.sprinting) << 3)),
+        ),
         md(
             1,
             Short(if d.contains_key("Air") {
@@ -331,11 +334,12 @@ impl Game {
 
         let p = &self.players[i];
         let metadata_changed = !p.dirty_metadata.is_empty();
+        let airborne = p.airborne;
         let Some(entry) = self.tracker.get_mut(&entity_id) else {
             return rechecked;
         };
         let counter = entry.update_counter;
-        if counter % entry.frequency == 0 || metadata_changed {
+        if counter % entry.frequency == 0 || airborne || metadata_changed {
             entry.ticks_since_teleport += 1;
             let (x, y, z) = (fixed(p.pos.0), fixed(p.pos.1), fixed(p.pos.2));
             let (yaw, pitch) = (angle(p.rotation.0), angle(p.rotation.1));
@@ -417,6 +421,7 @@ impl Game {
             if let Some(packet) = head_packet {
                 self.send_to_tracking(entity_id, &packet);
             }
+            self.players[i].airborne = false;
         }
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
             entry.update_counter += 1;

@@ -216,6 +216,11 @@ impl World {
             .block((x & 15) as usize, y as usize, (z & 15) as usize)
     }
 
+    /// Whether the chunk is loaded (vanilla `isBlockLoaded`), without loading it.
+    pub fn is_chunk_loaded(&self, cx: i32, cz: i32) -> bool {
+        self.chunks.contains_key(&(cx, cz))
+    }
+
     /// Number of loaded chunks.
     pub fn loaded_chunks(&self) -> usize {
         self.chunks.len()

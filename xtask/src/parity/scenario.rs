@@ -82,7 +82,7 @@ pub enum Step {
         chat: Vec<String>,
         /// Offsets from the spawn position, one Position packet per tick.
         #[serde(default)]
-        moves: Vec<[f64; 3]>,
+        moves: Vec<Vec<f64>>,
         /// Run concurrently with the following steps (e.g. console commands); the
         /// observation is collected at the end.
         #[serde(default)]

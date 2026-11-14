@@ -12,8 +12,10 @@ pub struct SoundType {
     /// Frequency.
     pub frequency: f32,
     /// Overridden place sound (glass places with `step.stone`, slime with
-    /// `mob.slime.big`).
+    /// `mob.slime.big`, anvils with `random.anvil_land`, ladders with `dig.wood`).
     pub place: Option<&'static str>,
+    /// Overridden step sound (slime: `mob.slime.small`).
+    pub step: Option<&'static str>,
 }
 
 const fn sound(name: &'static str, frequency: f32) -> SoundType {
@@ -22,6 +24,7 @@ const fn sound(name: &'static str, frequency: f32) -> SoundType {
         volume: 1.0,
         frequency,
         place: None,
+        step: None,
     }
 }
 
@@ -38,12 +41,28 @@ const GLASS: SoundType = SoundType {
     volume: 1.0,
     frequency: 1.0,
     place: Some("step.stone"),
+    step: None,
 };
 const SLIME: SoundType = SoundType {
     name: "slime",
     volume: 1.0,
     frequency: 1.0,
     place: Some("mob.slime.big"),
+    step: Some("mob.slime.small"),
+};
+const LADDER: SoundType = SoundType {
+    name: "ladder",
+    volume: 1.0,
+    frequency: 1.0,
+    place: Some("dig.wood"),
+    step: None,
+};
+const ANVIL: SoundType = SoundType {
+    name: "anvil",
+    volume: 0.3,
+    frequency: 1.0,
+    place: Some("random.anvil_land"),
+    step: None,
 };
 
 impl SoundType {
@@ -52,6 +71,72 @@ impl SoundType {
         self.place
             .map_or_else(|| format!("dig.{}", self.name), str::to_owned)
     }
+
+    /// The sound played when an entity steps on the block (`getStepSound`).
+    pub fn step_sound(&self) -> String {
+        self.step
+            .map_or_else(|| format!("step.{}", self.name), str::to_owned)
+    }
+}
+
+/// Every block's sound type (vanilla `Block.stepSound`, from the block registry).
+pub fn sound_type(id: u16) -> SoundType {
+    match id {
+        2
+        | 6
+        | 18..=19
+        | 31..=32
+        | 37..=40
+        | 46
+        | 59
+        | 83
+        | 106
+        | 110..=111
+        | 141..=142
+        | 161
+        | 170
+        | 175 => GRASS,
+        3 | 13 | 60 | 82 => GRAVEL,
+        5
+        | 17
+        | 26
+        | 47
+        | 50
+        | 53..=54
+        | 58
+        | 63..=64
+        | 68..=69
+        | 72
+        | 75..=76
+        | 85..=86
+        | 91
+        | 93..=94
+        | 96
+        | 99..=100
+        | 103..=105
+        | 107
+        | 125..=127
+        | 134..=136
+        | 143
+        | 146..=151
+        | 162..=164
+        | 176..=178
+        | 183..=197 => WOOD,
+        12 | 88 => SAND,
+        20 | 79 | 89..=90 | 95 | 102 | 120 | 123..=124 | 160 | 169 | 174 => GLASS,
+        27..=28 | 41..=42 | 52 | 57 | 66 | 71 | 101 | 133 | 152 | 154 | 157 | 167 => METAL,
+        35 | 51 | 81 | 92 | 171 => CLOTH,
+        65 => LADDER,
+        78 | 80 => SNOW,
+        145 => ANVIL,
+        165 => SLIME,
+        _ => STONE,
+    }
+}
+
+/// Fences, walls and fence gates (`instanceof BlockFence/BlockWall/BlockFenceGate`).
+pub fn is_fence_like(id: u16) -> bool {
+    matches!(id, 85 | 107 | 113 | 139 | 183..=192)
 }
 
 /// How an item places as a block, for the full cube blocks krol supports so far:

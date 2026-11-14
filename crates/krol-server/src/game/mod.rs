@@ -7,6 +7,8 @@
 
 pub mod blocks;
 pub mod commands;
+mod movement;
+pub mod physics;
 pub mod player;
 pub mod stats;
 mod tracker;
@@ -662,6 +664,26 @@ impl Game {
             ),
             swing: (false, 0),
             last_equipment: Default::default(),
+            motion: {
+                let m = data.get_list("Motion", krol_nbt::TagType::Double);
+                let f = |k: usize| {
+                    m.and_then(|l| l.get(k))
+                        .and_then(|t| t.as_f64())
+                        .unwrap_or(0.0)
+                };
+                (f(0), f(1), f(2))
+            },
+            sneaking: false,
+            sprinting: false,
+            flying: data
+                .get_compound("abilities")
+                .is_some_and(|a| a.get_bool("flying")),
+            airborne: false,
+            fall_distance: data.get_f32("FallDistance"),
+            in_water: false,
+            collided_horizontally: false,
+            distance_walked_on_step: 0.0,
+            next_step_distance: 1,
             chat_spam: 0,
             data,
         };
@@ -1287,126 +1309,6 @@ impl Game {
         });
     }
 
-    /// Vanilla `NetHandlerPlayServer.processPlayer` for C03 to C06.
-    ///
-    /// Known deviation: vanilla moves the bounding box through the world (`moveEntity`)
-    /// and reports "moved wrongly!" or undoes moves into blocks; krol does not model
-    /// collision yet (M5) and accepts those moves.
-    fn process_movement(
-        &mut self,
-        i: usize,
-        position: Option<(f64, f64, f64)>,
-        rotation: Option<(f32, f32)>,
-        on_ground: bool,
-    ) {
-        let radius = self.config.view_distance;
-        let allow_flight = self.config.allow_flight;
-        let player = &mut self.players[i];
-        let mut position = position;
-        if let Some(p) = position {
-            let m = &mut player.movement;
-            let d = (p.0 - m.last_pos.0, p.1 - m.last_pos.1, p.2 - m.last_pos.2);
-            if !m.has_moved && d.0 * d.0 + d.1 * d.1 + d.2 * d.2 < 0.25 {
-                m.has_moved = true;
-            }
-        }
-        if !player.movement.has_moved {
-            if player.movement.network_ticks - player.movement.last_move_tick > 20 {
-                let (pos, rot) = (player.movement.last_pos, player.rotation);
-                Self::set_player_location(player, pos, rot);
-            }
-            return;
-        }
-        player.movement.last_move_tick = player.movement.network_ticks;
-        player.movement.last_pos = player.pos;
-        if position.is_some_and(|p| p.1 == -999.0) {
-            position = None;
-        }
-        if let Some(p) = position
-            && (p.0.abs() > 3.0e7 || p.2.abs() > 3.0e7)
-        {
-            self.kick(i, "Illegal position");
-            return;
-        }
-        let player = &mut self.players[i];
-        let target = position.unwrap_or(player.pos);
-        let rot = rotation.unwrap_or(player.rotation);
-        let d = (
-            target.0 - player.pos.0,
-            target.1 - player.pos.1,
-            target.2 - player.pos.2,
-        );
-        // TODO(M5): subtract the squared motion (vanilla: `d15 - d14 > 100`).
-        if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 > 100.0 {
-            let (dx, dy, dz) = (
-                krol_java::fmt::java_double(d.0),
-                krol_java::fmt::java_double(d.1),
-                krol_java::fmt::java_double(d.2),
-            );
-            // Vanilla quirk: the same three numbers are printed twice.
-            tracing::warn!(
-                "{} moved too quickly! {dx},{dy},{dz} ({dx}, {dy}, {dz})",
-                player.profile.name
-            );
-            let last = player.movement.last_pos;
-            let rot = player.rotation;
-            Self::set_player_location(player, last, rot);
-            return;
-        }
-        player.pos = target;
-        player.rotation = rot;
-        player.on_ground = on_ground;
-        let gamemode = player.gamemode;
-        let (x, y, z) = player.pos;
-
-        // Floating check (vanilla: checkBlockCollision on the box grown by 1/16 and
-        // extended 0.55 down; any non-air block counts).
-        let flying_allowed = allow_flight || gamemode == 1 || gamemode == 3;
-        let floor = krol_java::math::floor_f64;
-        let mut touching = false;
-        'scan: for bx in floor(x - 0.3625)..floor(x + 0.3625 + 1.0) {
-            for by in floor(y - 0.6125)..floor(y + 1.8625 + 1.0) {
-                for bz in floor(z - 0.3625)..floor(z + 0.3625 + 1.0) {
-                    if self.level.overworld.block(bx, by, bz) != 0 {
-                        touching = true;
-                        break 'scan;
-                    }
-                }
-            }
-        }
-        let player = &mut self.players[i];
-        if !flying_allowed && !touching {
-            if d.1 >= -0.03125 {
-                player.movement.floating_ticks += 1;
-                if player.movement.floating_ticks > 80 {
-                    tracing::warn!("{} was kicked for floating too long!", player.profile.name);
-                    self.kick(i, "Flying is not enabled on this server");
-                    return;
-                }
-            }
-        } else {
-            player.movement.floating_ticks = 0;
-        }
-
-        let unload = self.players[i].update_watching(radius);
-        for (x, z) in self.players[i].take_new_watches() {
-            self.level.overworld.chunk(x, z);
-        }
-        let sky = self.level.overworld.has_sky;
-        for (ux, uz) in unload {
-            let (_, data) = self.level.overworld.chunk(ux, uz).packet_data(true, 0, sky);
-            self.players[i].send(ClientboundPlay::ChunkData {
-                column: ChunkColumn {
-                    x: ux,
-                    z: uz,
-                    mask: 0,
-                    data,
-                },
-                full: true,
-            });
-        }
-    }
-
     fn handle_packet(&mut self, i: usize, packet: ServerboundPlay) {
         match packet {
             ServerboundPlay::Chat { message } => self.chat(i, &message),
@@ -1434,6 +1336,17 @@ impl Game {
                 if p.skin_parts != skin_parts {
                     p.skin_parts = skin_parts;
                     p.dirty_metadata.insert(10);
+                }
+            }
+            ServerboundPlay::EntityAction { action, .. } => self.entity_action(i, action),
+            ServerboundPlay::PlayerAbilities { flags, .. } => {
+                // processPlayerAbilities: flying only where it is allowed.
+                let p = &mut self.players[i];
+                let allowed = p.gamemode == 1 || p.gamemode == 3;
+                p.flying = flags & 2 != 0 && allowed;
+                let flying = p.flying;
+                if let Some(krol_nbt::Tag::Compound(a)) = p.data.get_mut("abilities") {
+                    a.insert("flying", krol_nbt::Tag::Byte(i8::from(flying)));
                 }
             }
             ServerboundPlay::Animation => {
