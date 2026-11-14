@@ -1,0 +1,53 @@
+description = "Special crafting recipes in the 2x2 grid: two iron pickaxes repaired, a leather helmet dyed red"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. The dyed helmet carries NBT the bot does not predict, so that click is
+# rejected and confirmed (the item still moves). Maps are left out: a filled map in
+# the inventory makes vanilla send map data every tick (maps are not implemented).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 10
+chat = [
+    "@2500 !creative 9 257 1 200",
+    "@2700 !creative 10 257 1 100",
+    "@2900 !creative 11 298 1 0",
+    "@3100 !creative 12 351 1 1",
+    "@3800 !click 0 9 0 1 0 257 1 200",
+    "@4100 !click 0 1 0 2 0",
+    "@4400 !click 0 10 0 3 0 257 1 100",
+    "@4700 !click 0 2 0 4 0",
+    "@5000 !click 0 0 0 5 1 257 1 38",
+    "@5300 !click 0 11 0 6 0 298 1 0",
+    "@5600 !click 0 1 0 7 0",
+    "@5900 !click 0 12 0 8 0 351 1 1",
+    "@6200 !click 0 2 0 9 0",
+    "@6500 !click 0 0 0 10 1 298 1 0",
+    "@6700 !confirm 0 10 0",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 9700
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

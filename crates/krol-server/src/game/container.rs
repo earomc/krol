@@ -226,7 +226,7 @@ fn armor_type(id: i16) -> Option<usize> {
 }
 
 fn has_subtypes(id: i16) -> bool {
-    max_stack(id) != 1
+    super::item_data::has_subtypes(id)
 }
 
 /// `ItemStack.isItemEqual` + `areItemStackTagsEqual`.
@@ -720,14 +720,15 @@ impl Game {
                 );
             }
             // TODO(M5): crafting achievements (buildWorkBench, buildPickaxe, ...).
-            for k in grid {
-                let Some(mut s) = flat[k].take() else {
-                    continue;
-                };
-                let leftover = super::recipes::container_item(s.id);
-                s.count -= 1;
-                if s.count > 0 {
-                    flat[k] = Some(s);
+            let width = layout.grid().1;
+            let scale = |map: i16| self.map_scale(map);
+            let remaining = super::recipes::remaining_items(&flat[grid.clone()], width, &scale);
+            for (k, leftover) in grid.zip(remaining) {
+                if let Some(s) = &mut flat[k] {
+                    s.count -= 1;
+                    if s.count <= 0 {
+                        flat[k] = None;
+                    }
                 }
                 if let Some(c) = leftover {
                     if flat[k].is_none() {
@@ -755,8 +756,17 @@ impl Game {
         }
         let (grid, width) = layout.grid();
         let mut flat = self.gather(i);
-        flat[0] = super::recipes::craft(&flat[grid], width);
+        let scale = |map: i16| self.map_scale(map);
+        flat[0] = super::recipes::craft(&flat[grid], width, &scale);
         self.scatter(i, flat);
+    }
+
+    /// A map's saved scale (`data/map_<id>.dat`, `MapStorage.loadData`), if it exists.
+    fn map_scale(&self, map: i16) -> Option<i8> {
+        let path = self.level.dir.join("data").join(format!("map_{map}.dat"));
+        let file = std::fs::File::open(path).ok()?;
+        let (_, root) = krol_nbt::read_gzip(std::io::BufReader::new(file)).ok()?;
+        Some(root.get_compound("data")?.get_i8("scale"))
     }
 
     /// `dropPlayerItemWithRandomChoice(stack, _)`: tossed forward, no statistic.

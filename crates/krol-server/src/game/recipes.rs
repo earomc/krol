@@ -3,14 +3,14 @@
 //!
 //! The recipe list is data extracted from vanilla 1.8.8 by
 //! `tools/datagen/RecipeDump.java` (`data/recipes.txt`), in vanilla's sorted order: the
-//! first recipe that matches wins.
-//!
-//! TODO(M4): the special recipes (armor dyes, fireworks, banners, book and map cloning,
-//! map extending, item repair).
+//! first recipe that matches wins. The recipes vanilla computes in code are in
+//! [`super::special_recipes`].
 
 use std::sync::OnceLock;
 
 use krol_protocol::packets::play::ItemStack;
+
+use super::special_recipes::{self, Special};
 
 /// Damage value meaning "any" in recipe ingredients.
 const ANY: i16 = 32767;
@@ -31,7 +31,7 @@ enum Recipe {
         items: Vec<(i16, i16)>,
         output: (i16, i8, i16),
     },
-    Special,
+    Special(Special),
 }
 
 /// A smelting recipe: input, output, experience.
@@ -74,7 +74,11 @@ fn recipes() -> &'static Recipes {
                     output: (num(1) as i16, num(2) as i8, num(3) as i16),
                     items: f[4..].iter().filter_map(|s| parse_ingredient(s)).collect(),
                 }),
-                Some("special") => crafting.push(Recipe::Special),
+                Some("special") => {
+                    if let Some(s) = f.get(1).and_then(|c| Special::from_class(c)) {
+                        crafting.push(Recipe::Special(s));
+                    }
+                }
                 Some("smelt") => {
                     if let Some(input) = f.get(1).and_then(|s| parse_ingredient(s)) {
                         smelting.push(Smelting {
@@ -129,9 +133,42 @@ fn check_shaped(
     true
 }
 
+/// Looks up a map's saved scale by map id (for map extending).
+pub type MapScale<'a> = &'a dyn Fn(i16) -> Option<i8>;
+
 /// `CraftingManager.findMatchingRecipe` on a square crafting grid (2 or 3 wide).
-pub fn craft(grid: &[Option<ItemStack>], size: usize) -> Option<ItemStack> {
+pub fn craft(grid: &[Option<ItemStack>], size: usize, map_scale: MapScale) -> Option<ItemStack> {
+    find(grid, size, map_scale).and_then(|(_, result)| result)
+}
+
+/// `CraftingManager.func_180303_b`: what each grid slot leaves behind when the result
+/// is taken. Vanilla quirk: with no matching recipe, every stack "remains".
+pub fn remaining_items(
+    grid: &[Option<ItemStack>],
+    size: usize,
+    map_scale: MapScale,
+) -> Vec<Option<ItemStack>> {
+    match find(grid, size, map_scale) {
+        Some((Recipe::Special(s), _)) => s.remaining(grid),
+        Some(_) => special_recipes::container_items(grid),
+        None => grid.to_vec(),
+    }
+}
+
+/// The first recipe that matches the grid and its result (a special recipe can match
+/// and still give nothing, which ends the search like in vanilla).
+fn find(
+    grid: &[Option<ItemStack>],
+    size: usize,
+    map_scale: MapScale,
+) -> Option<(&'static Recipe, Option<ItemStack>)> {
     for recipe in &recipes().crafting {
+        if let Recipe::Special(s) = recipe {
+            if s.matches(grid, size, map_scale) {
+                return Some((recipe, s.result(grid)));
+            }
+            continue;
+        }
         let output = match recipe {
             Recipe::Shaped {
                 width,
@@ -169,15 +206,18 @@ pub fn craft(grid: &[Option<ItemStack>], size: usize) -> Option<ItemStack> {
                 }
                 (ok && left.is_empty()).then_some(*output)
             }
-            Recipe::Special => None,
+            Recipe::Special(_) => None,
         };
         if let Some((id, count, damage)) = output {
-            return Some(ItemStack {
-                id,
-                count,
-                damage,
-                nbt: None,
-            });
+            return Some((
+                recipe,
+                Some(ItemStack {
+                    id,
+                    count,
+                    damage,
+                    nbt: None,
+                }),
+            ));
         }
     }
     None
@@ -185,13 +225,8 @@ pub fn craft(grid: &[Option<ItemStack>], size: usize) -> Option<ItemStack> {
 
 /// What an ingredient leaves in the grid (`Item.getContainerItem`): buckets.
 pub fn container_item(id: i16) -> Option<ItemStack> {
-    use super::ids::item;
-    matches!(
+    super::item_data::container_item(id).map(|id| ItemStack {
         id,
-        item::WATER_BUCKET | item::LAVA_BUCKET | item::MILK_BUCKET
-    )
-    .then_some(ItemStack {
-        id: item::BUCKET,
         count: 1,
         damage: 0,
         nbt: None,
@@ -230,12 +265,12 @@ mod tests {
         // Planks from a birch log (2x2 grid, any position).
         let grid = [None, s(17, 2), None, None];
         assert_eq!(
-            craft(&grid, 2).map(|o| (o.id, o.count, o.damage)),
+            craft(&grid, 2, &|_| None).map(|o| (o.id, o.count, o.damage)),
             Some((5, 4, 2))
         );
         // A crafting table from four planks.
         let grid = [s(5, 0), s(5, 1), s(5, 3), s(5, 0)];
-        assert_eq!(craft(&grid, 2).map(|o| o.id), Some(58));
+        assert_eq!(craft(&grid, 2, &|_| None).map(|o| o.id), Some(58));
         // A wooden pickaxe on a 3x3 grid.
         let p = s(5, 0);
         let st = s(280, 0);
@@ -250,11 +285,11 @@ mod tests {
             st,
             None,
         ];
-        assert_eq!(craft(&grid, 3).map(|o| o.id), Some(270));
+        assert_eq!(craft(&grid, 3, &|_| None).map(|o| o.id), Some(270));
         assert_eq!(
-            craft(&[s(1, 0), None, None, None], 2).map(|o| o.id),
+            craft(&[s(1, 0), None, None, None], 2, &|_| None).map(|o| o.id),
             Some(77)
         );
-        assert_eq!(craft(&[s(3, 0), None, None, None], 2), None);
+        assert_eq!(craft(&[s(3, 0), None, None, None], 2, &|_| None), None);
     }
 }

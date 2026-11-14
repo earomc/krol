@@ -254,6 +254,11 @@ description = "Experience orbs: spawning (splits), tracking, flying to the neare
 scenarios = ["play/xp_orbs"]
 
 [[feature]]
+id = "play.special_recipes"
+description = "Special crafting recipes: item repair, leather armor dyes, book cloning, map cloning and extending (unit tests); per-recipe remaining items. Not yet: fireworks, banner patterns"
+scenarios = ["play/special_recipes"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

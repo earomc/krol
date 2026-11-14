@@ -50,41 +50,14 @@ impl ItemEntity {
 }
 
 /// Maximum stack size of an item (`Item.getItemStackLimit`).
-/// TODO(M5): complete per-item table.
 pub fn max_stack(id: i16) -> i8 {
-    match id {
-        256..=259
-        | 261
-        | 267..=279
-        | 283..=286
-        | 290..=294
-        | 298..=317
-        | 325..=328
-        | 333
-        | 335
-        | 342
-        | 343
-        | 346
-        | 354
-        | 359
-        | 373
-        | 387
-        | 398
-        | 403
-        | 407
-        | 408
-        | 417..=419
-        | 422
-        | 2256..=2267 => 1,
-        323 | 332 | 344 | 368 | 379 | 386 | 425 => 16,
-        _ => 64,
-    }
+    super::item_data::max_stack(id)
 }
 
 /// Whether items with this id distinguish damage values (`getHasSubtypes`); tools and
 /// armor use damage as durability instead.
 fn has_subtypes(id: i16) -> bool {
-    max_stack(id) != 1 || matches!(id, 373)
+    super::item_data::has_subtypes(id)
 }
 
 /// What a block drops when harvested without enchantments (`quantityDropped`,
