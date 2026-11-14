@@ -245,7 +245,8 @@ impl Game {
         p.dirty_metadata = super::tracker::PLAYER_METADATA_INDICES
             .into_iter()
             .collect();
-        p.dirty_attributes = true;
+        p.dirty_attributes = [super::attributes::MOVEMENT_SPEED].into_iter().collect();
+        p.modifiers.clear();
         p.last_equipment = Default::default();
         p.sent_inventory = vec![None; 45];
         p.dig = super::digging::DigState::new();

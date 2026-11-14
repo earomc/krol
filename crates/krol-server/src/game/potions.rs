@@ -20,6 +20,16 @@ const RESEND_PERIOD: i32 = 600;
 
 /// Effect ids (`Potion.*.id`).
 pub mod effect {
+    /// `moveSpeed`.
+    pub const SPEED: u8 = 1;
+    /// `moveSlowdown`.
+    pub const SLOWNESS: u8 = 2;
+    /// `damageBoost`.
+    pub const STRENGTH: u8 = 5;
+    /// `weakness`.
+    pub const WEAKNESS: u8 = 18;
+    /// `healthBoost`.
+    pub const HEALTH_BOOST: u8 = 21;
     /// `regeneration`.
     pub const REGENERATION: u8 = 10;
     /// `confusion` (nausea).
@@ -127,6 +137,40 @@ pub fn effect_by_name(name: &str) -> Option<u8> {
     ];
     let path = name.strip_prefix("minecraft:").unwrap_or(name);
     NAMES.iter().position(|n| *n == path).map(|k| k as u8 + 1)
+}
+
+/// The attribute modifier an effect registers (`registerPotionAttributeModifier`):
+/// `(attribute, uuid, amount per level, operation)`.
+fn effect_modifier(id: u8) -> Option<(&'static str, u128, f64, i8)> {
+    use super::attributes::{ATTACK_DAMAGE, MAX_HEALTH, MOVEMENT_SPEED};
+    Some(match id {
+        effect::SPEED => (
+            MOVEMENT_SPEED,
+            0x91aeaa56_376b_4498_935b_2f7f68070635,
+            f64::from(0.2f32),
+            2,
+        ),
+        effect::SLOWNESS => (
+            MOVEMENT_SPEED,
+            0x7107de5e_7ce8_4030_940e_514c1f160890,
+            f64::from(-0.15f32),
+            2,
+        ),
+        effect::STRENGTH => (
+            ATTACK_DAMAGE,
+            0x648d7064_6a60_4f59_8abe_c2c23a6dd7a9,
+            2.5,
+            2,
+        ),
+        effect::WEAKNESS => (
+            ATTACK_DAMAGE,
+            0x22653b89_116e_49dc_9b6b_9971489b5be5,
+            2.0,
+            0,
+        ),
+        effect::HEALTH_BOOST => (MAX_HEALTH, 0x5d6f0ba2_1186_46ac_b896_c61c5cee99cc, 4.0, 0),
+        _ => return None,
+    })
 }
 
 /// `Potion.isReady`: whether the effect acts this tick.
@@ -298,10 +342,8 @@ impl Game {
         self.remove_effect_modifiers(i, e);
     }
 
-    /// `Potion.applyAttributesModifiersToEntity` (absorption only so far).
-    ///
-    /// TODO(M5): the attribute modifiers of speed, slowness, strength, weakness and
-    /// health boost.
+    /// `Potion.applyAttributesModifiersToEntity`: the effect's attribute modifier (its
+    /// amount scaled by the level), or absorption health.
     fn apply_effect_modifiers(&mut self, i: usize, e: &Effect) {
         if e.id == effect::ABSORPTION {
             let p = &mut self.players[i];
@@ -310,10 +352,34 @@ impl Game {
             p.data
                 .insert("AbsorptionAmount", Tag::Float(amount.max(0.0)));
             p.dirty_metadata.insert(17);
+            return;
         }
+        let Some((attribute, uuid, base, operation)) = effect_modifier(e.id) else {
+            return;
+        };
+        let level = f64::from(e.amplifier) + 1.0;
+        let amount = match e.id {
+            // PotionAttackDamage.
+            effect::STRENGTH => 1.3 * level,
+            effect::WEAKNESS => f64::from(-0.5f32 * level as f32),
+            _ => base * level,
+        };
+        let name = effect_type(i32::from(e.id)).map_or("", |t| t.name);
+        let p = &mut self.players[i];
+        p.modifiers.retain(|m| m.uuid != uuid);
+        p.modifiers.push(super::attributes::Modifier {
+            attribute,
+            uuid,
+            name: format!("{name} {}", e.amplifier),
+            amount,
+            operation,
+            saved: true,
+        });
+        p.dirty_attributes.insert(attribute);
     }
 
-    /// `Potion.removeAttributesModifiersFromEntity` (absorption only so far).
+    /// `Potion.removeAttributesModifiersFromEntity` (and `PotionAbsorption`,
+    /// `PotionHealthBoost`).
     fn remove_effect_modifiers(&mut self, i: usize, e: &Effect) {
         if e.id == effect::ABSORPTION {
             let p = &mut self.players[i];
@@ -322,6 +388,17 @@ impl Game {
             p.data
                 .insert("AbsorptionAmount", Tag::Float(amount.max(0.0)));
             p.dirty_metadata.insert(17);
+            return;
+        }
+        let Some((attribute, uuid, _, _)) = effect_modifier(e.id) else {
+            return;
+        };
+        let p = &mut self.players[i];
+        p.modifiers.retain(|m| m.uuid != uuid);
+        p.dirty_attributes.insert(attribute);
+        if e.id == effect::HEALTH_BOOST && p.health() > p.max_health() {
+            let max = p.max_health();
+            p.set_health(max);
         }
     }
 

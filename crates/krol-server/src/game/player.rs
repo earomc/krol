@@ -73,7 +73,9 @@ pub struct Player {
     /// on creation).
     pub dirty_metadata: std::collections::BTreeSet<u8>,
     /// Watched attributes changed since the tracker last sent them.
-    pub dirty_attributes: bool,
+    pub dirty_attributes: std::collections::BTreeSet<&'static str>,
+    /// Attribute modifiers (sprinting, status effects).
+    pub modifiers: Vec<super::attributes::Modifier>,
     /// The chunk the player entity was last added to (vanilla `chunkCoordX/Z`).
     pub entity_chunk: (i32, i32),
     /// Arm swing state (`isSwingInProgress`, `swingProgressInt`).
@@ -152,13 +154,12 @@ impl Player {
     /// `getMaxHealth`.
     /// TODO(M5): the max health attribute (health boost).
     pub fn max_health(&self) -> f32 {
-        20.0
+        super::attributes::value(super::attributes::MAX_HEALTH, &self.modifiers) as f32
     }
 
-    /// Vanilla `setHealth`: clamped to 0..=20, marks metadata index 6 changed.
-    /// TODO(M5): the max health attribute.
+    /// Vanilla `setHealth`: clamped to 0..=max health, marks metadata index 6 changed.
     pub fn set_health(&mut self, health: f32) {
-        let health = health.clamp(0.0, 20.0);
+        let health = health.clamp(0.0, self.max_health());
         if health != self.health() {
             self.dirty_metadata.insert(6);
         }
@@ -356,6 +357,7 @@ impl Player {
     fn store_state(&mut self) {
         store_inventory(&mut self.data, &self.inventory);
         super::potions::write_effects(&mut self.data, &self.effects);
+        super::attributes::write_attributes(&mut self.data, &self.modifiers);
         let m = self.motion;
         self.data.insert("Motion", doubles(&[m.0, m.1, m.2]));
         self.data

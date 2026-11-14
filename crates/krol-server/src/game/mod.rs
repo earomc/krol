@@ -5,6 +5,7 @@
 //! scheduled packet tasks at the start of each tick. Packets to clients go through each
 //! player's [`Outgoing`] queue.
 
+mod attributes;
 mod biome;
 pub mod block_data;
 mod block_update;
@@ -887,7 +888,8 @@ impl Game {
             stats: stats::Stats::load(&self.level.dir, profile_id),
             xp_dirty: false,
             dirty_metadata: tracker::PLAYER_METADATA_INDICES.into_iter().collect(),
-            dirty_attributes: true,
+            dirty_attributes: [attributes::MOVEMENT_SPEED].into_iter().collect(),
+            modifiers: attributes::read_modifiers(&data),
             entity_chunk: (
                 krol_java::math::floor_f64(pos.0) >> 4,
                 krol_java::math::floor_f64(pos.2) >> 4,

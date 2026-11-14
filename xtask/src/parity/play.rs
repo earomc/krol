@@ -128,6 +128,22 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
         } => {
             let mut sorted = properties.clone();
             sorted.sort_by(|a, b| a.0.cmp(&b.0));
+            let sorted: Vec<Value> = sorted
+                .into_iter()
+                .map(|(key, value, mut modifiers)| {
+                    // Modifiers live in a HashMap keyed by UUID.
+                    modifiers.sort_by_key(|m| m.0);
+                    let ms: Vec<Value> = modifiers
+                        .iter()
+                        .map(|(u, a, o)| json!([format!("{u:032x}"), a, o]))
+                        .collect();
+                    if ms.is_empty() {
+                        json!([key, value])
+                    } else {
+                        json!([key, value, ms])
+                    }
+                })
+                .collect();
             json!({ "entity_id": entity_id, "properties": sorted })
         }
         // Sounds whose pitch comes from an unseeded random in vanilla.

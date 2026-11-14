@@ -476,6 +476,11 @@ pub enum PlayerListAction {
     Remove(Vec<u128>),
 }
 
+/// An attribute modifier in Entity Properties: `(uuid, amount, operation)`.
+pub type AttributeModifier = (u128, f64, i8);
+/// An attribute in Entity Properties: `(key, base value, modifiers)`.
+pub type Property = (String, f64, Vec<AttributeModifier>);
+
 /// Data for one chunk column in a Chunk Data / Map Chunk Bulk packet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChunkColumn {
@@ -619,10 +624,11 @@ pub enum ClientboundPlay {
         entity_id: i32,
         metadata: Vec<Metadata>,
     },
-    /// `0x20` (key, base value) without modifiers
+    /// `0x20`: attributes as `(key, base value, modifiers)`, each modifier
+    /// `(uuid, amount, operation)`.
     EntityProperties {
         entity_id: i32,
-        properties: Vec<(String, f64)>,
+        properties: Vec<Property>,
     },
     /// `0x04`
     EntityEquipment {
@@ -1113,8 +1119,11 @@ impl ClientboundPlay {
                 properties,
             } => {
                 w.varint(*entity_id).i32(properties.len() as i32);
-                for (key, value) in properties {
-                    w.string(key)?.f64(*value).varint(0);
+                for (key, value, modifiers) in properties {
+                    w.string(key)?.f64(*value).varint(modifiers.len() as i32);
+                    for (uuid, amount, operation) in modifiers {
+                        w.uuid(*uuid).f64(*amount).i8(*operation);
+                    }
                 }
             }
             Self::EntityEquipment {
@@ -1455,13 +1464,11 @@ impl ClientboundPlay {
                 for _ in 0..n.clamp(0, 1024) {
                     let key = r.string(64)?;
                     let value = r.f64()?;
-                    // Modifiers (uuid, amount, operation) are not modeled.
+                    let mut modifiers = Vec::new();
                     for _ in 0..r.varint()?.clamp(0, 1024) {
-                        r.uuid()?;
-                        r.f64()?;
-                        r.i8()?;
+                        modifiers.push((r.uuid()?, r.f64()?, r.i8()?));
                     }
-                    properties.push((key, value));
+                    properties.push((key, value, modifiers));
                 }
                 Self::EntityProperties {
                     entity_id,
@@ -1787,7 +1794,7 @@ mod tests {
         );
         let props = ClientboundPlay::EntityProperties {
             entity_id: 0,
-            properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32))],
+            properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32), vec![])],
         };
         assert_eq!(
             hex(&props.encode(V).unwrap()[1..]),

@@ -371,10 +371,13 @@ impl Game {
             });
             packets.push(ClientboundPlay::EntityProperties {
                 entity_id,
-                properties: vec![
-                    ("generic.movementSpeed".into(), f64::from(0.1f32)),
-                    ("generic.maxHealth".into(), 20.0),
-                ],
+                properties: super::attributes::properties(
+                    &[
+                        super::attributes::MOVEMENT_SPEED,
+                        super::attributes::MAX_HEALTH,
+                    ],
+                    &t.modifiers,
+                ),
             });
             for (slot, item) in equipment(t).into_iter().enumerate() {
                 if item.is_some() {
@@ -700,10 +703,14 @@ impl Game {
                     metadata,
                 });
             }
-            if std::mem::take(&mut p.dirty_attributes) {
+            let dirty: Vec<&'static str> = std::mem::take(&mut p.dirty_attributes)
+                .into_iter()
+                .filter(|a| super::attributes::watched(a))
+                .collect();
+            if !dirty.is_empty() {
                 packets.push(ClientboundPlay::EntityProperties {
                     entity_id,
-                    properties: vec![("generic.movementSpeed".into(), f64::from(0.1f32))],
+                    properties: super::attributes::properties(&dirty, &p.modifiers),
                 });
             }
         } else if let Some(it) = self.items.get_mut(&entity_id)

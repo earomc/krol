@@ -1,0 +1,68 @@
+description = "Attribute effects: speed II, slowness, strength III, weakness and health boost II add their attribute modifiers (entity properties with modifiers for movement speed and max health; attack damage is not sent), speed is taken again; the modifiers and effects are saved"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode and stands still.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 11
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "effect jeb_ speed 60 1"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "effect jeb_ slowness 60"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "effect jeb_ strength 60 2"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "effect jeb_ weakness 60"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "effect jeb_ health_boost 60 1"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "effect jeb_ speed 0"
+wait_ms = 3000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
+
+# Effects count down once per movement packet: the durations left at logout vary by
+# a packet or two.
+[observe.tolerance]
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.ActiveEffects[0].Duration" = 3
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.ActiveEffects[1].Duration" = 3
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.ActiveEffects[2].Duration" = 3
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.ActiveEffects[3].Duration" = 3

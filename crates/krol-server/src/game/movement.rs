@@ -947,7 +947,24 @@ impl Game {
                 if p.sprinting != sprinting {
                     p.sprinting = sprinting;
                     p.dirty_metadata.insert(0);
-                    // TODO(M5): the sprinting speed attribute modifier.
+                }
+                // EntityLivingBase.setSprinting: the speed boost is removed and, when
+                // sprinting, applied again (both mark the attribute changed).
+                use super::attributes::{MOVEMENT_SPEED, Modifier, SPRINT_AMOUNT, SPRINT_UUID};
+                if let Some(k) = p.modifiers.iter().position(|m| m.uuid == SPRINT_UUID) {
+                    p.modifiers.remove(k);
+                    p.dirty_attributes.insert(MOVEMENT_SPEED);
+                }
+                if sprinting {
+                    p.modifiers.push(Modifier {
+                        attribute: MOVEMENT_SPEED,
+                        uuid: SPRINT_UUID,
+                        name: "Sprinting speed boost".into(),
+                        amount: SPRINT_AMOUNT,
+                        operation: 2,
+                        saved: false,
+                    });
+                    p.dirty_attributes.insert(MOVEMENT_SPEED);
                 }
             }
             // TODO(M5): leave bed, horse jump, horse inventory.

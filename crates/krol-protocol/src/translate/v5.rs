@@ -531,8 +531,11 @@ impl V5Translator {
             } => {
                 let mut w = packet(0x20);
                 w.i32(*entity_id).i32(properties.len() as i32);
-                for (key, value) in properties {
-                    w.string(key)?.f64(*value).i16(0);
+                for (key, value, modifiers) in properties {
+                    w.string(key)?.f64(*value).i16(modifiers.len() as i16);
+                    for (uuid, amount, operation) in modifiers {
+                        w.uuid(*uuid).f64(*amount).i8(*operation);
+                    }
                 }
                 one(w);
             }

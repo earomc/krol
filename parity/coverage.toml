@@ -369,6 +369,11 @@ description = "Status effects: the effect table extracted from vanilla (tools/da
 scenarios = ["play/effects"]
 
 [[feature]]
+id = "entity.attributes"
+description = "Player attributes: base values, modifiers (operations 0-2, clamping), the sprinting speed boost, effect modifiers (speed, slowness, strength, weakness, health boost with max health), entity properties with modifiers (watched attributes only, HashSet order), Attributes with Modifiers in player data"
+scenarios = ["play/attribute_effects"]
+
+[[feature]]
 id = "item.buckets"
 description = "Buckets: use-item packets (face 255), the server's block ray trace, filling and emptying water and lava buckets in survival (stack handling, statistics, inventory resend). Not yet: milk, creative use, selection boxes of stairs, fences and other shaped blocks"
 scenarios = ["play/buckets"]
