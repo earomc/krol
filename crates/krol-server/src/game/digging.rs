@@ -428,6 +428,7 @@ impl Game {
         // TODO(M5): onBlockHarvested / onBlockDestroyedByPlayer (doors, beds, ice).
         self.drop_container_contents(pos);
         self.set_block_notify(pos, 0);
+        self.destroyed_by_player(pos, state);
         // TODO(M5): tool durability (ItemStack.onBlockDestroyed).
         if can_harvest(self.held_id(i), b) {
             // Block.harvestBlock.

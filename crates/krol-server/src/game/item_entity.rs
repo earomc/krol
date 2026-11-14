@@ -112,6 +112,7 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
         55 => (1, Some(331), 0),
         75 => (1, Some(76), 0),
         124 => (1, Some(123), 0),
+        93 | 94 => (1, Some(356), 0),
         super::ids::block::STANDING_SIGN | super::ids::block::WALL_SIGN => {
             (1, Some(super::ids::item::SIGN), 0)
         }

@@ -3,7 +3,7 @@
 //! `getStrongPower` of the power sources, `BlockRedstoneWire`, `BlockRedstoneTorch`,
 //! `BlockRedstoneLight`).
 //!
-//! TODO(M5): repeaters, comparators, pistons, dispensers and droppers, note blocks,
+//! TODO(M5): comparators, pistons, dispensers and droppers, note blocks,
 //! TNT, rails, pressure plates, tripwires, daylight sensors, doors and trapdoors
 //! reacting to power; torch burnout smoke particles.
 
@@ -130,6 +130,9 @@ impl Game {
             }
             block::REDSTONE_BLOCK => MAX_POWER,
             block::REDSTONE_WIRE => self.wire_weak_power(pos, i32::from(meta), side),
+            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {
+                Self::repeater_power(id, meta, side)
+            }
             _ => 0,
         }
     }
@@ -148,6 +151,9 @@ impl Game {
             }
             block::REDSTONE_TORCH if side == DOWN => self.weak_power(pos, side),
             block::REDSTONE_WIRE if self.wire_gives_power => self.weak_power(pos, side),
+            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {
+                Self::repeater_power(id, meta, side)
+            }
             _ => 0,
         }
     }
@@ -533,6 +539,147 @@ impl Game {
                 block::REDSTONE_LAMP << 4,
                 super::block_update::flags::SEND,
             );
+        }
+    }
+}
+
+// --- Repeaters (vanilla: BlockRedstoneDiode, BlockRedstoneRepeater) ----------------
+
+/// The repeater's `FACING` (the input side) from its metadata.
+pub fn repeater_facing(meta: u16) -> u8 {
+    [SOUTH, WEST, NORTH, EAST][usize::from(meta & 3)]
+}
+
+/// The repeater's delay in ticks (`getDelay`: two per setting).
+fn repeater_delay(meta: u16) -> i32 {
+    (i32::from(meta >> 2) + 1) * 2
+}
+
+/// Scheduled tick priorities of repeaters (`updateState`): facing into another
+/// repeater first, then turning off, then turning on.
+const PRIORITY_INTO_REPEATER: i32 = -3;
+const PRIORITY_TURN_OFF: i32 = -2;
+const PRIORITY_TURN_ON: i32 = -1;
+
+fn is_repeater(id: u16) -> bool {
+    id == block::UNPOWERED_REPEATER || id == block::POWERED_REPEATER
+}
+
+impl Game {
+    /// `BlockRedstoneDiode.getWeakPower` (and strong power): a powered repeater gives
+    /// full power out of its front.
+    fn repeater_power(id: u16, meta: u16, side: u8) -> i32 {
+        if id == block::POWERED_REPEATER && repeater_facing(meta) == side {
+            MAX_POWER
+        } else {
+            0
+        }
+    }
+
+    /// `calculateInputStrength`: the power coming in at the back (wire counts with its
+    /// own level).
+    fn repeater_input(&mut self, pos: (i32, i32, i32), meta: u16) -> i32 {
+        let facing = repeater_facing(meta);
+        let back = offset(pos, facing);
+        let power = self.redstone_power(back, facing);
+        if power >= MAX_POWER {
+            return power;
+        }
+        let s = self.level.overworld.block(back.0, back.1, back.2);
+        let wire = if s >> 4 == block::REDSTONE_WIRE {
+            i32::from(s & 15)
+        } else {
+            0
+        };
+        power.max(wire)
+    }
+
+    /// `isLocked`: a powered repeater points into one of its sides.
+    fn repeater_locked(&mut self, pos: (i32, i32, i32), meta: u16) -> bool {
+        let facing = repeater_facing(meta);
+        for side in [rotate_y(facing), rotate_y(rotate_y(rotate_y(facing)))] {
+            let n = offset(pos, side);
+            let s = self.level.overworld.block(n.0, n.1, n.2);
+            if is_repeater(s >> 4) && Self::repeater_power(s >> 4, s & 15, side) > 0 {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// `isFacingTowardsRepeater`: the block in front is a repeater not facing back.
+    fn repeater_faces_repeater(&mut self, pos: (i32, i32, i32), meta: u16) -> bool {
+        let front = opposite(repeater_facing(meta));
+        let n = offset(pos, front);
+        let s = self.level.overworld.block(n.0, n.1, n.2);
+        is_repeater(s >> 4) && repeater_facing(s & 15) != front
+    }
+
+    /// `BlockRedstoneDiode.notifyNeighbors`: the block in front and its neighbors
+    /// except the repeater.
+    pub(super) fn repeater_notify(&mut self, pos: (i32, i32, i32), state: u16) {
+        let facing = repeater_facing(state & 15);
+        let front = offset(pos, opposite(facing));
+        let id = state >> 4;
+        self.neighbor_changed(front, id);
+        self.notify_neighbors_except(front, id, facing);
+    }
+
+    /// `BlockRedstoneDiode.updateState` (on a neighbor change).
+    pub(super) fn repeater_update_state(&mut self, pos: (i32, i32, i32), state: u16) {
+        let (id, meta) = (state >> 4, state & 15);
+        if self.repeater_locked(pos, meta) {
+            return;
+        }
+        let should = self.repeater_input(pos, meta) > 0;
+        let powered = id == block::POWERED_REPEATER;
+        if powered != should && !self.is_tick_pending_now(pos, id) {
+            let priority = if self.repeater_faces_repeater(pos, meta) {
+                PRIORITY_INTO_REPEATER
+            } else if powered {
+                PRIORITY_TURN_OFF
+            } else {
+                PRIORITY_TURN_ON
+            };
+            self.schedule_update_priority(pos, id, repeater_delay(meta), priority);
+        }
+    }
+
+    /// `BlockRedstoneDiode.updateTick`.
+    pub(super) fn repeater_tick(&mut self, pos: (i32, i32, i32), state: u16) {
+        let (id, meta) = (state >> 4, state & 15);
+        if self.repeater_locked(pos, meta) {
+            return;
+        }
+        let should = self.repeater_input(pos, meta) > 0;
+        let flags = super::block_update::flags::SEND;
+        if id == block::POWERED_REPEATER && !should {
+            self.set_block_flags(pos, block::UNPOWERED_REPEATER << 4 | meta, flags);
+        } else if id == block::UNPOWERED_REPEATER {
+            self.set_block_flags(pos, block::POWERED_REPEATER << 4 | meta, flags);
+            if !should {
+                self.schedule_update_priority(
+                    pos,
+                    block::POWERED_REPEATER,
+                    repeater_delay(meta),
+                    PRIORITY_TURN_ON,
+                );
+            }
+        }
+    }
+
+    /// `BlockRedstoneDiode.onBlockPlacedBy`: an already powered input fires after one
+    /// tick.
+    pub(super) fn repeater_placed(&mut self, pos: (i32, i32, i32), state: u16) {
+        if self.repeater_input(pos, state & 15) > 0 {
+            self.schedule_update(pos, state >> 4, 1);
+        }
+    }
+
+    /// `onBlockDestroyedByPlayer` of a powered repeater: updates around every neighbor.
+    pub(super) fn repeater_destroyed(&mut self, pos: (i32, i32, i32), old: u16) {
+        if old >> 4 == block::POWERED_REPEATER {
+            self.torch_notify(pos, old >> 4);
         }
     }
 }

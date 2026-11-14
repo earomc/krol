@@ -274,6 +274,11 @@ description = "Redstone power queries (strong/weak, normal cubes relaying), reds
 scenarios = ["play/redstone_basics"]
 
 [[feature]]
+id = "redstone.repeaters"
+description = "Repeaters: placement facing away from the player, delay cycling, delays and tick priorities, locking by powered side repeaters, output to the front, block update marking after onBlockAdded/breakBlock"
+scenarios = ["play/repeaters"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

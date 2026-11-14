@@ -161,6 +161,16 @@ impl Game {
                 self.activate_lever(pos);
                 true
             }
+            // BlockRedstoneRepeater.onBlockActivated: cycles the delay (not in
+            // adventure mode, where the click falls through to the item).
+            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {
+                if self.players[i].gamemode == 2 {
+                    return false;
+                }
+                let cycled = (state & !12) | ((((meta >> 2) + 1) & 3) << 2);
+                self.set_block_notify(pos, cycled);
+                true
+            }
             block::STONE_BUTTON | block::WOODEN_BUTTON => {
                 self.activate_button(pos);
                 true

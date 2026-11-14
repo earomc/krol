@@ -1,0 +1,49 @@
+description = "Repeaters: placed facing away from the player, delay cycled by clicking, a lever driving repeater -> wire -> lamp -> repeater (delay 4) -> lamp on and off"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. He looks east before placing the repeaters, so their inputs face west.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 11
+chat = [
+    "@2500 !creative 36 69 64 0",
+    "@2600 !creative 37 356 64 0",
+    "@2700 !creative 38 331 64 0",
+    "@2800 !creative 39 123 64 0",
+    "@3000 !place -470 3 -433 1",
+    "@3200 !look -90 0",
+    "@3400 !hold 1",
+    "@3600 !place -469 3 -433 1",
+    "@3800 !hold 2",
+    "@4000 !place -468 3 -433 1",
+    "@4200 !hold 3",
+    "@4400 !place -467 3 -433 1",
+    "@4600 !hold 1",
+    "@4800 !place -466 3 -433 1",
+    "@5000 !hold 3",
+    "@5200 !place -465 3 -433 1",
+    "@5500 !place -466 4 -433 1",
+    "@5700 !place -466 4 -433 1",
+    "@5900 !place -466 4 -433 1",
+    "@6400 !place -470 4 -433 1",
+    "@8000 !place -470 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 10700
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-469, 4, -433], [-468, 4, -433], [-467, 4, -433], [-466, 4, -433], [-465, 4, -433]]

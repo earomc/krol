@@ -78,11 +78,14 @@ impl Game {
         if old == state {
             return;
         }
-        w.set_block(pos.0, pos.1, pos.2, state);
+        w.set_block_unmarked(pos.0, pos.1, pos.2, state);
         if old >> 4 != state >> 4 {
             self.block_removed(pos, old);
             self.block_added(pos, state);
         }
+        self.level
+            .overworld
+            .mark_block_for_update(pos.0, pos.1, pos.2);
         if flags & flags::NOTIFY != 0 {
             self.notify_neighbors(pos, old >> 4);
         }
@@ -106,8 +109,23 @@ impl Game {
         self.set_block_notify(pos, 0);
     }
 
-    /// `onNeighborBlockChange` of the block at `pos`.
-    fn neighbor_changed(&mut self, pos: (i32, i32, i32), _source: u16) {
+    /// `notifyNeighborsOfStateExcept`: like [`Self::notify_neighbors`], skipping one
+    /// side.
+    pub(super) fn notify_neighbors_except(
+        &mut self,
+        pos: (i32, i32, i32),
+        source: u16,
+        except: u8,
+    ) {
+        for dir in NEIGHBOR_ORDER {
+            if dir != except {
+                self.neighbor_changed(offset(pos, dir), source);
+            }
+        }
+    }
+
+    /// `onNeighborBlockChange` of the block at `pos` (`notifyBlockOfStateChange`).
+    pub(super) fn neighbor_changed(&mut self, pos: (i32, i32, i32), _source: u16) {
         let w = &mut self.level.overworld;
         let state = w.block(pos.0, pos.1, pos.2);
         let (id, meta) = (state >> 4, state & 15);
@@ -135,6 +153,16 @@ impl Game {
             }
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => {
                 self.lamp_neighbor_changed(pos, id);
+                return;
+            }
+            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {
+                let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2);
+                if solid_top(below) {
+                    self.repeater_update_state(pos, state);
+                } else {
+                    self.pop_off(pos, state);
+                    self.torch_notify(pos, id);
+                }
                 return;
             }
             _ => {}
@@ -190,8 +218,14 @@ impl Game {
             block::REDSTONE_WIRE => self.wire_added(pos, state),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
+            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_notify(pos, state),
             _ => {}
         }
+    }
+
+    /// `onBlockDestroyedByPlayer`, after a player broke the block.
+    pub(super) fn destroyed_by_player(&mut self, pos: (i32, i32, i32), old: u16) {
+        self.repeater_destroyed(pos, old);
     }
 
     /// `breakBlock` of the removed block: a powered lever or button updates around
@@ -204,6 +238,7 @@ impl Game {
             }
             block::REDSTONE_WIRE => self.wire_removed(pos, old),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
+            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_notify(pos, old),
             _ => {}
         }
     }
@@ -256,12 +291,32 @@ impl Game {
     /// `World.scheduleUpdate`: a tick for the block at `pos` after `delay` ticks, if its
     /// chunk is loaded.
     pub(super) fn schedule_update(&mut self, pos: (i32, i32, i32), id: u16, delay: i32) {
+        self.schedule_update_priority(pos, id, delay, 0);
+    }
+
+    /// `World.updateBlockTick` with a priority (lower runs first at the same time).
+    pub(super) fn schedule_update_priority(
+        &mut self,
+        pos: (i32, i32, i32),
+        id: u16,
+        delay: i32,
+        priority: i32,
+    ) {
         let w = &mut self.level.overworld;
         if !(0..256).contains(&pos.1) || !w.is_chunk_loaded(pos.0 >> 4, pos.2 >> 4) {
             return;
         }
         let now = w.total_time;
-        w.scheduler.schedule(pos, id, delay, 0, now);
+        w.scheduler.schedule(pos, id, delay, priority, now);
+    }
+
+    /// `WorldServer.isBlockTickPending`: vanilla only looks at the ticks still waiting
+    /// in the batch being run this tick.
+    pub(super) fn is_tick_pending_now(&self, pos: (i32, i32, i32), id: u16) -> bool {
+        let id = super::redstone::associated(id);
+        self.ticks_this_tick
+            .iter()
+            .any(|&(p, b)| p == pos && super::redstone::associated(b) == id)
     }
 
     /// `WorldServer.tickUpdates`: runs the due scheduled ticks whose block is still
@@ -269,7 +324,9 @@ impl Game {
     pub(super) fn tick_scheduled(&mut self) {
         let now = self.level.data.time();
         self.level.overworld.total_time = now;
-        for (pos, id) in self.level.overworld.scheduler.take_due(now) {
+        self.ticks_this_tick = self.level.overworld.scheduler.take_due(now);
+        while !self.ticks_this_tick.is_empty() {
+            let (pos, id) = self.ticks_this_tick.remove(0);
             let state = self.level.overworld.block(pos.0, pos.1, pos.2);
             let associated = super::redstone::associated;
             if state >> 4 != 0 && associated(state >> 4) == associated(id) {
@@ -292,6 +349,7 @@ impl Game {
             _ if super::falling_block::falls(id) => self.check_fallable(pos, state),
             block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => self.torch_tick(pos, state),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
+            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_tick(pos, state),
             _ => {
                 let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
                 if plant_soil(id, below) == Some(false) {

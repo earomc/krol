@@ -217,6 +217,8 @@ struct Game {
     wire_gives_power: bool,
     /// `BlockRedstoneWire.blocksNeedingUpdate`, in insertion order.
     wire_queue: Vec<(i32, i32, i32)>,
+    /// Scheduled ticks still waiting in the batch being run (`pendingTickListEntriesThisTick`).
+    ticks_this_tick: Vec<((i32, i32, i32), u16)>,
     /// `BlockRedstoneTorch.toggles`: recent torch toggles (position, total time).
     torch_toggles: Vec<((i32, i32, i32), i64)>,
     /// Falling blocks by entity id.
@@ -279,6 +281,7 @@ pub fn start(
         wire_gives_power: true,
         wire_queue: Vec::new(),
         torch_toggles: Vec::new(),
+        ticks_this_tick: Vec::new(),
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),
@@ -1296,6 +1299,7 @@ impl Game {
         self.break_effect(i, pos, state);
         self.drop_container_contents(pos);
         self.set_block_notify(pos, 0);
+        self.destroyed_by_player(pos, state);
         self.send_block(i, pos);
     }
 
@@ -1394,6 +1398,10 @@ impl Game {
         if self.place_door(i, stack.id, pos, face as u8) {
             return;
         }
+        if stack.id == ids::item::REPEATER {
+            self.place_repeater(i, pos, face as u8);
+            return;
+        }
         if stack.id == ids::item::REDSTONE {
             self.place_wire(i, pos, face as u8);
             return;
@@ -1481,6 +1489,34 @@ impl Game {
         {
             te.insert("CustomName", krol_nbt::Tag::String(name));
         }
+    }
+
+    /// `ItemReed.onItemUse` for repeaters: on a replaceable spot with a solid top below,
+    /// facing away from the player.
+    fn place_repeater(&mut self, i: usize, pos: (i32, i32, i32), face: u8) {
+        let clicked = self.level.overworld.block(pos.0, pos.1, pos.2);
+        let at = if blocks::is_replaceable(clicked) {
+            pos
+        } else {
+            placement::offset(pos, face)
+        };
+        let w = &mut self.level.overworld;
+        if !(0..256).contains(&at.1)
+            || !blocks::is_replaceable(w.block(at.0, at.1, at.2))
+            || !placement::solid_top(w.block(at.0, at.1 - 1, at.2))
+        {
+            return;
+        }
+        // getHorizontalFacing().getOpposite() as a horizontal index (south, west, north,
+        // east).
+        let yaw = self.players[i].rotation.0;
+        let facing = krol_java::math::floor_f64(f64::from(yaw * 4.0 / 360.0) + 0.5) & 3;
+        let state = ids::block::UNPOWERED_REPEATER << 4 | ((facing + 2) & 3) as u16;
+        if self.blocked_by_players(state, at) {
+            return;
+        }
+        self.finish_placement(i, at, state);
+        self.repeater_placed(at, state);
     }
 
     /// `ItemStack.onItemUse` succeeded: the held item's use statistic.

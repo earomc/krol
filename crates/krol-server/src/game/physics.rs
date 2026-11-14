@@ -162,6 +162,8 @@ fn add_block_boxes(state: u16, pos: (i32, i32, i32), mask: &Aabb, out: &mut Vec<
             return;
         }
         171 => h(0.0625),
+        // Repeaters and comparators (BlockRedstoneDiode bounds).
+        93 | 94 | 149 | 150 => h(0.125),
         // TODO(M5): double chests extend to their neighbor.
         54 | 130 | 146 => ([0.0625, 0.0, 0.0625], [0.9375, 0.875, 0.9375]),
         26 => h(0.5625),

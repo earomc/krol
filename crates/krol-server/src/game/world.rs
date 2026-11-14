@@ -127,13 +127,22 @@ impl World {
     /// Sets a block (vanilla `setBlockState` with update flags 3) and records the change
     /// for the end-of-tick flush to watching players.
     pub fn set_block(&mut self, x: i32, y: i32, z: i32, state: u16) {
+        if self.set_block_unmarked(x, y, z, state) {
+            self.mark_block_for_update(x, y, z);
+        }
+    }
+
+    /// Changes the block (`Chunk.setBlockState`) without recording it for clients;
+    /// returns whether anything changed. Vanilla marks the block only after the old
+    /// block's `breakBlock` and the new block's `onBlockAdded` ran.
+    pub fn set_block_unmarked(&mut self, x: i32, y: i32, z: i32, state: u16) -> bool {
         if !(0..256).contains(&y) {
-            return;
+            return false;
         }
         // Chunk.setBlockState: setting the same state changes nothing.
         let old = self.block(x, y, z);
         if old == state {
-            return;
+            return false;
         }
         let has_sky = self.has_sky;
         self.chunk_mut(x >> 4, z >> 4).set_block(
@@ -144,7 +153,7 @@ impl World {
             has_sky,
         );
         self.update_tile_entity((x, y, z), old, state);
-        self.mark_block_for_update(x, y, z);
+        true
     }
 
     /// Records a block for the end-of-tick flush to watching players (vanilla

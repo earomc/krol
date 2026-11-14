@@ -178,6 +178,8 @@ pub mod item {
     pub const MILK_BUCKET: i16 = 335;
     /// `redstone` (the dust).
     pub const REDSTONE: i16 = 331;
+    /// `repeater` (the item).
+    pub const REPEATER: i16 = 356;
     /// `blaze_rod`.
     pub const BLAZE_ROD: i16 = 369;
 }
