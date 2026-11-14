@@ -425,7 +425,7 @@ impl Game {
                 } else {
                     block::FURNACE
                 };
-                w.set_block(pos.0, pos.1, pos.2, id << 4 | (state & 15));
+                self.set_block_notify(pos, id << 4 | (state & 15));
             }
         }
     }

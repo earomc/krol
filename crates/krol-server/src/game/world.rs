@@ -88,6 +88,11 @@ pub struct World {
     /// Furnace tile entities in the order they were loaded or created (vanilla's
     /// `tickableTileEntities`, of which krol ticks furnaces this way).
     pub furnaces: Vec<(i32, i32, i32)>,
+    /// Pending scheduled block ticks.
+    pub scheduler: super::scheduler::Scheduler,
+    /// The world's total time (`getTotalWorldTime`), kept in step by the game so chunk
+    /// loading can schedule saved ticks.
+    pub total_time: i64,
     chunks: HashMap<(i32, i32), LoadedChunk>,
     regions: HashMap<(i32, i32), RegionFile>,
 }
@@ -114,6 +119,8 @@ impl World {
             pending_changes: HashMap::new(),
             pending_order: Vec::new(),
             furnaces: Vec::new(),
+            scheduler: Default::default(),
+            total_time: 0,
         }
     }
 
@@ -204,6 +211,10 @@ impl World {
             let from_disk = loaded.is_some();
             let mut chunk = loaded.unwrap_or_else(|| Chunk::empty(cx, cz));
             sort_tile_entities(&mut chunk.tile_entities);
+            // AnvilChunkLoader.loadEntities: saved ticks go back into the scheduler.
+            if let Some(ticks) = chunk.tile_ticks.take() {
+                self.scheduler.load(&ticks, self.total_time);
+            }
             // Chunk.onChunkLoad: the tile entities join the world's lists.
             for t in chunk.tile_entities.iter() {
                 if let Tag::Compound(c) = t
@@ -422,6 +433,10 @@ impl World {
             .map(|(k, _)| *k)
             .collect();
         for (cx, cz) in dirty {
+            let ticks = self.scheduler.chunk_ticks(cx, cz, world_time);
+            if let Some(c) = self.chunks.get_mut(&(cx, cz)) {
+                c.chunk.tile_ticks = ticks;
+            }
             let root = self.chunks[&(cx, cz)].chunk.to_nbt(world_time);
             if let Some(region) = self.region(cx, cz)
                 && let Err(e) = region.write_chunk(cx & 31, cz & 31, &root, now)

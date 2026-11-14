@@ -6,6 +6,7 @@
 //! player's [`Outgoing`] queue.
 
 pub mod block_data;
+mod block_update;
 pub mod blocks;
 mod chest;
 pub mod commands;
@@ -23,6 +24,7 @@ pub mod physics;
 mod placement;
 pub mod player;
 mod recipes;
+mod scheduler;
 mod sign;
 mod special_recipes;
 pub mod stats;
@@ -376,6 +378,7 @@ impl Game {
         self.refresh_status();
         self.tick_weather();
         self.tick_time();
+        self.tick_scheduled();
         if self.tick_count % 900 == 0 && self.saving_enabled {
             // Vanilla autosave (saveAllWorlds(true): no log lines).
             let dir = self.level.dir.clone();
@@ -1273,7 +1276,7 @@ impl Game {
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         self.break_effect(i, pos, state);
         self.drop_container_contents(pos);
-        self.level.overworld.set_block(pos.0, pos.1, pos.2, 0);
+        self.set_block_notify(pos, 0);
         self.send_block(i, pos);
     }
 
@@ -1478,7 +1481,7 @@ impl Game {
     /// Sets the placed block, plays its place sound to everyone within hearing distance
     /// and uses up one item in survival.
     fn finish_placement(&mut self, i: usize, at: (i32, i32, i32), state: u16) {
-        self.level.overworld.set_block(at.0, at.1, at.2, state);
+        self.set_block_notify(at, state);
         self.count_item_use(i);
         let sound = blocks::sound_type(state >> 4);
         let volume = (sound.volume + 1.0) / 2.0;
@@ -1518,11 +1521,11 @@ impl Game {
         if !x_axis || (!hn && !hs) {
             if !x_axis && (hw || he) {
                 let other = if hw { we } else { ea };
-                w.set_block(other.0, other.1, other.2, state);
+                self.set_block_notify(other, state);
             }
         } else {
             let other = if hn { n } else { so };
-            w.set_block(other.0, other.1, other.2, state);
+            self.set_block_notify(other, state);
         }
     }
 

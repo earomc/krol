@@ -1,0 +1,276 @@
+//! Block updates: `World.setBlockState` with update flags, neighbor notifications
+//! (`notifyNeighborsOfStateChange` → `onNeighborBlockChange`), scheduled block ticks
+//! (`updateTick`), and the blocks that use them so far: plants, torches, signs,
+//! ladders, levers and buttons.
+//!
+//! TODO(M5): redstone power (levers and buttons only change their own state), falling
+//! blocks, liquids, doors and the other blocks that react to neighbors;
+//! `onBlockAdded`; comparator updates.
+
+use super::Game;
+use super::ids::block;
+use super::placement::{
+    self, DOWN, EAST, NORTH, SOUTH, UP, WEST, is_normal_cube, offset, opposite, solid_top,
+};
+
+/// `setBlockState` flags.
+pub mod flags {
+    /// Notify the neighbors (`onNeighborBlockChange`).
+    pub const NOTIFY: u8 = 1;
+    /// Send the change to clients. krol always does; kept for readability.
+    pub const SEND: u8 = 2;
+    /// Both (vanilla's default).
+    pub const DEFAULT: u8 = NOTIFY | SEND;
+}
+
+/// The order `notifyNeighborsOfStateChange` visits the neighbors in.
+const NEIGHBOR_ORDER: [u8; 6] = [WEST, EAST, DOWN, UP, NORTH, SOUTH];
+/// Button press duration in ticks (`tickRate`): wooden buttons stay pressed longer.
+const STONE_BUTTON_TICKS: i32 = 20;
+const WOODEN_BUTTON_TICKS: i32 = 30;
+/// The powered bit of levers and buttons.
+const POWERED: u16 = 8;
+/// Volume and pitches of `random.click`.
+const CLICK_VOLUME: f32 = 0.3;
+const CLICK_ON: f32 = 0.6;
+const CLICK_OFF: f32 = 0.5;
+
+/// The face a button or lever is mounted on (`FACING`), from its metadata. Levers on
+/// the floor or ceiling come in two rotations.
+fn mount_facing(id: u16, meta: u16) -> u8 {
+    if id == block::LEVER {
+        match meta & 7 {
+            0 | 7 => DOWN,
+            1 => EAST,
+            2 => WEST,
+            3 => SOUTH,
+            4 => NORTH,
+            _ => UP,
+        }
+    } else {
+        match meta & 7 {
+            0 => DOWN,
+            1 => EAST,
+            2 => WEST,
+            3 => SOUTH,
+            4 => NORTH,
+            _ => UP,
+        }
+    }
+}
+
+/// `BlockButton.func_181088_a`: the block on side `dir` can hold a button or lever
+/// (solid top when below, else a normal cube).
+pub fn can_mount(world: &mut super::world::World, pos: (i32, i32, i32), dir: u8) -> bool {
+    let n = offset(pos, dir);
+    let s = world.block(n.0, n.1, n.2);
+    if dir == DOWN {
+        solid_top(s)
+    } else {
+        is_normal_cube(s)
+    }
+}
+
+/// What a plant needs below it (`canPlaceBlockOn` of the bushes).
+fn plant_soil(plant: u16, below: u16) -> Option<bool> {
+    Some(match plant {
+        block::SAPLING | block::TALLGRASS | block::YELLOW_FLOWER | block::RED_FLOWER => {
+            matches!(below, block::GRASS | block::DIRT | block::FARMLAND)
+        }
+        block::DEADBUSH => matches!(
+            below,
+            block::SAND | block::HARDENED_CLAY | block::STAINED_HARDENED_CLAY | block::DIRT
+        ),
+        block::WHEAT | block::CARROTS | block::POTATOES => below == block::FARMLAND,
+        block::NETHER_WART => below == block::SOUL_SAND,
+        _ => return None,
+    })
+}
+
+impl Game {
+    /// `World.setBlockState(pos, state, flags)`: sets the block, runs the old block's
+    /// `breakBlock` and, with [`flags::NOTIFY`], notifies the neighbors with the old
+    /// block.
+    pub(super) fn set_block_flags(&mut self, pos: (i32, i32, i32), state: u16, flags: u8) {
+        let w = &mut self.level.overworld;
+        if !(0..256).contains(&pos.1) {
+            return;
+        }
+        let old = w.block(pos.0, pos.1, pos.2);
+        if old == state {
+            return;
+        }
+        w.set_block(pos.0, pos.1, pos.2, state);
+        if old >> 4 != state >> 4 {
+            self.block_removed(pos, old);
+        }
+        if flags & flags::NOTIFY != 0 {
+            self.notify_neighbors(pos, old >> 4);
+        }
+    }
+
+    /// `setBlockState(pos, state)` with the default flags.
+    pub(super) fn set_block_notify(&mut self, pos: (i32, i32, i32), state: u16) {
+        self.set_block_flags(pos, state, flags::DEFAULT);
+    }
+
+    /// `notifyNeighborsOfStateChange`.
+    pub(super) fn notify_neighbors(&mut self, pos: (i32, i32, i32), source: u16) {
+        for dir in NEIGHBOR_ORDER {
+            self.neighbor_changed(offset(pos, dir), source);
+        }
+    }
+
+    /// `dropBlockAsItem` + `setBlockToAir`.
+    fn pop_off(&mut self, pos: (i32, i32, i32), state: u16) {
+        self.drop_block_items(pos, state);
+        self.set_block_notify(pos, 0);
+    }
+
+    /// `onNeighborBlockChange` of the block at `pos`.
+    fn neighbor_changed(&mut self, pos: (i32, i32, i32), _source: u16) {
+        let w = &mut self.level.overworld;
+        let state = w.block(pos.0, pos.1, pos.2);
+        let (id, meta) = (state >> 4, state & 15);
+        let below = w.block(pos.0, pos.1 - 1, pos.2);
+        let stays = if let Some(ok) = plant_soil(id, below >> 4) {
+            // BlockBush.checkAndDropBlock.
+            ok
+        } else {
+            match id {
+                block::TORCH => {
+                    let face = match meta {
+                        1 => EAST,
+                        2 => WEST,
+                        3 => SOUTH,
+                        4 => NORTH,
+                        _ => UP,
+                    };
+                    placement::torch_can_attach(w, pos, face)
+                }
+                block::STANDING_SIGN => super::sign::solid_material(below),
+                block::WALL_SIGN => {
+                    let n = offset(pos, opposite(meta as u8));
+                    super::sign::solid_material(w.block(n.0, n.1, n.2))
+                }
+                block::LADDER => {
+                    let n = offset(pos, opposite(meta as u8));
+                    is_normal_cube(w.block(n.0, n.1, n.2))
+                }
+                block::LEVER | block::STONE_BUTTON | block::WOODEN_BUTTON => {
+                    // checkForDrop (any side can hold it), then its own side.
+                    let any = [DOWN, UP, NORTH, SOUTH, WEST, EAST]
+                        .iter()
+                        .any(|&d| can_mount(w, pos, d));
+                    any && can_mount(w, pos, opposite(mount_facing(id, meta)))
+                }
+                _ => true,
+            }
+        };
+        if !stays {
+            self.pop_off(pos, state);
+        }
+    }
+
+    /// `breakBlock` of the removed block: a powered lever or button updates around
+    /// itself and the block it was on.
+    fn block_removed(&mut self, pos: (i32, i32, i32), old: u16) {
+        let (id, meta) = (old >> 4, old & 15);
+        if matches!(
+            id,
+            block::LEVER | block::STONE_BUTTON | block::WOODEN_BUTTON
+        ) && meta & POWERED != 0
+        {
+            self.notify_mounted(pos, id, meta);
+        }
+    }
+
+    /// Notifies around a lever or button and around the block it is mounted on.
+    fn notify_mounted(&mut self, pos: (i32, i32, i32), id: u16, meta: u16) {
+        self.notify_neighbors(pos, id);
+        let mounted_on = offset(pos, opposite(mount_facing(id, meta)));
+        self.notify_neighbors(mounted_on, id);
+    }
+
+    fn click(&self, pos: (i32, i32, i32), pitch: f32) {
+        let center = (
+            f64::from(pos.0) + 0.5,
+            f64::from(pos.1) + 0.5,
+            f64::from(pos.2) + 0.5,
+        );
+        self.play_sound_near_except(None, "random.click", center, CLICK_VOLUME, pitch);
+    }
+
+    /// `BlockLever.onBlockActivated`: flips the lever.
+    pub(super) fn activate_lever(&mut self, pos: (i32, i32, i32)) {
+        let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+        let flipped = state ^ POWERED;
+        self.set_block_notify(pos, flipped);
+        let on = flipped & POWERED != 0;
+        self.click(pos, if on { CLICK_ON } else { CLICK_OFF });
+        self.notify_mounted(pos, block::LEVER, flipped & 15);
+    }
+
+    /// `BlockButton.onBlockActivated`: presses the button until its scheduled tick.
+    pub(super) fn activate_button(&mut self, pos: (i32, i32, i32)) {
+        let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+        let id = state >> 4;
+        if state & POWERED != 0 {
+            return;
+        }
+        let pressed = state | POWERED;
+        self.set_block_notify(pos, pressed);
+        self.click(pos, CLICK_ON);
+        self.notify_mounted(pos, id, pressed & 15);
+        let delay = if id == block::WOODEN_BUTTON {
+            WOODEN_BUTTON_TICKS
+        } else {
+            STONE_BUTTON_TICKS
+        };
+        self.schedule_update(pos, id, delay);
+    }
+
+    /// `World.scheduleUpdate`: a tick for the block at `pos` after `delay` ticks, if its
+    /// chunk is loaded.
+    pub(super) fn schedule_update(&mut self, pos: (i32, i32, i32), id: u16, delay: i32) {
+        let w = &mut self.level.overworld;
+        if !(0..256).contains(&pos.1) || !w.is_chunk_loaded(pos.0 >> 4, pos.2 >> 4) {
+            return;
+        }
+        let now = w.total_time;
+        w.scheduler.schedule(pos, id, delay, 0, now);
+    }
+
+    /// `WorldServer.tickUpdates`: runs the due scheduled ticks whose block is still
+    /// there.
+    pub(super) fn tick_scheduled(&mut self) {
+        let now = self.level.data.time();
+        self.level.overworld.total_time = now;
+        for (pos, id) in self.level.overworld.scheduler.take_due(now) {
+            let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+            if state >> 4 != 0 && state >> 4 == id {
+                self.update_tick(pos, state);
+            }
+        }
+    }
+
+    /// `Block.updateTick`.
+    fn update_tick(&mut self, pos: (i32, i32, i32), state: u16) {
+        let (id, meta) = (state >> 4, state & 15);
+        match id {
+            // BlockButton.updateTick (wooden buttons: checkForArrows, no arrows yet).
+            block::STONE_BUTTON | block::WOODEN_BUTTON if meta & POWERED != 0 => {
+                let released = state & !POWERED;
+                self.set_block_notify(pos, released);
+                self.notify_mounted(pos, id, released & 15);
+                self.click(pos, CLICK_OFF);
+            }
+            _ => {
+                let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
+                if plant_soil(id, below) == Some(false) {
+                    self.pop_off(pos, state);
+                }
+            }
+        }
+    }
+}

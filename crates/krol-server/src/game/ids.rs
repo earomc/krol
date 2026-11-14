@@ -5,46 +5,86 @@
 
 /// Block ids.
 pub mod block {
+    /// `grass`.
+    pub const GRASS: u16 = 2;
+    /// `dirt`.
+    pub const DIRT: u16 = 3;
     /// `sapling`.
     pub const SAPLING: u16 = 6;
+    /// `sand`.
+    pub const SAND: u16 = 12;
     /// `sponge`.
     pub const SPONGE: u16 = 19;
     /// `coal_ore`.
     pub const COAL_ORE: u16 = 16;
     /// `lapis_ore`.
     pub const LAPIS_ORE: u16 = 21;
+    /// `tallgrass`.
+    pub const TALLGRASS: u16 = 31;
+    /// `deadbush`.
+    pub const DEADBUSH: u16 = 32;
+    /// `yellow_flower`.
+    pub const YELLOW_FLOWER: u16 = 37;
+    /// `red_flower`.
+    pub const RED_FLOWER: u16 = 38;
+    /// `torch`.
+    pub const TORCH: u16 = 50;
     /// `chest`.
     pub const CHEST: u16 = 54;
     /// `diamond_ore`.
     pub const DIAMOND_ORE: u16 = 56;
     /// `crafting_table`.
     pub const CRAFTING_TABLE: u16 = 58;
+    /// `wheat` (the crop).
+    pub const WHEAT: u16 = 59;
+    /// `farmland`.
+    pub const FARMLAND: u16 = 60;
     /// `furnace`.
     pub const FURNACE: u16 = 61;
     /// `lit_furnace`.
     pub const LIT_FURNACE: u16 = 62;
     /// `standing_sign`.
     pub const STANDING_SIGN: u16 = 63;
+    /// `ladder`.
+    pub const LADDER: u16 = 65;
     /// `wall_sign`.
     pub const WALL_SIGN: u16 = 68;
+    /// `lever`.
+    pub const LEVER: u16 = 69;
     /// `redstone_ore`.
     pub const REDSTONE_ORE: u16 = 73;
     /// `lit_redstone_ore`.
     pub const LIT_REDSTONE_ORE: u16 = 74;
+    /// `stone_button`.
+    pub const STONE_BUTTON: u16 = 77;
     /// `ice`.
     pub const ICE: u16 = 79;
     /// `cactus`.
     pub const CACTUS: u16 = 81;
+    /// `soul_sand`.
+    pub const SOUL_SAND: u16 = 88;
+    /// `nether_wart`.
+    pub const NETHER_WART: u16 = 115;
     /// `wooden_slab`.
     pub const WOODEN_SLAB: u16 = 126;
     /// `emerald_ore`.
     pub const EMERALD_ORE: u16 = 129;
+    /// `carrots`.
+    pub const CARROTS: u16 = 141;
+    /// `potatoes`.
+    pub const POTATOES: u16 = 142;
+    /// `wooden_button`.
+    pub const WOODEN_BUTTON: u16 = 143;
     /// `trapped_chest`.
     pub const TRAPPED_CHEST: u16 = 146;
     /// `quartz_ore`.
     pub const QUARTZ_ORE: u16 = 153;
+    /// `stained_hardened_clay`.
+    pub const STAINED_HARDENED_CLAY: u16 = 159;
     /// `slime`.
     pub const SLIME: u16 = 165;
+    /// `hardened_clay`.
+    pub const HARDENED_CLAY: u16 = 172;
     /// `coal_block`.
     pub const COAL_BLOCK: u16 = 173;
     /// `packed_ice`.

@@ -83,7 +83,7 @@ pub fn description(te: &Compound) -> Option<ClientboundPlay> {
 }
 
 /// `Material.isSolid`.
-fn solid_material(state: u16) -> bool {
+pub(super) fn solid_material(state: u16) -> bool {
     use super::block_data::Material::*;
     !matches!(
         super::block_data::material(state >> 4),
@@ -151,7 +151,7 @@ impl Game {
         } else {
             block::WALL_SIGN << 4 | u16::from(face)
         };
-        self.level.overworld.set_block(at.0, at.1, at.2, state);
+        self.set_block_notify(at, state);
         self.count_item_use(i);
         let player = &mut self.players[i];
         if player.gamemode != 1 {

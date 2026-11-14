@@ -157,6 +157,14 @@ impl Game {
                 self.activate_chest(i, pos, id);
                 true
             }
+            block::LEVER => {
+                self.activate_lever(pos);
+                true
+            }
+            block::STONE_BUTTON | block::WOODEN_BUTTON => {
+                self.activate_button(pos);
+                true
+            }
             block::FURNACE | block::LIT_FURNACE => {
                 self.activate_furnace(i, pos);
                 true
@@ -211,8 +219,12 @@ impl Game {
         let hinge_right = (door_left && !door_right) || right_solid > left_solid;
         let lower = block << 4 | horizontal_index(rotate_y(facing));
         let upper = block << 4 | 8 | u16::from(hinge_right);
-        w.set_block(at.0, at.1, at.2, lower);
-        w.set_block(at.0, at.1 + 1, at.2, upper);
+        // ItemDoor.placeDoor: both halves without updates, then both notify.
+        let top = (at.0, at.1 + 1, at.2);
+        self.set_block_flags(at, lower, super::block_update::flags::SEND);
+        self.set_block_flags(top, upper, super::block_update::flags::SEND);
+        self.notify_neighbors(at, block);
+        self.notify_neighbors(top, block);
         self.count_item_use(i);
         let player = &mut self.players[i];
         if player.gamemode != 1 {

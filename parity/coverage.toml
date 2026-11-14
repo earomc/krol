@@ -259,6 +259,11 @@ description = "Special crafting recipes: item repair, leather armor dyes, book c
 scenarios = ["play/special_recipes"]
 
 [[feature]]
+id = "blocks.updates"
+description = "Block updates: setBlockState flags, neighbor notifications in vanilla order, scheduled block ticks (order, limit, TileTicks save/load), plants/torches/signs/ladders/levers/buttons popping off, levers and buttons (placement, activation, button release ticks)"
+scenarios = ["play/levers_buttons"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

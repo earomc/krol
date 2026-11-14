@@ -37,7 +37,7 @@ pub fn offset(p: (i32, i32, i32), face: u8) -> (i32, i32, i32) {
     }
 }
 
-fn opposite(face: u8) -> u8 {
+pub fn opposite(face: u8) -> u8 {
     face ^ 1
 }
 
@@ -157,6 +157,16 @@ pub fn solid_top(state: u16) -> bool {
     }
 }
 
+/// `BlockTorch.canPlaceAt`: a torch facing `face` is held by the block behind it (a
+/// normal cube for wall torches; for standing torches a solid top, a fence, a wall or
+/// glass).
+pub fn torch_can_attach(world: &mut World, at: (i32, i32, i32), face: u8) -> bool {
+    let support = offset(at, opposite(face));
+    let s = world.block(support.0, support.1, support.2);
+    (face != UP && face != DOWN && is_normal_cube(s))
+        || (face == UP && (solid_top(s) || matches!(s >> 4, 85 | 113 | 188..=192 | 20 | 95 | 139)))
+}
+
 /// Item damage values become block metadata only for items with subtypes
 /// (`ItemBlock.getMetadata` returns 0 otherwise).
 fn item_meta(id: u16, damage: i16) -> u8 {
@@ -229,13 +239,7 @@ pub fn placed_state(
         43 | 125 | 181 => state(meta),
         // Torches attach to the clicked side, else to any side that can hold them.
         50 | 76 => {
-            let can = |face: u8, world: &mut World| -> bool {
-                let support = offset(at, opposite(face));
-                let s = world.block(support.0, support.1, support.2);
-                (face != UP && face != DOWN && is_normal_cube(s))
-                    || (face == UP
-                        && (solid_top(s) || matches!(s >> 4, 85 | 113 | 188..=192 | 20 | 95 | 139)))
-            };
+            let can = |face: u8, world: &mut World| torch_can_attach(world, at, face);
             let any = [EAST, WEST, SOUTH, NORTH, UP]
                 .iter()
                 .any(|&f| can(f, world));
@@ -278,6 +282,37 @@ pub fn placed_state(
                     .unwrap_or(NORTH)
             };
             state(face)
+        }
+        // Buttons and levers need a block to hold them on the clicked side
+        // (canPlaceBlockOnSide); levers on floors and ceilings follow the player.
+        ids::block::STONE_BUTTON | ids::block::WOODEN_BUTTON | ids::block::LEVER => {
+            if !super::block_update::can_mount(world, at, opposite(click.face)) {
+                return None;
+            }
+            let along_x = matches!(click.facing(), EAST | WEST);
+            let lever = id == ids::block::LEVER;
+            state(match click.face {
+                UP if lever => {
+                    if along_x {
+                        6
+                    } else {
+                        5
+                    }
+                }
+                DOWN if lever => {
+                    if along_x {
+                        0
+                    } else {
+                        7
+                    }
+                }
+                DOWN => 0,
+                EAST => 1,
+                WEST => 2,
+                SOUTH => 3,
+                NORTH => 4,
+                _ => 5,
+            })
         }
         // BlockChest.canPlaceBlockAt: at most one neighboring chest of the same kind,
         // and that one must not be part of a double chest already.
