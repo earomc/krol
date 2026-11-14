@@ -13,6 +13,8 @@ pub mod block {
     pub const SAPLING: u16 = 6;
     /// `sand`.
     pub const SAND: u16 = 12;
+    /// `gravel`.
+    pub const GRAVEL: u16 = 13;
     /// `sponge`.
     pub const SPONGE: u16 = 19;
     /// `coal_ore`.
@@ -29,6 +31,8 @@ pub mod block {
     pub const RED_FLOWER: u16 = 38;
     /// `torch`.
     pub const TORCH: u16 = 50;
+    /// `fire`.
+    pub const FIRE: u16 = 51;
     /// `chest`.
     pub const CHEST: u16 = 54;
     /// `diamond_ore`.

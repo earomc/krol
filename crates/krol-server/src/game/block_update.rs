@@ -103,6 +103,7 @@ impl Game {
         w.set_block(pos.0, pos.1, pos.2, state);
         if old >> 4 != state >> 4 {
             self.block_removed(pos, old);
+            self.block_added(pos, state);
         }
         if flags & flags::NOTIFY != 0 {
             self.notify_neighbors(pos, old >> 4);
@@ -132,6 +133,11 @@ impl Game {
         let w = &mut self.level.overworld;
         let state = w.block(pos.0, pos.1, pos.2);
         let (id, meta) = (state >> 4, state & 15);
+        if super::falling_block::falls(id) {
+            self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
+            return;
+        }
+        let w = &mut self.level.overworld;
         let below = w.block(pos.0, pos.1 - 1, pos.2);
         let stays = if let Some(ok) = plant_soil(id, below >> 4) {
             // BlockBush.checkAndDropBlock.
@@ -169,6 +175,14 @@ impl Game {
         };
         if !stays {
             self.pop_off(pos, state);
+        }
+    }
+
+    /// `onBlockAdded` of the new block: sand and gravel check whether to fall.
+    fn block_added(&mut self, pos: (i32, i32, i32), state: u16) {
+        let id = state >> 4;
+        if super::falling_block::falls(id) {
+            self.schedule_update(pos, id, super::falling_block::FALL_DELAY);
         }
     }
 
@@ -265,6 +279,7 @@ impl Game {
                 self.notify_mounted(pos, id, released & 15);
                 self.click(pos, CLICK_OFF);
             }
+            _ if super::falling_block::falls(id) => self.check_fallable(pos, state),
             _ => {
                 let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
                 if plant_soil(id, below) == Some(false) {

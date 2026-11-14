@@ -264,6 +264,11 @@ description = "Block updates: setBlockState flags, neighbor notifications in van
 scenarios = ["play/levers_buttons"]
 
 [[feature]]
+id = "entities.falling_blocks"
+description = "Falling sand and gravel: scheduled checks on placement and neighbor changes, falling block entities (tracking, physics, landing, dropping as items), instant fall in unloaded areas. Not yet: anvils, dragon eggs"
+scenarios = ["play/falling_blocks"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

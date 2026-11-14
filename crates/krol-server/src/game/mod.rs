@@ -14,6 +14,7 @@ mod container;
 mod damage;
 mod death;
 mod digging;
+mod falling_block;
 mod furnace;
 pub mod ids;
 mod interact;
@@ -211,6 +212,8 @@ struct Game {
     pending_removals: Vec<(u64, Component)>,
     /// Entity tracker entries.
     tracker: tracker::Tracker,
+    /// Falling blocks by entity id.
+    falling: std::collections::BTreeMap<i32, falling_block::FallingBlock>,
     /// Experience orbs by entity id.
     orbs: std::collections::BTreeMap<i32, xp_orb::XpOrb>,
     /// Dropped items by entity id.
@@ -265,6 +268,7 @@ pub fn start(
         tracker: Default::default(),
         items: Default::default(),
         orbs: Default::default(),
+        falling: Default::default(),
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),
@@ -396,6 +400,7 @@ impl Game {
         let mut order: Vec<i32> = self.players.iter().map(|p| p.entity_id).collect();
         order.extend(self.items.keys().copied());
         order.extend(self.orbs.keys().copied());
+        order.extend(self.falling.keys().copied());
         order.sort_unstable();
         for id in order {
             if self.items.contains_key(&id) {
@@ -404,6 +409,10 @@ impl Game {
             }
             if self.orbs.contains_key(&id) {
                 self.update_orb(id);
+                continue;
+            }
+            if self.falling.contains_key(&id) {
+                self.update_falling(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {

@@ -1,7 +1,7 @@
 //! Which clients see which entities, and the packets that keep them in sync
 //! (vanilla: `EntityTracker`, `EntityTrackerEntry`).
 //!
-//! Players, dropped items and experience orbs are tracked so far. Every tracked entity has an entry holding what its
+//! Players, dropped items, experience orbs and falling blocks are tracked so far. Every tracked entity has an entry holding what its
 //! viewers were last told (position in 1/32 blocks, angles in 1/256 turns). Each tick,
 //! after the entity updates, every entry:
 //!
@@ -31,6 +31,11 @@ const PLAYER_FREQUENCY: u32 = 2;
 /// Items: range 64, every 20 ticks, with velocity updates.
 const ITEM_RANGE: i32 = 64;
 const ITEM_FREQUENCY: u32 = 20;
+/// Falling blocks: range 160, every 20 ticks, with velocity updates.
+const FALLING_RANGE: i32 = 160;
+const FALLING_FREQUENCY: u32 = 20;
+/// `S0EPacketSpawnObject` type of falling blocks.
+const FALLING_OBJECT: i8 = 70;
 /// Experience orbs: range 160, every 20 ticks, with velocity updates.
 const ORB_RANGE: i32 = 160;
 const ORB_FREQUENCY: u32 = 20;
@@ -165,6 +170,20 @@ impl Game {
                 player: Some(i),
             });
         }
+        if let Some(f) = self.falling.get(&entity_id) {
+            return Some(View {
+                pos: f.body.pos,
+                yaw: 0.0,
+                pitch: 0.0,
+                head: 0.0,
+                on_ground: f.body.on_ground,
+                motion: f.body.motion,
+                chunk: f.chunk,
+                airborne: false,
+                metadata_changed: false,
+                player: None,
+            });
+        }
         if let Some(o) = self.orbs.get(&entity_id) {
             return Some(View {
                 pos: o.body.pos,
@@ -229,6 +248,8 @@ impl Game {
             (PLAYER_RANGE, PLAYER_FREQUENCY, false)
         } else if self.orbs.contains_key(&entity_id) {
             (ORB_RANGE, ORB_FREQUENCY, true)
+        } else if self.falling.contains_key(&entity_id) {
+            (FALLING_RANGE, FALLING_FREQUENCY, true)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
         };
@@ -360,6 +381,29 @@ impl Game {
                 }
             }
             // TODO(M5): use bed, potion effects.
+        } else if let Some(f) = self.falling.get(&entity_id) {
+            let velocity = (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2));
+            packets.push(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind: FALLING_OBJECT,
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                pitch: 0,
+                yaw: 0,
+                data: f.state_id(),
+                velocity: Some(velocity),
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: super::falling_block::FallingBlock::metadata(),
+            });
+            packets.push(ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: velocity.0,
+                y: velocity.1,
+                z: velocity.2,
+            });
         } else if let Some(o) = self.orbs.get(&entity_id) {
             packets.push(ClientboundPlay::SpawnExperienceOrb {
                 entity_id,

@@ -1,0 +1,44 @@
+description = "Falling blocks: two sand blocks on a dirt column fall one after the other when the dirt under them is broken; sand landing on a slab drops as an item"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. The columns are out of pickup reach.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 11
+chat = [
+    "@2500 !creative 36 3 64 0",
+    "@2700 !creative 37 12 64 0",
+    "@2900 !creative 38 44 64 0",
+    "@3200 !place -474 3 -433 1",
+    "@3500 !place -474 4 -433 1",
+    "@3700 !hold 1",
+    "@4000 !place -474 5 -433 1",
+    "@4300 !place -474 6 -433 1",
+    "@4500 !hold 2",
+    "@4800 !place -476 3 -433 1",
+    "@5000 !hold 0",
+    "@5300 !place -476 4 -433 1",
+    "@5500 !hold 1",
+    "@5800 !place -476 5 -433 1",
+    "@6500 !dig -474 5 -433 1",
+    "@8000 !dig -476 5 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 10700
+
+[observe]
+log = true
+blocks = [[-474, 4, -433], [-474, 5, -433], [-474, 6, -433], [-474, 7, -433], [-476, 4, -433], [-476, 5, -433], [-476, 6, -433]]
