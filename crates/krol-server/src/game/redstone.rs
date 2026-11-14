@@ -3,7 +3,8 @@
 //! `getStrongPower` of the power sources, `BlockRedstoneWire`, `BlockRedstoneTorch`,
 //! `BlockRedstoneLight`).
 //!
-//! TODO(M5): comparators, pistons, dispensers and droppers, note blocks,
+//! TODO(M5): comparators reading hoppers, dispensers and the other containers and item
+//! frames, pistons, dispensers and droppers, note blocks,
 //! TNT, rails, pressure plates, tripwires, daylight sensors, doors and trapdoors
 //! reacting to power; torch burnout smoke particles.
 
@@ -138,6 +139,9 @@ impl Game {
             block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {
                 Self::repeater_power(id, meta, side)
             }
+            block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
+                self.comparator_power(pos, id, meta, side)
+            }
             _ => 0,
         }
     }
@@ -158,6 +162,9 @@ impl Game {
             block::REDSTONE_WIRE if self.wire_gives_power => self.weak_power(pos, side),
             block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {
                 Self::repeater_power(id, meta, side)
+            }
+            block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
+                self.comparator_power(pos, id, meta, side)
             }
             _ => 0,
         }
@@ -683,8 +690,246 @@ impl Game {
 
     /// `onBlockDestroyedByPlayer` of a powered repeater: updates around every neighbor.
     pub(super) fn repeater_destroyed(&mut self, pos: (i32, i32, i32), old: u16) {
-        if old >> 4 == block::POWERED_REPEATER {
+        if old >> 4 == block::POWERED_REPEATER || old >> 4 == block::POWERED_COMPARATOR {
             self.torch_notify(pos, old >> 4);
+        }
+    }
+}
+
+// --- Comparators (vanilla: BlockRedstoneComparator, TileEntityComparator) ----------
+
+/// Comparators react two ticks after a change.
+const COMPARATOR_DELAY: i32 = 2;
+/// Comparator metadata: subtract mode, powered.
+const SUBTRACT: u16 = 4;
+const COMPARATOR_POWERED: u16 = 8;
+/// Scheduled tick priorities of comparators: facing into a repeater first.
+const PRIORITY_COMPARATOR_INTO_REPEATER: i32 = -1;
+const PRIORITY_COMPARATOR: i32 = 0;
+/// Container signal: `floor(fullness * 14) + 1` for any non-empty container.
+const CONTAINER_SIGNAL_STEPS: f32 = 14.0;
+/// Container stack limit (`getInventoryStackLimit`).
+const CONTAINER_STACK_LIMIT: i8 = 64;
+/// Volume and pitches of the mode click.
+const MODE_CLICK_VOLUME: f32 = 0.3;
+const MODE_CLICK_SUBTRACT: f32 = 0.55;
+const MODE_CLICK_COMPARE: f32 = 0.5;
+
+/// Comparator blocks.
+pub fn is_comparator(id: u16) -> bool {
+    id == block::UNPOWERED_COMPARATOR || id == block::POWERED_COMPARATOR
+}
+
+/// `Container.calcRedstoneFromInventory`.
+pub fn container_signal(items: &[Option<krol_protocol::packets::play::ItemStack>]) -> i32 {
+    if items.is_empty() {
+        return 0;
+    }
+    let mut fullness = 0.0f32;
+    let mut filled = 0;
+    for s in items.iter().flatten() {
+        let limit = CONTAINER_STACK_LIMIT.min(super::item_data::max_stack(s.id));
+        fullness += f32::from(s.count) / f32::from(limit);
+        filled += 1;
+    }
+    fullness /= items.len() as f32;
+    krol_java::math::floor_f32(fullness * CONTAINER_SIGNAL_STEPS) + i32::from(filled > 0)
+}
+
+impl Game {
+    /// `TileEntityComparator.getOutputSignal`.
+    fn comparator_signal(&self, pos: (i32, i32, i32)) -> i32 {
+        self.level
+            .overworld
+            .tile_entity(pos)
+            .map_or(0, |c| c.get_i32("OutputSignal"))
+    }
+
+    fn set_comparator_signal(&mut self, pos: (i32, i32, i32), signal: i32) {
+        if let Some(c) = self.level.overworld.tile_entity_mut(pos) {
+            c.insert("OutputSignal", krol_nbt::Tag::Int(signal));
+        }
+    }
+
+    /// `BlockRedstoneComparator.isPowered`.
+    fn comparator_powered(id: u16, meta: u16) -> bool {
+        id == block::POWERED_COMPARATOR || meta & COMPARATOR_POWERED != 0
+    }
+
+    /// The comparator's weak and strong power out of its front (`getActiveSignal`).
+    fn comparator_power(&self, pos: (i32, i32, i32), id: u16, meta: u16, side: u8) -> i32 {
+        if Self::comparator_powered(id, meta) && repeater_facing(meta) == side {
+            self.comparator_signal(pos)
+        } else {
+            0
+        }
+    }
+
+    /// `getComparatorInputOverride` of the containers krol models: chests (the whole
+    /// double chest; nothing if blocked) and furnaces.
+    pub(super) fn comparator_override(&mut self, pos: (i32, i32, i32), state: u16) -> Option<i32> {
+        let id = state >> 4;
+        if block::is_chest(id) {
+            let parts = self.chest_parts(pos);
+            return Some(parts.map_or(0, |parts| container_signal(&self.chest_contents(&parts))));
+        }
+        if block::is_furnace(id) {
+            return Some(container_signal(&self.furnace_items(pos)));
+        }
+        None
+    }
+
+    /// `getPowerOnSides` with the diode's `canPowerSide` (any power source; wire counts
+    /// with its level, others with their strong power).
+    fn comparator_side_power(&mut self, pos: (i32, i32, i32), meta: u16) -> i32 {
+        let facing = repeater_facing(meta);
+        let mut max = 0;
+        for side in [rotate_y(facing), rotate_y(rotate_y(rotate_y(facing)))] {
+            let n = offset(pos, side);
+            let s = self.level.overworld.block(n.0, n.1, n.2);
+            if !self.provides_power(s >> 4) {
+                continue;
+            }
+            let p = if s >> 4 == block::REDSTONE_WIRE {
+                i32::from(s & 15)
+            } else {
+                self.strong_power(n, side)
+            };
+            max = max.max(p);
+        }
+        max
+    }
+
+    /// `BlockRedstoneComparator.calculateInputStrength`: the diode input, replaced by a
+    /// container's signal behind it (or behind a cube).
+    fn comparator_input(&mut self, pos: (i32, i32, i32), meta: u16) -> i32 {
+        let mut power = self.repeater_input(pos, meta);
+        let facing = repeater_facing(meta);
+        let back = offset(pos, facing);
+        let s = self.level.overworld.block(back.0, back.1, back.2);
+        if let Some(signal) = self.comparator_override(back, s) {
+            power = signal;
+        } else if power < MAX_POWER && is_normal_cube(s) {
+            let behind = offset(back, facing);
+            let s2 = self.level.overworld.block(behind.0, behind.1, behind.2);
+            if let Some(signal) = self.comparator_override(behind, s2) {
+                power = signal;
+            }
+            // TODO(M5): item frames on the far side of the cube.
+        }
+        power
+    }
+
+    /// `calculateOutput`.
+    fn comparator_output(&mut self, pos: (i32, i32, i32), meta: u16) -> i32 {
+        let input = self.comparator_input(pos, meta);
+        if meta & SUBTRACT != 0 {
+            (input - self.comparator_side_power(pos, meta)).max(0)
+        } else {
+            input
+        }
+    }
+
+    /// `shouldBePowered`.
+    fn comparator_should_power(&mut self, pos: (i32, i32, i32), meta: u16) -> bool {
+        let input = self.comparator_input(pos, meta);
+        if input >= MAX_POWER {
+            return true;
+        }
+        if input == 0 {
+            return false;
+        }
+        let sides = self.comparator_side_power(pos, meta);
+        sides == 0 || input >= sides
+    }
+
+    /// `BlockRedstoneComparator.updateState` (on a neighbor change).
+    pub(super) fn comparator_update_state(&mut self, pos: (i32, i32, i32), state: u16) {
+        let (id, meta) = (state >> 4, state & 15);
+        if self.is_tick_pending_now(pos, id) {
+            return;
+        }
+        let output = self.comparator_output(pos, meta);
+        let old = self.comparator_signal(pos);
+        let should = self.comparator_should_power(pos, meta);
+        if output != old || Self::comparator_powered(id, meta) != should {
+            let priority = if self.repeater_faces_repeater(pos, meta) {
+                PRIORITY_COMPARATOR_INTO_REPEATER
+            } else {
+                PRIORITY_COMPARATOR
+            };
+            self.schedule_update_priority(pos, id, COMPARATOR_DELAY, priority);
+        }
+    }
+
+    /// `onStateChange`: stores the new signal and updates the powered bit and the
+    /// block in front.
+    fn comparator_state_change(&mut self, pos: (i32, i32, i32)) {
+        let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+        let (id, meta) = (state >> 4, state & 15);
+        let output = self.comparator_output(pos, meta);
+        let old = self.comparator_signal(pos);
+        self.set_comparator_signal(pos, output);
+        if old != output || meta & SUBTRACT == 0 {
+            let should = self.comparator_should_power(pos, meta);
+            let powered = Self::comparator_powered(id, meta);
+            let flags = super::block_update::flags::SEND;
+            if powered && !should {
+                self.set_block_flags(pos, state & !COMPARATOR_POWERED, flags);
+            } else if !powered && should {
+                self.set_block_flags(pos, state | COMPARATOR_POWERED, flags);
+            }
+            let now = self.level.overworld.block(pos.0, pos.1, pos.2);
+            self.repeater_notify(pos, now);
+        }
+    }
+
+    /// `BlockRedstoneComparator.updateTick`: the old powered block becomes the 1.8 form
+    /// (without updates or sending), then `onStateChange`.
+    pub(super) fn comparator_tick(&mut self, pos: (i32, i32, i32), state: u16) {
+        if state >> 4 == block::POWERED_COMPARATOR {
+            let converted = block::UNPOWERED_COMPARATOR << 4 | (state & 15) | COMPARATOR_POWERED;
+            self.set_block_flags(pos, converted, 0);
+        }
+        self.comparator_state_change(pos);
+    }
+
+    /// `BlockRedstoneComparator.onBlockActivated`: toggles compare / subtract.
+    pub(super) fn activate_comparator(&mut self, pos: (i32, i32, i32), state: u16) {
+        let toggled = state ^ SUBTRACT;
+        let pitch = if toggled & SUBTRACT != 0 {
+            MODE_CLICK_SUBTRACT
+        } else {
+            MODE_CLICK_COMPARE
+        };
+        let center = (
+            f64::from(pos.0) + 0.5,
+            f64::from(pos.1) + 0.5,
+            f64::from(pos.2) + 0.5,
+        );
+        self.play_sound_near_except(None, "random.click", center, MODE_CLICK_VOLUME, pitch);
+        self.set_block_flags(pos, toggled, super::block_update::flags::SEND);
+        self.comparator_state_change(pos);
+    }
+
+    /// `World.updateComparatorOutputLevel`: comparators next to `pos`, or behind a cube
+    /// next to it, re-check their input.
+    pub(super) fn update_comparators(&mut self, pos: (i32, i32, i32)) {
+        for face in HORIZONTAL {
+            let n = offset(pos, face);
+            if !self.level.overworld.is_chunk_loaded(n.0 >> 4, n.2 >> 4) {
+                continue;
+            }
+            let s = self.level.overworld.block(n.0, n.1, n.2);
+            if is_comparator(s >> 4) {
+                self.comparator_update_state(n, s);
+            } else if is_normal_cube(s) {
+                let far = offset(n, face);
+                let s2 = self.level.overworld.block(far.0, far.1, far.2);
+                if is_comparator(s2 >> 4) {
+                    self.comparator_update_state(far, s2);
+                }
+            }
         }
     }
 }

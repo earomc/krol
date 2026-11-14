@@ -391,9 +391,23 @@ impl World {
             n if block::is_furnace(n) => "Furnace",
             n if block::is_sign(n) => "Sign",
             n if block::is_chest(n) => "Chest",
+            block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => "Comparator",
             _ => return,
         };
         if self.tile_entity_index(pos).is_some() {
+            return;
+        }
+        if id == "Comparator" {
+            // TileEntityComparator.writeToNBT of a new comparator.
+            let mut c = Compound::new();
+            c.insert("id", Tag::String(id.into()));
+            c.insert("x", Tag::Int(pos.0));
+            c.insert("y", Tag::Int(pos.1));
+            c.insert("z", Tag::Int(pos.2));
+            c.insert("OutputSignal", Tag::Int(0));
+            let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
+            let _ = list.push(Tag::Compound(c));
+            sort_tile_entities(list);
             return;
         }
         let mut c = Compound::new();

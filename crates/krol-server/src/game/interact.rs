@@ -161,6 +161,13 @@ impl Game {
                 self.activate_lever(pos);
                 true
             }
+            block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
+                if self.players[i].gamemode == 2 {
+                    return false;
+                }
+                self.activate_comparator(pos, state);
+                true
+            }
             // BlockRedstoneRepeater.onBlockActivated: cycles the delay (not in
             // adventure mode, where the click falls through to the item).
             block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {

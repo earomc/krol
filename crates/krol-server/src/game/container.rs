@@ -302,6 +302,24 @@ fn merge(
 }
 
 impl Game {
+    /// The open window's id and the window slot of the held hotbar slot
+    /// (`getSlotFromInventory`).
+    pub(super) fn held_window_slot(&self, i: usize) -> (i8, usize) {
+        let (window, layout) = self.current_window(i);
+        (window, layout.player_slot(self.players[i].selected))
+    }
+
+    /// `detectAndSendChanges` with `isChangingQuantityOnly`: the tracking catches up
+    /// with the window without sending anything.
+    pub(super) fn sync_window_silently(&mut self, i: usize) {
+        let flat = self.gather(i);
+        let p = &mut self.players[i];
+        match &mut p.window.open {
+            Some(o) => o.sent = flat,
+            None => p.sent_inventory = flat,
+        }
+    }
+
     /// The open window's id and layout.
     fn current_window(&self, i: usize) -> (i8, Layout) {
         match &self.players[i].window.open {

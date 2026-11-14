@@ -1,0 +1,54 @@
+description = "Comparators: reading a chest (one stack of 64 in 27 slots gives signal 1) and lighting a lamp, switched to subtract mode, turning the lamp off when the chest is emptied"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
+# the console. He looks east before placing the comparator, so it reads the chest to
+# its west and powers the lamp to its east. Random block ticks are off: the grass under
+# the lamp would turn into dirt at a random time.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 10
+chat = [
+    "@2500 !creative 36 54 1 0",
+    "@2600 !creative 37 404 1 0",
+    "@2700 !creative 38 123 1 0",
+    "@2800 !creative 9 4 64 0",
+    "@3000 !place -470 3 -433 1",
+    "@3200 !look -90 0",
+    "@3400 !hold 1",
+    "@3600 !place -469 3 -433 1",
+    "@3800 !hold 2",
+    "@4000 !place -468 3 -433 1",
+    "@4300 !place -470 4 -433 1",
+    "@4600 !click 1 27 0 1 0 4 64 0",
+    "@4900 !click 1 0 0 2 0",
+    "@5200 !close 1",
+    "@5600 !place -469 4 -433 1",
+    "@6100 !place -470 4 -433 1",
+    "@6400 !click 2 0 0 1 0 4 64 0",
+    "@6700 !click 2 27 0 2 0",
+    "@7000 !close 2",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 9700
+
+[observe]
+log = true
+blocks = [[-469, 4, -433], [-468, 4, -433]]
+tile_entities = [[-469, 4, -433], [-470, 4, -433]]

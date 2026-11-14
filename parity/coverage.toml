@@ -284,6 +284,11 @@ description = "Doors, trapdoors and fence gates opened and closed by redstone (p
 scenarios = ["play/powered_doors"]
 
 [[feature]]
+id = "redstone.comparators"
+description = "Comparators: compare/subtract modes, side inputs, reading chests (whole double chest, nothing when blocked) and furnaces directly or through a cube, output signal tile entity, scheduled updates, containers updating nearby comparators. Not yet: hoppers, dispensers, brewing stands, jukeboxes, cauldrons, cake, end portal frames, item frames"
+scenarios = ["play/comparators"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

@@ -198,6 +198,8 @@ pub mod item {
     pub const REDSTONE: i16 = 331;
     /// `repeater` (the item).
     pub const REPEATER: i16 = 356;
+    /// `comparator` (the item).
+    pub const COMPARATOR: i16 = 404;
     /// `blaze_rod`.
     pub const BLAZE_ROD: i16 = 369;
 }

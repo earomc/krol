@@ -227,11 +227,16 @@ impl Game {
     }
 
     fn store_furnace(&mut self, pos: (i32, i32, i32), data: &FurnaceData) {
-        if furnace_data(&self.level.overworld, pos).as_ref() == Some(data) {
+        let old = furnace_data(&self.level.overworld, pos);
+        if old.as_ref() == Some(data) {
             return;
         }
         if let Some(c) = self.level.overworld.tile_entity_mut(pos) {
             data.write(c);
+        }
+        // TileEntity.markDirty: comparators reading the furnace re-check.
+        if old.is_none_or(|o| o.items != data.items) {
+            self.update_comparators(pos);
         }
     }
 

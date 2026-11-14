@@ -83,11 +83,18 @@ impl Game {
             self.block_removed(pos, old);
             self.block_added(pos, state);
         }
-        self.level
-            .overworld
-            .mark_block_for_update(pos.0, pos.1, pos.2);
+        if flags & flags::SEND != 0 {
+            self.level
+                .overworld
+                .mark_block_for_update(pos.0, pos.1, pos.2);
+        }
         if flags & flags::NOTIFY != 0 {
             self.notify_neighbors(pos, old >> 4);
+            // hasComparatorInputOverride: containers update the comparators reading them.
+            let id = state >> 4;
+            if super::ids::block::is_chest(id) || super::ids::block::is_furnace(id) {
+                self.update_comparators(pos);
+            }
         }
     }
 
@@ -158,13 +165,18 @@ impl Game {
                 self.lamp_neighbor_changed(pos, id);
                 return;
             }
-            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => {
+            block::UNPOWERED_REPEATER
+            | block::POWERED_REPEATER
+            | block::UNPOWERED_COMPARATOR
+            | block::POWERED_COMPARATOR => {
                 let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2);
-                if solid_top(below) {
-                    self.repeater_update_state(pos, state);
-                } else {
+                if !solid_top(below) {
                     self.pop_off(pos, state);
                     self.torch_notify(pos, id);
+                } else if super::redstone::is_comparator(id) {
+                    self.comparator_update_state(pos, state);
+                } else {
+                    self.repeater_update_state(pos, state);
                 }
                 return;
             }
@@ -221,7 +233,10 @@ impl Game {
             block::REDSTONE_WIRE => self.wire_added(pos, state),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
-            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_notify(pos, state),
+            block::UNPOWERED_REPEATER
+            | block::POWERED_REPEATER
+            | block::UNPOWERED_COMPARATOR
+            | block::POWERED_COMPARATOR => self.repeater_notify(pos, state),
             _ => {}
         }
     }
@@ -241,7 +256,10 @@ impl Game {
             }
             block::REDSTONE_WIRE => self.wire_removed(pos, old),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
-            block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_notify(pos, old),
+            block::UNPOWERED_REPEATER
+            | block::POWERED_REPEATER
+            | block::UNPOWERED_COMPARATOR
+            | block::POWERED_COMPARATOR => self.repeater_notify(pos, old),
             _ => {}
         }
     }
@@ -353,6 +371,9 @@ impl Game {
             block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => self.torch_tick(pos, state),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
             block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_tick(pos, state),
+            block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
+                self.comparator_tick(pos, state);
+            }
             _ => {
                 let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
                 if plant_soil(id, below) == Some(false) {

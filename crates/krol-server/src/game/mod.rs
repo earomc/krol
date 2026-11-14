@@ -1360,14 +1360,17 @@ impl Game {
         {
             player.inventory[held] = None;
         }
-        // isChangingQuantityOnly: the slot is synced without a packet, then one Set Slot
+        // isChangingQuantityOnly: the open window (possibly one this click opened) is
+        // synced without packets, then the held slot is sent in that window's numbering
         // if the client's idea of the stack differs.
-        player.sent_inventory[held] = player.inventory[held].clone();
-        if player.inventory[held] != packet_item {
-            player.send(ClientboundPlay::SetSlot {
-                window: 0,
-                slot: held as i16,
-                item: player.inventory[held].clone(),
+        let item = player.inventory[held].clone();
+        let (window, slot) = self.held_window_slot(i);
+        self.sync_window_silently(i);
+        if item != packet_item {
+            self.players[i].send(ClientboundPlay::SetSlot {
+                window,
+                slot: slot as i16,
+                item,
             });
         }
     }
@@ -1400,7 +1403,11 @@ impl Game {
             return;
         }
         if stack.id == ids::item::REPEATER {
-            self.place_repeater(i, pos, face as u8);
+            self.place_diode(i, pos, face as u8, ids::block::UNPOWERED_REPEATER);
+            return;
+        }
+        if stack.id == ids::item::COMPARATOR {
+            self.place_diode(i, pos, face as u8, ids::block::UNPOWERED_COMPARATOR);
             return;
         }
         if stack.id == ids::item::REDSTONE {
@@ -1492,9 +1499,9 @@ impl Game {
         }
     }
 
-    /// `ItemReed.onItemUse` for repeaters: on a replaceable spot with a solid top below,
-    /// facing away from the player.
-    fn place_repeater(&mut self, i: usize, pos: (i32, i32, i32), face: u8) {
+    /// `ItemReed.onItemUse` for repeaters and comparators: on a replaceable spot with a
+    /// solid top below, facing away from the player.
+    fn place_diode(&mut self, i: usize, pos: (i32, i32, i32), face: u8, block: u16) {
         let clicked = self.level.overworld.block(pos.0, pos.1, pos.2);
         let at = if blocks::is_replaceable(clicked) {
             pos
@@ -1512,11 +1519,12 @@ impl Game {
         // east).
         let yaw = self.players[i].rotation.0;
         let facing = krol_java::math::floor_f64(f64::from(yaw * 4.0 / 360.0) + 0.5) & 3;
-        let state = ids::block::UNPOWERED_REPEATER << 4 | ((facing + 2) & 3) as u16;
+        let state = block << 4 | ((facing + 2) & 3) as u16;
         if self.blocked_by_players(state, at) {
             return;
         }
         self.finish_placement(i, at, state);
+        // BlockRedstoneDiode.onBlockPlacedBy.
         self.repeater_placed(at, state);
     }
 

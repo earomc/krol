@@ -122,7 +122,7 @@ impl Game {
 
     /// `BlockChest.getLockableContainer`: the chest's tile entities, the west/north one
     /// of a double chest first; `None` when it cannot be opened.
-    fn chest_parts(&mut self, pos: (i32, i32, i32)) -> Option<Vec<(i32, i32, i32)>> {
+    pub(super) fn chest_parts(&mut self, pos: (i32, i32, i32)) -> Option<Vec<(i32, i32, i32)>> {
         let w = &mut self.level.overworld;
         let block = w.block(pos.0, pos.1, pos.2) >> 4;
         w.tile_entity(pos)?;
@@ -177,12 +177,19 @@ impl Game {
         parts: &[(i32, i32, i32)],
         items: &[Option<ItemStack>],
     ) {
+        let changed = self.chest_contents(parts) != items;
         for (k, &p) in parts.iter().enumerate() {
             set_chest_items(
                 &mut self.level.overworld,
                 p,
                 &items[k * CHEST_SLOTS..(k + 1) * CHEST_SLOTS],
             );
+        }
+        // TileEntity.markDirty: comparators reading the chest re-check.
+        if changed {
+            for &p in parts {
+                self.update_comparators(p);
+            }
         }
     }
 
