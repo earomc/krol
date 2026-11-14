@@ -21,6 +21,26 @@ const SPLASH_VOLUME_FACTOR: f32 = 0.2;
 /// Random pitch spread of swim and splash sounds.
 const SPLASH_PITCH_SPREAD: f32 = 0.4;
 
+/// Updates after death until the body disappears and drops its experience.
+const DEATH_ANIMATION_TICKS: i16 = 20;
+/// Experience a dead player drops per level.
+const XP_PER_LEVEL_DROPPED: i32 = 7;
+/// The most experience a dead player drops.
+const MAX_XP_DROPPED: i32 = 100;
+/// Explosion particles when the body disappears.
+const DEATH_PARTICLES: usize = 20;
+
+/// A full air supply (`Entity.getAir`).
+const MAX_AIR: i16 = 300;
+/// The air supply at which a drowning player takes damage (and goes back to 0).
+const DROWN_AT: i16 = -20;
+/// Drowning damage.
+const DROWN_DAMAGE: f32 = 2.0;
+/// Bubble particles spawned when drowning damage hits.
+const DROWN_BUBBLES: usize = 8;
+/// `isInsideOfMaterial`: the eyes count as under water a ninth below the surface.
+const SURFACE_OFFSET: f32 = 0.111_111_11;
+
 /// `(double) 0.98F`.
 const DRAG_Y: f64 = 0.980_000_019_073_486_3;
 
@@ -181,6 +201,98 @@ impl Game {
         self.play_sound_near_except(Some(conn), "game.player.swim.splash", pos, volume, pitch);
     }
 
+    /// `Entity.isInsideOfMaterial(water)` for a player: the eyes are below the water's
+    /// surface.
+    fn eyes_in_water(&mut self, i: usize) -> bool {
+        let p = &self.players[i];
+        let eye_y = p.pos.1 + f64::from(p.eye_height());
+        let (x, y, z) = (floor_f64(p.pos.0), floor_f64(eye_y), floor_f64(p.pos.2));
+        let state = self.level.overworld.block(x, y, z);
+        if super::block_data::material(state >> 4) != super::block_data::Material::Water {
+            return false;
+        }
+        let gap = super::liquids::liquid_height_percent(state & 15) - SURFACE_OFFSET;
+        eye_y < f64::from((y + 1) as f32 - gap)
+    }
+
+    /// `EntityLivingBase.onEntityUpdate`'s air supply: it runs out under water (unless
+    /// damage is disabled) and every 20 ticks without air drown for 2; it refills at
+    /// once out of water.
+    fn air_tick(&mut self, i: usize) {
+        if self.players[i].health() <= 0.0 {
+            return;
+        }
+        let set_air = |p: &mut super::player::Player, air: i16| {
+            if p.data.get_i16("Air") != air {
+                p.data.insert("Air", Tag::Short(air));
+                p.dirty_metadata.insert(1);
+            }
+        };
+        if !self.eyes_in_water(i) {
+            set_air(&mut self.players[i], MAX_AIR);
+            return;
+        }
+        let p = &mut self.players[i];
+        if matches!(p.gamemode, 1 | 3) {
+            return;
+        }
+        // decreaseAirSupply: respiration can skip the decrease.
+        let respiration = super::tracker::equipment(p)
+            .iter()
+            .map(|s| super::item_data::enchantment_level(s.as_ref(), super::item_data::RESPIRATION))
+            .max()
+            .unwrap_or(0);
+        let air = p.data.get_i16("Air");
+        let keep = respiration > 0 && p.rand.next_int_bounded(respiration + 1) > 0;
+        let air = if keep { air } else { air - 1 };
+        set_air(p, air);
+        if air == DROWN_AT {
+            set_air(p, 0);
+            // The bubble particles (client-side) still draw from the entity's random.
+            for _ in 0..DROWN_BUBBLES * 6 {
+                p.rand.next_float();
+            }
+            self.attack_player(i, super::damage::DamageSource::Drown, DROWN_DAMAGE);
+        }
+    }
+
+    /// `EntityLivingBase.onDeathUpdate` for a dead player: after 20 updates the
+    /// experience drops as orbs (`getExperiencePoints`: 7 per level, at most 100,
+    /// none with keepInventory).
+    ///
+    /// TODO(M5): the entity is then removed (`setDead`, untracked for the others).
+    fn death_update(&mut self, i: usize) {
+        let p = &mut self.players[i];
+        let time = p.data.get_i16("DeathTime").wrapping_add(1);
+        p.data.insert("DeathTime", Tag::Short(time));
+        if time != DEATH_ANIMATION_TICKS {
+            return;
+        }
+        let rules = &self.level.data;
+        let keep = rules.game_rule("keepInventory") == Some("true");
+        let loot = rules.game_rule("doMobLoot") != Some("false");
+        let p = &mut self.players[i];
+        if loot && !keep {
+            let xp = p
+                .data
+                .get_i32("XpLevel")
+                .wrapping_mul(XP_PER_LEVEL_DROPPED)
+                .min(MAX_XP_DROPPED);
+            let pos = p.pos;
+            self.spawn_orbs(pos, xp);
+        }
+        // The explosion particles (client-side) still draw from the entity's random.
+        let p = &mut self.players[i];
+        for _ in 0..DEATH_PARTICLES {
+            p.rand.next_gaussian();
+            p.rand.next_gaussian();
+            p.rand.next_gaussian();
+            p.rand.next_float();
+            p.rand.next_float();
+            p.rand.next_float();
+        }
+    }
+
     fn living_move(&mut self, i: usize) {
         // EntityPlayer.onUpdate, before the living update.
         let p = &mut self.players[i];
@@ -212,12 +324,14 @@ impl Game {
         let p = &mut self.players[i];
         p.in_water = water;
         p.first_update = false;
-        // Entity.onEntityUpdate: air refills out of water.
-        // TODO(M5): drowning.
+        self.air_tick(i);
         let p = &mut self.players[i];
-        if p.data.get_i16("Air") != 300 && !water {
-            p.data.insert("Air", Tag::Short(300));
-            p.dirty_metadata.insert(1);
+        let hurt = p.data.get_i16("HurtTime");
+        if hurt > 0 {
+            p.data.insert("HurtTime", Tag::Short(hurt - 1));
+        }
+        if self.players[i].health() <= 0.0 {
+            self.death_update(i);
         }
         let p = &mut self.players[i];
         for m in [&mut p.motion.0, &mut p.motion.1, &mut p.motion.2] {

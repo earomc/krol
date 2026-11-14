@@ -15,6 +15,9 @@ use super::Game;
 pub enum DamageSource {
     /// Falling (`DamageSource.fall`: bypasses armor, no exhaustion).
     Fall,
+    /// Running out of air under water (`DamageSource.drown`: bypasses armor, no
+    /// exhaustion, no knockback).
+    Drown,
 }
 
 impl DamageSource {
@@ -22,6 +25,7 @@ impl DamageSource {
     pub fn name(self) -> &'static str {
         match self {
             Self::Fall => "fall",
+            Self::Drown => "drown",
         }
     }
 
@@ -33,10 +37,13 @@ impl DamageSource {
     /// Exhaustion added to the victim (`getHungerDamage`).
     fn hunger_damage(self) -> f32 {
         match self {
-            Self::Fall => 0.0,
+            Self::Fall | Self::Drown => 0.0,
         }
     }
 }
+
+/// `EntityLivingBase.maxHurtTime`: how long the hurt animation lasts.
+pub const MAX_HURT_TIME: i16 = 10;
 
 impl Game {
     /// Vanilla `attackEntityFrom` for a player. Returns whether the damage was taken.
@@ -71,21 +78,26 @@ impl Game {
             self.damage_player(i, source, amount);
             true
         };
-        let p = &mut self.players[i];
-        let entity_id = p.entity_id;
+        let entity_id = self.players[i].entity_id;
         if fresh {
+            // hurtTime = maxHurtTime (counts down in the living update).
+            self.players[i]
+                .data
+                .insert("HurtTime", Tag::Short(MAX_HURT_TIME));
             // setEntityState(2): the hurt animation, to the viewers and the player.
             let status = ClientboundPlay::EntityStatus {
                 entity_id,
                 status: 2,
             };
-            p.send(status.clone());
+            self.players[i].send(status.clone());
             self.send_to_tracking(entity_id, &status);
-            // setBeenAttacked: velocityChanged = rand.nextDouble() >= knockback
-            // resistance, which is always true for players.
-            let p = &mut self.players[i];
-            let _ = p.rand.next_double();
-            p.velocity_changed = true;
+            // setBeenAttacked (not for drowning): velocityChanged = rand.nextDouble() >=
+            // knockback resistance, which is always true for players.
+            if source != DamageSource::Drown {
+                let p = &mut self.players[i];
+                let _ = p.rand.next_double();
+                p.velocity_changed = true;
+            }
         }
         let p = &mut self.players[i];
         let (pos, conn) = (p.pos, p.conn_id);

@@ -326,6 +326,12 @@ impl Player {
         }
     }
 
+    /// `EntityPlayer.getEyeHeight`.
+    pub fn eye_height(&self) -> f32 {
+        // TODO(M4): sleeping players' eyes are at 0.2.
+        if self.sneaking { 1.62 - 0.08 } else { 1.62 }
+    }
+
     /// The held item (vanilla `inventory.getCurrentItem()`).
     pub fn held(&self) -> Option<&krol_protocol::packets::play::ItemStack> {
         self.inventory[36 + self.selected].as_ref()

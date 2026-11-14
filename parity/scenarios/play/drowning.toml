@@ -1,0 +1,87 @@
+description = "Drowning: a player standing in a walled-in water column runs out of air (300 ticks), then takes 2 drowning damage every 20 ticks without knockback until they drown; a second after death the body drops its experience (3 levels: 21 points as orbs)"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and never moves. Air
+# goes down once per movement packet, so the packet stream (air metadata, health
+# updates) depends on the timing and is not compared; the outcome is.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 36
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "xp 3L jeb_"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -435 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -435 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -436 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -434 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -473 5 -435 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -471 5 -435 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -472 5 -436 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -472 5 -434 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -435 water"
+
+[[steps]]
+action = "console"
+command = "setblock -472 5 -435 water"
+wait_ms = 31500
+
+[observe]
+log = true
+log_ignore_prefixes = ["Preparing spawn area"]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    # Timing-dependent (see above).
+    "player",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
+
+# DeathTime keeps counting once per movement packet after death.
+[observe.tolerance]
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.DeathTime" = 6

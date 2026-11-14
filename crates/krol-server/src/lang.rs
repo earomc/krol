@@ -13,6 +13,7 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "multiplayer.player.left" => "%s left the game",
         "death.attack.generic" => "%1$s died",
         "death.attack.fall" => "%1$s hit the ground too hard",
+        "death.attack.drown" => "%1$s drowned",
         "death.fell.accident.generic" => "%1$s fell from a high place",
         "death.fell.accident.ladder" => "%1$s fell off a ladder",
         "death.fell.accident.vines" => "%1$s fell off some vines",

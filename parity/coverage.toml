@@ -330,8 +330,13 @@ scenarios = ["play/liquids"]
 
 [[feature]]
 id = "entity.water_movement"
-description = "Entities in water: handleWaterMovement (surface height, flow vector, push of 0.014 per tick for players not flying and for items), fall distance reset, entry splash, swim sounds on steps, swim statistics. Not yet: drowning, items and orbs in lava, extinguishing"
+description = "Entities in water: handleWaterMovement (surface height, flow vector, push of 0.014 per tick for players not flying and for items), fall distance reset, entry splash, swim sounds on steps, swim statistics. Not yet: items and orbs in lava, extinguishing"
 scenarios = ["play/water_push"]
+
+[[feature]]
+id = "entity.drowning"
+description = "Air supply: isInsideOfMaterial (eye height against the water surface), air going down under water (respiration), drowning damage every 20 ticks without air (no knockback), refill on surfacing, hurtTime, the death update dropping a dead player's experience after 20 ticks. Not yet: suffocation in blocks, removing the dead body from trackers"
+scenarios = ["play/drowning"]
 
 [[feature]]
 id = "item.buckets"

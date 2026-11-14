@@ -70,6 +70,27 @@ pub fn container_item(id: i16) -> Option<i16> {
     table().get(&id).and_then(|i| i.container)
 }
 
+/// `Enchantment.respiration`'s id.
+pub const RESPIRATION: i16 = 5;
+
+/// `EnchantmentHelper.getEnchantmentLevel`: the level of enchantment `id` on a stack.
+pub fn enchantment_level(stack: Option<&krol_protocol::packets::play::ItemStack>, id: i16) -> i32 {
+    let Some(list) = stack
+        .and_then(|s| s.nbt.as_ref())
+        .and_then(|n| n.get_list("ench", krol_nbt::TagType::Compound))
+    else {
+        return 0;
+    };
+    for e in list.iter() {
+        if let krol_nbt::Tag::Compound(c) = e
+            && c.get_i16("id") == id
+        {
+            return i32::from(c.get_i16("lvl"));
+        }
+    }
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
