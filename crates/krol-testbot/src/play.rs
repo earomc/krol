@@ -50,7 +50,8 @@ pub struct PlayObservation {
 /// `!creative <slot> <id> <count> <damage>` (set a slot in creative mode),
 /// `!place <x> <y> <z> <face>` (use the held item, cursor 8/8/8; sends the swing first),
 /// `!hold <slot>` (select hotbar slot), `!swing` (arm animation),
-/// `!look <yaw> <pitch>` (Player Look, on ground). Optional
+/// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0).
+/// Optional
 /// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
 /// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1; `[]` sends nothing that
 /// tick) replace the idle Player
@@ -281,6 +282,7 @@ fn action_or_chat(
             }),
         }],
         Some("swing") => vec![ServerboundPlay::Animation],
+        Some("respawn") => vec![ServerboundPlay::ClientStatus { action: 0 }],
         Some("look") => vec![ServerboundPlay::Look {
             yaw: parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(0.0),
             pitch: parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0.0),

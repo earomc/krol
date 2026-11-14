@@ -662,6 +662,21 @@ impl V5Translator {
                 }
                 one(w);
             }
+            ClientboundPlay::Respawn {
+                dimension,
+                difficulty,
+                gamemode,
+                level_type,
+            } => {
+                let mut w = packet(0x07);
+                w.i32(*dimension).u8(*difficulty).u8(gamemode_v5(*gamemode));
+                w.string(if level_type == "customized" {
+                    "default"
+                } else {
+                    level_type
+                })?;
+                one(w);
+            }
             ClientboundPlay::CollectItem {
                 collected,
                 collector,

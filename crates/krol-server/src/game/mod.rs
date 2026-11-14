@@ -9,6 +9,7 @@ pub mod block_data;
 pub mod blocks;
 pub mod commands;
 mod damage;
+mod death;
 mod digging;
 mod item_entity;
 mod movement;
@@ -143,6 +144,18 @@ pub struct GameHandle {
     tx: UnboundedSender<GameEvent>,
     thread: Option<JoinHandle<()>>,
     stopped: Option<tokio::sync::oneshot::Receiver<()>>,
+}
+
+impl GameEvent {
+    /// The connection an event belongs to.
+    fn conn_id(&self) -> Option<u64> {
+        match self {
+            Self::Join { conn_id, .. }
+            | Self::Packet { conn_id, .. }
+            | Self::Disconnected { conn_id, .. } => Some(*conn_id),
+            _ => None,
+        }
+    }
 }
 
 impl GameHandle {
@@ -305,10 +318,22 @@ impl Game {
     fn tick(&mut self, rx: &mut UnboundedReceiver<GameEvent>) -> bool {
         self.tick_count += 1;
         let mut commands = Vec::new();
+        // Vanilla runs play packets as scheduled tasks at the start of the tick but
+        // accepts logins in the network phase at its end; a joining player's packets
+        // wait for its login.
+        let mut late: Vec<GameEvent> = Vec::new();
+        let mut joining: Vec<u64> = Vec::new();
         loop {
             match rx.try_recv() {
                 Ok(GameEvent::Shutdown) | Err(TryRecvError::Disconnected) => return false,
                 Ok(GameEvent::Console(line)) => commands.push(line),
+                Ok(event @ GameEvent::Join { conn_id, .. }) => {
+                    joining.push(conn_id);
+                    late.push(event);
+                }
+                Ok(event) if event.conn_id().is_some_and(|c| joining.contains(&c)) => {
+                    late.push(event);
+                }
                 Ok(event) => self.handle_event(event),
                 Err(TryRecvError::Empty) => break,
             }
@@ -361,6 +386,9 @@ impl Game {
             }
         }
         self.update_tracked_entities();
+        for event in late {
+            self.handle_event(event);
+        }
         for line in commands {
             self.console_command(&line);
         }
@@ -601,6 +629,54 @@ impl Game {
         0
     }
 
+    /// Vanilla `updateTimeAndWeatherForPlayer`: world border, time and rain.
+    fn send_time_and_weather(&self, i: usize) {
+        let data = &self.level.data.data;
+        let border_size = if data.contains_key("BorderSize") {
+            data.get_f64("BorderSize")
+        } else {
+            6.0e7
+        };
+        let world_border = ClientboundPlay::WorldBorderInit {
+            x: data.get_f64("BorderCenterX"),
+            z: data.get_f64("BorderCenterZ"),
+            old_diameter: border_size,
+            new_diameter: border_size,
+            speed: 0,
+            portal_teleport_boundary: 29_999_984,
+            warning_distance: if data.contains_key("BorderWarningBlocks") {
+                data.get_f64("BorderWarningBlocks") as i32
+            } else {
+                5
+            },
+            warning_time: if data.contains_key("BorderWarningTime") {
+                data.get_f64("BorderWarningTime") as i32
+            } else {
+                15
+            },
+        };
+        let time = self.time_packet();
+        let raining = self.rain.0 > 0.2;
+        let (rain_strength, thunder_strength) = (self.rain.0, self.thunder.0 * self.rain.0);
+        let player = &self.players[i];
+        player.send(world_border);
+        player.send(time);
+        if raining {
+            player.send(ClientboundPlay::ChangeGameState {
+                reason: 1,
+                value: 0.0,
+            });
+            player.send(ClientboundPlay::ChangeGameState {
+                reason: 7,
+                value: rain_strength,
+            });
+            player.send(ClientboundPlay::ChangeGameState {
+                reason: 8,
+                value: thunder_strength,
+            });
+        }
+    }
+
     /// Vanilla `initializeConnectionToPlayer` + `playerLoggedIn`.
     fn join(
         &mut self,
@@ -620,7 +696,8 @@ impl Game {
         };
         let (pos, rotation) = match stored.as_ref().and_then(stored_position) {
             Some(p) => p,
-            None => (self.spawn_position(gamemode), (0.0, 0.0)),
+            // The spawn fuzz depends on the world's game type, not the player's.
+            None => (self.spawn_position(self.config.gamemode), (0.0, 0.0)),
         };
         let profile_id = profile.id;
         let entity_id = self.next_entity_id;
@@ -744,6 +821,7 @@ impl Game {
             last_health_sent: None,
             dig: digging::DigState::new(),
             pending_destroy: Vec::new(),
+            combat: Default::default(),
             chat_spam: 0,
             data,
         };
@@ -809,51 +887,8 @@ impl Game {
         let (pos, rot) = (player.pos, player.rotation);
         Self::set_player_location(player, pos, rot);
 
-        // updateTimeAndWeatherForPlayer
-        let data = &self.level.data.data;
-        let border_size = if data.contains_key("BorderSize") {
-            data.get_f64("BorderSize")
-        } else {
-            6.0e7
-        };
-        let world_border = ClientboundPlay::WorldBorderInit {
-            x: data.get_f64("BorderCenterX"),
-            z: data.get_f64("BorderCenterZ"),
-            old_diameter: border_size,
-            new_diameter: border_size,
-            speed: 0,
-            portal_teleport_boundary: 29_999_984,
-            warning_distance: if data.contains_key("BorderWarningBlocks") {
-                data.get_f64("BorderWarningBlocks") as i32
-            } else {
-                5
-            },
-            warning_time: if data.contains_key("BorderWarningTime") {
-                data.get_f64("BorderWarningTime") as i32
-            } else {
-                15
-            },
-        };
-        let time = self.time_packet();
-        let raining = self.rain.0 > 0.2;
-        let (rain_strength, thunder_strength) = (self.rain.0, self.thunder.0 * self.rain.0);
+        self.send_time_and_weather(new_index);
         let player = &self.players[new_index];
-        player.send(world_border);
-        player.send(time);
-        if raining {
-            player.send(ClientboundPlay::ChangeGameState {
-                reason: 1,
-                value: 0.0,
-            });
-            player.send(ClientboundPlay::ChangeGameState {
-                reason: 7,
-                value: rain_strength,
-            });
-            player.send(ClientboundPlay::ChangeGameState {
-                reason: 8,
-                value: thunder_strength,
-            });
-        }
         player.send(ClientboundPlay::WindowItems {
             window: 0,
             items: player.inventory.clone(),
@@ -863,11 +898,13 @@ impl Game {
             slot: -1,
             item: None,
         });
+        // Container.onCraftGuiOpened checks for changes right away.
+        self.detect_inventory_changes(new_index);
     }
 
-    fn tick_player(&mut self, i: usize, radius: i32) {
-        // Container.detectAndSendChanges (vanilla quirk: the tracking starts empty, so the
-        // first pass resends every non-empty slot after Window Items).
+    /// `Container.detectAndSendChanges` for the player window (vanilla quirk: the
+    /// tracking starts empty, so the first pass resends every non-empty slot).
+    pub(super) fn detect_inventory_changes(&mut self, i: usize) {
         let player = &mut self.players[i];
         for slot in 0..45 {
             if player.inventory[slot] != player.sent_inventory[slot] {
@@ -879,6 +916,11 @@ impl Game {
                 });
             }
         }
+    }
+
+    fn tick_player(&mut self, i: usize, radius: i32) {
+        self.detect_inventory_changes(i);
+        let player = &mut self.players[i];
         // EntityPlayerMP.onUpdate: entities removed since the last update.
         if !player.pending_destroy.is_empty() {
             let ids = std::mem::take(&mut player.pending_destroy);
@@ -906,36 +948,6 @@ impl Game {
                 .add_progress("achievement.exploreAllBiomes", stats::biome_name(biome));
         }
         let player = &mut self.players[i];
-        if player.ticks == 1 {
-            // First EntityPlayerMP update and entity tracker pass after joining.
-            let d = &player.data;
-            let (health, food, saturation) = (
-                d.get_f32("HealF"),
-                d.get_i32("foodLevel"),
-                d.get_f32("foodSaturationLevel"),
-            );
-            player.last_health_sent = Some((health, food, saturation == 0.0));
-            player.send(ClientboundPlay::UpdateHealth {
-                health,
-                food,
-                saturation,
-            });
-            player.send(ClientboundPlay::SetExperience {
-                bar: d.get_f32("XpP"),
-                level: d.get_i32("XpLevel"),
-                total: d.get_i32("XpTotal"),
-            });
-        }
-        if player.ticks > 1 && player.xp_dirty {
-            // Vanilla EntityPlayerMP.onUpdateEntity sends experience when it changed.
-            player.xp_dirty = false;
-            let d = &player.data;
-            player.send(ClientboundPlay::SetExperience {
-                bar: d.get_f32("XpP"),
-                level: d.get_i32("XpLevel"),
-                total: d.get_i32("XpTotal"),
-            });
-        }
         // EntityLivingBase.updateArmSwingProgress (swing duration 6 without haste).
         if player.swing.0 {
             player.swing.1 += 1;
@@ -1396,6 +1408,7 @@ impl Game {
                 }
             }
             ServerboundPlay::EntityAction { action, .. } => self.entity_action(i, action),
+            ServerboundPlay::ClientStatus { action } => self.client_status(i, action),
             ServerboundPlay::PlayerAbilities { flags, .. } => {
                 // processPlayerAbilities: flying only where it is allowed.
                 let p = &mut self.players[i];

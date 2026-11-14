@@ -524,14 +524,26 @@ impl Game {
             p.data.get_i32("foodLevel"),
             p.data.get_f32("foodSaturationLevel"),
         );
-        if let Some(last) = p.last_health_sent
-            && last != (now.0, now.1, now.2 == 0.0)
-        {
+        // The first update after joining or respawning sends both (vanilla starts
+        // lastHealth and lastExperience at impossible values).
+        let first = p.last_health_sent.is_none();
+        if first {
+            p.xp_dirty = true;
+        }
+        if p.last_health_sent != Some((now.0, now.1, now.2 == 0.0)) {
             p.last_health_sent = Some((now.0, now.1, now.2 == 0.0));
             p.send(ClientboundPlay::UpdateHealth {
                 health: now.0,
                 food: now.1,
                 saturation: now.2,
+            });
+        }
+        if std::mem::take(&mut p.xp_dirty) {
+            let d = &p.data;
+            p.send(ClientboundPlay::SetExperience {
+                bar: d.get_f32("XpP"),
+                level: d.get_i32("XpLevel"),
+                total: d.get_i32("XpTotal"),
             });
         }
     }

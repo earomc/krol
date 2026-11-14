@@ -83,6 +83,23 @@ impl Stats {
         }
     }
 
+    /// Sets a counter (vanilla `unlockAchievement` with a value, e.g. resetting
+    /// `stat.timeSinceDeath`).
+    pub fn set(&mut self, key: &str, value: i32) {
+        match self.data.get_mut(key) {
+            Some(s) => s.value = value,
+            None => {
+                self.data.insert(
+                    key.to_owned(),
+                    StatValue {
+                        value,
+                        progress: None,
+                    },
+                );
+            }
+        }
+    }
+
     /// Adds an entry to an achievement's progress set, creating it if needed.
     pub fn add_progress(&mut self, key: &str, entry: &str) {
         if self.data.get(key).is_none() {

@@ -217,3 +217,8 @@ scenarios = ["play/survival_mining"]
 id = "entity.item_drop"
 description = "Dropping items (Q / Ctrl+Q): toss motion, 40-tick pickup delay, stat.drop, merging, pickup"
 scenarios = ["play/drop_items"]
+
+[[feature]]
+id = "play.death_respawn"
+description = "Death: combat tracker death message, inventory drop, stats; respawn: tracker reset, chunk unload/resend, respawn packet, position"
+scenarios = ["play/death_respawn"]

@@ -51,6 +51,18 @@ pub struct TrackerEntry {
     tracking: BTreeSet<i32>,
 }
 
+impl TrackerEntry {
+    /// Whether the player with this entity id sees the entity.
+    pub fn is_tracked_by(&self, viewer: i32) -> bool {
+        self.tracking.contains(&viewer)
+    }
+
+    /// Forgets that the player sees the entity (no packet).
+    pub fn stop_tracking(&mut self, viewer: i32) {
+        self.tracking.remove(&viewer);
+    }
+}
+
 /// All tracked entities, keyed by entity id.
 ///
 /// Vanilla keeps the entries in a `HashSet` whose hash is the entity id, so with the few

@@ -135,6 +135,9 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
                 .u8(2)
                 .bool(true);
         }
+        ServerboundPlay::ClientStatus { action } => {
+            w.varint(0x16).i8(*action as i8);
+        }
         ServerboundPlay::PluginMessage { channel, data } => {
             w.varint(0x17).string(channel)?;
             w.short_byte_array(data);

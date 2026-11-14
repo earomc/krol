@@ -18,7 +18,8 @@ pub enum DamageSource {
 }
 
 impl DamageSource {
-    fn name(self) -> &'static str {
+    /// The damage type (`damageType`), used in death messages.
+    pub fn name(self) -> &'static str {
         match self {
             Self::Fall => "fall",
         }
@@ -89,11 +90,11 @@ impl Game {
         let p = &mut self.players[i];
         let (pos, conn) = (p.pos, p.conn_id);
         if p.health() <= 0.0 {
-            // TODO(M5): death (death message, drops, respawn screen).
             if fresh {
                 let pitch = Self::sound_pitch(&mut self.players[i].rand);
                 self.play_sound_near_except(Some(conn), "game.player.die", pos, 1.0, pitch);
             }
+            self.player_died(i);
         } else if fresh {
             let pitch = Self::sound_pitch(&mut self.players[i].rand);
             self.play_sound_near_except(Some(conn), "game.player.hurt", pos, 1.0, pitch);
@@ -119,6 +120,7 @@ impl Game {
         }
         if damage != 0.0 {
             self.add_exhaustion(i, source.hunger_damage());
+            self.track_damage(i, source, damage);
             let p = &mut self.players[i];
             let health = p.health();
             p.set_health(health - damage);

@@ -654,6 +654,13 @@ pub enum ClientboundPlay {
     },
     /// `0x0D`
     CollectItem { collected: i32, collector: i32 },
+    /// `0x07`
+    Respawn {
+        dimension: i32,
+        difficulty: u8,
+        gamemode: u8,
+        level_type: String,
+    },
     /// `0x25`
     BlockBreakAnimation {
         entity_id: i32,
@@ -797,6 +804,7 @@ impl ClientboundPlay {
             Self::BlockBreakAnimation { .. } => 0x25,
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
+            Self::Respawn { .. } => 0x07,
         }
     }
 
@@ -1123,6 +1131,15 @@ impl ClientboundPlay {
                 collector,
             } => {
                 w.varint(*collected).varint(*collector);
+            }
+            Self::Respawn {
+                dimension,
+                difficulty,
+                gamemode,
+                level_type,
+            } => {
+                w.i32(*dimension).u8(*difficulty).u8(*gamemode);
+                w.string(level_type)?;
             }
             Self::BlockBreakAnimation {
                 entity_id,

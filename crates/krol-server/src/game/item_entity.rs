@@ -200,7 +200,7 @@ impl Game {
     }
 
     /// Like [`Self::spawn_item`], replacing the random start motion.
-    fn spawn_item_moving(
+    pub(super) fn spawn_item_moving(
         &mut self,
         pos: (f64, f64, f64),
         stack: ItemStack,

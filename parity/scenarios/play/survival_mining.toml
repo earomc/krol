@@ -8,6 +8,9 @@ subsystem = "blocks"
 # randoms); the summary leaves them out, and with them where the pickup sound plays
 # (the player's position at the moment of pickup).
 
+# Known timing race (vanilla too): if the miner's packet after a pickup arrives a tick
+# late, the watcher gets the item's destroy before the miner's held-item update.
+
 [setup]
 world = "fixtures/worlds/flat"
 properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
