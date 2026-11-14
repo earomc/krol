@@ -1,0 +1,40 @@
+description = "Inventory window clicks: pick up, place, split, drop outside, shift-click (hotbar, armor), number key, a rejected prediction and its confirmation, closing with an item on the cursor"
+subsystem = "play"
+
+# Steve looks straight down so the dropped stacks land at his feet and are picked up
+# again when their pickup delay ends.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat" = "fixtures/playerdata/steve.dat"
+
+[[steps]]
+id = "steve"
+action = "play"
+protocol = 47
+name = "Steve"
+seconds = 9
+chat = [
+    "@1000 !look 0 90",
+    "@1400 !click 0 36 0 1 0 1 64 0",
+    "@1800 !click 0 20 0 2 0",
+    "@2200 !click 0 20 1 3 0 1 64 0",
+    "@2600 !click 0 -999 0 4 0",
+    "@3000 !click 0 14 0 5 1 35 12 14",
+    "@3400 !click 0 5 0 6 1 310 1 0",
+    "@3800 !click 0 20 2 7 2",
+    "@4200 !click 0 9 0 8 0 1 5 0",
+    "@4600 !confirm 0 8 1",
+    "@5000 !close 0",
+]
+
+[observe]
+log = true
+files = ["world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat"]
+ignore = [
+    "file:world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat.XpSeed",
+    "file:world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat.foodTickTimer",
+]

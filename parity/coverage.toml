@@ -237,3 +237,8 @@ scenarios = ["play/doors_gates"]
 id = "blocks.containers"
 description = "Container GUIs (chests, furnaces, crafting tables, ...): open window, slots, clicks, closing"
 scenarios = []
+
+[[feature]]
+id = "play.inventory_clicks"
+description = "Player window clicks: pick up/place/split, outside drops, shift-click, number keys, drag painting, double click, creative clone, rejected predictions and confirmation, closing"
+scenarios = ["play/inventory_clicks"]

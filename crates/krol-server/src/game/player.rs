@@ -112,6 +112,8 @@ pub struct Player {
     /// Health, food and "saturation is zero" as last sent (`lastHealth`,
     /// `lastFoodLevel`, `wasHungry`).
     pub last_health_sent: Option<(f32, i32, bool)>,
+    /// Window click state (cursor item, drag, pending confirmation).
+    pub window: super::container::WindowState,
     /// Recent damage for the death message (`CombatTracker`).
     pub combat: super::death::CombatTracker,
     /// Entities to destroy on the next update (`destroyedItemsNetCache`).

@@ -135,6 +135,32 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
                 .u8(2)
                 .bool(true);
         }
+        ServerboundPlay::ClickWindow {
+            window,
+            slot,
+            button,
+            action,
+            mode,
+            item,
+        } => {
+            w.varint(0x0e)
+                .i8(*window)
+                .i16(*slot)
+                .i8(*button)
+                .i16(*action)
+                .i8(*mode);
+            write_item(&mut w, item.as_ref())?;
+        }
+        ServerboundPlay::ConfirmTransaction {
+            window,
+            action,
+            accepted,
+        } => {
+            w.varint(0x0f).i8(*window).i16(*action).bool(*accepted);
+        }
+        ServerboundPlay::CloseWindow { window } => {
+            w.varint(0x0d).i8(*window);
+        }
         ServerboundPlay::ClientStatus { action } => {
             w.varint(0x16).i8(*action as i8);
         }

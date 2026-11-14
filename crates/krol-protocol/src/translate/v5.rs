@@ -662,6 +662,15 @@ impl V5Translator {
                 }
                 one(w);
             }
+            ClientboundPlay::ConfirmTransaction {
+                window,
+                action,
+                accepted,
+            } => {
+                let mut w = packet(0x32);
+                w.i8(*window).i16(*action).bool(*accepted);
+                one(w);
+            }
             ClientboundPlay::Respawn {
                 dimension,
                 difficulty,

@@ -406,6 +406,32 @@ impl ServerboundPlay {
                 w.varint(0x17).string(channel)?;
                 w.bytes(data);
             }
+            Self::ClickWindow {
+                window,
+                slot,
+                button,
+                action,
+                mode,
+                item,
+            } => {
+                w.varint(0x0e)
+                    .i8(*window)
+                    .i16(*slot)
+                    .i8(*button)
+                    .i16(*action)
+                    .i8(*mode);
+                ItemStack::write(&mut w, item.as_ref())?;
+            }
+            Self::ConfirmTransaction {
+                window,
+                action,
+                accepted,
+            } => {
+                w.varint(0x0f).i8(*window).i16(*action).bool(*accepted);
+            }
+            Self::CloseWindow { window } => {
+                w.varint(0x0d).i8(*window);
+            }
             _ => return Ok(None),
         }
         Ok(Some(w.into_bytes()))
@@ -654,6 +680,12 @@ pub enum ClientboundPlay {
     },
     /// `0x0D`
     CollectItem { collected: i32, collector: i32 },
+    /// `0x32`
+    ConfirmTransaction {
+        window: i8,
+        action: i16,
+        accepted: bool,
+    },
     /// `0x07`
     Respawn {
         dimension: i32,
@@ -805,6 +837,7 @@ impl ClientboundPlay {
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
             Self::Respawn { .. } => 0x07,
+            Self::ConfirmTransaction { .. } => 0x32,
         }
     }
 
@@ -1140,6 +1173,13 @@ impl ClientboundPlay {
             } => {
                 w.i32(*dimension).u8(*difficulty).u8(*gamemode);
                 w.string(level_type)?;
+            }
+            Self::ConfirmTransaction {
+                window,
+                action,
+                accepted,
+            } => {
+                w.i8(*window).i16(*action).bool(*accepted);
             }
             Self::BlockBreakAnimation {
                 entity_id,

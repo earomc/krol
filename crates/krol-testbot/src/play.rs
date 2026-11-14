@@ -51,7 +51,9 @@ pub struct PlayObservation {
 /// `!place <x> <y> <z> <face> [cx cy cz]` (use the held item, cursor 8/8/8 unless
 /// given in 1/16; sends the swing first),
 /// `!hold <slot>` (select hotbar slot), `!swing` (arm animation),
-/// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0).
+/// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0),
+/// `!click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]`,
+/// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`.
 /// Optional
 /// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
 /// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1; `[]` sends nothing that
@@ -284,6 +286,28 @@ fn action_or_chat(
         }],
         Some("swing") => vec![ServerboundPlay::Animation],
         Some("respawn") => vec![ServerboundPlay::ClientStatus { action: 0 }],
+        // !click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]
+        Some("click") => vec![ServerboundPlay::ClickWindow {
+            window: num(1) as i8,
+            slot: num(2) as i16,
+            button: num(3) as i8,
+            action: num(4) as i16,
+            mode: num(5) as i8,
+            item: (parts.len() > 8).then(|| krol_protocol::packets::play::ItemStack {
+                id: num(6) as i16,
+                count: num(7) as i8,
+                damage: num(8) as i16,
+                nbt: None,
+            }),
+        }],
+        Some("confirm") => vec![ServerboundPlay::ConfirmTransaction {
+            window: num(1) as i8,
+            action: num(2) as i16,
+            accepted: num(3) != 0,
+        }],
+        Some("close") => vec![ServerboundPlay::CloseWindow {
+            window: num(1) as i8,
+        }],
         Some("look") => vec![ServerboundPlay::Look {
             yaw: parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(0.0),
             pitch: parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0.0),

@@ -8,6 +8,7 @@
 pub mod block_data;
 pub mod blocks;
 pub mod commands;
+mod container;
 mod damage;
 mod death;
 mod digging;
@@ -824,6 +825,7 @@ impl Game {
             dig: digging::DigState::new(),
             pending_destroy: Vec::new(),
             combat: Default::default(),
+            window: Default::default(),
             chat_spam: 0,
             data,
         };
@@ -1481,6 +1483,18 @@ impl Game {
             }
             ServerboundPlay::EntityAction { action, .. } => self.entity_action(i, action),
             ServerboundPlay::ClientStatus { action } => self.client_status(i, action),
+            ServerboundPlay::ClickWindow {
+                window,
+                slot,
+                button,
+                action,
+                mode,
+                item,
+            } => self.click_window(i, window, slot, button, action, mode, item),
+            ServerboundPlay::ConfirmTransaction { window, action, .. } => {
+                self.confirm_transaction(i, window, action);
+            }
+            ServerboundPlay::CloseWindow { .. } => self.close_window(i),
             ServerboundPlay::PlayerAbilities { flags, .. } => {
                 // processPlayerAbilities: flying only where it is allowed.
                 let p = &mut self.players[i];
