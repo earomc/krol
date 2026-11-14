@@ -141,6 +141,22 @@ pub(super) struct ConnReader<R> {
 }
 
 impl<R: AsyncRead + Unpin> ConnReader<R> {
+    /// Reads and discards whatever the client still sends until it closes the
+    /// connection or `limit` passes. Used after the server closed its side: dropping a
+    /// socket with unread data resets it (notably on Windows), which can destroy the
+    /// disconnect packet before the client reads it.
+    pub(super) async fn drain(&mut self, limit: Duration) {
+        let mut buf = [0u8; READ_CHUNK];
+        let deadline = Instant::now() + limit;
+        while let Ok(Ok(n)) =
+            tokio::time::timeout_at(deadline, self.inner.stream.read(&mut buf)).await
+        {
+            if n == 0 {
+                break;
+            }
+        }
+    }
+
     /// See [`Connection::next_packet`].
     pub(super) async fn next_packet(&mut self) -> Result<Option<Vec<u8>>, ConnectionError> {
         let mut buf = [0u8; READ_CHUNK];

@@ -58,8 +58,9 @@
         "block_change",
         "0x32",
         "0x32",
-        "0x32",
         "0x31",
+        "0x32",
+        "0x32",
         "block_change",
         "set_slot",
         "0x31",
@@ -73,7 +74,6 @@
         "0x31",
         "0x31",
         "0x31",
-        "0x32",
         "0x31",
         "0x31",
         "0x31",
@@ -679,12 +679,16 @@
           "packet": "0x32"
         },
         {
+          "debug": "WindowProperty { window: 1, property: 3, value: 200 }",
+          "packet": "0x31"
+        },
+        {
           "hex": "01000301",
           "packet": "0x32"
         },
         {
-          "debug": "WindowProperty { window: 1, property: 3, value: 200 }",
-          "packet": "0x31"
+          "hex": "01000401",
+          "packet": "0x32"
         },
         {
           "hex": "ffff8a8013fffe4fe207",
@@ -737,10 +741,6 @@
         {
           "debug": "WindowProperty { window: 1, property: 0, value: 96 }",
           "packet": "0x31"
-        },
-        {
-          "hex": "01000401",
-          "packet": "0x32"
         },
         {
           "debug": "WindowProperty { window: 1, property: 2, value: 6 }",
@@ -2946,10 +2946,10 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.playOneMinute": 356,
+        "stat.playOneMinute": 357,
         "stat.leaveGame": 1,
         "stat.furnaceInteraction": 1,
-        "stat.timeSinceDeath": 356,
+        "stat.timeSinceDeath": 357,
         "stat.useItem.minecraft.furnace": 1,
         "achievement.exploreAllBiomes": {
           "value": 0,

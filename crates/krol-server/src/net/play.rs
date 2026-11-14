@@ -81,6 +81,7 @@ where
         false
     });
 
+    let mut closed_by_server = false;
     let reason = loop {
         tokio::select! {
             packet = reader.next_packet() => match packet {
@@ -119,10 +120,14 @@ where
             // The writer ends when the game disconnected the player (kick/shutdown).
             finished = async { while !writer_task.is_finished() { tokio::time::sleep(std::time::Duration::from_millis(20)).await; } } => {
                 let () = finished;
+                closed_by_server = true;
                 break None;
             }
         }
     };
+    if closed_by_server {
+        reader.drain(std::time::Duration::from_secs(2)).await;
+    }
     if let Some(reason) = reason {
         let _ = game.send(GameEvent::Disconnected { conn_id, reason });
     }
