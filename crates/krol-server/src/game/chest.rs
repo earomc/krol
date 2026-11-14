@@ -261,13 +261,24 @@ impl Game {
             c.viewers = 0;
         }
         c.viewers += delta;
+        let viewers = c.viewers;
+        self.queue_block_event(pos, block, EVENT_VIEWERS, viewers);
+    }
+
+    /// `World.addBlockEvent`: identical queued events are not added twice.
+    pub(super) fn queue_block_event(
+        &mut self,
+        pos: (i32, i32, i32),
+        block: u16,
+        action: u8,
+        param: i32,
+    ) {
         let event = BlockEvent {
             pos,
             block,
-            action: EVENT_VIEWERS,
-            param: c.viewers,
+            action,
+            param,
         };
-        // World.addBlockEvent: identical queued events are not added twice.
         if !self.block_events.contains(&event) {
             self.block_events.push(event);
         }
@@ -278,19 +289,25 @@ impl Game {
     pub(super) fn send_block_events(&mut self) {
         while !self.block_events.is_empty() {
             for e in std::mem::take(&mut self.block_events) {
-                let w = &mut self.level.overworld;
-                if w.block(e.pos.0, e.pos.1, e.pos.2) >> 4 != e.block {
+                let state = self.level.overworld.block(e.pos.0, e.pos.1, e.pos.2);
+                if state >> 4 != e.block {
                     continue;
                 }
-                // TileEntityChest.receiveClientEvent.
-                if !block::is_chest(e.block)
-                    || e.action != EVENT_VIEWERS
-                    || w.tile_entity(e.pos).is_none()
-                {
+                // onBlockEventReceived: whether clients get the event.
+                let send = if super::pistons::is_piston(e.block) {
+                    self.piston_event(e.pos, state, e.action, e.param)
+                } else if block::is_chest(e.block) && e.action == EVENT_VIEWERS {
+                    // TileEntityChest.receiveClientEvent.
+                    let has_te = self.level.overworld.tile_entity(e.pos).is_some();
+                    if has_te && let Some(c) = self.chests.iter_mut().find(|c| c.pos == e.pos) {
+                        c.viewers = e.param;
+                    }
+                    has_te
+                } else {
+                    false
+                };
+                if !send {
                     continue;
-                }
-                if let Some(c) = self.chests.iter_mut().find(|c| c.pos == e.pos) {
-                    c.viewers = e.param;
                 }
                 let packet = ClientboundPlay::BlockAction {
                     pos: e.pos,

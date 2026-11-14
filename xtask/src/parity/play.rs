@@ -146,6 +146,8 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
                     | "random.chestopen"
                     | "random.chestclosed"
                     | "random.orb"
+                    | "tile.piston.out"
+                    | "tile.piston.in"
             );
             // The pickup sound plays where the player is when an item's random arc
             // brings it into reach.

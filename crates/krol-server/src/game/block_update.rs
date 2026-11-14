@@ -165,6 +165,15 @@ impl Game {
                 self.lamp_neighbor_changed(pos, id);
                 return;
             }
+            block::PISTON | block::STICKY_PISTON => {
+                self.piston_check(pos, state);
+                return;
+            }
+            block::PISTON_HEAD => {
+                self.piston_head_changed(pos, state);
+                return;
+            }
+            block::PISTON_EXTENSION => return,
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR
@@ -233,6 +242,8 @@ impl Game {
             block::REDSTONE_WIRE => self.wire_added(pos, state),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
+            // BlockPistonBase.onBlockAdded (pistons never have a tile entity).
+            block::PISTON | block::STICKY_PISTON => self.piston_check(pos, state),
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR
@@ -256,6 +267,8 @@ impl Game {
             }
             block::REDSTONE_WIRE => self.wire_removed(pos, old),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
+            block::PISTON_HEAD => self.piston_head_removed(pos, old),
+            block::PISTON_EXTENSION => self.moving_removed(pos),
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR

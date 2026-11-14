@@ -88,6 +88,9 @@ pub struct World {
     /// Furnace tile entities in the order they were loaded or created (vanilla's
     /// `tickableTileEntities`, of which krol ticks furnaces this way).
     pub furnaces: Vec<(i32, i32, i32)>,
+    /// Moving piston blocks in the order they were created (`TileEntityPiston` in
+    /// vanilla's `tickableTileEntities`).
+    pub moving: Vec<(i32, i32, i32)>,
     /// Pending scheduled block ticks.
     pub scheduler: super::scheduler::Scheduler,
     /// The world's total time (`getTotalWorldTime`), kept in step by the game so chunk
@@ -120,6 +123,7 @@ impl World {
             pending_order: Vec::new(),
             furnaces: Vec::new(),
             scheduler: Default::default(),
+            moving: Vec::new(),
             total_time: 0,
         }
     }
@@ -361,6 +365,24 @@ impl World {
             Tag::Compound(c) => Some(c),
             _ => None,
         }
+    }
+
+    /// Puts a tile entity at `pos`, replacing any there (`World.setTileEntity`).
+    pub fn set_tile_entity(&mut self, pos: (i32, i32, i32), te: Compound) {
+        self.chunk(pos.0 >> 4, pos.2 >> 4);
+        if let Some(index) = self.tile_entity_index(pos) {
+            if let Some(Tag::Compound(c)) = self
+                .chunk_mut(pos.0 >> 4, pos.2 >> 4)
+                .tile_entities
+                .get_mut(index)
+            {
+                *c = te;
+            }
+            return;
+        }
+        let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
+        let _ = list.push(Tag::Compound(te));
+        sort_tile_entities(list);
     }
 
     /// Removes the tile entity at `pos` (`World.removeTileEntity`).

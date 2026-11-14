@@ -193,6 +193,11 @@ impl Game {
         }
     }
 
+    /// `World.isSidePowered`.
+    pub(super) fn side_powered(&mut self, pos: (i32, i32, i32), side: u8) -> bool {
+        self.redstone_power(pos, side) > 0
+    }
+
     /// `World.isBlockPowered`.
     pub(super) fn is_block_powered(&mut self, pos: (i32, i32, i32)) -> bool {
         POWER_QUERY_ORDER

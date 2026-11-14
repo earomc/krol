@@ -5,14 +5,28 @@
 
 /// Block ids.
 pub mod block {
+    /// `air`.
+    pub const AIR: u16 = 0;
     /// `grass`.
     pub const GRASS: u16 = 2;
     /// `dirt`.
     pub const DIRT: u16 = 3;
     /// `sapling`.
     pub const SAPLING: u16 = 6;
+    /// `bed`.
+    pub const BED: u16 = 26;
+    /// `golden_rail` (powered rail).
+    pub const GOLDEN_RAIL: u16 = 27;
     /// `detector_rail`.
     pub const DETECTOR_RAIL: u16 = 28;
+    /// `sticky_piston`.
+    pub const STICKY_PISTON: u16 = 29;
+    /// `piston`.
+    pub const PISTON: u16 = 33;
+    /// `piston_head`.
+    pub const PISTON_HEAD: u16 = 34;
+    /// `piston_extension` (a block being moved by a piston).
+    pub const PISTON_EXTENSION: u16 = 36;
     /// `sand`.
     pub const SAND: u16 = 12;
     /// `gravel`.
@@ -33,6 +47,8 @@ pub mod block {
     pub const RED_FLOWER: u16 = 38;
     /// `torch`.
     pub const TORCH: u16 = 50;
+    /// `obsidian`.
+    pub const OBSIDIAN: u16 = 49;
     /// `fire`.
     pub const FIRE: u16 = 51;
     /// `chest`.
@@ -73,6 +89,8 @@ pub mod block {
     pub const STANDING_SIGN: u16 = 63;
     /// `ladder`.
     pub const LADDER: u16 = 65;
+    /// `rail`.
+    pub const RAIL: u16 = 66;
     /// `wall_sign`.
     pub const WALL_SIGN: u16 = 68;
     /// `lever`.
@@ -135,6 +153,8 @@ pub mod block {
     pub const DAYLIGHT_DETECTOR: u16 = 151;
     /// `redstone_block`.
     pub const REDSTONE_BLOCK: u16 = 152;
+    /// `activator_rail`.
+    pub const ACTIVATOR_RAIL: u16 = 157;
     /// `quartz_ore`.
     pub const QUARTZ_ORE: u16 = 153;
     /// `stained_hardened_clay`.

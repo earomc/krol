@@ -289,6 +289,11 @@ description = "Comparators: compare/subtract modes, side inputs, reading chests 
 scenarios = ["play/comparators"]
 
 [[feature]]
+id = "redstone.pistons"
+description = "Pistons and sticky pistons: structure helper (12-block limit, slime blocks, destroyable blocks), block events, moving blocks with tile entities, heads, quasi-connectivity, sounds. Not yet: moving entities"
+scenarios = ["play/pistons"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []

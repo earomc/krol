@@ -22,6 +22,7 @@ mod item_data;
 mod item_entity;
 mod movement;
 pub mod physics;
+mod pistons;
 mod placement;
 pub mod player;
 mod powered_blocks;
@@ -218,6 +219,8 @@ struct Game {
     wire_gives_power: bool,
     /// `BlockRedstoneWire.blocksNeedingUpdate`, in insertion order.
     wire_queue: Vec<(i32, i32, i32)>,
+    /// The current `progress` of moving piston blocks (only `lastProgress` is saved).
+    moving_progress: std::collections::HashMap<(i32, i32, i32), f32>,
     /// Scheduled ticks still waiting in the batch being run (`pendingTickListEntriesThisTick`).
     ticks_this_tick: Vec<((i32, i32, i32), u16)>,
     /// `BlockRedstoneTorch.toggles`: recent torch toggles (position, total time).
@@ -283,6 +286,7 @@ pub fn start(
         wire_queue: Vec::new(),
         torch_toggles: Vec::new(),
         ticks_this_tick: Vec::new(),
+        moving_progress: Default::default(),
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),
@@ -447,6 +451,7 @@ impl Game {
         // World.updateEntities: then the tile entities.
         self.tick_chests();
         self.tick_furnaces();
+        self.tick_moving();
         self.update_tracked_entities();
         for event in late {
             self.handle_event(event);
@@ -1298,6 +1303,13 @@ impl Game {
         }
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         self.break_effect(i, pos, state);
+        // BlockPistonExtension.onBlockHarvested: in creative the base goes first.
+        if state >> 4 == ids::block::PISTON_HEAD {
+            let base = placement::offset(pos, placement::opposite(pistons::facing(state & 15)));
+            if pistons::is_piston(self.level.overworld.block(base.0, base.1, base.2) >> 4) {
+                self.set_block_notify(base, 0);
+            }
+        }
         self.drop_container_contents(pos);
         self.set_block_notify(pos, 0);
         self.destroyed_by_player(pos, state);
@@ -1481,6 +1493,13 @@ impl Game {
             return;
         }
         self.finish_placement(i, target, state);
+        // BlockPistonBase.onBlockPlacedBy: checks whether to extend.
+        if pistons::is_piston(state >> 4) {
+            let now = self.level.overworld.block(target.0, target.1, target.2);
+            if pistons::is_piston(now >> 4) {
+                self.piston_check(target, now);
+            }
+        }
         // BlockChest.onBlockPlacedBy: line up with a neighboring chest.
         if ids::block::is_chest(state >> 4) {
             self.align_chests(target, state);
