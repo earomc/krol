@@ -195,6 +195,13 @@ impl Game {
         }
         let m = orb.body.motion;
         physics::move_entity_quiet(&mut self.level.overworld, &mut orb.body, m.0, m.1, m.2);
+        // doBlockCollisions, with the orb in the world.
+        let bb = orb.body.bb();
+        self.orbs.insert(id, orb);
+        self.block_collisions(&bb);
+        let Some(mut orb) = self.orbs.remove(&id) else {
+            return;
+        };
         let p = orb.body.pos;
         let mut friction = DRAG;
         if orb.body.on_ground {

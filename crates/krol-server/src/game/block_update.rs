@@ -178,6 +178,12 @@ impl Game {
                 self.note_block_changed(pos);
                 return;
             }
+            _ if super::pressure_plates::is_plate(id) => {
+                if !self.plate_can_stay(pos) {
+                    self.pop_off(pos, state);
+                }
+                return;
+            }
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR
@@ -272,6 +278,7 @@ impl Game {
             block::REDSTONE_WIRE => self.wire_removed(pos, old),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
             block::PISTON_HEAD => self.piston_head_removed(pos, old),
+            _ if super::pressure_plates::is_plate(id) => self.plate_removed(pos, old),
             block::PISTON_EXTENSION => self.moving_removed(pos),
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
@@ -387,6 +394,7 @@ impl Game {
             _ if super::falling_block::falls(id) => self.check_fallable(pos, state),
             block::REDSTONE_TORCH | block::UNLIT_REDSTONE_TORCH => self.torch_tick(pos, state),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
+            _ if super::pressure_plates::is_plate(id) => self.plate_tick(pos, state),
             block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_tick(pos, state),
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 self.comparator_tick(pos, state);

@@ -47,6 +47,12 @@ impl Game {
             let (pos, conn) = (p.pos, p.conn_id);
             self.play_sound_near_except(Some(conn), &step.name, pos, step.volume, step.pitch);
         }
+        // moveEntity ends with doBlockCollisions (spectators do not collide).
+        let p = &self.players[i];
+        if p.gamemode != 3 {
+            let bb = Aabb::at(p.pos, 0.6, 1.8);
+            self.block_collisions(&bb);
+        }
         outcome
     }
 

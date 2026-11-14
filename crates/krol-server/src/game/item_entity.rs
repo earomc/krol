@@ -247,6 +247,13 @@ impl Game {
         // TODO(M5): pushOutOfBlocks when stuck inside a solid block.
         let m = it.body.motion;
         physics::move_entity_quiet(&mut self.level.overworld, &mut it.body, m.0, m.1, m.2);
+        // doBlockCollisions, with the item in the world.
+        let bb = it.body.bb();
+        self.items.insert(id, it);
+        self.block_collisions(&bb);
+        let Some(mut it) = self.items.remove(&id) else {
+            return;
+        };
         let p = it.body.pos;
         let crossed = prev.0 as i32 != p.0 as i32
             || prev.1 as i32 != p.1 as i32

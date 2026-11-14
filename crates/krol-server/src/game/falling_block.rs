@@ -187,6 +187,13 @@ impl Game {
         f.body.motion.1 -= f64::from(GRAVITY);
         let m = f.body.motion;
         physics::move_entity_quiet(&mut self.level.overworld, &mut f.body, m.0, m.1, m.2);
+        // doBlockCollisions, with the falling block in the world.
+        let bb = f.body.bb();
+        self.falling.insert(id, f);
+        self.block_collisions(&bb);
+        let Some(mut f) = self.falling.remove(&id) else {
+            return;
+        };
         f.body.motion.0 *= f64::from(DRAG);
         f.body.motion.1 *= f64::from(DRAG);
         f.body.motion.2 *= f64::from(DRAG);

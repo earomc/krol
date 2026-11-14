@@ -142,6 +142,9 @@ impl Game {
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 self.comparator_power(pos, id, meta, side)
             }
+            _ if super::pressure_plates::is_plate(id) => {
+                super::pressure_plates::plate_strength(state)
+            }
             _ => 0,
         }
     }
@@ -165,6 +168,9 @@ impl Game {
             }
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 self.comparator_power(pos, id, meta, side)
+            }
+            _ if super::pressure_plates::is_plate(id) && side == UP => {
+                super::pressure_plates::plate_strength(state)
             }
             _ => 0,
         }

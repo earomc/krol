@@ -27,6 +27,7 @@ mod pistons;
 mod placement;
 pub mod player;
 mod powered_blocks;
+mod pressure_plates;
 mod recipes;
 mod redstone;
 mod scheduler;

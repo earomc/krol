@@ -299,6 +299,11 @@ description = "Note blocks: tuning, instruments by the block below, playing on r
 scenarios = ["play/note_blocks"]
 
 [[feature]]
+id = "redstone.pressure_plates"
+description = "Pressure plates (stone, wooden, weighted): entity-block collisions after every move (doBlockCollisions), sensitive area, rechecks every 20/10 ticks, click sounds, power to neighbors and strongly into the block below"
+scenarios = ["play/pressure_plates"]
+
+[[feature]]
 id = "blocks.containers"
 description = "Other container GUIs (furnaces, dispensers, hoppers, brewing stands, ...): open window, slots, clicks, closing"
 scenarios = []
