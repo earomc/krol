@@ -6,7 +6,7 @@ world = "fixtures/worlds/flat"
 properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
 
 [setup.files]
-"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_survival.dat"
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_survival_bare.dat"
 
 # The bot pauses for 4 ticks after landing (see fall_damage.toml).
 [[steps]]

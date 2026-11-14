@@ -224,12 +224,27 @@ pub fn mine_stat(b: u16) -> Option<String> {
         7, 8, 9, 10, 11, 26, 51, 52, 55, 59, 63, 64, 68, 71, 83, 92, 93, 94, 96, 141, 142, 149,
         150, 166, 167, 176, 177, 193, 194, 195, 196, 197,
     ];
+    merged_stat("stat.mineBlock.", b, |id| DISABLED.contains(&id))
+}
+
+/// The statistic counted for using an item (`StatList.objectUseStats`, with the same
+/// block merges as mining: placing grass counts as dirt, ...).
+pub fn use_stat(item: i16) -> Option<String> {
+    if item >= 256 {
+        let name = krol_world::items::name_for_id(item)?;
+        return Some(format!("stat.useItem.{}", name.replace(':', ".")));
+    }
+    merged_stat("stat.useItem.", item as u16, |_| false)
+}
+
+/// A per-block statistic after `StatList.replaceAllSimilarBlocks`.
+fn merged_stat(prefix: &str, b: u16, disabled: impl Fn(u16) -> bool) -> Option<String> {
     let own = |id: u16| -> Option<String> {
-        if DISABLED.contains(&id) {
+        if disabled(id) {
             return None;
         }
         let name = krol_world::items::name_for_id(id as i16)?;
-        Some(format!("stat.mineBlock.{}", name.replace(':', ".")))
+        Some(format!("{prefix}{}", name.replace(':', ".")))
     };
     const MERGES: [(u16, u16); 14] = [
         (9, 8),

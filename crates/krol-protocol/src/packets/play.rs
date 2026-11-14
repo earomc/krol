@@ -680,6 +680,15 @@ pub enum ClientboundPlay {
     },
     /// `0x0D`
     CollectItem { collected: i32, collector: i32 },
+    /// `0x2D` (title: chat JSON)
+    OpenWindow {
+        window: u8,
+        kind: String,
+        title: String,
+        slots: u8,
+    },
+    /// `0x2E`
+    CloseWindow { window: u8 },
     /// `0x32`
     ConfirmTransaction {
         window: i8,
@@ -838,6 +847,8 @@ impl ClientboundPlay {
             Self::CollectItem { .. } => 0x0d,
             Self::Respawn { .. } => 0x07,
             Self::ConfirmTransaction { .. } => 0x32,
+            Self::OpenWindow { .. } => 0x2d,
+            Self::CloseWindow { .. } => 0x2e,
         }
     }
 
@@ -1180,6 +1191,20 @@ impl ClientboundPlay {
                 accepted,
             } => {
                 w.i8(*window).i16(*action).bool(*accepted);
+            }
+            Self::OpenWindow {
+                window,
+                kind,
+                title,
+                slots,
+            } => {
+                w.u8(*window);
+                w.string(kind)?;
+                w.string(title)?;
+                w.u8(*slots);
+            }
+            Self::CloseWindow { window } => {
+                w.u8(*window);
             }
             Self::BlockBreakAnimation {
                 entity_id,

@@ -2113,7 +2113,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": 1490597463,
+      "XpSeed": -1009914974,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -2146,11 +2146,11 @@
         "stat.deaths": 1,
         "stat.walkOneCm": 632,
         "stat.jump": 1,
-        "stat.playOneMinute": 176,
+        "stat.playOneMinute": 175,
         "stat.fallOneCm": 2900,
         "stat.leaveGame": 1,
         "stat.damageTaken": 260,
-        "stat.timeSinceDeath": 60,
+        "stat.timeSinceDeath": 58,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [

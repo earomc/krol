@@ -18,6 +18,7 @@ mod movement;
 pub mod physics;
 mod placement;
 pub mod player;
+mod recipes;
 pub mod stats;
 mod tracker;
 pub mod world;
@@ -913,6 +914,11 @@ impl Game {
         for slot in 0..45 {
             if player.inventory[slot] != player.sent_inventory[slot] {
                 player.sent_inventory[slot] = player.inventory[slot].clone();
+                // EntityPlayerMP.sendSlotContents: the crafting result is never sent (the
+                // client works it out itself).
+                if slot == 0 {
+                    continue;
+                }
                 player.send(ClientboundPlay::SetSlot {
                     window: 0,
                     slot: slot as i16,
@@ -923,7 +929,12 @@ impl Game {
     }
 
     fn tick_player(&mut self, i: usize, radius: i32) {
-        self.detect_inventory_changes(i);
+        // EntityPlayerMP.onUpdate: the open container's changes, then whether it can
+        // stay open.
+        if self.detect_container_changes(i).is_none() {
+            self.detect_inventory_changes(i);
+        }
+        self.check_open_container(i);
         let player = &mut self.players[i];
         // EntityPlayerMP.onUpdate: entities removed since the last update.
         if !player.pending_destroy.is_empty() {
@@ -1123,6 +1134,9 @@ impl Game {
             .is_none_or(|s| s.damage >= 0 && s.count <= 64 && s.count > 0);
         if (1..45).contains(&slot) && valid_item && valid_size {
             player.inventory[slot as usize] = item;
+            if (1..=4).contains(&slot) {
+                self.update_craft_result(i);
+            }
         }
         // TODO: slot -1 drops the item as an entity (needs item entities).
     }
@@ -1358,6 +1372,14 @@ impl Game {
         }
     }
 
+    /// `ItemStack.onItemUse` succeeded: the held item's use statistic.
+    pub(super) fn count_item_use(&mut self, i: usize) {
+        let p = &mut self.players[i];
+        if let Some(stat) = p.held().and_then(|s| digging::use_stat(s.id)) {
+            p.stats.add(&stat, 1);
+        }
+    }
+
     /// Whether a player stands in the collision box of `state` at `at`
     /// (`checkNoEntityCollision`).
     fn blocked_by_players(&self, state: u16, at: (i32, i32, i32)) -> bool {
@@ -1372,6 +1394,7 @@ impl Game {
     /// and uses up one item in survival.
     fn finish_placement(&mut self, i: usize, at: (i32, i32, i32), state: u16) {
         self.level.overworld.set_block(at.0, at.1, at.2, state);
+        self.count_item_use(i);
         let sound = blocks::sound_type(state >> 4);
         let volume = (sound.volume + 1.0) / 2.0;
         let pitch = sound.frequency * 0.8;
@@ -1594,6 +1617,11 @@ impl Game {
     fn set_game_mode(&mut self, i: usize, mode: i32) {
         let player = &mut self.players[i];
         player.gamemode = mode;
+        player::set_abilities(&mut player.data, mode);
+        player.flying = player
+            .data
+            .get_compound("abilities")
+            .is_some_and(|a| a.get_bool("flying"));
         let abilities = abilities_packet(mode);
         player.send(abilities.clone());
         let uuid = player.profile.id;

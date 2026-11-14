@@ -662,6 +662,39 @@ impl V5Translator {
                 }
                 one(w);
             }
+            ClientboundPlay::OpenWindow {
+                window,
+                kind,
+                slots,
+                ..
+            } => {
+                // 1.7 numbers the window types and has no translated titles; the client
+                // then uses its default title.
+                let (ty, count) = match kind.as_str() {
+                    "minecraft:chest" | "minecraft:container" => (0, *slots),
+                    "minecraft:crafting_table" => (1, 9),
+                    "minecraft:furnace" => (2, 3),
+                    "minecraft:dispenser" => (3, 9),
+                    "minecraft:enchanting_table" => (4, 0),
+                    "minecraft:brewing_stand" => (5, 4),
+                    "minecraft:villager" => (6, 3),
+                    "minecraft:beacon" => (7, 1),
+                    "minecraft:anvil" => (8, 3),
+                    "minecraft:hopper" => (9, 5),
+                    "minecraft:dropper" => (10, 9),
+                    _ => (0, *slots),
+                };
+                let mut w = packet(0x2d);
+                w.u8(*window).u8(ty);
+                w.string("")?;
+                w.u8(count).bool(false);
+                one(w);
+            }
+            ClientboundPlay::CloseWindow { window } => {
+                let mut w = packet(0x2e);
+                w.u8(*window);
+                one(w);
+            }
             ClientboundPlay::ConfirmTransaction {
                 window,
                 action,

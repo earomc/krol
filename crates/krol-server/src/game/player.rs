@@ -385,6 +385,23 @@ pub struct Movement {
     pub floating_ticks: u32,
 }
 
+/// Vanilla `GameType.configurePlayerCapabilities` on the stored abilities.
+pub fn set_abilities(data: &mut Compound, gamemode: i32) {
+    let mut a = data.get_compound("abilities").cloned().unwrap_or_default();
+    let creative = gamemode == 1;
+    let spectator = gamemode == 3;
+    a.insert("mayfly", Tag::Byte(i8::from(creative || spectator)));
+    a.insert("instabuild", Tag::Byte(i8::from(creative)));
+    a.insert("invulnerable", Tag::Byte(i8::from(creative || spectator)));
+    if spectator {
+        a.insert("flying", Tag::Byte(1));
+    } else if !creative {
+        a.insert("flying", Tag::Byte(0));
+    }
+    a.insert("mayBuild", Tag::Byte(i8::from(gamemode == 0 || creative)));
+    data.insert("abilities", Tag::Compound(a));
+}
+
 /// Reads an item stack from NBT (vanilla `ItemStack.readFromNBT`): the id is a name
 /// (`minecraft:stone`) or, in old data, a numeric short; unknown items are dropped.
 pub fn item_from_nbt(c: &Compound) -> Option<krol_protocol::packets::play::ItemStack> {

@@ -470,7 +470,15 @@ impl Game {
 /// (`stack.count` is reduced by what fit).
 pub fn add_to_inventory(window: &mut [Option<ItemStack>], stack: &mut ItemStack) -> bool {
     // mainInventory index i: hotbar 0..9 is window slot 36 + i, the rest is i.
-    let slot = |i: usize| if i < 9 { 36 + i } else { i };
+    add_to_inventory_mapped(window, stack, |i| if i < 9 { 36 + i } else { i })
+}
+
+/// [`add_to_inventory`] on any window, given where main inventory index `i` is.
+pub fn add_to_inventory_mapped(
+    window: &mut [Option<ItemStack>],
+    stack: &mut ItemStack,
+    slot: impl Fn(usize) -> usize,
+) -> bool {
     let max = max_stack(stack.id);
     let damaged = max == 1 && stack.damage > 0;
     if stack.count <= 0 {

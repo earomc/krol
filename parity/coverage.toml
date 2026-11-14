@@ -242,3 +242,8 @@ scenarios = []
 id = "play.inventory_clicks"
 description = "Player window clicks: pick up/place/split, outside drops, shift-click, number keys, drag painting, double click, creative clone, rejected predictions and confirmation, closing"
 scenarios = ["play/inventory_clicks"]
+
+[[feature]]
+id = "play.crafting"
+description = "Crafting: recipe table extracted from vanilla, 2x2 grid, crafting table window (open, clicks, result, close), stat.craftItem, stat.useItem"
+scenarios = ["play/crafting"]

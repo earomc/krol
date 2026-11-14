@@ -148,6 +148,10 @@ impl Game {
                 self.aux_effect_except(i, if new & 4 != 0 { 1003 } else { 1006 }, pos);
                 true
             }
+            58 => {
+                self.open_workbench(i, pos);
+                true
+            }
             _ => consumes_click(state),
         }
     }
@@ -200,6 +204,7 @@ impl Game {
         let upper = block << 4 | 8 | u16::from(hinge_right);
         w.set_block(at.0, at.1, at.2, lower);
         w.set_block(at.0, at.1 + 1, at.2, upper);
+        self.count_item_use(i);
         let player = &mut self.players[i];
         if player.gamemode != 1 {
             let held = 36 + player.selected;

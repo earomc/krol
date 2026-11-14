@@ -8,8 +8,8 @@ subsystem = "blocks"
 # randoms); the summary leaves them out, and with them where the pickup sound plays
 # (the player's position at the moment of pickup).
 
-# Known timing race (vanilla too): if the miner's packet after a pickup arrives a tick
-# late, the watcher gets the item's destroy before the miner's held-item update.
+# Notch holds a stick in his selected hotbar slot, so the picked-up dirt does not change
+# his held item: that update would race with the item's destroy for the watcher.
 
 [setup]
 world = "fixtures/worlds/flat"

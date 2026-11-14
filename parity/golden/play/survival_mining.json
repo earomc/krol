@@ -29,6 +29,7 @@
         "world_border",
         "window_items",
         "set_slot",
+        "set_slot",
         "update_health",
         "set_experience",
         "spawn_player",
@@ -121,11 +122,15 @@
           "packet": "world_border"
         },
         {
-          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff011801000000ffffffffffffffffffffffffffffffff",
           "packet": "window_items"
         },
         {
           "hex": "ffffffffff",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "000024011801000000",
           "packet": "set_slot"
         },
         {
@@ -205,7 +210,7 @@
           "packet": "0x0d"
         },
         {
-          "hex": "000024000301000000",
+          "hex": "000025000301000000",
           "packet": "set_slot"
         },
         {
@@ -249,7 +254,7 @@
           "packet": "0x0d"
         },
         {
-          "hex": "000024000302000000",
+          "hex": "000025000302000000",
           "packet": "set_slot"
         },
         {
@@ -757,6 +762,8 @@
         "spawn_player",
         "entity_metadata",
         "entity_properties",
+        "entity_equipment",
+        "entity_equipment",
         "entity_metadata",
         "entity_properties",
         "block_break_animation",
@@ -768,7 +775,6 @@
         "sound_effect",
         "sound_effect",
         "0x0d",
-        "entity_equipment",
         "destroy_entities",
         "block_break_animation",
         "0x28",
@@ -778,7 +784,6 @@
         "block_change",
         "sound_effect",
         "0x0d",
-        "entity_equipment",
         "destroy_entities",
         "chat",
         "destroy_entities",
@@ -894,7 +899,7 @@
           "packet": "player_list_item"
         },
         {
-          "hex": "01b50ad385829d3141a2167e7d7539ba7fffffc4d000000080ffffc8f00000000000002100008200030004006641a000004700000000080009000a001000710000000052000000007f",
+          "hex": "01b50ad385829d3141a2167e7d7539ba7fffffc4d000000080ffffc8f00000011800002100008200030004006641a000004700000000080009000a001000710000000052000000007f",
           "packet": "spawn_player"
         },
         {
@@ -914,6 +919,14 @@
             ]
           ],
           "packet": "entity_properties"
+        },
+        {
+          "hex": "010000011801000000",
+          "packet": "entity_equipment"
+        },
+        {
+          "hex": "010000011801000000",
+          "packet": "entity_equipment"
         },
         {
           "hex": "01000021012c8200030004006641a000004700000000080009000a7f1000710000000052000000007f",
@@ -984,10 +997,6 @@
           "packet": "0x0d"
         },
         {
-          "hex": "010000000301000000",
-          "packet": "entity_equipment"
-        },
-        {
           "debug": "DestroyEntities([2])",
           "packet": "destroy_entities"
         },
@@ -1035,10 +1044,6 @@
           "collected": 3,
           "collector": 1,
           "packet": "0x0d"
-        },
-        {
-          "hex": "010000000302000000",
-          "packet": "entity_equipment"
         },
         {
           "debug": "DestroyEntities([3])",
@@ -1605,9 +1610,15 @@
       "HurtTime": "0s",
       "Inventory": [
         {
-          "Count": "2b",
+          "Count": "1b",
           "Damage": "0s",
           "Slot": "0b",
+          "id": "minecraft:stick"
+        },
+        {
+          "Count": "2b",
+          "Damage": "0s",
+          "Slot": "1b",
           "id": "minecraft:dirt"
         }
       ],
@@ -1630,9 +1641,9 @@
       ],
       "Score": 0,
       "SelectedItem": {
-        "Count": "2b",
+        "Count": "1b",
         "Damage": "0s",
-        "id": "minecraft:dirt"
+        "id": "minecraft:stick"
       },
       "SelectedItemSlot": 0,
       "SleepTimer": "0s",
@@ -1641,7 +1652,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": 251664842,
+      "XpSeed": -865961279,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
