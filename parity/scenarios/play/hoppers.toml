@@ -19,33 +19,33 @@ action = "play"
 background = true
 protocol = 47
 name = "jeb_"
-seconds = 11
+seconds = 12
 chat = [
     "@2500 !creative 36 3 8 0",
-    "@2550 !creative 37 54 1 0",
-    "@2600 !creative 38 154 1 0",
-    "@2650 !creative 39 61 1 0",
-    "@2700 !creative 9 263 8 0",
-    "@2900 !place -469 3 -433 1",
-    "@3100 !place -468 3 -433 1",
-    "@3300 !hold 1",
-    "@3500 !place -469 4 -433 1",
-    "@3700 !dig -469 4 -433 1",
-    "@3900 !hold 2",
-    "@4100 !place -468 4 -433 4",
-    "@4300 !dig -468 4 -433 1",
-    "@4500 !hold 3",
-    "@4700 !place -468 3 -433 1",
-    "@5000 !place -469 5 -433 1",
-    "@5300 !click 1 27 0 1 0 263 8 0",
-    "@5600 !click 1 0 0 2 0",
-    "@5900 !close 1",
+    "@2700 !creative 37 54 1 0",
+    "@2900 !creative 38 154 1 0",
+    "@3100 !creative 39 61 1 0",
+    "@3300 !creative 9 263 8 0",
+    "@3500 !place -469 3 -433 1",
+    "@3700 !place -468 3 -433 1",
+    "@3900 !hold 1",
+    "@4100 !place -469 4 -433 1",
+    "@4300 !dig -469 4 -433 1",
+    "@4500 !hold 2",
+    "@4700 !place -468 4 -433 4",
+    "@4900 !dig -468 4 -433 1",
+    "@5100 !hold 3",
+    "@5300 !place -468 3 -433 1",
+    "@5600 !place -469 5 -433 1",
+    "@5900 !click 1 27 0 1 0 263 8 0",
+    "@6200 !click 1 0 0 2 0",
+    "@6500 !close 1",
 ]
 
 [[steps]]
 action = "console"
 command = "gamemode 1 jeb_"
-wait_ms = 10700
+wait_ms = 11700
 
 [observe]
 log = true
