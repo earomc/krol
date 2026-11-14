@@ -370,3 +370,128 @@ pub fn summarize(o: &PlayObservation) -> Value {
         "closed_by_server": o.closed_by_server,
     })
 }
+
+/// Applies [`v5_view`] to every play session in a scenario's observations.
+pub fn v5_view_all(observations: &Value, from_v5: bool) -> Value {
+    match observations {
+        Value::Object(m) => Value::Object(
+            m.iter()
+                .map(|(k, v)| {
+                    let v = if v.get("sequence").is_some() {
+                        v5_view(v, from_v5)
+                    } else {
+                        v.clone()
+                    };
+                    (k.clone(), v)
+                })
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
+/// Packets 1.7 clients do not get.
+const V18_ONLY: &[&str] = &[
+    "server_difficulty",
+    "world_border",
+    "player_list_header_footer",
+    "0x42",
+    "0x43",
+    "0x45",
+    "0x46",
+    "0x48",
+    "0x49",
+];
+
+/// Packets whose decoded fields a 1.7 client sees the same way.
+const SAME_IN_V5: &[&str] = &[
+    "join_game",
+    "chat",
+    "spawn_position",
+    "position_look",
+    "held_item_change",
+    "player_abilities",
+    "plugin_message",
+    "disconnect",
+];
+
+/// Reduces a play session summary to what a 1.7 client observes, so a 1.7 session can
+/// be compared with a 1.8 recording: 1.8-only packets and fields are dropped, packet
+/// details are kept only where the 1.7 form carries the same information, and player
+/// list updates count one packet per entry (1.7 has no game mode or display name
+/// updates). `from_v5` marks a summary of a 1.7 session.
+pub fn v5_view(summary: &Value, from_v5: bool) -> Value {
+    let mut out = summary.clone();
+    let empty = Vec::new();
+    let names = summary["sequence"].as_array().unwrap_or(&empty);
+    let packets = summary["packets"].as_array().unwrap_or(&empty);
+    let mut sequence = Vec::new();
+    let mut kept = Vec::new();
+    for (name, packet) in names.iter().zip(packets) {
+        let name = name.as_str().unwrap_or_default();
+        if V18_ONLY.contains(&name) {
+            continue;
+        }
+        let entry = if SAME_IN_V5.contains(&name) {
+            let mut p = packet.clone();
+            if let Value::Object(m) = &mut p {
+                m.remove("reduced_debug_info");
+                m.remove("position");
+                m.remove("flags");
+            }
+            p
+        } else {
+            json!({ "packet": name })
+        };
+        let repeat = if name == "player_list_item" && !from_v5 {
+            // The 1.8 packet: action, entry count.
+            let bytes = packet["hex"]
+                .as_str()
+                .map(|h| {
+                    (0..h.len() / 2)
+                        .filter_map(|i| u8::from_str_radix(&h[i * 2..i * 2 + 2], 16).ok())
+                        .collect::<Vec<u8>>()
+                })
+                .unwrap_or_default();
+            let mut r = PacketReader::new(&bytes);
+            match (r.varint(), r.varint()) {
+                (Ok(1 | 3), _) => 0,
+                (Ok(_), Ok(n)) => n.max(0) as usize,
+                _ => 1,
+            }
+        } else {
+            1
+        };
+        for _ in 0..repeat {
+            sequence.push(Value::String(name.to_owned()));
+            kept.push(entry.clone());
+        }
+    }
+    out["sequence"] = Value::Array(sequence);
+    out["packets"] = Value::Array(kept);
+    if let Some(chat) = summary["chat"].as_array() {
+        out["chat"] = chat.iter().map(|c| json!({ "json": c["json"] })).collect();
+    }
+    if let Some(login) = summary["login"].as_array() {
+        out["login"] = login
+            .iter()
+            .filter(|l| l["type"] != "set_compression")
+            .cloned()
+            .collect();
+    }
+    if let Some(Value::Object(entities)) = summary.get("entities") {
+        out["entities"] = Value::Object(
+            entities
+                .iter()
+                .map(|(k, e)| {
+                    let mut e = e.clone();
+                    if let Value::Object(m) = &mut e {
+                        m.remove("on_ground");
+                    }
+                    (k.clone(), e)
+                })
+                .collect(),
+        );
+    }
+    out
+}

@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 
 /// A parity scenario.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scenario {
     /// Human-readable purpose.
@@ -26,7 +26,7 @@ pub struct Scenario {
 }
 
 /// Server directory preparation.
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Setup {
     /// Write `eula.txt` with `eula=true` (default `true`).
@@ -125,7 +125,7 @@ impl Step {
 }
 
 /// What to capture besides step results.
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Observe {
     /// Files read from the server directory after shutdown.

@@ -41,11 +41,19 @@ fn work_dir(scenario: &str, target: &str) -> PathBuf {
 pub fn main(args: &[String]) -> Result<ExitCode> {
     let filter = flag_value(args, "--filter");
     match args.first().map(String::as_str) {
-        Some("run") => run(filter.as_deref()),
+        Some("run") => {
+            let protocol = flag_value(args, "--protocol")
+                .map(|p| p.parse::<i32>())
+                .transpose()
+                .context("--protocol takes 47 or 5")?;
+            run(filter.as_deref(), protocol == Some(5))
+        }
         Some("record") => record(filter.as_deref(), args.iter().any(|a| a == "--rerecord")),
         Some("diff") => show_diff(args.get(1).context("usage: parity diff <scenario>")?),
         Some("coverage") => coverage(),
-        _ => bail!("usage: cargo xtask parity <run|record|diff|coverage> [--filter <substr>]"),
+        _ => bail!(
+            "usage: cargo xtask parity <run|record|diff|coverage> [--filter <substr>] [--protocol 5]"
+        ),
     }
 }
 
@@ -125,8 +133,25 @@ impl From<Difference> for DiffEntry {
     }
 }
 
-fn run(filter: Option<&str>) -> Result<ExitCode> {
-    let scenarios = scenario::load_all(&parity_root().join("scenarios"), filter)?;
+/// Runs the scenarios. With `v5`, only scenarios with play sessions run, every session
+/// connects as a 1.7 client (protocol 5), and both the vanilla recording and krol's
+/// observation are reduced to what a 1.7 client can observe before comparing.
+fn run(filter: Option<&str>, v5: bool) -> Result<ExitCode> {
+    let mut scenarios = scenario::load_all(&parity_root().join("scenarios"), filter)?;
+    if v5 {
+        scenarios.retain(|sc| {
+            sc.steps
+                .iter()
+                .any(|s| matches!(s, scenario::Step::Play { .. }))
+        });
+        for sc in &mut scenarios {
+            for step in &mut sc.steps {
+                if let scenario::Step::Play { protocol, .. } = step {
+                    *protocol = 5;
+                }
+            }
+        }
+    }
     if scenarios.is_empty() {
         bail!("no scenarios matched");
     }
@@ -136,7 +161,7 @@ fn run(filter: Option<&str>) -> Result<ExitCode> {
 
     for sc in &scenarios {
         eprintln!("parity: {} ...", sc.name);
-        let report = match run_one(sc, &krol, vanilla.as_ref()) {
+        let report = match run_one(sc, &krol, vanilla.as_ref(), v5) {
             Ok(r) => r,
             Err(e) => ScenarioReport {
                 name: sc.name.clone(),
@@ -210,16 +235,25 @@ fn run_one(
     sc: &scenario::Scenario,
     krol: &Target,
     vanilla: Option<&Target>,
+    v5: bool,
 ) -> Result<ScenarioReport> {
-    let dir = work_dir(&sc.name, "krol");
-    let actual = observe::run(sc, krol, &dir, &parity_root())?;
+    let dir = work_dir(&sc.name, if v5 { "krol-v5" } else { "krol" });
+    let mut actual = observe::run(sc, krol, &dir, &parity_root())?;
+    if v5 {
+        actual = play::v5_view_all(&actual, true);
+    }
     let actual_path = dir.with_extension("observations.json");
     std::fs::write(&actual_path, serde_json::to_string_pretty(&actual)?)?;
 
     let (expected, source) = if let Ok(text) = std::fs::read_to_string(golden_path(&sc.name)) {
         let golden: Golden = serde_json::from_str(&text)?;
-        (Some(golden.observations), Some("golden".to_owned()))
-    } else if let Some(vanilla) = vanilla {
+        let observations = if v5 {
+            play::v5_view_all(&golden.observations, false)
+        } else {
+            golden.observations
+        };
+        (Some(observations), Some("golden".to_owned()))
+    } else if let Some(vanilla) = vanilla.filter(|_| !v5) {
         let vdir = work_dir(&sc.name, "vanilla");
         (
             Some(observe::run(sc, vanilla, &vdir, &parity_root())?),

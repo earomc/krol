@@ -109,6 +109,8 @@ pub async fn play_session(
     let mut held: Vec<Option<krol_protocol::packets::play::ItemStack>> = vec![None; 9];
     let mut held_slot: i16 = 0;
     let mut next_chat = start;
+    // For 1.7 clients: the own entity id (sent in some 1.7 packets), once known.
+    let mut v5_eid: Option<i32> = (version == ProtocolVersion::V5).then_some(0);
 
     let result: Result<(), BotError> = async { loop {
         tokio::select! {
@@ -118,14 +120,14 @@ pub async fn play_session(
                     match (origin, moves.get(next_move)) {
                         (Some((ox, oy, oz)), Some([dx, dy, dz])) => {
                             next_move += 1;
-                            send_play(&mut conn, &ServerboundPlay::Position {
+                            send_play(&mut conn, v5_eid, &ServerboundPlay::Position {
                                 x: ox + dx, y: oy + dy, z: oz + dz, on_ground: true,
                             }).await?;
                         }
-                        _ => send_play(&mut conn, &ServerboundPlay::Player { on_ground: true }).await?,
+                        _ => send_play(&mut conn, v5_eid, &ServerboundPlay::Player { on_ground: true }).await?,
                     }
                     if Instant::now() >= next_chat && let Some(message) = pending_chat.pop() {
-                        send_play(&mut conn, &ServerboundPlay::Chat { message }).await?;
+                        send_play(&mut conn, v5_eid, &ServerboundPlay::Chat { message }).await?;
                         next_chat = Instant::now() + Duration::from_millis(500);
                     }
                     if let Some(at) = positioned_at {
@@ -146,7 +148,7 @@ pub async fn play_session(
                                         held[(*slot - 36) as usize] = item.clone();
                                     }
                                 }
-                                send_play(&mut conn, &packet).await?;
+                                send_play(&mut conn, v5_eid, &packet).await?;
                             }
                             let _ = held_slot;
                         }
@@ -159,28 +161,36 @@ pub async fn play_session(
                     break;
                 };
                 let disconnect = body.first() == Some(&0x40);
-                let mut r = krol_protocol::buf::PacketReader::new(&body);
-                let id = r.varint()?;
-                let decoded = ClientboundPlay::decode(&body, version)?;
+                let (id, rest, decoded) = if v5_eid.is_some() {
+                    let received = crate::v5::decode(&body)?;
+                    (received.id, received.body, received.decoded)
+                } else {
+                    let mut r = krol_protocol::buf::PacketReader::new(&body);
+                    let id = r.varint()?;
+                    (id, r.rest().to_vec(), ClientboundPlay::decode(&body, version)?)
+                };
                 match &decoded {
                     Some(ClientboundPlay::KeepAlive { id }) => {
-                        send_play(&mut conn, &ServerboundPlay::KeepAlive { id: *id }).await?;
+                        send_play(&mut conn, v5_eid, &ServerboundPlay::KeepAlive { id: *id }).await?;
                     }
-                    Some(ClientboundPlay::JoinGame { .. }) => {
-                        send_play(&mut conn, &ServerboundPlay::ClientSettings {
+                    Some(ClientboundPlay::JoinGame { entity_id, .. }) => {
+                        if v5_eid.is_some() {
+                            v5_eid = Some(*entity_id);
+                        }
+                        send_play(&mut conn, v5_eid, &ServerboundPlay::ClientSettings {
                             locale: "en_US".into(),
                             view_distance: 10,
                             chat_mode: 0,
                             chat_colors: true,
                             skin_parts: 0x7f,
                         }).await?;
-                        send_play(&mut conn, &ServerboundPlay::PluginMessage {
+                        send_play(&mut conn, v5_eid, &ServerboundPlay::PluginMessage {
                             channel: "MC|Brand".into(),
                             data: b"\x07vanilla".to_vec(),
                         }).await?;
                     }
                     Some(ClientboundPlay::PositionLook { x, y, z, yaw, pitch, .. }) => {
-                        send_play(&mut conn, &ServerboundPlay::PositionLook {
+                        send_play(&mut conn, v5_eid, &ServerboundPlay::PositionLook {
                             x: *x, y: *y, z: *z, yaw: *yaw, pitch: *pitch, on_ground: false,
                         }).await?;
                         positioned = true;
@@ -193,7 +203,7 @@ pub async fn play_session(
                 obs.packets.push(ObservedPacket {
                     at_ms: start.elapsed().as_millis() as u64,
                     id,
-                    body: r.rest().to_vec(),
+                    body: rest,
                     decoded,
                 });
                 if disconnect {
@@ -213,8 +223,18 @@ pub async fn play_session(
     Ok(obs)
 }
 
-async fn send_play(conn: &mut Conn, packet: &ServerboundPlay) -> Result<(), BotError> {
-    if let Some(bytes) = packet.encode()? {
+/// Sends a packet in protocol 47, or in 1.7 form when `v5_eid` (the client's entity id
+/// in a 1.7 session) is set.
+async fn send_play(
+    conn: &mut Conn,
+    v5_eid: Option<i32>,
+    packet: &ServerboundPlay,
+) -> Result<(), BotError> {
+    let bytes = match v5_eid {
+        Some(eid) => crate::v5::encode(packet, eid)?,
+        None => packet.encode()?,
+    };
+    if let Some(bytes) = bytes {
         conn.send(&bytes).await?;
     }
     Ok(())

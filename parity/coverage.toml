@@ -175,8 +175,8 @@ scenarios = []
 
 [[feature]]
 id = "protocol5.play"
-description = "1.7 clients in the play state (translation layer)"
-scenarios = []
+description = "1.7 clients in the play state (translation layer; `parity run --protocol 5` replays the play scenarios as 1.7 clients)"
+scenarios = ["play/join_flat", "play/walk_and_jump", "play/build_creative", "play/inventory_join", "play/two_players"]
 
 [[feature]]
 id = "world.load_existing"

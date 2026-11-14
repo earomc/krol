@@ -51,6 +51,7 @@ pub struct StatusObservation {
 }
 
 mod play;
+pub mod v5;
 
 pub use play::{ObservedPacket, PlayObservation, play_session};
 

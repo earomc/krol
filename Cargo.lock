@@ -520,6 +520,8 @@ dependencies = [
 name = "krol-testbot"
 version = "0.1.0"
 dependencies = [
+ "flate2",
+ "krol-nbt",
  "krol-protocol",
  "thiserror",
  "tokio",
