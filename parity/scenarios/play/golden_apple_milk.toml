@@ -1,0 +1,46 @@
+description = "A golden apple eaten at full hunger (always edible) gives absorption (4 extra health) and regeneration II; drinking milk then clears every effect (drink sound, no eat animation) and leaves a bucket"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode, gets the items in creative mode and uses
+# them in survival mode. At full health regeneration does nothing visible.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 13
+chat = [
+    "@2500 !creative 36 322 1 0",
+    "@2700 !creative 37 335 1 0",
+    "@6000 !use",
+    "@8500 !hold 1",
+    "@8800 !use",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 3500
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+wait_ms = 9000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

@@ -1472,6 +1472,10 @@ impl Game {
                 self.use_bucket(i, &held)
             }
             id if item_data::armor_points(id) > 0 => self.equip_armor(i, &held),
+            ids::item::MILK_BUCKET => {
+                self.start_drinking_milk(i, &held);
+                buckets::UseResult::Kept
+            }
             id if food::food(id, held.damage).is_some() => {
                 if let Some(f) = food::food(id, held.damage) {
                     self.start_eating(i, &held, f);

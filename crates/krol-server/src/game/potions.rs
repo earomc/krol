@@ -22,6 +22,12 @@ const RESEND_PERIOD: i32 = 600;
 pub mod effect {
     /// `regeneration`.
     pub const REGENERATION: u8 = 10;
+    /// `confusion` (nausea).
+    pub const NAUSEA: u8 = 9;
+    /// `resistance`.
+    pub const RESISTANCE: u8 = 11;
+    /// `fireResistance`.
+    pub const FIRE_RESISTANCE: u8 = 12;
     /// `heal` (instant health).
     pub const HEAL: u8 = 6;
     /// `harm` (instant damage).

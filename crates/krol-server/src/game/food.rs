@@ -21,6 +21,14 @@ const FINISH_PARTICLES: usize = 16;
 const MAX_FOOD: i32 = 20;
 /// `EntityStatus` 9: the player finished using an item.
 const STATUS_USE_FINISHED: i8 = 9;
+/// `random.drink` volume.
+const DRINK_VOLUME: f32 = 0.5;
+/// `golden_apple`.
+const GOLDEN_APPLE: i16 = 322;
+/// `fish` (raw); damage 3 is the pufferfish.
+const FISH: i16 = 349;
+const PUFFERFISH: i16 = 3;
+
 /// The `Animation` packet's "eat food".
 const ANIMATION_EAT: u8 = 3;
 /// `random.burp` volume.
@@ -88,6 +96,8 @@ pub struct ItemUse {
     pub damage: i16,
     /// Updates left.
     pub count: i32,
+    /// Drunk (milk) rather than eaten.
+    pub drink: bool,
 }
 
 impl Game {
@@ -113,6 +123,7 @@ impl Game {
                     id: held.id,
                     damage: held.damage,
                     count: EAT_DURATION,
+                    drink: false,
                 });
                 p.dirty_metadata.insert(0);
             }
@@ -127,6 +138,26 @@ impl Game {
             self.send_to_tracking(entity_id, &animation);
         }
         self.players[i].using.is_some()
+    }
+
+    /// `ItemBucketMilk.onItemRightClick`: milk is drunk in any game mode.
+    pub(super) fn start_drinking_milk(&mut self, i: usize, held: &ItemStack) {
+        let p = &mut self.players[i];
+        let slot = 36 + p.selected;
+        let same = p
+            .using
+            .as_ref()
+            .is_some_and(|u| u.slot == slot && u.id == held.id && u.damage == held.damage);
+        if !same {
+            p.using = Some(ItemUse {
+                slot,
+                id: held.id,
+                damage: held.damage,
+                count: EAT_DURATION,
+                drink: true,
+            });
+            p.dirty_metadata.insert(0);
+        }
     }
 
     /// `EntityPlayer.clearItemInUse`.
@@ -152,7 +183,7 @@ impl Game {
             return;
         }
         if u.count <= EAT_SOUNDS_FROM && u.count % 4 == 0 {
-            self.eat_effects(i, EAT_PARTICLES);
+            self.use_effects(i, u.drink, EAT_PARTICLES);
         }
         let left = u.count - 1;
         if let Some(use_) = self.players[i].using.as_mut() {
@@ -163,9 +194,16 @@ impl Game {
         }
     }
 
-    /// `EntityPlayer.updateItemUse` for food: crumbs (client-side, from the player's
-    /// random) and the eating sound for the others.
-    fn eat_effects(&mut self, i: usize, particles: usize) {
+    /// `EntityPlayer.updateItemUse`: the drinking sound, or crumbs (client-side, from
+    /// the player's random) and the eating sound, for the others.
+    fn use_effects(&mut self, i: usize, drink: bool, particles: usize) {
+        if drink {
+            let pitch = self.world_rand.next_float() * 0.1 + 0.9;
+            let p = &self.players[i];
+            let (pos, conn) = (p.pos, p.conn_id);
+            self.play_sound_near_except(Some(conn), "random.drink", pos, DRINK_VOLUME, pitch);
+            return;
+        }
         let p = &mut self.players[i];
         for _ in 0..particles * 3 {
             p.rand.next_float();
@@ -184,13 +222,38 @@ impl Game {
             entity_id: p.entity_id,
             status: STATUS_USE_FINISHED,
         });
-        self.eat_effects(i, FINISH_PARTICLES);
+        let drink = self.players[i].using.as_ref().is_some_and(|u| u.drink);
+        self.use_effects(i, drink, FINISH_PARTICLES);
         let p = &mut self.players[i];
         let slot = 36 + p.selected;
         let Some(stack) = p.inventory[slot].clone() else {
             self.clear_item_in_use(i);
             return;
         };
+        if stack.id == super::ids::item::MILK_BUCKET {
+            // ItemBucketMilk.onItemUseFinish.
+            let mut milk = stack.clone();
+            if p.gamemode != 1 {
+                milk.count -= 1;
+            }
+            self.clear_effects(i);
+            if let Some(stat) = super::digging::use_stat(stack.id) {
+                self.players[i].stats.add(&stat, 1);
+            }
+            let result = if milk.count <= 0 {
+                ItemStack {
+                    id: super::ids::item::BUCKET,
+                    count: 1,
+                    damage: 0,
+                    nbt: None,
+                }
+            } else {
+                milk
+            };
+            self.players[i].inventory[slot] = Some(result);
+            self.clear_item_in_use(i);
+            return;
+        }
         let Some(f) = food(stack.id, stack.damage) else {
             self.clear_item_in_use(i);
             return;
@@ -207,7 +270,7 @@ impl Game {
         let pitch = self.world_rand.next_float() * 0.1 + 0.9;
         let pos = self.players[i].pos;
         self.play_sound_near_except(None, "random.burp", pos, BURP_VOLUME, pitch);
-        // TODO(M5): potion effects of some foods (onFoodEaten).
+        self.food_eaten(i, stack.id, stack.damage);
         if let Some(stat) = super::digging::use_stat(stack.id) {
             self.players[i].stats.add(&stat, 1);
         }
@@ -224,5 +287,47 @@ impl Game {
         let p = &mut self.players[i];
         p.inventory[slot] = result.filter(|s| s.count > 0);
         self.clear_item_in_use(i);
+    }
+
+    /// `ItemFood.onFoodEaten` and its overrides (`ItemAppleGold`, `ItemFishFood`).
+    fn food_eaten(&mut self, i: usize, id: i16, damage: i16) {
+        use super::potions::{Effect, effect};
+        let fx = |id: u8, duration: i32, amplifier: u8| Effect {
+            id,
+            amplifier,
+            duration,
+            ambient: false,
+            particles: true,
+        };
+        // setPotionEffect(effect, seconds, amplifier, probability).
+        let chance = |game: &mut Self, e: Effect, probability: f32| {
+            if game.world_rand.next_float() < probability {
+                game.add_effect(i, e);
+            }
+        };
+        match (id, damage) {
+            (GOLDEN_APPLE, _) => {
+                self.add_effect(i, fx(effect::ABSORPTION, 2400, 0));
+                if damage > 0 {
+                    self.add_effect(i, fx(effect::REGENERATION, 600, 4));
+                    self.add_effect(i, fx(effect::RESISTANCE, 6000, 0));
+                    self.add_effect(i, fx(effect::FIRE_RESISTANCE, 6000, 0));
+                } else {
+                    chance(self, fx(effect::REGENERATION, 5 * 20, 1), 1.0);
+                }
+            }
+            (FISH, PUFFERFISH) => {
+                self.add_effect(i, fx(effect::POISON, 1200, 3));
+                self.add_effect(i, fx(effect::HUNGER, 300, 2));
+                self.add_effect(i, fx(effect::NAUSEA, 300, 1));
+            }
+            // Raw chicken and rotten flesh: hunger; spider eye and poisonous potato:
+            // poison.
+            (365, _) => chance(self, fx(effect::HUNGER, 30 * 20, 0), 0.3),
+            (367, _) => chance(self, fx(effect::HUNGER, 30 * 20, 0), 0.8),
+            (375, _) => chance(self, fx(effect::POISON, 5 * 20, 0), 1.0),
+            (394, _) => chance(self, fx(effect::POISON, 5 * 20, 0), 0.6),
+            _ => {}
+        }
     }
 }
