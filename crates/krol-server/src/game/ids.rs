@@ -244,6 +244,8 @@ pub mod item {
     pub const SAPLING: i16 = super::block::SAPLING as i16;
     /// `sponge` (the block item).
     pub const SPONGE: i16 = super::block::SPONGE as i16;
+    /// `shears`.
+    pub const SHEARS: i16 = 359;
     /// `flint_and_steel`.
     pub const FLINT_AND_STEEL: i16 = 259;
     /// `coal` (and charcoal, damage 1).

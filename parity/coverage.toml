@@ -349,6 +349,11 @@ description = "Burning players: the fire counter (Fire), damage every 20 ticks, 
 scenarios = ["play/lava"]
 
 [[feature]]
+id = "blocks.tool_wear"
+description = "ItemStack.onBlockDestroyed when mining in survival: tools wear by 1 and swords by 2 on blocks that are not instantly broken, shears by 1 on leaves, cobwebs, tall grass, vines, tripwire and wool; use statistics; broken tools leave the hand; shears harvesting tall grass, dead bushes, leaves and vines (the block itself, no exhaustion). Not yet: double plants, silk touch, fortune"
+scenarios = ["play/tool_wear"]
+
+[[feature]]
 id = "item.buckets"
 description = "Buckets: use-item packets (face 255), the server's block ray trace, filling and emptying water and lava buckets in survival (stack handling, statistics, inventory resend). Not yet: milk, creative use, selection boxes of stairs, fences and other shaped blocks"
 scenarios = ["play/buckets"]

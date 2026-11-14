@@ -1,0 +1,87 @@
+description = "Tool wear when mining in survival: a wooden pickaxe wears by 1 on stone and on dirt but not on a flower, a wooden sword by 2 on dirt, shears by 1 on tall grass; each use counts its statistic"
+subsystem = "blocks"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, gets the tools in
+# creative mode and mines in survival mode. Tile drops are off (they would fly and be
+# picked up at random), and the packet stream (dig timing) is not compared; the saved
+# tools and statistics are.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doTileDrops false"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -433 stone"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -433 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -436 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -436 tallgrass 1"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -432 red_flower"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 19
+chat = [
+    "@2500 !creative 36 270 1 0",
+    "@2700 !creative 37 268 1 0",
+    "@2900 !creative 38 359 1 0",
+    "@8000 !dig -470 4 -433 1",
+    "@9500 !dig -470 4 -433 1 2",
+    "@10000 !dig -473 4 -433 1",
+    "@11200 !dig -473 4 -433 1 2",
+    "@11700 !dig -471 4 -432 1",
+    "@12200 !hold 1",
+    "@12500 !dig -470 4 -436 1",
+    "@13700 !dig -470 4 -436 1 2",
+    "@14200 !hold 2",
+    "@14500 !dig -473 4 -436 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 4500
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+wait_ms = 14500
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-473, 4, -433], [-470, 4, -436], [-473, 4, -436], [-471, 4, -432]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    # Dig timing (see above).
+    "player",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

@@ -227,6 +227,23 @@ pub fn mine_stat(b: u16) -> Option<String> {
     merged_stat("stat.mineBlock.", b, |id| DISABLED.contains(&id))
 }
 
+/// Shovels, pickaxes and axes (`ItemTool`).
+fn is_tool(id: i16) -> bool {
+    matches!(id, 256..=258 | 269..=271 | 273..=275 | 277..=279 | 284..=286)
+}
+
+/// Swords (`ItemSword`).
+fn is_sword(id: i16) -> bool {
+    matches!(id, 267 | 268 | 272 | 276 | 283)
+}
+
+/// What shears wear on (`ItemShears.onBlockDestroyed`): leaves, cobwebs, tall grass,
+/// vines, tripwire and wool.
+fn shears_cut(b: u16) -> bool {
+    super::block_data::material(b) == super::block_data::Material::Leaves
+        || matches!(b, 30 | 31 | 106 | 132 | 35)
+}
+
 /// The statistic counted for using an item (`StatList.objectUseStats`, with the same
 /// block merges as mining: placing grass counts as dirt, ...).
 pub fn use_stat(item: i16) -> Option<String> {
@@ -432,8 +449,31 @@ impl Game {
         self.drop_container_contents(pos);
         self.set_block_notify(pos, 0);
         self.destroyed_by_player(pos, state);
-        // TODO(M5): tool durability (ItemStack.onBlockDestroyed).
-        if can_harvest(self.held_id(i), b) {
+        let harvest = can_harvest(self.held_id(i), b);
+        self.held_block_destroyed(i, b);
+        // Plants and leaves cut with shears drop themselves and cost no exhaustion
+        // (BlockTallGrass, BlockDeadBush, BlockLeaves, BlockVine harvestBlock).
+        // TODO(M5): double plants.
+        let shears = self.held_id(i) == Some(super::ids::item::SHEARS);
+        if harvest && shears && matches!(b, 31 | 32 | 18 | 161 | 106) {
+            if let Some(stat) = mine_stat(b) {
+                self.players[i].stats.add(&stat, 1);
+            }
+            let damage = match b {
+                31 => state & 15,
+                18 | 161 => state & 3,
+                _ => 0,
+            };
+            let stack = krol_protocol::packets::play::ItemStack {
+                id: b as i16,
+                count: 1,
+                damage: damage as i16,
+                nbt: None,
+            };
+            self.spawn_as_entity(pos, stack);
+            return;
+        }
+        if harvest {
             // Block.harvestBlock.
             if let Some(stat) = mine_stat(b) {
                 self.players[i].stats.add(&stat, 1);
@@ -442,6 +482,33 @@ impl Game {
             self.drop_block_items(pos, state);
             // TODO(M5): not with silk touch (the ore drops itself).
             self.drop_block_xp(pos, b);
+        }
+    }
+
+    /// `ItemStack.onBlockDestroyed` for the held item: tools wear by 1 and swords by 2
+    /// on blocks that are not instantly broken, shears by 1 on what they cut; a used
+    /// item counts its use statistic, and a broken one leaves the hand.
+    fn held_block_destroyed(&mut self, i: usize, b: u16) {
+        let Some(id) = self.held_id(i) else {
+            return;
+        };
+        let solid = super::block_data::hardness(b) != 0.0;
+        let wear = match id {
+            _ if is_tool(id) => Some(if solid { 1 } else { 0 }),
+            _ if is_sword(id) => Some(if solid { 2 } else { 0 }),
+            super::ids::item::SHEARS if shears_cut(b) => Some(1),
+            _ => None,
+        };
+        if let Some(wear) = wear {
+            if wear > 0 {
+                self.damage_held_item(i, wear);
+            }
+            self.count_item_use(i);
+        }
+        let p = &mut self.players[i];
+        let slot = 36 + p.selected;
+        if p.inventory[slot].as_ref().is_some_and(|s| s.count == 0) {
+            p.inventory[slot] = None;
         }
     }
 

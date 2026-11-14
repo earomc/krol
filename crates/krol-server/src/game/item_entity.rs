@@ -166,8 +166,16 @@ impl Game {
     /// `doTileDrops` game rule is off.
     pub(super) fn drop_block_items(&mut self, pos: (i32, i32, i32), state: u16) {
         for stack in block_drops(&mut self.world_rand, state) {
+            self.spawn_as_entity(pos, stack);
+        }
+    }
+
+    /// `Block.spawnAsEntity`: one stack at a random spot in the block, unless the
+    /// `doTileDrops` game rule is off.
+    pub(super) fn spawn_as_entity(&mut self, pos: (i32, i32, i32), stack: ItemStack) {
+        {
             if self.level.data.game_rule("doTileDrops") == Some("false") {
-                continue;
+                return;
             }
             let r = &mut self.world_rand;
             let f = 0.5f32;
