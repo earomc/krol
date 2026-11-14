@@ -755,7 +755,7 @@
       "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ],
     "blocks": {
-      "-470,4,-433": "51:0",
+      "-470,4,-433": "51:2",
       "-473,4,-436": "0:0",
       "-473,3,-436": "0:0"
     },
@@ -856,10 +856,10 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.playOneMinute": 190,
+        "stat.playOneMinute": 225,
         "stat.useItem.minecraft.flint_and_steel": 2,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 190,
+        "stat.timeSinceDeath": 225,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [
