@@ -329,6 +329,9 @@ Every gameplay change must name the parity scenarios it adds or turns green.
 - Commit messages: imperative, scoped — e.g. `protocol: translate 1.7 chunk bulk packet`.
 - Before finishing a change: `cargo fmt`, `cargo clippy`, `cargo test --workspace`, and the
   relevant parity scenarios.
+- CI (`.github/workflows/ci.yml`) is manual for now (`gh workflow run CI`); don't wait for it.
+  Run fmt, clippy, tests, docs and `cargo xtask parity run` (plus `--protocol 5`) locally
+  before each commit, and `cargo deny check` when dependencies change.
 
 ### Ask the user before
 - Changing the license.

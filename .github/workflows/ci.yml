@@ -1,9 +1,10 @@
 name: CI
 
+# Manual for now (private repo, single developer): run it from the Actions tab or with
+# `gh workflow run CI`. Agents run the same checks locally before committing
+# (AGENTS.md §11).
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
