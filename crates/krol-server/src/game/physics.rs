@@ -188,6 +188,15 @@ fn add_block_boxes(state: u16, pos: (i32, i32, i32), mask: &Aabb, out: &mut Vec<
     push(min, max);
 }
 
+/// The collision boxes of one block (`getCollisionBoundingBox` / `addCollisionBoxesToList`
+/// with no mask).
+pub fn block_boxes(state: u16, pos: (i32, i32, i32)) -> Vec<Aabb> {
+    let everything = Aabb::new([-3.0e7, -1.0e4, -3.0e7], [3.0e7, 1.0e4, 3.0e7]);
+    let mut out = Vec::new();
+    add_block_boxes(state, pos, &everything, &mut out);
+    out
+}
+
 /// The collision boxes of all blocks touching `bb` (`World.getCollidingBoundingBoxes`
 /// without entities). Columns whose chunk is not loaded contribute nothing.
 pub fn colliding_boxes(world: &mut World, bb: &Aabb) -> Vec<Aabb> {

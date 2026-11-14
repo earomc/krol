@@ -14,6 +14,7 @@ mod digging;
 mod item_entity;
 mod movement;
 pub mod physics;
+mod placement;
 pub mod player;
 pub mod stats;
 mod tracker;
@@ -1197,6 +1198,7 @@ impl Game {
         pos: (i32, i32, i32),
         face: i8,
         packet_item: Option<krol_protocol::packets::play::ItemStack>,
+        cursor: (i8, i8, i8),
     ) {
         if face == -1 {
             // TODO: using an item in the air (face 255).
@@ -1222,7 +1224,7 @@ impl Game {
                 && dx * dx + dy * dy + dz * dz < 64.0
                 && !self.is_block_protected(i, pos)
             {
-                self.place_block(i, pos, face, offset);
+                self.place_block(i, pos, face, cursor);
             }
         } else {
             let msg = crate::chat::Component::translate(
@@ -1257,14 +1259,9 @@ impl Game {
         }
     }
 
-    /// Vanilla `ItemBlock.onItemUse` for the simple blocks krol supports.
-    fn place_block(
-        &mut self,
-        i: usize,
-        pos: (i32, i32, i32),
-        face: i8,
-        offset: impl Fn((i32, i32, i32), i8) -> (i32, i32, i32),
-    ) {
+    /// Vanilla `ItemBlock.onItemUse` / `ItemSlab.onItemUse` for the block items krol
+    /// supports (see `placement`).
+    fn place_block(&mut self, i: usize, pos: (i32, i32, i32), face: i8, cursor: (i8, i8, i8)) {
         // TODO(M4): block activation (chests, doors, crafting tables, ...).
         let player = &self.players[i];
         if player.gamemode == 2 || player.gamemode == 3 {
@@ -1273,74 +1270,134 @@ impl Game {
         let Some(stack) = player.held().cloned() else {
             return;
         };
-        let Some((block_id, subtypes, sound)) = blocks::simple_block(stack.id) else {
-            return;
-        };
-        let target = if blocks::is_replaceable(self.level.overworld.block(pos.0, pos.1, pos.2)) {
-            pos
-        } else {
-            offset(pos, face)
-        };
-        if stack.count <= 0 || !(0..256).contains(&target.1) {
+        if stack.count <= 0 {
             return;
         }
+        let click = placement::Click {
+            face: face as u8,
+            hit: (
+                f32::from(cursor.0) / 16.0,
+                f32::from(cursor.1) / 16.0,
+                f32::from(cursor.2) / 16.0,
+            ),
+            yaw: player.rotation.0,
+            pos: player.pos,
+        };
+        // ItemSlab: a slab on a matching half slab makes a double slab.
+        if let Some((single, double)) = placement::slab_pair(stack.id) {
+            let variant = (stack.damage & 7) as u16;
+            let clicked = self.level.overworld.block(pos.0, pos.1, pos.2);
+            let merges_clicked = clicked >> 4 == single
+                && clicked & 7 == variant
+                && ((click.face == placement::UP && clicked & 8 == 0)
+                    || (click.face == placement::DOWN && clicked & 8 != 0));
+            let next = placement::offset(pos, click.face);
+            let next_state = self.level.overworld.block(next.0, next.1, next.2);
+            let target = if merges_clicked {
+                Some(pos)
+            } else if next_state >> 4 == single && next_state & 7 == variant {
+                Some(next)
+            } else {
+                None
+            };
+            if let Some(at) = target {
+                let state = double << 4 | variant;
+                if !self.blocked_by_players(state, at) {
+                    self.finish_placement(i, at, state);
+                }
+                return;
+            }
+        }
+        let clicked = self.level.overworld.block(pos.0, pos.1, pos.2);
+        let target = if blocks::is_replaceable(clicked) {
+            pos
+        } else {
+            placement::offset(pos, click.face)
+        };
+        if !(0..256).contains(&target.1) {
+            return;
+        }
+        // World.canBlockBePlaced: the target must be replaceable and no player may stand
+        // in the block's (default state) collision box.
         if !blocks::is_replaceable(self.level.overworld.block(target.0, target.1, target.2)) {
             return;
         }
-        // World.canBlockBePlaced: the block's box must not intersect any player.
-        let intersects = self.players.iter().any(|p| {
-            let (x, y, z) = p.pos;
-            x + 0.3 > f64::from(target.0)
-                && x - 0.3 < f64::from(target.0 + 1)
-                && y + 1.8 > f64::from(target.1)
-                && y < f64::from(target.1 + 1)
-                && z + 0.3 > f64::from(target.2)
-                && z - 0.3 < f64::from(target.2 + 1)
-        });
-        if intersects {
+        let Some(state) = placement::placed_state(
+            &mut self.level.overworld,
+            stack.id,
+            stack.damage,
+            target,
+            &click,
+        ) else {
+            return;
+        };
+        if self.blocked_by_players(state & !15, target) {
             return;
         }
-        let meta = if subtypes {
-            (stack.damage & 15) as u16
-        } else {
-            0
-        };
-        self.level
-            .overworld
-            .set_block(target.0, target.1, target.2, block_id << 4 | meta);
-        // playSoundEffect at the block center, to everyone within 16 blocks.
+        self.finish_placement(i, target, state);
+        // BlockChest.onBlockPlacedBy: line up with a neighboring chest.
+        if matches!(state >> 4, 54 | 146) {
+            self.align_chests(target, state);
+        }
+    }
+
+    /// Whether a player stands in the collision box of `state` at `at`
+    /// (`checkNoEntityCollision`).
+    fn blocked_by_players(&self, state: u16, at: (i32, i32, i32)) -> bool {
+        let boxes = physics::block_boxes(state, at);
+        self.players.iter().any(|p| {
+            let bb = physics::Aabb::at(p.pos, 0.6, 1.8);
+            boxes.iter().any(|b| b.intersects(&bb))
+        })
+    }
+
+    /// Sets the placed block, plays its place sound to everyone within hearing distance
+    /// and uses up one item in survival.
+    fn finish_placement(&mut self, i: usize, at: (i32, i32, i32), state: u16) {
+        self.level.overworld.set_block(at.0, at.1, at.2, state);
+        let sound = blocks::sound_type(state >> 4);
         let volume = (sound.volume + 1.0) / 2.0;
         let pitch = sound.frequency * 0.8;
-        let (sx, sy, sz) = (
-            f64::from(target.0) + 0.5,
-            f64::from(target.1) + 0.5,
-            f64::from(target.2) + 0.5,
+        let center = (
+            f64::from(at.0 as f32 + 0.5),
+            f64::from(at.1 as f32 + 0.5),
+            f64::from(at.2 as f32 + 0.5),
         );
-        let packet = ClientboundPlay::SoundEffect {
-            name: sound.place_sound(),
-            x: (sx * 8.0) as i32,
-            y: (sy * 8.0) as i32,
-            z: (sz * 8.0) as i32,
-            volume,
-            pitch: (pitch * 63.0) as i32 as u8,
-        };
-        let range = if volume > 1.0 {
-            16.0 * f64::from(volume)
-        } else {
-            16.0
-        };
-        for p in &self.players {
-            let (dx, dy, dz) = (sx - p.pos.0, sy - p.pos.1, sz - p.pos.2);
-            if dx * dx + dy * dy + dz * dz < range * range {
-                p.send(packet.clone());
-            }
-        }
+        self.play_sound_near_except(None, &sound.place_sound(), center, volume, pitch);
         let player = &mut self.players[i];
         if player.gamemode != 1 {
             let held = 36 + player.selected;
             if let Some(s) = &mut player.inventory[held] {
                 s.count -= 1;
             }
+        }
+    }
+
+    /// The neighbor rule of `BlockChest.onBlockPlacedBy`.
+    fn align_chests(&mut self, at: (i32, i32, i32), state: u16) {
+        let id = state >> 4;
+        let facing = (state & 15) as u8;
+        let w = &mut self.level.overworld;
+        let is = |w: &mut world::World, p: (i32, i32, i32)| w.block(p.0, p.1, p.2) >> 4 == id;
+        let (n, so, we, ea) = (
+            placement::offset(at, placement::NORTH),
+            placement::offset(at, placement::SOUTH),
+            placement::offset(at, placement::WEST),
+            placement::offset(at, placement::EAST),
+        );
+        let (hn, hs, hw, he) = (is(w, n), is(w, so), is(w, we), is(w, ea));
+        let x_axis = facing == placement::WEST || facing == placement::EAST;
+        if !(hn || hs || hw || he) {
+            return;
+        }
+        if !x_axis || (!hn && !hs) {
+            if !x_axis && (hw || he) {
+                let other = if hw { we } else { ea };
+                w.set_block(other.0, other.1, other.2, state);
+            }
+        } else {
+            let other = if hn { n } else { so };
+            w.set_block(other.0, other.1, other.2, state);
         }
     }
 
@@ -1454,9 +1511,12 @@ impl Game {
                 face: _,
             } => self.digging(i, status, pos),
             ServerboundPlay::BlockPlacement {
-                pos, face, item, ..
+                pos,
+                face,
+                item,
+                cursor,
             } => {
-                self.block_placement(i, pos, face, item);
+                self.block_placement(i, pos, face, item, cursor);
             }
             // TODO(M3/M4): movement validation, interaction, inventories, ...
             _ => {}

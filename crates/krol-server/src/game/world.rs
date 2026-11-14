@@ -53,6 +53,10 @@ impl World {
         if !(0..256).contains(&y) {
             return;
         }
+        // Chunk.setBlockState: setting the same state changes nothing.
+        if self.block(x, y, z) == state {
+            return;
+        }
         let has_sky = self.has_sky;
         self.chunk_mut(x >> 4, z >> 4).set_block(
             (x & 15) as usize,

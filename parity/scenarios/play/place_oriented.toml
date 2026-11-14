@@ -1,0 +1,45 @@
+description = "Creative placement of blocks with orientation: logs by face, stairs by yaw and click height, slabs (top, bottom, merging), a wall torch, a furnace, two chests, a pumpkin"
+subsystem = "blocks"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "1" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_creative.dat"
+
+[[steps]]
+id = "builder"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 10
+chat = [
+    "@800 !creative 36 17 1 2",
+    "@1100 !place -470 3 -437 1",
+    "@1400 !place -470 4 -437 5",
+    "@1700 !creative 36 53 1 0",
+    "@2000 !look 90 0",
+    "@2300 !place -468 3 -437 1",
+    "@2600 !look 0 0",
+    "@2900 !place -469 4 -437 2 8 12 0",
+    "@3200 !creative 36 44 1 1",
+    "@3500 !place -467 3 -437 1",
+    "@3800 !place -467 4 -437 1",
+    "@4100 !place -470 4 -437 2 8 12 0",
+    "@4400 !creative 36 50 1 0",
+    "@4700 !place -469 4 -437 3",
+    "@5000 !creative 36 61 1 0",
+    "@5300 !look 180 0",
+    "@5600 !place -466 3 -437 1",
+    "@5900 !creative 36 54 1 0",
+    "@6200 !look 0 0",
+    "@6500 !place -470 3 -432 1",
+    "@6800 !place -469 3 -432 1",
+    "@7100 !creative 36 86 1 0",
+    "@7400 !place -468 3 -432 1",
+]
+
+[observe]
+log = true
+blocks = [[-470, 4, -437], [-469, 4, -437], [-468, 4, -437], [-469, 4, -438], [-467, 4, -437], [-470, 4, -438], [-469, 4, -436], [-466, 4, -437], [-470, 4, -432], [-469, 4, -432], [-468, 4, -432]]

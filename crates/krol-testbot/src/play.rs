@@ -48,7 +48,8 @@ pub struct PlayObservation {
 /// Lines starting with `!` (after the timing) are bot actions instead of chat:
 /// `!dig <x> <y> <z> <face> [status]` (default: start digging, status 0),
 /// `!creative <slot> <id> <count> <damage>` (set a slot in creative mode),
-/// `!place <x> <y> <z> <face>` (use the held item, cursor 8/8/8; sends the swing first),
+/// `!place <x> <y> <z> <face> [cx cy cz]` (use the held item, cursor 8/8/8 unless
+/// given in 1/16; sends the swing first),
 /// `!hold <slot>` (select hotbar slot), `!swing` (arm animation),
 /// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0).
 /// Optional
@@ -297,7 +298,11 @@ fn action_or_chat(
                 pos: (num(1), num(2), num(3)),
                 face: num(4) as i8,
                 item: held.first().cloned().flatten(),
-                cursor: (8, 8, 8),
+                cursor: if parts.len() > 7 {
+                    (num(5) as i8, num(6) as i8, num(7) as i8)
+                } else {
+                    (8, 8, 8)
+                },
             },
         ],
         _ => Vec::new(),

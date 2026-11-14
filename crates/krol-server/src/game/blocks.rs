@@ -177,5 +177,6 @@ pub fn simple_block(id: i16) -> Option<(u16, bool, SoundType)> {
 /// for the blocks krol knows): air, water, lava, tall grass, dead bush, fire, vines,
 /// double plants.
 pub fn is_replaceable(state: u16) -> bool {
-    matches!(state >> 4, 0 | 8 | 9 | 10 | 11 | 31 | 32 | 51 | 106 | 175)
+    // A single snow layer can be replaced too (BlockSnow.isReplaceable).
+    matches!(state >> 4, 0 | 8 | 9 | 10 | 11 | 31 | 32 | 51 | 106 | 175) || state == 78 << 4
 }
