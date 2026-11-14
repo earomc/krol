@@ -21,12 +21,20 @@ whitelist, player data — keeps working, and players cannot tell the difference
 
 | Concern              | Reference                                                          |
 |----------------------|--------------------------------------------------------------------|
-| Game logic / backend | Vanilla **server 1.8.8** (1.8.9 is protocol- and server-identical) |
+| Game logic / backend | Vanilla **server 1.8.8** (1.8.9 is protocol- and server-identical, see below) |
 | Canonical protocol   | **47** (1.8 – 1.8.9) — the internal model of the server            |
 | Secondary protocol   | **5** (1.7.6 – 1.7.10) — translated to/from 47 at the network edge |
 | Java plugin API      | **Bukkit 1.8.8**, CraftBukkit/NMS **`v1_8_R3`**                     |
 | Version list         | https://minecraft.wiki/w/Protocol_version#List_of_protocol_versions |
 | Packet docs          | wiki.vg archive pages for protocol 47 and protocol 5 (on minecraft.wiki) |
+
+**Why 1.8.8 and not 1.8.9:** the 1.8.9 bug fixes were client-side. Diffing the official
+server jars (2026-11-15: same 5765 files and obfuscated names; 262 classes recompiled)
+leaves only the version string changing from `1.8.8` to `1.8.9`, in the startup log, the
+handshake's outdated client/server messages, the status ping's version name and crash
+reports, plus one client-only line in `en_US.lang`. Bukkit/CraftBukkit/Spigot never made
+a 1.8.9 build (`v1_8_R3` is their last 1.8), so krol keeps reporting 1.8.8 like the
+servers it replaces.
 
 ## 3. Scope
 
