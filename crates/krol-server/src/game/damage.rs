@@ -1,0 +1,131 @@
+//! Damage to players (vanilla: `DamageSource`, `EntityPlayerMP/EntityPlayer/
+//! EntityLivingBase.attackEntityFrom`, `EntityPlayer.damageEntity`).
+//!
+//! TODO(M5): armor and its durability, the resistance potion, protection enchantments
+//! (their modifier uses an unseeded random), blocking, absorption hearts from potions,
+//! the combat tracker, knockback from attackers and death.
+
+use krol_nbt::Tag;
+use krol_protocol::packets::play::ClientboundPlay;
+
+use super::Game;
+
+/// Where damage comes from (vanilla `DamageSource`), with the properties that matter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DamageSource {
+    /// Falling (`DamageSource.fall`: bypasses armor, no exhaustion).
+    Fall,
+}
+
+impl DamageSource {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Fall => "fall",
+        }
+    }
+
+    /// Damage creative and spectator players take too (`canHarmInCreative`).
+    fn harms_in_creative(self) -> bool {
+        false
+    }
+
+    /// Exhaustion added to the victim (`getHungerDamage`).
+    fn hunger_damage(self) -> f32 {
+        match self {
+            Self::Fall => 0.0,
+        }
+    }
+}
+
+impl Game {
+    /// Vanilla `attackEntityFrom` for a player. Returns whether the damage was taken.
+    pub(super) fn attack_player(&mut self, i: usize, source: DamageSource, amount: f32) -> bool {
+        let pvp = self.config.pvp;
+        let p = &mut self.players[i];
+        // EntityPlayerMP: fall damage ignores the respawn protection when PvP is on.
+        let fall_ignores_protection = pvp && source.name() == "fall";
+        if !fall_ignores_protection && p.respawn_invulnerability > 0 {
+            return false;
+        }
+        // EntityPlayer.
+        let disable_damage = p.gamemode == 1 || p.gamemode == 3;
+        if disable_damage && !source.harms_in_creative() {
+            return false;
+        }
+        if p.health() <= 0.0 || amount == 0.0 {
+            return false;
+        }
+        // EntityLivingBase (maxHurtResistantTime 20).
+        let fresh = if p.hurt_resistant_time as f32 > 10.0 {
+            if amount <= p.last_damage {
+                return false;
+            }
+            let extra = amount - p.last_damage;
+            p.last_damage = amount;
+            self.damage_player(i, source, extra);
+            false
+        } else {
+            p.last_damage = amount;
+            p.hurt_resistant_time = 20;
+            self.damage_player(i, source, amount);
+            true
+        };
+        let p = &mut self.players[i];
+        let entity_id = p.entity_id;
+        if fresh {
+            // setEntityState(2): the hurt animation, to the viewers and the player.
+            let status = ClientboundPlay::EntityStatus {
+                entity_id,
+                status: 2,
+            };
+            p.send(status.clone());
+            self.send_to_tracking(entity_id, &status);
+            // setBeenAttacked: velocityChanged = rand.nextDouble() >= knockback
+            // resistance, which is always true for players.
+            let p = &mut self.players[i];
+            let _ = p.rand.next_double();
+            p.velocity_changed = true;
+        }
+        let p = &mut self.players[i];
+        let (pos, conn) = (p.pos, p.conn_id);
+        if p.health() <= 0.0 {
+            // TODO(M5): death (death message, drops, respawn screen).
+            if fresh {
+                let pitch = Self::sound_pitch(&mut self.players[i].rand);
+                self.play_sound_near_except(Some(conn), "game.player.die", pos, 1.0, pitch);
+            }
+        } else if fresh {
+            let pitch = Self::sound_pitch(&mut self.players[i].rand);
+            self.play_sound_near_except(Some(conn), "game.player.hurt", pos, 1.0, pitch);
+        }
+        true
+    }
+
+    /// `EntityLivingBase.getSoundPitch` for an adult.
+    fn sound_pitch(rand: &mut krol_java::JavaRandom) -> f32 {
+        (rand.next_float() - rand.next_float()) * 0.2 + 1.0
+    }
+
+    /// Vanilla `EntityPlayer.damageEntity` (without armor, potions and enchantments).
+    fn damage_player(&mut self, i: usize, source: DamageSource, amount: f32) {
+        let p = &mut self.players[i];
+        let absorption = p.data.get_f32("AbsorptionAmount");
+        let damage = (amount - absorption).max(0.0);
+        let new_absorption = absorption - (amount - damage);
+        if new_absorption != absorption {
+            p.data
+                .insert("AbsorptionAmount", Tag::Float(new_absorption));
+            p.dirty_metadata.insert(17);
+        }
+        if damage != 0.0 {
+            self.add_exhaustion(i, source.hunger_damage());
+            let p = &mut self.players[i];
+            let health = p.health();
+            p.set_health(health - damage);
+            if damage < 3.402_823_5e37 {
+                p.stats
+                    .add("stat.damageTaken", (damage * 10.0).round() as i32);
+            }
+        }
+    }
+}

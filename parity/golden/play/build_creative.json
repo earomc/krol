@@ -159,7 +159,12 @@
           "packet": "set_slot"
         },
         {
-          "hex": "096469672e73746f6e65fffff15c0000001cfffff26c3f80000032",
+          "name": "dig.stone",
+          "x": -3748,
+          "y": 28,
+          "z": -3476,
+          "volume": 1.0,
+          "pitch": 50,
           "packet": "sound_effect"
         },
         {
@@ -175,7 +180,12 @@
           "packet": "block_change"
         },
         {
-          "hex": "096469672e73746f6e65fffff15c00000024fffff26c3f80000032",
+          "name": "dig.stone",
+          "x": -3748,
+          "y": 36,
+          "z": -3476,
+          "volume": 1.0,
+          "pitch": 50,
           "packet": "sound_effect"
         },
         {
@@ -751,7 +761,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": 308622466,
+      "XpSeed": 1994960699,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",

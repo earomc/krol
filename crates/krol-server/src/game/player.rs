@@ -98,6 +98,20 @@ pub struct Player {
     pub distance_walked_on_step: f32,
     /// Distance of the next step sound (`nextStepDistance`).
     pub next_step_distance: i32,
+    /// Ticks left in which new damage only counts above the last hit
+    /// (`hurtResistantTime`).
+    pub hurt_resistant_time: i32,
+    /// The last damage taken (`lastDamage`).
+    pub last_damage: f32,
+    /// The tracker sends the velocity on its next pass (`velocityChanged`).
+    pub velocity_changed: bool,
+    /// Ticks of protection after spawning (`respawnInvulnerabilityTicks`).
+    pub respawn_invulnerability: i32,
+    /// The entity's own random (vanilla: an unseeded `java.util.Random`).
+    pub rand: krol_java::JavaRandom,
+    /// Health, food and "saturation is zero" as last sent (`lastHealth`,
+    /// `lastFoodLevel`, `wasHungry`).
+    pub last_health_sent: Option<(f32, i32, bool)>,
     /// Equipment as last announced to viewers (`previousEquipment`).
     pub last_equipment: [Option<krol_protocol::packets::play::ItemStack>; 5],
     /// Chat spam counter (vanilla: `chatSpamThresholdCount`).
@@ -107,6 +121,22 @@ pub struct Player {
 }
 
 impl Player {
+    /// Current health (`getHealth`, stored as `HealF`).
+    pub fn health(&self) -> f32 {
+        self.data.get_f32("HealF")
+    }
+
+    /// Vanilla `setHealth`: clamped to 0..=20, marks metadata index 6 changed.
+    /// TODO(M5): the max health attribute.
+    pub fn set_health(&mut self, health: f32) {
+        let health = health.clamp(0.0, 20.0);
+        if health != self.health() {
+            self.dirty_metadata.insert(6);
+        }
+        self.data.insert("HealF", Tag::Float(health));
+        self.data.insert("Health", Tag::Short(health.ceil() as i16));
+    }
+
     /// Queues a packet for the client.
     pub fn send(&self, packet: ClientboundPlay) {
         let _ = self.out.send(Outgoing::Packet(packet));

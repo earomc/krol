@@ -7,6 +7,7 @@
 
 pub mod blocks;
 pub mod commands;
+mod damage;
 mod movement;
 pub mod physics;
 pub mod player;
@@ -129,6 +130,8 @@ pub struct GameConfig {
     pub op_permission_level: i32,
     /// `max-build-height`.
     pub max_build_height: i32,
+    /// `pvp`.
+    pub pvp: bool,
 }
 
 /// Handle to the running game thread.
@@ -684,6 +687,17 @@ impl Game {
             collided_horizontally: false,
             distance_walked_on_step: 0.0,
             next_step_distance: 1,
+            hurt_resistant_time: 0,
+            last_damage: 0.0,
+            velocity_changed: false,
+            respawn_invulnerability: 60,
+            rand: krol_java::JavaRandom::new(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_nanos() as i64)
+                    ^ i64::from(entity_id),
+            ),
+            last_health_sent: None,
             chat_spam: 0,
             data,
         };
@@ -820,9 +834,11 @@ impl Game {
             }
         }
         player.ticks += 1;
-        // EntityPlayer.onUpdate: time statistics.
-        player.stats.add("stat.playOneMinute", 1);
-        player.stats.add("stat.timeSinceDeath", 1);
+        // EntityPlayerMP.onUpdate.
+        player.respawn_invulnerability -= 1;
+        if player.hurt_resistant_time > 0 {
+            player.hurt_resistant_time -= 1;
+        }
         if (player.ticks - 1) % 20 == 0 {
             // EntityPlayerMP.updateBiomesExplored (every 20 ticks).
             let (x, z) = (
@@ -840,10 +856,16 @@ impl Game {
         if player.ticks == 1 {
             // First EntityPlayerMP update and entity tracker pass after joining.
             let d = &player.data;
+            let (health, food, saturation) = (
+                d.get_f32("HealF"),
+                d.get_i32("foodLevel"),
+                d.get_f32("foodSaturationLevel"),
+            );
+            player.last_health_sent = Some((health, food, saturation == 0.0));
             player.send(ClientboundPlay::UpdateHealth {
-                health: d.get_f32("HealF"),
-                food: d.get_i32("foodLevel"),
-                saturation: d.get_f32("foodSaturationLevel"),
+                health,
+                food,
+                saturation,
             });
             player.send(ClientboundPlay::SetExperience {
                 bar: d.get_f32("XpP"),

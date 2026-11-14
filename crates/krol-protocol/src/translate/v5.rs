@@ -636,6 +636,39 @@ impl V5Translator {
                     .i8(*pitch);
                 one(w);
             }
+            ClientboundPlay::Particle {
+                id,
+                pos,
+                offset,
+                speed,
+                count,
+                args,
+                ..
+            } => {
+                // 1.7 names particles; block dust carries the block in its name.
+                // TODO(M5): the other particle types.
+                if *id == 38
+                    && let Some(state) = args.first()
+                {
+                    let (b, m) = v5_ids::block((state & 4095) as u16, ((state >> 12) & 15) as u8);
+                    let mut w = packet(0x2a);
+                    w.string(&format!("blockdust_{b}_{m}"))?;
+                    w.f32(pos.0)
+                        .f32(pos.1)
+                        .f32(pos.2)
+                        .f32(offset.0)
+                        .f32(offset.1)
+                        .f32(offset.2)
+                        .f32(*speed)
+                        .i32(*count);
+                    one(w);
+                }
+            }
+            ClientboundPlay::EntityVelocity { entity_id, x, y, z } => {
+                let mut w = packet(0x12);
+                w.i32(*entity_id).i16(*x).i16(*y).i16(*z);
+                one(w);
+            }
             ClientboundPlay::EntityHeadLook { entity_id, yaw } => {
                 let mut w = packet(0x19);
                 w.i32(*entity_id).i8(*yaw);

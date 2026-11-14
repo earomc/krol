@@ -426,6 +426,18 @@ impl Game {
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
             entry.update_counter += 1;
         }
+        let p = &mut self.players[i];
+        if std::mem::take(&mut p.velocity_changed) {
+            let m = p.motion;
+            let v = |m: f64| (m.clamp(-3.9, 3.9) * 8000.0) as i16;
+            let packet = ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: v(m.0),
+                y: v(m.1),
+                z: v(m.2),
+            };
+            self.send_to_tracking_and_self(entity_id, &packet);
+        }
         rechecked
     }
 

@@ -52,7 +52,8 @@ pub struct PlayObservation {
 /// `!hold <slot>` (select hotbar slot), `!swing` (arm animation),
 /// `!look <yaw> <pitch>` (Player Look, on ground). Optional
 /// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
-/// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1) replace the idle Player
+/// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1; `[]` sends nothing that
+/// tick) replace the idle Player
 /// packet, one Position packet per tick, after which the bot idles again.
 ///
 /// # Errors
@@ -119,6 +120,8 @@ pub async fn play_session(
             _ = tick.tick() => {
                 if positioned {
                     match (origin, moves.get(next_move)) {
+                        // An empty move: send nothing this tick.
+                        (Some(_), Some(m)) if m.is_empty() => next_move += 1,
                         (Some((ox, oy, oz)), Some(m)) => {
                             next_move += 1;
                             let at = |k: usize| m.get(k).copied().unwrap_or(0.0);

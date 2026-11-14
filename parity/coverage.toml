@@ -140,8 +140,8 @@ scenarios = ["play/physics"]
 
 [[feature]]
 id = "play.fall_damage"
-description = "Fall damage, hurt sounds and particles (needs the damage system)"
-scenarios = []
+description = "Fall damage: hurt animation, velocity, health updates, fall/hurt/step sounds, block dust particles, natural regeneration"
+scenarios = ["play/fall_damage"]
 
 [[feature]]
 id = "entity.player_push"

@@ -640,6 +640,23 @@ pub enum ClientboundPlay {
     },
     /// `0x19`
     EntityHeadLook { entity_id: i32, yaw: i8 },
+    /// `0x2A`
+    Particle {
+        id: i32,
+        long_distance: bool,
+        pos: (f32, f32, f32),
+        offset: (f32, f32, f32),
+        speed: f32,
+        count: i32,
+        args: Vec<i32>,
+    },
+    /// `0x12` (1/8000 blocks per tick)
+    EntityVelocity {
+        entity_id: i32,
+        x: i16,
+        y: i16,
+        z: i16,
+    },
 }
 
 /// One entity metadata entry (protocol 47 types).
@@ -755,6 +772,8 @@ impl ClientboundPlay {
             Self::EntityLookMove { .. } => 0x17,
             Self::EntityTeleport { .. } => 0x18,
             Self::EntityHeadLook { .. } => 0x19,
+            Self::EntityVelocity { .. } => 0x12,
+            Self::Particle { .. } => 0x2a,
         }
     }
 
@@ -1049,6 +1068,32 @@ impl ClientboundPlay {
             Self::EntityHeadLook { entity_id, yaw } => {
                 w.varint(*entity_id).i8(*yaw);
             }
+            Self::EntityVelocity { entity_id, x, y, z } => {
+                w.varint(*entity_id).i16(*x).i16(*y).i16(*z);
+            }
+            Self::Particle {
+                id,
+                long_distance,
+                pos,
+                offset,
+                speed,
+                count,
+                args,
+            } => {
+                w.i32(*id)
+                    .bool(*long_distance)
+                    .f32(pos.0)
+                    .f32(pos.1)
+                    .f32(pos.2)
+                    .f32(offset.0)
+                    .f32(offset.1)
+                    .f32(offset.2)
+                    .f32(*speed)
+                    .i32(*count);
+                for a in args {
+                    w.varint(*a);
+                }
+            }
         }
         Ok(w.into_bytes())
     }
@@ -1165,6 +1210,24 @@ impl ClientboundPlay {
                     properties,
                 }
             }
+            0x12 => Self::EntityVelocity {
+                entity_id: r.varint()?,
+                x: r.i16()?,
+                y: r.i16()?,
+                z: r.i16()?,
+            },
+            0x1a => Self::EntityStatus {
+                entity_id: r.i32()?,
+                status: r.i8()?,
+            },
+            0x29 => Self::SoundEffect {
+                name: r.string(256)?,
+                x: r.i32()?,
+                y: r.i32()?,
+                z: r.i32()?,
+                volume: r.f32()?,
+                pitch: r.u8()?,
+            },
             0x19 => Self::EntityHeadLook {
                 entity_id: r.varint()?,
                 yaw: r.i8()?,

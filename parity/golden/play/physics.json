@@ -815,11 +815,21 @@
           "packet": "entity_properties"
         },
         {
-          "hex": "0a737465702e6772617373fffff15200000020fffff26c3e19999a3f",
+          "name": "step.grass",
+          "x": -3758,
+          "y": 32,
+          "z": -3476,
+          "volume": 0.15000000596046448,
+          "pitch": 63,
           "packet": "sound_effect"
         },
         {
-          "hex": "0a737465702e6772617373fffff16000000020fffff26c3e19999a3f",
+          "name": "step.grass",
+          "x": -3744,
+          "y": 32,
+          "z": -3476,
+          "volume": 0.15000000596046448,
+          "pitch": 63,
           "packet": "sound_effect"
         },
         {
@@ -1432,10 +1442,10 @@
       "value": {
         "stat.walkOneCm": 400,
         "stat.jump": 2,
-        "stat.playOneMinute": 122,
+        "stat.playOneMinute": 121,
         "stat.fallOneCm": 200,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 122,
+        "stat.timeSinceDeath": 121,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [

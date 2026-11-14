@@ -129,6 +129,27 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
             sorted.sort_by(|a, b| a.0.cmp(&b.0));
             json!({ "entity_id": entity_id, "properties": sorted })
         }
+        // Sounds whose pitch comes from an unseeded random in vanilla.
+        ClientboundPlay::SoundEffect {
+            name,
+            x,
+            y,
+            z,
+            volume,
+            pitch,
+        } => {
+            let random_pitch = matches!(name.as_str(), "game.player.hurt" | "game.player.die");
+            json!({
+                "name": name, "x": x, "y": y, "z": z, "volume": volume,
+                "pitch": if random_pitch { Value::Null } else { json!(pitch) },
+            })
+        }
+        ClientboundPlay::EntityStatus { entity_id, status } => {
+            json!({ "entity_id": entity_id, "status": status })
+        }
+        ClientboundPlay::EntityVelocity { entity_id, x, y, z } => {
+            json!({ "entity_id": entity_id, "x": x, "y": y, "z": z })
+        }
         // Volatile values (ids, world time) are not compared.
         ClientboundPlay::KeepAlive { .. } | ClientboundPlay::TimeUpdate { .. } => json!({}),
         other => json!({ "debug": format!("{other:?}") }),

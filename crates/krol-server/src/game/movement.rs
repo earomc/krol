@@ -370,7 +370,33 @@ impl Game {
                 block = down;
             }
         }
-        // TODO(M5): fall particles (BLOCK_DUST) for falls over 3 blocks.
+        let p = &self.players[i];
+        let below = (
+            x,
+            if block == self.level.overworld.block(x, y, z) >> 4 {
+                y
+            } else {
+                y - 1
+            },
+            z,
+        );
+        if on_ground && p.fall_distance > 3.0 && block != 0 {
+            // EntityLivingBase.updateFallState: block dust where the player lands.
+            let extra = krol_java::math::ceil_f32(p.fall_distance - 3.0) as f32;
+            let strength = f64::from((0.2 + extra / 15.0).min(10.0)).min(2.5);
+            let count = (150.0 * strength) as i32;
+            let state = i32::from(self.level.overworld.block(below.0, below.1, below.2));
+            let packet = ClientboundPlay::Particle {
+                id: 38,
+                long_distance: false,
+                pos: (p.pos.0 as f32, p.pos.1 as f32, p.pos.2 as f32),
+                offset: (0.0, 0.0, 0.0),
+                speed: 0.15,
+                count,
+                args: vec![(state >> 4) | ((state & 15) << 12)],
+            };
+            self.send_particle(&packet, p.pos);
+        }
         let p = &mut self.players[i];
         if on_ground {
             if p.fall_distance > 0.0 {
@@ -390,8 +416,97 @@ impl Game {
         }
     }
 
+    /// Sends a particle packet to every player within 16 blocks (measured from the
+    /// player's block position, vanilla `WorldServer.spawnParticle`).
+    fn send_particle(&self, packet: &ClientboundPlay, pos: (f64, f64, f64)) {
+        for p in &self.players {
+            let b = (
+                f64::from(floor_f64(p.pos.0)),
+                f64::from(floor_f64(p.pos.1)),
+                f64::from(floor_f64(p.pos.2)),
+            );
+            let d = (b.0 - pos.0, b.1 - pos.1, b.2 - pos.2);
+            if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 <= 256.0 {
+                p.send(packet.clone());
+            }
+        }
+    }
+
+    /// The end of `EntityPlayer.onUpdate`, run with every movement packet: food
+    /// (`FoodStats.onUpdate`) and the time statistics.
+    fn player_update(&mut self, i: usize) {
+        let difficulty = self.config.difficulty;
+        let regeneration = self.level.data.game_rule("naturalRegeneration") != Some("false");
+        let p = &mut self.players[i];
+        let d = &mut p.data;
+        let mut exhaustion = d.get_f32("foodExhaustionLevel");
+        let mut saturation = d.get_f32("foodSaturationLevel");
+        let mut food = d.get_i32("foodLevel");
+        let mut timer = d.get_i32("foodTickTimer");
+        if exhaustion > 4.0 {
+            exhaustion -= 4.0;
+            if saturation > 0.0 {
+                saturation = (saturation - 1.0).max(0.0);
+            } else if difficulty != 0 {
+                food = (food - 1).max(0);
+            }
+        }
+        d.insert("foodExhaustionLevel", Tag::Float(exhaustion));
+        d.insert("foodSaturationLevel", Tag::Float(saturation));
+        d.insert("foodLevel", Tag::Int(food));
+        let health = p.health();
+        let should_heal = health > 0.0 && health < 20.0;
+        let mut starve = false;
+        if regeneration && food >= 18 && should_heal {
+            timer += 1;
+            if timer >= 80 {
+                p.set_health(health + 1.0);
+                // FoodStats.addExhaustion (not EntityPlayer's: creative players too).
+                let level = (p.data.get_f32("foodExhaustionLevel") + 3.0).min(40.0);
+                p.data.insert("foodExhaustionLevel", Tag::Float(level));
+                timer = 0;
+            }
+        } else if food <= 0 {
+            timer += 1;
+            if timer >= 80 {
+                starve = health > 10.0 || difficulty == 3 || (health > 1.0 && difficulty == 2);
+                timer = 0;
+            }
+        } else {
+            timer = 0;
+        }
+        p.data.insert("foodTickTimer", Tag::Int(timer));
+        if starve {
+            // TODO(M5): DamageSource.starve.
+        }
+        let p = &mut self.players[i];
+        p.stats.add("stat.playOneMinute", 1);
+        p.stats.add("stat.timeSinceDeath", 1);
+    }
+
+    /// The end of `EntityPlayerMP.onUpdateEntity`: health and food go out when they
+    /// changed.
+    fn send_health_if_changed(&mut self, i: usize) {
+        let p = &mut self.players[i];
+        let now = (
+            p.health(),
+            p.data.get_i32("foodLevel"),
+            p.data.get_f32("foodSaturationLevel"),
+        );
+        if let Some(last) = p.last_health_sent
+            && last != (now.0, now.1, now.2 == 0.0)
+        {
+            p.last_health_sent = Some((now.0, now.1, now.2 == 0.0));
+            p.send(ClientboundPlay::UpdateHealth {
+                health: now.0,
+                food: now.1,
+                saturation: now.2,
+            });
+        }
+    }
+
     /// Vanilla `EntityPlayer.fall` / `EntityLivingBase.fall`.
-    fn player_fall(&mut self, i: usize, distance: f32, _multiplier: f32) {
+    fn player_fall(&mut self, i: usize, distance: f32, multiplier: f32) {
         let p = &mut self.players[i];
         let allow_flying = p.gamemode == 1 || p.gamemode == 3;
         if allow_flying {
@@ -403,7 +518,36 @@ impl Game {
                 (f64::from(distance) * 100.0).round() as i32,
             );
         }
-        // TODO(M4): fall damage, its sounds and particles (needs the damage system).
+        // TODO(M5): jump boost reduces the distance.
+        let damage = krol_java::math::ceil_f32((distance - 3.0) * multiplier);
+        if damage <= 0 {
+            return;
+        }
+        let (pos, conn) = (p.pos, p.conn_id);
+        let sound = if damage > 4 {
+            "game.player.hurt.fall.big"
+        } else {
+            "game.player.hurt.fall.small"
+        };
+        self.play_sound_near_except(Some(conn), sound, pos, 1.0, 1.0);
+        self.attack_player(i, super::damage::DamageSource::Fall, damage as f32);
+        let p = &self.players[i];
+        let (x, y, z) = (
+            floor_f64(p.pos.0),
+            floor_f64(p.pos.1 - f64::from(0.2f32)),
+            floor_f64(p.pos.2),
+        );
+        let block = self.level.overworld.block(x, y, z) >> 4;
+        if block != 0 {
+            let s = super::blocks::sound_type(block);
+            self.play_sound_near_except(
+                Some(conn),
+                &s.step_sound(),
+                pos,
+                s.volume * 0.5,
+                s.frequency * 0.75,
+            );
+        }
     }
 
     /// Vanilla `NetHandlerPlayServer.processPlayer` for C03 to C06.
@@ -458,6 +602,8 @@ impl Game {
 
         // onUpdateEntity, then back to the last accepted position.
         self.living_move(i);
+        self.player_update(i);
+        self.send_health_if_changed(i);
         let player = &mut self.players[i];
         player.pos = last;
         player.rotation = rot;
