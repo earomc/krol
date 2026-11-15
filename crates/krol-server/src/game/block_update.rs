@@ -177,6 +177,10 @@ impl Game {
                 self.vine_neighbor_changed(pos, state);
                 return;
             }
+            super::farming::CAKE => {
+                self.cake_neighbor_changed(pos);
+                return;
+            }
             block::REDSTONE_WIRE => {
                 if self.wire_can_stay(pos) {
                     self.wire_neighbor_changed(pos, state);

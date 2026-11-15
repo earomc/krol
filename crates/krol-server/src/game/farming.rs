@@ -9,6 +9,11 @@ use super::block_data::{Material, material};
 use super::block_update::flags;
 use super::ids::block;
 
+/// `cake`.
+pub const CAKE: u16 = 92;
+/// A cake has 7 slices (bites 0 to 6).
+const LAST_BITE: u16 = 6;
+
 /// The hoes (wood, stone, iron, diamond, gold).
 pub fn is_hoe(id: i16) -> bool {
     (290..=294).contains(&id)
@@ -39,6 +44,31 @@ impl Game {
             if let Some(s) = &mut p.inventory[held] {
                 s.count -= 1;
             }
+        }
+    }
+
+    /// `BlockCake.eatCake`: a hungry player (not in creative) eats a slice: 2 food,
+    /// saturation 0.1, the statistic; the last slice removes the cake.
+    pub(super) fn eat_cake(&mut self, i: usize, pos: (i32, i32, i32)) {
+        let p = &self.players[i];
+        if p.data.get_i32("foodLevel") >= 20 || matches!(p.gamemode, 1 | 3) {
+            return;
+        }
+        self.players[i].stats.add("stat.cakeSlicesEaten", 1);
+        self.add_food(i, 2, 0.1);
+        let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+        if state & 15 < LAST_BITE {
+            self.set_block_notify(pos, state + 1);
+        } else {
+            self.set_block_notify(pos, 0);
+        }
+    }
+
+    /// `BlockCake.onNeighborBlockChange`: without something solid below it disappears.
+    pub(super) fn cake_neighbor_changed(&mut self, pos: (i32, i32, i32)) {
+        let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2);
+        if !material(below >> 4).is_solid() {
+            self.set_block_notify(pos, 0);
         }
     }
 

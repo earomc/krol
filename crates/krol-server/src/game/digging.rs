@@ -346,11 +346,17 @@ impl Game {
         dig.initial = dig.ticks;
         let mut hardness = 1.0;
         if b != 0 {
+            // The hardness is the clicked block's, even if the click removes it (the
+            // last slice of a cake).
+            hardness = self.relative_hardness_for(i, pos);
             // Block.onBlockClicked. TODO(M5): redstone ore lighting up, dragon eggs.
             if b == super::ids::block::NOTEBLOCK {
                 self.click_note_block(i, pos);
             }
-            hardness = self.relative_hardness_for(i, pos);
+            if b == super::farming::CAKE {
+                // BlockCake.onBlockClicked eats a slice too.
+                self.eat_cake(i, pos);
+            }
         }
         if b != 0 && hardness >= 1.0 {
             self.harvest_survival(i, pos);

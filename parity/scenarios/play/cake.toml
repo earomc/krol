@@ -1,0 +1,51 @@
+description = "Eating cake: a hungry player eats slices by right-click (always taking the click) and by left-click (BlockCake.onBlockClicked), 2 food and the cakeSlicesEaten statistic each; a full player eats nothing"
+subsystem = "play"
+
+# Notch (survival, from fixture data: half hunger) stands 6 blocks south and 2 west of
+# the spawn; the cake is set in front of him before he joins.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_hungry.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -438 cake"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 7
+chat = [
+    "@1000 !hold 8",
+    "@1300 !place -473 4 -438 1",
+    "@1600 !place -473 4 -438 1",
+    "@1900 !place -473 4 -438 1",
+    "@2200 !place -473 4 -438 1",
+    "@2500 !dig -473 4 -438 1",
+    "@2800 !dig -473 4 -438 1 1",
+    "@3100 !place -473 4 -438 1",
+]
+
+[observe]
+log = true
+blocks = [[-473, 4, -438]]
+files = [
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
+]
+ignore = [
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]

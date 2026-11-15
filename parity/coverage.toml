@@ -380,8 +380,8 @@ scenarios = ["play/armor"]
 
 [[feature]]
 id = "item.food"
-description = "Eating: food values extracted from vanilla (tools/datagen/FoodDump.java), canEat, setItemInUse (eating flag, eat animation), eating sounds every 4 updates, status 9, burp, hunger and saturation, stews leaving a bowl, letting go early, no held-item resync for items with a use duration, inventory resend when refused. Golden apples (absorption, regeneration; enchanted: resistance and fire resistance), food effects (chicken, rotten flesh, spider eye, poisonous potato, pufferfish), milk clearing effects. Not yet: drinking potions, bows, sword blocking"
-scenarios = ["play/eating", "play/golden_apple_milk"]
+description = "Eating: food values extracted from vanilla (tools/datagen/FoodDump.java), canEat, setItemInUse (eating flag, eat animation), eating sounds every 4 updates, status 9, burp, hunger and saturation, stews leaving a bowl, letting go early, no held-item resync for items with a use duration, inventory resend when refused. Golden apples (absorption, regeneration; enchanted: resistance and fire resistance), food effects (chicken, rotten flesh, spider eye, poisonous potato, pufferfish), milk clearing effects, cake slices by right- and left-click (cakeSlicesEaten), cake falling off without support. Not yet: drinking potions, bows, sword blocking"
+scenarios = ["play/eating", "play/golden_apple_milk", "play/cake"]
 
 [[feature]]
 id = "entity.effects"

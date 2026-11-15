@@ -96,6 +96,11 @@ impl Game {
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         let (id, meta) = (state >> 4, state & 15);
         match id {
+            // BlockCake.onBlockActivated: always takes the click.
+            super::farming::CAKE => {
+                self.eat_cake(i, pos);
+                true
+            }
             // Doors: the lower half holds the open bit; iron doors ignore clicks.
             64 | 71 | 193..=197 => {
                 if id == 71 {
