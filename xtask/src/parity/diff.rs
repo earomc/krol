@@ -56,6 +56,38 @@ pub fn canonicalize_unordered(observations: &mut Value, group: &[String]) {
     }
 }
 
+/// Drops every packet of a type in `types` that equals the packet right before it, in
+/// each bot stream of `observations`.
+pub fn collapse_repeats(observations: &mut Value, types: &[String]) {
+    let Some(streams) = observations.as_object_mut() else {
+        return;
+    };
+    for stream in streams.values_mut() {
+        let Some(obj) = stream.as_object_mut() else {
+            continue;
+        };
+        let (Some(Value::Array(sequence)), Some(Value::Array(packets))) =
+            (obj.get("sequence").cloned(), obj.get("packets").cloned())
+        else {
+            continue;
+        };
+        if sequence.len() != packets.len() {
+            continue;
+        }
+        let mut kept: Vec<(Value, Value)> = Vec::new();
+        for (t, p) in sequence.into_iter().zip(packets) {
+            let listed = t.as_str().is_some_and(|t| types.iter().any(|x| x == t));
+            if listed && kept.last().is_some_and(|(lt, lp)| *lt == t && *lp == p) {
+                continue;
+            }
+            kept.push((t, p));
+        }
+        let (sequence, packets): (Vec<Value>, Vec<Value>) = kept.into_iter().unzip();
+        obj.insert("sequence".into(), Value::Array(sequence));
+        obj.insert("packets".into(), Value::Array(packets));
+    }
+}
+
 /// Computes the differences between `expected` and `actual`, skipping ignored paths
 /// (an ignored path also hides everything below it) and accepting numbers within the
 /// tolerance of their path.
@@ -216,6 +248,31 @@ fn line_diff(path: &str, e: &[Value], a: &[Value], out: &mut Vec<Difference>) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn repeats_collapse() {
+        let types = vec!["a".to_owned()];
+        let stream = |seq: &[(&str, i32)]| {
+            json!({ "bot": {
+                "sequence": seq.iter().map(|(t, _)| t).collect::<Vec<_>>(),
+                "packets": seq.iter().map(|(t, v)| json!({ "packet": t, "v": v })).collect::<Vec<_>>(),
+            }})
+        };
+        let mut x = stream(&[
+            ("a", 1),
+            ("a", 1),
+            ("a", 1),
+            ("a", 2),
+            ("b", 0),
+            ("b", 0),
+            ("a", 2),
+        ]);
+        collapse_repeats(&mut x, &types);
+        assert_eq!(
+            x,
+            stream(&[("a", 1), ("a", 2), ("b", 0), ("b", 0), ("a", 2)])
+        );
+    }
 
     #[test]
     fn unordered_runs_are_canonical() {

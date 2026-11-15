@@ -187,6 +187,9 @@ struct ScenarioReport {
     /// timing-sensitive scenario worth making robust.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     retried_alone: bool,
+    /// For a scenario retried alone: the differences of its failed parallel run.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    parallel_diffs: Vec<DiffEntry>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -246,6 +249,7 @@ fn run(filter: Option<&str>, v5: bool, jobs: usize) -> Result<ExitCode> {
                 error: Some(format!("{e:#}")),
                 actual_observations: None,
                 retried_alone: false,
+                parallel_diffs: Vec::new(),
             },
         };
         eprintln!("parity: {} {}", sc.name, report.status);
@@ -259,8 +263,10 @@ fn run(filter: Option<&str>, v5: bool, jobs: usize) -> Result<ExitCode> {
             if report.status == "fail" {
                 let alone = run_logged(sc);
                 if alone.status == "pass" {
+                    let parallel_diffs = std::mem::take(&mut report.diffs);
                     *report = ScenarioReport {
                         retried_alone: true,
+                        parallel_diffs,
                         ..alone
                     };
                 }
@@ -368,12 +374,17 @@ fn run_one(
         error: None,
         actual_observations: Some(actual_path.display().to_string()),
         retried_alone: false,
+        parallel_diffs: Vec::new(),
     };
     if let Some(mut expected) = expected {
         let mut actual = actual;
         for group in &sc.observe.unordered {
             diff::canonicalize_unordered(&mut expected, group);
             diff::canonicalize_unordered(&mut actual, group);
+        }
+        if !sc.observe.collapse_repeats.is_empty() {
+            diff::collapse_repeats(&mut expected, &sc.observe.collapse_repeats);
+            diff::collapse_repeats(&mut actual, &sc.observe.collapse_repeats);
         }
         let diffs = diff::diff(
             &expected,

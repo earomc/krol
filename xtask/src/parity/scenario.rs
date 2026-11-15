@@ -139,8 +139,8 @@ pub struct Observe {
     /// Capture the console log.
     #[serde(default)]
     pub log: bool,
-    /// Log lines starting with any of these (after the `[time] ` prefix) are dropped on
-    /// both sides, for lines whose presence legitimately differs.
+    /// Log lines whose message (after `[time] [thread/LEVEL]: `) starts with any of these
+    /// are dropped on both sides, for lines whose presence legitimately differs.
     #[serde(default)]
     pub log_ignore_prefixes: Vec<String>,
     /// Block positions read from the saved world (`world/region`) after shutdown,
@@ -170,6 +170,11 @@ pub struct Observe {
     /// vanilla too). Each group should carry a comment in the TOML saying why.
     #[serde(default)]
     pub unordered: Vec<Vec<String>>,
+    /// Packet types (as named in a bot's `sequence`) whose directly repeated identical
+    /// copies count once, for packets a server repeats a timing-dependent number of
+    /// times (in vanilla too). Each entry should carry a comment in the TOML saying why.
+    #[serde(default)]
+    pub collapse_repeats: Vec<String>,
 }
 
 /// Loads all scenarios under `root`, optionally filtered by a name substring.

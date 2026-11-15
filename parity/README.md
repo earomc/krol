@@ -14,7 +14,8 @@ cargo xtask parity coverage                 # feature coverage (parity/coverage.
 scenarios at once, default 4, capped at the CPU count). Scenarios mostly wait on scripted bot
 sessions, so 4 jobs bring a full run from about 18 to about 5 minutes. A scenario that fails
 during a parallel run is run once more on its own; if it passes then, it counts as passed and
-is marked "failed in parallel, passed alone" (`retried_alone` in the report). Those are
+is marked "failed in parallel, passed alone" (`retried_alone` in the report, with the parallel
+run's `parallel_diffs`). Those are
 scenarios whose bot timing races with the tick: worth making robust (see the rules below).
 `record` takes `--jobs` too but defaults to 1: every recording starts a JVM, whose default
 heap is a quarter of the RAM.
@@ -89,3 +90,7 @@ into server ticks. Rules learned from flaky scenarios:
   next movement packet, with the player tracker flushing every 2 ticks), declare them in
   a commented `[observe] unordered = [["entity_metadata", "entity_properties"]]` group:
   directly adjacent packets of those types are compared in a canonical order.
+- When a server repeats the same packet a timing-dependent number of times (in vanilla
+  too: e.g. position corrections while the bot keeps walking into a wall), list its type
+  in a commented `[observe] collapse_repeats` entry: directly repeated identical copies
+  count once, so the distinct packets and their order are still compared.
