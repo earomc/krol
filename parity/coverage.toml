@@ -325,8 +325,8 @@ scenarios = ["play/random_ticks"]
 
 [[feature]]
 id = "parity.pin_random"
-description = "The parity suite pins vanilla's world random and random tick generator (parity/vanilla-agent, krolpin) to compare random-driven behavior exactly; first used for fire spreading block for block"
-scenarios = ["play/fire_spread_pinned"]
+description = "The parity suite pins vanilla's world random and random tick generator (parity/vanilla-agent, krolpin) to compare random-driven behavior exactly; fire spreading and lava receding compared block for block"
+scenarios = ["play/fire_spread_pinned", "play/lava_recede_pinned"]
 
 [[feature]]
 id = "world.leaf_decay"
