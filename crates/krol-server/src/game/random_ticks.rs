@@ -4,7 +4,7 @@
 //! `updateTick` of grass, mycelium, farmland, crops, stems, sugar cane, cactus, ice,
 //! snow, redstone ore, nether wart and plants).
 //!
-//! TODO(M5): cave mood sounds, lightning, freezing and snowfall (biome temperatures),
+//! TODO(M5): lightning, freezing and snowfall (biome temperatures),
 //! filling cauldrons with rain, `enqueueRelightChecks`, sapling growth (trees, M6),
 //! mushroom spreading, leaf decay, fire, liquids, vines, cocoa, double plants, portals,
 //! tripwires.
@@ -50,6 +50,17 @@ fn chunk_hash(x: i32, z: i32) -> i32 {
         .wrapping_add(1_013_904_223);
     a ^ b
 }
+
+/// The cave mood countdown starts below this, and restarts at `AMBIENT_MIN` plus up to
+/// this after a sound.
+const AMBIENT_FIRST_MAX: i32 = 12000;
+const AMBIENT_MIN: i32 = 6000;
+/// The countdown `krolpin` sets (far from running out during a scenario).
+#[cfg_attr(not(feature = "parity"), allow(dead_code))]
+pub const PINNED_AMBIENT_COUNTDOWN: i32 = 12000;
+/// A mood sound needs a player within 8 blocks, but further than 2.
+const MOOD_PLAYER_RANGE: f64 = 8.0;
+const MOOD_MIN_DISTANCE_SQ: f64 = 4.0;
 
 impl Game {
     /// `World.calculateSkylightSubtracted(1.0F)`: how much the sky is darkened by time
@@ -138,6 +149,13 @@ impl Game {
                 }
             }
         }
+        // World's constructor draws the countdown (krol: on the first tick).
+        if self.ambient_countdown == super::AMBIENT_COUNTDOWN_UNSET {
+            self.ambient_countdown = self.world_rand.next_int_bounded(AMBIENT_FIRST_MAX);
+        }
+        if self.ambient_countdown > 0 {
+            self.ambient_countdown -= 1;
+        }
         // setActivePlayerChunksAndCheckLight: a light check near a random player.
         if !self.players.is_empty() {
             let k = self.world_rand.next_int_bounded(self.players.len() as i32) as usize;
@@ -160,6 +178,7 @@ impl Game {
             .unwrap_or(3);
         for k in krol_java::java_hash_order(&hashes) {
             let (cx, cz) = active[k];
+            self.mood_sound(cx, cz);
             self.level.overworld.tick_chunk(cx, cz);
             // TODO(M5): lightning.
             if self.world_rand.next_int_bounded(THUNDER_ODDS) == 0
@@ -192,6 +211,48 @@ impl Game {
                     }
                 }
             }
+        }
+    }
+
+    /// `World.playMoodSoundAndCheckLight`: once the countdown ran out, a random dark air
+    /// block of the chunk near (but not next to) a player plays a cave sound.
+    fn mood_sound(&mut self, cx: i32, cz: i32) {
+        if self.ambient_countdown != 0 {
+            return;
+        }
+        let r = self.step_lcg();
+        let (x, z, y) = (cx * 16 + (r & 15), cz * 16 + (r >> 8 & 15), r >> 16 & 0xff);
+        let w = &mut self.level.overworld;
+        if w.block(x, y, z) >> 4 != block::AIR {
+            return;
+        }
+        let light = w.light_subtracted((x, y, z), 0);
+        if light > self.world_rand.next_int_bounded(8) {
+            return;
+        }
+        if self.level.overworld.light(LightType::Sky, (x, y, z)) > 0 {
+            return;
+        }
+        let center = (f64::from(x) + 0.5, f64::from(y) + 0.5, f64::from(z) + 0.5);
+        let dist = |p: &super::player::Player| {
+            let d = (p.pos.0 - center.0, p.pos.1 - center.1, p.pos.2 - center.2);
+            d.0 * d.0 + d.1 * d.1 + d.2 * d.2
+        };
+        // getClosestPlayer(..., 8): the nearest player not spectating within 8 blocks.
+        let closest = self
+            .players
+            .iter()
+            .filter(|p| p.gamemode != 3)
+            .map(dist)
+            .filter(|&d| d < MOOD_PLAYER_RANGE * MOOD_PLAYER_RANGE)
+            .fold(None, |best: Option<f64>, d| {
+                Some(best.map_or(d, |b| b.min(d)))
+            });
+        if closest.is_some_and(|d| d > MOOD_MIN_DISTANCE_SQ) {
+            let pitch = 0.8 + self.world_rand.next_float() * 0.2;
+            self.play_sound_near_except(None, "ambient.cave.cave", center, 0.7, pitch);
+            self.ambient_countdown =
+                self.world_rand.next_int_bounded(AMBIENT_FIRST_MAX) + AMBIENT_MIN;
         }
     }
 

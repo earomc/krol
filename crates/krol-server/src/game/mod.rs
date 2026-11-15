@@ -148,6 +148,9 @@ pub enum GameEvent {
     Shutdown,
 }
 
+/// `ambient_countdown` before the world's first tick draws it.
+const AMBIENT_COUNTDOWN_UNSET: i32 = -1;
+
 /// Player Digging status 5: the player let go of the item they were using.
 const RELEASE_USE_ITEM: i8 = 5;
 
@@ -250,6 +253,8 @@ struct Game {
     /// `World.updateLCG`: picks random tick positions (vanilla starts it at random;
     /// krol at 0).
     update_lcg: i32,
+    /// `World.ambientTickCountdown`: ticks until the next cave mood sound check.
+    ambient_countdown: i32,
     /// `World.skylightSubtracted`: how much time and weather darken the sky.
     skylight_subtracted: i32,
     /// `BlockRedstoneTorch.toggles`: recent torch toggles (position, total time).
@@ -317,6 +322,7 @@ pub fn start(
         wire_queue: Vec::new(),
         torch_toggles: Vec::new(),
         update_lcg: 0,
+        ambient_countdown: AMBIENT_COUNTDOWN_UNSET,
         skylight_subtracted: 0,
         ticks_this_tick: Vec::new(),
         moving_progress: Default::default(),
@@ -517,6 +523,7 @@ impl Game {
             // (Random.setSeed is the same as a new Random with that seed).
             self.world_rand = krol_java::JavaRandom::new(seed);
             self.update_lcg = seed as i32;
+            self.ambient_countdown = random_ticks::PINNED_AMBIENT_COUNTDOWN;
             return;
         }
         self.execute_command(commands::Sender::Console, line);

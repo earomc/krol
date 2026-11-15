@@ -2,7 +2,8 @@
 //
 // A test-only Java agent for the vanilla 1.8.8 server used by the parity suite
 // (AGENTS.md section 10.2). It adds one console command, `krolpin <seed>`, which seeds
-// every world's random (World.rand) and random block tick generator (World.updateLCG)
+// every world's random (World.rand) and random block tick generator (World.updateLCG),
+// and sets the cave mood countdown to 12000 (World.ambientTickCountdown)
 // so that behavior driven by them can be compared with krol exactly; krol answers the
 // same command in builds with the `parity` feature.
 //
@@ -14,6 +15,7 @@
 //   j.a(k)                                     CommandHandler.registerCommand(ICommand)
 //   k                                          ICommand
 //   adm.s / adm.m                              World.rand / World.updateLCG
+//   adm.L                                      World.ambientTickCountdown
 //
 // Built by `cargo xtask parity` (javac --release 8) and loaded with -javaagent only for
 // scenarios that set `pin_random`.
@@ -118,12 +120,15 @@ public final class KrolAgent {
         rand.setAccessible(true);
         Field lcg = world.getDeclaredField("m");
         lcg.setAccessible(true);
+        Field mood = world.getDeclaredField("L");
+        mood.setAccessible(true);
         for (Object w : worlds) {
             if (w == null) {
                 continue;
             }
             ((Random) rand.get(w)).setSeed(seed);
             lcg.setInt(w, (int) seed);
+            mood.setInt(w, 12000);
         }
     }
 }

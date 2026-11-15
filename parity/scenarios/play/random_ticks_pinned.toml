@@ -1,0 +1,143 @@
+description = "Random block ticks with the world random pinned: grass spreading onto a pattern of dirt and wheat growing on wet farmland around a standing player, compared block for block (random tick positions, active chunk order, the per-chunk and light check draws)"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode and stands still. The blocks are set before
+# he joins; random ticks run only between `krolpin` and turning them off again.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2", view-distance = "3" }
+pin_random = true
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -476 3 -439 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -476 3 -435 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -476 3 -431 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -474 3 -437 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -474 3 -433 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -472 3 -439 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -472 3 -435 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -472 3 -431 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -437 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -433 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -439 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -435 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -431 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -437 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -433 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -430 water"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -430 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -430 wheat"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -430 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -467 4 -430 wheat"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -431 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -468 4 -431 wheat"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -429 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -468 4 -429 wheat"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+
+[[steps]]
+action = "console"
+command = "krolpin 1234567"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 30"
+wait_ms = 6000
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+wait_ms = 4000
+
+[observe]
+log = true
+blocks = [
+    [-476, 3, -439], [-476, 3, -435], [-476, 3, -431], [-474, 3, -437], [-474, 3, -433], [-472, 3, -439],
+    [-472, 3, -435], [-472, 3, -431], [-470, 3, -437], [-470, 3, -433], [-468, 3, -439], [-468, 3, -435],
+    [-468, 3, -431], [-466, 3, -437], [-466, 3, -433], [-469, 4, -430], [-467, 4, -430], [-468, 4, -431],
+    [-468, 4, -429], [-469, 3, -430], [-467, 3, -430],
+]
+ignore = ["player"]

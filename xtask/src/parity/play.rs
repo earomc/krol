@@ -174,6 +174,7 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
                     | "random.eat"
                     | "random.burp"
                     | "random.drink"
+                    | "ambient.cave.cave"
             );
             // The pickup sound plays where the player is when an item's random arc
             // brings it into reach.
