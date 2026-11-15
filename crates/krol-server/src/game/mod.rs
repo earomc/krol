@@ -27,6 +27,7 @@ pub mod ids;
 mod interact;
 mod item_data;
 mod item_entity;
+mod leaves;
 mod light_data;
 mod liquids;
 mod movement;

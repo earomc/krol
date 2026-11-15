@@ -320,8 +320,13 @@ scenarios = ["play/lighting"]
 
 [[feature]]
 id = "world.random_ticks"
-description = "Random block ticks: active chunks in vanilla order, updateLCG positions, randomTickSpeed, skylightSubtracted; grass/mycelium spreading and dying, farmland, crops, stems, sugar cane, cactus, ice and snow melting, redstone ore, nether wart, plants without soil; farmland, cactus and snow layer placement. Not yet: saplings, leaf decay, fire, vines, mushrooms, lightning, freezing and snowfall"
+description = "Random block ticks: active chunks in vanilla order, updateLCG positions, randomTickSpeed, skylightSubtracted; grass/mycelium spreading and dying, farmland, crops, stems, sugar cane, cactus, ice and snow melting, redstone ore, nether wart, plants without soil; farmland, cactus and snow layer placement. Not yet: saplings, fire, vines, mushrooms, lightning, freezing and snowfall"
 scenarios = ["play/random_ticks"]
+
+[[feature]]
+id = "world.leaf_decay"
+description = "Leaf decay: breaking logs (radius 4) and leaves (radius 1) marks leaves to check, the random tick's distance check through leaves (4 blocks from a log), decay with vanilla's sapling and apple drops, player-placed leaves never decaying (and keeping the check mark)"
+scenarios = ["play/leaf_decay"]
 
 [[feature]]
 id = "world.liquids"

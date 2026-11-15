@@ -61,6 +61,8 @@ pub mod block {
     pub const CARPET: u16 = 171;
     /// `stone_slab2` (red sandstone).
     pub const STONE_SLAB2: u16 = 182;
+    /// `log` (oak, spruce, birch, jungle).
+    pub const LOG: u16 = 17;
     /// `leaves`.
     pub const LEAVES: u16 = 18;
     /// `lapis_ore`.
@@ -207,6 +209,8 @@ pub mod block {
     pub const QUARTZ_ORE: u16 = 153;
     /// `stained_hardened_clay`.
     pub const STAINED_HARDENED_CLAY: u16 = 159;
+    /// `log2` (acacia, dark oak).
+    pub const LOG2: u16 = 162;
     /// `leaves2` (acacia and dark oak).
     pub const LEAVES2: u16 = 161;
     /// `slime`.

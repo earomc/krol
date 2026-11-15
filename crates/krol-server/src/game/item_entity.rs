@@ -165,6 +165,10 @@ impl Game {
     /// Drops what the block leaves when harvested (`dropBlockAsItem`), unless the
     /// `doTileDrops` game rule is off.
     pub(super) fn drop_block_items(&mut self, pos: (i32, i32, i32), state: u16) {
+        if super::leaves::is_leaves(state >> 4) {
+            self.drop_leaves(pos, state);
+            return;
+        }
         for stack in block_drops(&mut self.world_rand, state) {
             self.spawn_as_entity(pos, stack);
         }

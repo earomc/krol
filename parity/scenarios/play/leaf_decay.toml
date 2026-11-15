@@ -1,0 +1,138 @@
+description = "Leaf decay: a tree's logs removed, its leaves decay on random ticks; another tree's leaves within reach of the removed logs are checked and stay (connected to their log within 4 blocks); player-placed leaves never decay"
+subsystem = "play"
+
+# The trees are set from the console before jeb_ joins (at the spawn, adventure mode,
+# standing still; his presence makes the chunks tick randomly). Tile drops are off: the
+# saplings and apples would drop at random. At randomTickSpeed 200 each marked leaf
+# block gets about 140 chances to be checked.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doTileDrops false"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -433 log"
+
+[[steps]]
+action = "console"
+command = "setblock -466 5 -433 log"
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -433 log"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -440 log"
+
+[[steps]]
+action = "console"
+command = "setblock -466 5 -440 log"
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -440 log"
+
+[[steps]]
+action = "console"
+command = "setblock -465 6 -433 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -467 6 -433 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -466 7 -433 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -432 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -434 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -464 6 -433 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -467 7 -433 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -466 7 -440 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -465 6 -440 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -439 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -438 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -437 leaves"
+
+[[steps]]
+action = "console"
+command = "setblock -464 6 -432 leaves 4"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+
+[[steps]]
+action = "console"
+command = "gamemode 2 jeb_"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "setblock -466 6 -433 air"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -466 5 -433 air"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -433 air"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 200"
+wait_ms = 10000
+
+[observe]
+log = true
+blocks = [
+    [-466, 4, -433], [-466, 5, -433], [-466, 6, -433], [-465, 6, -433], [-467, 6, -433],
+    [-466, 7, -433], [-466, 6, -432], [-466, 6, -434], [-464, 6, -433], [-467, 7, -433],
+    [-466, 4, -440], [-466, 5, -440], [-466, 6, -440], [-466, 7, -440], [-465, 6, -440],
+    [-466, 6, -439], [-466, 6, -438], [-466, 6, -437], [-464, 6, -432],
+]
+ignore = ["player"]

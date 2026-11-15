@@ -219,6 +219,7 @@ impl Game {
             // Block.randomTick runs updateTick.
             block::FIRE => self.fire_tick(pos, state),
             block::LAVA => self.lava_tick(pos),
+            block::LEAVES | block::LEAVES2 => self.leaves_tick(pos, state),
             block::FLOWING_WATER | block::FLOWING_LAVA => self.flowing_liquid_tick(pos, state),
             block::REEDS => self.cane_tick(pos, state, false),
             block::CACTUS => self.cane_tick(pos, state, true),

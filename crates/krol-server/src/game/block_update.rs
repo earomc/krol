@@ -322,6 +322,7 @@ impl Game {
     /// itself and the block it was on.
     fn block_removed(&mut self, pos: (i32, i32, i32), old: u16) {
         let (id, meta) = (old >> 4, old & 15);
+        self.leaves_block_removed(pos, old);
         match id {
             block::LEVER | block::STONE_BUTTON | block::WOODEN_BUTTON if meta & POWERED != 0 => {
                 self.notify_mounted(pos, id, meta);
