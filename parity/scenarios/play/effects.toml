@@ -1,9 +1,11 @@
-description = "Status effects with /effect: regeneration at full health, instant damage and instant health II, absorption (4 extra health), night vision with hidden particles given and taken, clear (and its failure), unknown effects; effect packets, particle color metadata, NBT"
+description = "Status effects with /effect: regeneration at full health, instant damage and instant health II, water breathing by id, night vision with hidden particles given and taken, clear (and its failure), unknown effects; effect packets, particle color metadata, NBT"
 subsystem = "play"
 
 # jeb_ joins at the spawn in adventure mode and stands still. Effects that act over
 # time (poison, hunger) act once per movement packet, so only instant effects and ones
-# that do nothing visible are used.
+# that do nothing visible are used. Absorption is left to play/golden_apple_milk: its
+# health metadata is set at once while the particle color waits for the next movement
+# packet, so whether both share a metadata packet depends on packet timing (in vanilla too).
 
 [setup]
 world = "fixtures/worlds/flat"
@@ -39,7 +41,7 @@ wait_ms = 1500
 
 [[steps]]
 action = "console"
-command = "effect jeb_ 22 10"
+command = "effect jeb_ 13 10"
 wait_ms = 1500
 
 [[steps]]

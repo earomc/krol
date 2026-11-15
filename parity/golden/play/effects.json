@@ -223,14 +223,14 @@
         },
         {
           "entity_id": 0,
-          "effect": 22,
+          "effect": 13,
           "amplifier": 0,
           "duration": 200,
           "show_particles": true,
           "packet": "entity_effect"
         },
         {
-          "hex": "0047009458a971408000007f",
+          "hex": "0047009858a57f",
           "packet": "entity_metadata"
         },
         {
@@ -239,7 +239,7 @@
           "packet": "remove_entity_effect"
         },
         {
-          "hex": "0047002552a57f",
+          "hex": "0047002e52997f",
           "packet": "entity_metadata"
         },
         {
@@ -257,11 +257,11 @@
         },
         {
           "entity_id": 0,
-          "effect": 22,
+          "effect": 13,
           "packet": "remove_entity_effect"
         },
         {
-          "hex": "00470000000071000000007f",
+          "hex": "0047000000007f",
           "packet": "entity_metadata"
         }
       ],
@@ -744,7 +744,7 @@
       "[Server thread/INFO]: Given Regeneration (ID 10) * 1 to jeb_ for 5 seconds",
       "[Server thread/INFO]: Given Instant Damage (ID 7) * 0 to jeb_ for 30 seconds",
       "[Server thread/INFO]: Given Instant Health (ID 6) * 1 to jeb_ for 1 seconds",
-      "[Server thread/INFO]: Given Absorption (ID 22) * 0 to jeb_ for 10 seconds",
+      "[Server thread/INFO]: Given Water Breathing (ID 13) * 0 to jeb_ for 10 seconds",
       "[Server thread/INFO]: Given Night Vision (ID 16) * 0 to jeb_ for 60 seconds",
       "[Server thread/INFO]: Took Night Vision from jeb_",
       "[Server thread/INFO]: Couldn't take Night Vision from jeb_ as they do not have the effect",
@@ -845,10 +845,10 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.playOneMinute": 352,
+        "stat.playOneMinute": 354,
         "stat.leaveGame": 1,
         "stat.damageTaken": 60,
-        "stat.timeSinceDeath": 352,
+        "stat.timeSinceDeath": 354,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [
