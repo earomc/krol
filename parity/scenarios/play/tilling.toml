@@ -1,0 +1,56 @@
+description = "Tilling with a hoe in survival: grass and dirt become farmland, coarse dirt becomes dirt (also from the side), with the step sound of the new block and one point of hoe wear each; grass under a block and the bottom face are not tilled"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data, holding a wooden hoe) stands at the spawn
+# (-471.5, 4, -434.5). Random ticks are off: farmland without water would dry out.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_gardener.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -433 dirt"
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -433 dirt 1"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -436 stone"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 6
+chat = [
+    "@1000 !place -470 3 -433 1",
+    "@1300 !place -469 3 -433 1",
+    "@1600 !place -473 3 -433 5",
+    "@1900 !place -470 3 -436 1",
+    "@2200 !place -472 3 -436 0",
+]
+
+[observe]
+log = true
+blocks = [[-470, 3, -433], [-469, 3, -433], [-473, 3, -433], [-470, 3, -436], [-472, 3, -436]]
+files = [
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
+]
+ignore = [
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]

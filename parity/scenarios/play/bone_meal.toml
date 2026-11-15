@@ -1,0 +1,57 @@
+description = "Bone meal in survival: four uses grow a wheat crop and a pumpkin stem to full age (2 to 5 stages each), one more on the grown wheat is not used up; outcome compared (the stages added are random)"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data, holding 16 bone meal in slot 1) stands at the
+# spawn (-471.5, 4, -434.5). How many uses each plant takes is random, so the packets,
+# the bone meal left and the use statistics are not compared; the grown plants are.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_gardener.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -433 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -433 wheat"
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -433 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -433 pumpkin_stem"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 7
+chat = [
+    "@1000 !hold 1",
+    "@1300 !place -470 4 -433 1",
+    "@1600 !place -470 4 -433 1",
+    "@1900 !place -470 4 -433 1",
+    "@2200 !place -470 4 -433 1",
+    "@2500 !place -473 4 -433 1",
+    "@2800 !place -473 4 -433 1",
+    "@3100 !place -473 4 -433 1",
+    "@3400 !place -473 4 -433 1",
+    "@3700 !place -470 4 -433 1",
+]
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-473, 4, -433]]
+ignore = ["player"]

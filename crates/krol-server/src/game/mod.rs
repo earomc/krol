@@ -19,6 +19,7 @@ mod death;
 mod digging;
 mod dispenser;
 mod falling_block;
+mod farming;
 mod fire;
 mod food;
 mod furnace;
@@ -1613,6 +1614,14 @@ impl Game {
             return;
         }
         if self.place_door(i, stack.id, pos, face as u8) {
+            return;
+        }
+        if farming::is_hoe(stack.id) {
+            self.use_hoe(i, pos, face as u8);
+            return;
+        }
+        if farming::is_bone_meal(stack.id, stack.damage) {
+            self.use_bone_meal(i, pos);
             return;
         }
         if let Some((soil, crop)) = placement::seed_crop(stack.id) {
