@@ -364,6 +364,11 @@ description = "ItemStack.onBlockDestroyed when mining in survival: tools wear by
 scenarios = ["play/tool_wear"]
 
 [[feature]]
+id = "blocks.planting"
+description = "Planting: ItemSeeds and ItemSeedFood (wheat, pumpkin and melon seeds, carrots and potatoes on farmland, nether wart on soul sand; top face, air above, no sound) and ItemReed block items (sugar cane by water, cake on solid ground) with their place sounds and use statistics. Not yet: cocoa beans, other ItemReed items"
+scenarios = ["play/planting"]
+
+[[feature]]
 id = "entity.armor"
 description = "Armor: armor points reducing blockable damage, armor wear (a quarter of the damage, boots first), protection, fire protection and feather falling (getEnchantmentModifierDamage), equipping armor with a right-click. Not yet: the resistance potion, blast and projectile protection, sword blocking, pumpkins and skulls as helmets, thorns"
 scenarios = ["play/armor"]

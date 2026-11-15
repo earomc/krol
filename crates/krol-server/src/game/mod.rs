@@ -1615,6 +1615,10 @@ impl Game {
         if self.place_door(i, stack.id, pos, face as u8) {
             return;
         }
+        if let Some((soil, crop)) = placement::seed_crop(stack.id) {
+            self.plant_seeds(i, pos, face as u8, soil, crop);
+            return;
+        }
         if stack.id == ids::item::FLINT_AND_STEEL {
             self.use_flint_and_steel(i, pos, face as u8);
             return;
@@ -1685,9 +1689,11 @@ impl Game {
         if !blocks::is_replaceable(self.level.overworld.block(target.0, target.1, target.2)) {
             return;
         }
+        // ItemReed: items that place a block of another id (sugar cane, cake).
+        let block_item = placement::reed_block(stack.id).map_or(stack.id, |b| b as i16);
         let Some(state) = placement::placed_state(
             &mut self.level.overworld,
-            stack.id,
+            block_item,
             stack.damage,
             target,
             &click,
@@ -1750,6 +1756,31 @@ impl Game {
         self.finish_placement(i, at, state);
         // BlockRedstoneDiode.onBlockPlacedBy.
         self.repeater_placed(at, state);
+    }
+
+    /// `ItemSeeds.onItemUse` / `ItemSeedFood.onItemUse`: on the top of the right soil,
+    /// with air above, the crop is planted (no sound).
+    fn plant_seeds(&mut self, i: usize, pos: (i32, i32, i32), face: u8, soil: u16, crop: u16) {
+        if face != placement::UP {
+            return;
+        }
+        let above = (pos.0, pos.1 + 1, pos.2);
+        let w = &mut self.level.overworld;
+        if w.block(pos.0, pos.1, pos.2) >> 4 != soil
+            || block_data::material(w.block(above.0, above.1, above.2) >> 4)
+                != block_data::Material::Air
+        {
+            return;
+        }
+        self.set_block_notify(above, crop << 4);
+        self.count_item_use(i);
+        let p = &mut self.players[i];
+        if p.gamemode != 1 {
+            let held = 36 + p.selected;
+            if let Some(s) = &mut p.inventory[held] {
+                s.count -= 1;
+            }
+        }
     }
 
     /// `ItemStack.onItemUse` succeeded: the held item's use statistic.

@@ -373,6 +373,14 @@ pub fn placed_state(
             };
             ok.then(|| id << 4 | u16::from(meta))
         }
+        // BlockReed.canPlaceBlockAt: sugar cane on cane, or on grass, dirt or sand by water.
+        ids::block::REEDS => {
+            super::random_ticks::cane_can_stay(world, at, false).then_some(id << 4)
+        }
+        // BlockCake.canBlockStay: something solid below.
+        CAKE => super::block_data::material(below >> 4)
+            .is_solid()
+            .then_some(id << 4),
         // Farmland is an ordinary block item (dry when placed).
         ids::block::FARMLAND => state(0),
         // BlockCactus.canPlaceBlockAt: sand or cactus below, nothing solid beside.
@@ -398,6 +406,36 @@ pub fn placed_state(
         _ => None,
     }
 }
+
+/// `ItemSeeds` / `ItemSeedFood`: the soil an item is planted on and the crop it
+/// becomes (wheat, pumpkin and melon seeds, carrots and potatoes on farmland; nether wart
+/// on soul sand).
+pub fn seed_crop(item: i16) -> Option<(u16, u16)> {
+    use ids::block::{
+        CARROTS, FARMLAND, MELON_STEM, NETHER_WART, POTATOES, PUMPKIN_STEM, SOUL_SAND, WHEAT,
+    };
+    Some(match item {
+        295 => (FARMLAND, WHEAT),
+        361 => (FARMLAND, PUMPKIN_STEM),
+        362 => (FARMLAND, MELON_STEM),
+        391 => (FARMLAND, CARROTS),
+        392 => (FARMLAND, POTATOES),
+        372 => (SOUL_SAND, NETHER_WART),
+        _ => return None,
+    })
+}
+
+/// `ItemReed`: items that place a block (sugar cane, cake).
+pub fn reed_block(item: i16) -> Option<u16> {
+    match item {
+        338 => Some(ids::block::REEDS),
+        354 => Some(CAKE),
+        _ => None,
+    }
+}
+
+/// `cake`.
+const CAKE: u16 = 92;
 
 /// The slab a double slab is made of (`ItemSlab`): `(single, double)`.
 pub fn slab_pair(item: i16) -> Option<(u16, u16)> {

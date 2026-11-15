@@ -1,0 +1,97 @@
+description = "Planting in survival: wheat seeds, carrots, potatoes, pumpkin and melon seeds on farmland, nether wart on soul sand (ItemSeeds/ItemSeedFood, no sound), sugar cane on sand by water and cake on grass (ItemReed, with place sounds); seeds on grass and sugar cane away from water fail"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data, holding one of each) stands at the spawn
+# (-471.5, 4, -434.5). The soil is set before he joins; random ticks are off so nothing
+# grows or dries out.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_farmer.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -432 water"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -432 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -432 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -431 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -433 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -433 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -432 soul_sand"
+
+[[steps]]
+action = "console"
+command = "setblock -474 3 -436 water"
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -436 sand"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 9
+chat = [
+    "@1000 !place -470 3 -432 1",
+    "@1300 !place -471 3 -430 1",
+    "@1600 !place -470 3 -432 2",
+    "@1900 !hold 1",
+    "@2200 !place -468 3 -432 1",
+    "@2500 !hold 2",
+    "@2800 !place -469 3 -431 1",
+    "@3100 !hold 3",
+    "@3400 !place -469 3 -433 1",
+    "@3700 !hold 4",
+    "@4000 !place -470 3 -433 1",
+    "@4300 !hold 5",
+    "@4600 !place -473 3 -432 1",
+    "@4900 !hold 6",
+    "@5200 !place -473 3 -436 1",
+    "@5500 !place -475 3 -430 1",
+    "@5800 !hold 7",
+    "@6100 !place -470 3 -436 1",
+]
+
+[observe]
+log = true
+blocks = [
+    [-470, 4, -432], [-471, 4, -430], [-468, 4, -432], [-469, 4, -431], [-469, 4, -433],
+    [-470, 4, -433], [-473, 4, -432], [-473, 4, -436], [-475, 4, -430], [-470, 4, -436],
+]
+files = [
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
+]
+ignore = [
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]
