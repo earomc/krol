@@ -33,3 +33,28 @@ observations are kept under `target/parity/` for inspection.
 Step actions: `status_ping` (`protocol`, `payload`), `raw` (`hex`: first chunk, observe
 until close), `login_start` (`protocol`, `name`). Observation paths listed in
 `observe.ignore` are excluded — use only for documented, deliberate deviations.
+
+## Writing race-free scenarios
+
+Vanilla and krol only compare equal when nothing depends on how the bot's packets fall
+into server ticks. Rules learned from flaky scenarios:
+
+- **Order only through the bot.** Console steps run on absolute time from the scenario
+  start, bot actions on time since the bot's join. Anything that must happen in order
+  relative to the bot (game mode switches, removing a block it just used) belongs to
+  the bot itself, or to console steps *before* the `play` step. Prefer a fixture player
+  file (`tools/fixtures/players.py`) over a console `/gamemode` switch.
+- **Turn off random block ticks** (`gamerule randomTickSpeed 0` before the player
+  joins) whenever blocks are placed, dug or set: grass dies and spreads at random.
+- **Keep bot actions 200 ms or more apart** when their order matters. Two actions in
+  one tick can be answered in a different order (inventory updates go out in slot
+  order). Use 1 s for clicks whose effects must not merge into one batch: a short
+  stall makes the server catch up several ticks at once.
+- **Mind the unseeded randoms**: item arcs, fire spread, lava receding, drop counts.
+  Keep players out of reach of drops until the step that should pick them up, turn off
+  tile drops where they don't matter, and observe outcomes that cannot change by
+  chance (e.g. fire's light level instead of its age).
+- **Avoid competing timers**: a damage source that both hits and sets on fire races its
+  own burning for the hurt cooldown; prefer one with a single effect (cactus).
+- When something genuinely counts packets (stats, durations left), use a commented
+  `[observe.tolerance]` entry for exactly those values.
