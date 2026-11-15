@@ -88,13 +88,9 @@ pub struct World {
     pub dir: PathBuf,
     /// Whether the dimension has sky light.
     pub has_sky: bool,
-    /// Furnace tile entities in the order they were loaded or created (vanilla's
-    /// `tickableTileEntities`, of which krol ticks furnaces this way).
-    pub furnaces: Vec<(i32, i32, i32)>,
-    /// Hopper tile entities in the order they were loaded or created.
-    pub hoppers: Vec<(i32, i32, i32)>,
-    /// Brewing stands, in load order.
-    pub brewing_stands: Vec<(i32, i32, i32)>,
+    /// Furnaces, hoppers and brewing stands in the order they were added
+    /// (`tickableTileEntities`); chests and moving pistons keep their own lists.
+    pub tickables: Vec<(i32, i32, i32)>,
     /// Moving piston blocks in the order they were created (`TileEntityPiston` in
     /// vanilla's `tickableTileEntities`).
     pub moving: Vec<(i32, i32, i32)>,
@@ -137,9 +133,7 @@ impl World {
             regions: HashMap::new(),
             pending_changes: HashMap::new(),
             pending_order: Vec::new(),
-            furnaces: Vec::new(),
-            hoppers: Vec::new(),
-            brewing_stands: Vec::new(),
+            tickables: Vec::new(),
             scheduler: Default::default(),
             moving: Vec::new(),
             total_time: 0,
@@ -279,9 +273,7 @@ impl World {
                 if let Tag::Compound(c) = t {
                     let p = (c.get_i32("x"), c.get_i32("y"), c.get_i32("z"));
                     match c.get_str("id") {
-                        "Furnace" => self.furnaces.push(p),
-                        "Hopper" => self.hoppers.push(p),
-                        "Cauldron" => self.brewing_stands.push(p),
+                        "Furnace" | "Hopper" | "Cauldron" => self.tickables.push(p),
                         _ => {}
                     }
                 }
@@ -445,9 +437,7 @@ impl World {
     /// Removes the tile entity at `pos` (`World.removeTileEntity`).
     pub fn remove_tile_entity(&mut self, pos: (i32, i32, i32)) {
         self.chunk(pos.0 >> 4, pos.2 >> 4);
-        self.furnaces.retain(|&p| p != pos);
-        self.hoppers.retain(|&p| p != pos);
-        self.brewing_stands.retain(|&p| p != pos);
+        self.tickables.retain(|&p| p != pos);
         if let Some(index) = self.tile_entity_index(pos) {
             self.chunk_mut(pos.0 >> 4, pos.2 >> 4)
                 .tile_entities
@@ -514,17 +504,17 @@ impl World {
             if id == "Hopper" {
                 // A new hopper's transferCooldown is -1.
                 c.insert("TransferCooldown", Tag::Int(-1));
-                self.hoppers.push(pos);
+                self.tickables.push(pos);
             }
             if id == "Cauldron" {
                 c.insert("BrewTime", Tag::Short(0));
-                self.brewing_stands.push(pos);
+                self.tickables.push(pos);
             }
             if id == "Furnace" {
                 c.insert("BurnTime", Tag::Short(0));
                 c.insert("CookTime", Tag::Short(0));
                 c.insert("CookTimeTotal", Tag::Short(0));
-                self.furnaces.push(pos);
+                self.tickables.push(pos);
             }
             c.insert("Items", Tag::List(List::new()));
         }

@@ -141,7 +141,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x34 Maps | ❌ | |
 | 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), mob spawners/skulls/banners/beacons/flower pots missing |
 | 0x37 Statistics | ✅ | |
-| 0x38 Player List Item | 🟡 | Add, game mode, remove ✅; latency updates and display names ❌ |
+| 0x38 Player List Item | 🟡 | Add, game mode, remove, latency (keep-alive round trips, every 600 ticks) ✅; display names ❌ |
 | 0x39 Player Abilities | ✅ | |
 | 0x3A Tab-Complete | ❌ | Serverbound tab-complete not handled |
 | 0x3B Scoreboard Objective · 0x3C Update Score · 0x3D Display Scoreboard · 0x3E Teams | ❌ | Scoreboard missing |
@@ -330,7 +330,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockBed` | 🟡 | Placement, sleeping (occupied bit written quietly like vanilla), skipping the night, spawn point, halves breaking together, drops from the foot ✅; mobs keeping players awake, nether explosion ❌ |
 | `BlockAnvil` | 🟡 | Placement ✅; falling, damage, repair window ❌ |
 | `BlockEnchantmentTable` | ❌ | |
-| `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped ✅; hoppers and comparators ❌ |
+| `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped, hoppers, comparators ✅ |
 | `BlockCauldron` | ❌ | Filling, rain, armor washing, comparator output |
 | `BlockBeacon` | ❌ | |
 | `BlockFlowerPot` | ❌ | |

@@ -145,6 +145,17 @@ pub enum GameEvent {
         /// The packet.
         packet: ServerboundPlay,
     },
+    /// A keep-alive answer, timestamped on arrival: vanilla handles it on the network
+    /// thread (`processKeepAlive` doesn't wait for the main thread), so the round trip
+    /// must not include the wait for the next tick.
+    KeepAlive {
+        /// Connection id.
+        conn_id: u64,
+        /// The keep-alive id the client echoed.
+        id: i32,
+        /// When the answer arrived.
+        received: std::time::Instant,
+    },
     /// A player's connection ended.
     Disconnected {
         /// Connection id.
@@ -165,6 +176,8 @@ const AMBIENT_COUNTDOWN_UNSET: i32 = -1;
 /// Player Digging status 5: the player let go of the item they were using.
 const RELEASE_USE_ITEM: i8 = 5;
 
+/// The player list's latencies go out every 600 ticks.
+const LATENCY_INTERVAL: u32 = 600;
 /// Keeps the unpinned `Math.random()` seed apart from the world random's.
 const MATH_RANDOM_SCRAMBLE: i64 = 0x5DEE_CE66;
 /// A player's bounding box (`EntityPlayer.setSize(0.6, 1.8)`).
@@ -210,6 +223,7 @@ impl GameEvent {
         match self {
             Self::Join { conn_id, .. }
             | Self::Packet { conn_id, .. }
+            | Self::KeepAlive { conn_id, .. }
             | Self::Disconnected { conn_id, .. } => Some(*conn_id),
             _ => None,
         }
@@ -284,6 +298,8 @@ struct Game {
     tnt: std::collections::BTreeMap<i32, tnt::PrimedTnt>,
     /// Every player but spectators lies in bed (`allPlayersSleeping`).
     all_sleeping: bool,
+    /// Ticks since the last latency broadcast (`playerPingIndex`).
+    ping_index: u32,
     /// Experience orbs by entity id.
     orbs: std::collections::BTreeMap<i32, xp_orb::XpOrb>,
     /// Dropped items by entity id.
@@ -351,6 +367,7 @@ pub fn start(
         falling: Default::default(),
         tnt: Default::default(),
         all_sleeping: false,
+        ping_index: 0,
         wire_gives_power: true,
         wire_queue: Vec::new(),
         torch_toggles: Vec::new(),
@@ -574,13 +591,25 @@ impl Game {
         }
         // World.updateEntities: then the tile entities.
         self.tick_chests();
-        self.tick_furnaces();
-        self.tick_hoppers();
-        self.tick_brewing();
+        self.tick_tile_entities();
         self.tick_moving();
         self.update_tracked_entities();
         for event in late {
             self.handle_event(event);
+        }
+        // ServerConfigurationManager.onTick: everyone's latency every 600 ticks.
+        self.ping_index += 1;
+        if self.ping_index > LATENCY_INTERVAL {
+            self.ping_index = 0;
+            let entries = self
+                .players
+                .iter()
+                .map(|p| (p.profile.id, p.ping))
+                .collect();
+            let packet = ClientboundPlay::PlayerListItem(PlayerListAction::UpdateLatency(entries));
+            for p in &self.players {
+                p.send(packet.clone());
+            }
         }
         // Where vanilla updates its tickables (the vanilla agent's krolpin countdown).
         #[cfg(feature = "parity")]
@@ -780,6 +809,21 @@ impl Game {
                     self.handle_packet(i, packet);
                 }
             }
+            // processKeepAlive: the answer to the last keep-alive updates the ping.
+            GameEvent::KeepAlive {
+                conn_id,
+                id,
+                received,
+            } => {
+                if let Some(p) = self.players.iter_mut().find(|p| p.conn_id == conn_id)
+                    && id == p.keep_alive_sent.0
+                {
+                    let rtt = received
+                        .saturating_duration_since(p.keep_alive_sent.1)
+                        .as_millis() as i32;
+                    p.ping = (p.ping * 3 + rtt) / 4;
+                }
+            }
             GameEvent::Disconnected { conn_id, reason } => {
                 // A kick already scheduled its own removal with the kick reason.
                 if self.pending_removals.iter().any(|(c, _)| *c == conn_id) {
@@ -906,6 +950,25 @@ impl Game {
                 reason: 8,
                 value: thunder_strength,
             });
+        }
+    }
+
+    /// The tickable tile entities other than chests and moving pistons, in the order they
+    /// were added (`World.updateEntities`' pass over `tickableTileEntities`).
+    fn tick_tile_entities(&mut self) {
+        let list = self.level.overworld.tickables.clone();
+        for pos in list {
+            let kind = self
+                .level
+                .overworld
+                .tile_entity(pos)
+                .map(|c| c.get_str("id").to_owned());
+            match kind.as_deref() {
+                Some("Furnace") => self.tick_furnace(pos),
+                Some("Hopper") => self.tick_hopper(pos),
+                Some("Cauldron") => self.tick_brewing_stand(pos),
+                _ => {}
+            }
         }
     }
 
@@ -1046,6 +1109,8 @@ impl Game {
             fall_distance: data.get_f32("FallDistance"),
             in_water: false,
             in_web: false,
+            keep_alive_sent: (0, std::time::Instant::now()),
+            ping: 0,
             sleeping: false,
             sleep_timer: i32::from(data_sleep_timer),
             bed: None,
@@ -1230,6 +1295,7 @@ impl Game {
             let id = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_millis() as i64) as i32;
+            player.keep_alive_sent = (id, std::time::Instant::now());
             player.send(ClientboundPlay::KeepAlive { id });
         }
         if player.chat_spam > 0 {
@@ -2021,6 +2087,8 @@ impl Game {
                 }
             }
             ServerboundPlay::EntityAction { action, .. } => self.entity_action(i, action),
+            // Answered as GameEvent::KeepAlive, stamped on the network side.
+            ServerboundPlay::KeepAlive { .. } => {}
             ServerboundPlay::ClientStatus { action } => self.client_status(i, action),
             ServerboundPlay::ClickWindow {
                 window,
@@ -2244,7 +2312,7 @@ fn player_list_entry(p: &Player) -> PlayerListAdd {
             .map(|pr| (pr.name.clone(), pr.value.clone(), pr.signature.clone()))
             .collect(),
         gamemode: p.gamemode,
-        ping: 0,
+        ping: p.ping,
         display_name: None,
     }
 }

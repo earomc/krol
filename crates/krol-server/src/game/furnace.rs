@@ -381,12 +381,11 @@ impl Game {
         self.furnace_xp(i, output, taken);
     }
 
-    /// `TileEntityFurnace.update` for every furnace, in load order.
-    pub(super) fn tick_furnaces(&mut self) {
-        let list = self.level.overworld.furnaces.clone();
-        for pos in list {
+    /// `TileEntityFurnace.update`.
+    pub(super) fn tick_furnace(&mut self, pos: (i32, i32, i32)) {
+        {
             let Some(mut data) = furnace_data(&self.level.overworld, pos) else {
-                continue;
+                return;
             };
             let mut current = self.current_burn(pos, &data);
             let was_burning = data.burning();

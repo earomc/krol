@@ -1,8 +1,7 @@
 //! Brewing stands (vanilla `BlockBrewingStand`, `TileEntityBrewingStand`,
 //! `ContainerBrewingStand`, `PotionHelper.applyIngredient`).
 //!
-//! TODO(M5): hoppers filling and emptying brewing stands, comparators reading them, the
-//! potion achievement.
+//! TODO(M5): the potion achievement.
 
 use krol_nbt::{Compound, List, Tag, TagType};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
@@ -16,7 +15,7 @@ pub const BREWING_STAND: u16 = 117;
 pub const BREWING_STAND_ITEM: i16 = 379;
 /// Slots: three bottles, then the ingredient.
 pub const SLOTS: usize = 4;
-const INGREDIENT: usize = 3;
+pub const INGREDIENT: usize = 3;
 /// A brew takes 400 ticks.
 const BREW_TIME: i32 = 400;
 /// The block's metadata has one bit per bottle slot holding something.
@@ -273,11 +272,16 @@ impl Game {
 
     /// Saves a brewing stand (`markDirty`).
     fn store_brewing(&mut self, pos: (i32, i32, i32), data: &BrewingData) {
-        if self.brewing_data(pos).as_ref() == Some(data) {
+        let old = self.brewing_data(pos);
+        if old.as_ref() == Some(data) {
             return;
         }
         if let Some(c) = self.level.overworld.tile_entity_mut(pos) {
             data.write(c);
+        }
+        // markDirty after a change of contents: comparators reading the stand.
+        if old.is_none_or(|o| o.items != data.items) {
+            self.update_comparators(pos);
         }
     }
 
@@ -301,12 +305,11 @@ impl Game {
         self.brewing_items(pos).into_iter().flatten().collect()
     }
 
-    /// `TileEntityBrewingStand.update` for every brewing stand, in load order.
-    pub(super) fn tick_brewing(&mut self) {
-        let list = self.level.overworld.brewing_stands.clone();
-        for pos in list {
+    /// `TileEntityBrewingStand.update`.
+    pub(super) fn tick_brewing_stand(&mut self, pos: (i32, i32, i32)) {
+        {
             let Some(mut data) = self.brewing_data(pos) else {
-                continue;
+                return;
             };
             let ingredient = data.items[INGREDIENT].as_ref().map(|s| s.id);
             if data.brew_time > 0 {

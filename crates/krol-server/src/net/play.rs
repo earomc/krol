@@ -93,7 +93,15 @@ where
                     None => ServerboundPlay::decode(&body, version),
                 } {
                     Ok(packet) => {
-                        if game.send(GameEvent::Packet { conn_id, packet }).is_err() {
+                        let event = match packet {
+                            ServerboundPlay::KeepAlive { id } => GameEvent::KeepAlive {
+                                conn_id,
+                                id,
+                                received: std::time::Instant::now(),
+                            },
+                            packet => GameEvent::Packet { conn_id, packet },
+                        };
+                        if game.send(event).is_err() {
                             break None;
                         }
                     }

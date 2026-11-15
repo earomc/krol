@@ -45,6 +45,10 @@ pub struct Player {
     pub ticks: u64,
     /// Network tick of the last keep-alive sent.
     pub last_keep_alive: u64,
+    /// The last keep-alive's id and when it went out (`field_147378_h` / `_i`).
+    pub keep_alive_sent: (i32, std::time::Instant),
+    /// Round-trip time average in milliseconds (`ping`), shown in the player list.
+    pub ping: i32,
     /// Chunks the player watches (vanilla: `PlayerInstance.playersWatchingChunk`); a
     /// chunk is watched from the moment it is queued, before it is sent.
     pub watching: HashSet<(i32, i32)>,

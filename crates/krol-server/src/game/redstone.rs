@@ -793,6 +793,9 @@ impl Game {
         if super::dispenser::is_dispenser(id) {
             return Some(container_signal(&self.dispenser_items(pos)));
         }
+        if id == super::brewing::BREWING_STAND {
+            return Some(container_signal(&self.brewing_items(pos)));
+        }
         None
     }
 

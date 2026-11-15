@@ -32,6 +32,7 @@ enum Inv {
     Furnace((i32, i32, i32)),
     Hopper((i32, i32, i32)),
     Dispenser((i32, i32, i32)),
+    Brewing((i32, i32, i32)),
 }
 
 /// The facing of a hopper (`EnumFacing.getFront(meta & 7)`).
@@ -138,6 +139,7 @@ impl Game {
             _ if block::is_furnace(id) => Some(Inv::Furnace(pos)),
             block::HOPPER => Some(Inv::Hopper(pos)),
             _ if super::dispenser::is_dispenser(id) => Some(Inv::Dispenser(pos)),
+            super::brewing::BREWING_STAND => Some(Inv::Brewing(pos)),
             _ => None,
         }
     }
@@ -148,6 +150,7 @@ impl Game {
             Inv::Furnace(pos) => self.furnace_items(*pos),
             Inv::Hopper(pos) => self.hopper_items(*pos),
             Inv::Dispenser(pos) => self.dispenser_items(*pos),
+            Inv::Brewing(pos) => self.brewing_items(*pos),
         }
     }
 
@@ -159,6 +162,7 @@ impl Game {
             Inv::Furnace(pos) => self.set_furnace_items(*pos, items, put_input),
             Inv::Hopper(pos) => self.set_hopper_items(*pos, items),
             Inv::Dispenser(pos) => self.set_dispenser_items(*pos, items),
+            Inv::Brewing(pos) => self.set_brewing_items(*pos, items),
         }
     }
 
@@ -168,6 +172,10 @@ impl Game {
             (Inv::Furnace(_), Some(DOWN)) => vec![super::furnace::OUTPUT, super::furnace::FUEL],
             (Inv::Furnace(_), Some(UP)) => vec![super::furnace::INPUT],
             (Inv::Furnace(_), Some(_)) => vec![super::furnace::FUEL],
+            // TileEntityBrewingStand.getSlotsForFace: the ingredient from above, the
+            // bottles from everywhere else.
+            (Inv::Brewing(_), Some(UP)) => vec![super::brewing::INGREDIENT],
+            (Inv::Brewing(_), Some(_)) => vec![0, 1, 2],
             _ => (0..len).collect(),
         }
     }
@@ -180,6 +188,14 @@ impl Game {
                 super::furnace::FUEL => super::furnace::fits_fuel_slot(stack),
                 _ => true,
             },
+            // TileEntityBrewingStand.isItemValidForSlot.
+            Inv::Brewing(_) => {
+                if slot == super::brewing::INGREDIENT {
+                    super::brewing::is_ingredient(stack)
+                } else {
+                    super::brewing::fits_bottle_slot(stack)
+                }
+            }
             _ => true,
         }
     }
@@ -392,23 +408,22 @@ impl Game {
         false
     }
 
-    /// `TileEntityHopper.update` for every hopper, in load order.
-    pub(super) fn tick_hoppers(&mut self) {
-        let list = self.level.overworld.hoppers.clone();
-        for pos in list {
+    /// `TileEntityHopper.update`.
+    pub(super) fn tick_hopper(&mut self, pos: (i32, i32, i32)) {
+        {
             let Some(mut data) = self.hopper_data(pos) else {
-                continue;
+                return;
             };
             data.cooldown -= 1;
             self.store_hopper(pos, &data);
             if data.cooldown > 0 {
-                continue;
+                return;
             }
             data.cooldown = 0;
             self.store_hopper(pos, &data);
             let state = self.level.overworld.block(pos.0, pos.1, pos.2);
             if state & DISABLED != 0 {
-                continue;
+                return;
             }
             let mut moved = false;
             if data.items.iter().any(Option::is_some) {

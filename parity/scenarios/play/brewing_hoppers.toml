@@ -1,0 +1,53 @@
+description = "Brewing stand fed by hoppers: three water bottles shift-clicked into a hopper beside the stand go into the bottle slots, a nether wart in a hopper above it goes into the ingredient slot, and the stand brews three awkward potions"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data: a brewing stand in slot 0, water bottles in slots
+# 1-3, a nether wart in slot 4) stands at the spawn (-471.5, 4, -434.5). The stand is
+# at (-470, 4, -433), a hopper facing east into it at (-471, 4, -433) and a hopper
+# facing down into it at (-470, 5, -433). Hopper windows: five slots, main inventory
+# 5-31, hotbar 32-40. Each hopper moves one item every 8 ticks.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_brewer.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -433 brewing_stand"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -433 hopper 5"
+
+[[steps]]
+action = "console"
+command = "setblock -470 5 -433 hopper 0"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 30
+chat = [
+    "@1000 !place -471 4 -433 1",
+    "@1500 !click 1 33 0 1 1 373 1 0",
+    "@2000 !click 1 34 0 2 1 373 1 0",
+    "@2500 !click 1 35 0 3 1 373 1 0",
+    "@3000 !close 1",
+    "@3500 !place -470 5 -433 1",
+    "@4000 !click 2 36 0 1 1 372 1 0",
+    "@4500 !close 2",
+]
+
+[observe]
+log = true
+blocks = [[-470, 4, -433]]
+tile_entities = [[-470, 4, -433], [-471, 4, -433], [-470, 5, -433]]
