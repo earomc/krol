@@ -185,6 +185,10 @@ impl Game {
                 self.check_double_plant(pos, state);
                 return;
             }
+            super::tnt::TNT => {
+                self.tnt_check_power(pos);
+                return;
+            }
             block::COCOA => {
                 self.cocoa_neighbor_changed(pos, state);
                 return;
@@ -319,6 +323,7 @@ impl Game {
             }
             _ if super::liquids::is_liquid(id) => self.liquid_added(pos, state),
             block::FIRE => self.fire_added(pos),
+            super::tnt::TNT => self.tnt_check_power(pos),
             block::REDSTONE_WIRE => self.wire_added(pos, state),
             block::REDSTONE_TORCH => self.torch_notify(pos, id),
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_added(pos, id),
@@ -336,6 +341,7 @@ impl Game {
     /// `onBlockDestroyedByPlayer`, after a player broke the block.
     pub(super) fn destroyed_by_player(&mut self, pos: (i32, i32, i32), old: u16) {
         self.repeater_destroyed(pos, old);
+        self.tnt_destroyed(pos, old);
     }
 
     /// `breakBlock` of the removed block: a powered lever or button updates around

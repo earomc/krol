@@ -53,6 +53,8 @@ pub struct XpOrb {
     pickup_delay: i32,
     /// Removed from the world (`isDead`).
     pub dead: bool,
+    /// `xpOrbHealth` (5): damage destroys the orb at 0.
+    pub health: i32,
     /// The chunk the entity was last added to.
     pub chunk: (i32, i32),
 }
@@ -77,14 +79,14 @@ impl Game {
     /// motion from `Math.random()`.
     pub(super) fn spawn_orb(&mut self, pos: (f64, f64, f64), value: i32) {
         let entity_id = self.next_entity_id();
-        let r = &mut self.world_rand;
+        let r = &mut self.math_random;
         let _yaw = r.next_double();
         let mut horizontal =
             || f64::from((r.next_double() * f64::from(0.2f32) - f64::from(0.1f32)) as f32 * 2.0);
         let mx = horizontal();
         let my = f64::from((r.next_double() * 0.2) as f32 * 2.0);
         let mz = {
-            let r = &mut self.world_rand;
+            let r = &mut self.math_random;
             f64::from((r.next_double() * f64::from(0.2f32) - f64::from(0.1f32)) as f32 * 2.0)
         };
         let mut body = Body::player(pos, false);
@@ -103,6 +105,7 @@ impl Game {
                 target: None,
                 pickup_delay: 0,
                 dead: false,
+                health: super::item_entity::ENTITY_HEALTH,
                 chunk: (floor_f64(pos.0) >> 4, floor_f64(pos.2) >> 4),
             },
         );
@@ -238,7 +241,8 @@ impl Game {
         }
         let value = orb.value;
         self.players[i].xp_cooldown = PICKUP_COOLDOWN;
-        let r = &mut self.world_rand;
+        // The orb's own random (unseeded in vanilla).
+        let r = &mut self.entity_rand;
         let pitch = 0.5 * ((r.next_float() - r.next_float()) * 0.7 + 1.8);
         let pos = self.players[i].pos;
         self.play_sound_near_except(None, "random.orb", pos, 0.1, pitch);
@@ -291,7 +295,7 @@ impl Game {
             let exact = taken as f32 * xp;
             let mut whole = krol_java::math::floor_f32(exact);
             if whole < krol_java::math::ceil_f32(exact)
-                && self.world_rand.next_double() < f64::from(exact - whole as f32)
+                && self.math_random.next_double() < f64::from(exact - whole as f32)
             {
                 whole += 1;
             }

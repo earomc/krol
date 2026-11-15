@@ -206,7 +206,10 @@ impl Game {
         } else {
             self.set_block_notify(q, 0);
         }
-        // TODO(M5): burning TNT primes it.
+        // Burning TNT primes (BlockTNT.onBlockDestroyedByPlayer with explode set).
+        if old >> 4 == super::tnt::TNT {
+            self.tnt_destroyed(q, old | 1);
+        }
     }
 
     /// `BlockFire.getNeighborEncouragement`: for an air block, the best encouragement

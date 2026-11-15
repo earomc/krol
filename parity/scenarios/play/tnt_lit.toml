@@ -1,0 +1,47 @@
+description = "TNT set off by a player in creative mode: flint and steel lights one (the block goes, primed TNT appears and explodes), breaking one marked to explode primes it too; outcomes compared (the primed TNT's drift comes from the unseeded Math.random())"
+subsystem = "blocks"
+
+# Notch (creative from fixture data, so explosions cannot hurt him, holding flint and
+# steel) stands at (-471.5, 4, -434.5). The lit TNT is 3.5 blocks north, the marked one
+# (metadata 1) 3.5 blocks south (within digging reach). Only the TNT spots
+# and the untouched bedrock under them are compared: the craters depend on where the
+# TNT drifted. Tile drops are off (no pickups at timing-dependent moments).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_creative_flint.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doTileDrops false"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -438 tnt"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -431 tnt 1"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 12
+chat = [
+    "@2500 !place -472 4 -438 3",
+    "@7000 !dig -472 4 -431 2",
+]
+
+[observe]
+log = true
+blocks = [[-472, 4, -438], [-472, 0, -438], [-472, 4, -431], [-472, 0, -431]]
+ignore = ["player"]

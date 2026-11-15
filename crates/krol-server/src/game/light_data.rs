@@ -1,6 +1,6 @@
 //! Per-block light and shape properties of vanilla 1.8.8 (`Block.getLightOpacity`,
 //! `getLightValue`, `getUseNeighborBrightness`, `getTickRandomly`, `isVisuallyOpaque`,
-//! `isFullBlock`, `isFullCube`, `isNormalCube`), extracted by
+//! `isFullBlock`, `isFullCube`, `isNormalCube`, `getExplosionResistance`), extracted by
 //! `tools/datagen/BlockLightDump.java` into `data/block_light.txt`.
 
 use std::sync::OnceLock;
@@ -19,6 +19,7 @@ struct Entry {
     full_block: bool,
     full_cube: bool,
     normal_cube: bool,
+    resistance: f32,
 }
 
 fn table() -> &'static [Entry; IDS] {
@@ -26,10 +27,12 @@ fn table() -> &'static [Entry; IDS] {
     TABLE.get_or_init(|| {
         let mut t = [Entry::default(); IDS];
         for line in include_str!("../../data/block_light.txt").lines() {
-            let f: Vec<u32> = line
-                .split_whitespace()
-                .filter_map(|v| v.parse().ok())
-                .collect();
+            let cols: Vec<&str> = line.split_whitespace().collect();
+            let Some((resistance, ints)) = cols.split_last() else {
+                continue;
+            };
+            let f: Vec<u32> = ints.iter().filter_map(|v| v.parse().ok()).collect();
+            let resistance = u32::from_str_radix(resistance, 16).map_or(0.0, f32::from_bits);
             if let [
                 id,
                 opacity,
@@ -52,6 +55,7 @@ fn table() -> &'static [Entry; IDS] {
                     full_block: block != 0,
                     full_cube: cube != 0,
                     normal_cube: normal != 0,
+                    resistance,
                 };
             }
         }
@@ -106,6 +110,11 @@ pub fn full_cube(id: u16) -> bool {
     flag(id, |e| e.full_cube)
 }
 
+/// `Block.getExplosionResistance(null)`: the block's resistance to explosion rays.
+pub fn explosion_resistance(id: u16) -> f32 {
+    table().get(usize::from(id)).map_or(0.0, |e| e.resistance)
+}
+
 /// `Block.isNormalCube`.
 pub fn normal_cube(id: u16) -> bool {
     flag(id, |e| e.normal_cube)
@@ -118,6 +127,9 @@ mod tests {
     #[test]
     fn vanilla_values() {
         assert_eq!(opacity(1), 255);
+        assert_eq!(explosion_resistance(1), 6.0);
+        assert_eq!(explosion_resistance(49), 1200.0);
+        assert_eq!(explosion_resistance(8), 100.0);
         assert_eq!(opacity(8), 3);
         assert_eq!(opacity(18), 1);
         assert_eq!(light_value(50), 14);

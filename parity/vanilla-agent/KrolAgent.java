@@ -2,13 +2,15 @@
 //
 // A test-only Java agent for the vanilla 1.8.8 server used by the parity suite
 // (AGENTS.md section 10.2). It adds one console command,
-// `krolpin <seed> [randomTickSpeed] [ticks]`, which seeds
-// every world's random (World.rand) and random block tick generator (World.updateLCG),
+// `krolpin <seed> [randomTickSpeed] [ticks] [-- <command>]`, which seeds
+// every world's random (World.rand), random block tick generator (World.updateLCG) and
+// the generator behind Math.random(),
 // and sets the cave mood countdown to 12000 (World.ambientTickCountdown). With a speed it
 // also sets the randomTickSpeed game rule in the same tick, and with a tick count it sets
 // the rule back to 0 at the end of that many ticks (through a tickable, which runs after
 // the worlds' ticks), so a scenario can run random ticks for an exact number of ticks
-// so that behavior driven by them can be compared with krol exactly; krol answers the
+// so that behavior driven by them can be compared with krol exactly. A command after
+// `--` runs right after pinning, in the same tick (e.g. one that primes TNT). krol answers the
 // same command in builds with the `parity` feature.
 //
 // The server jar is obfuscated, so the agent works through reflection on the official
@@ -65,7 +67,9 @@ public final class KrolAgent {
             Class<?> command = Class.forName("k");
             Class<?> handler = Class.forName("j");
             final Object theServer = server;
-            InvocationHandler behavior = (proxy, method, a) -> answer(theServer, proxy, method, a);
+            final Object theCommands = commands;
+            InvocationHandler behavior =
+                (proxy, method, a) -> answer(theServer, theCommands, proxy, method, a);
             Object pin = Proxy.newProxyInstance(command.getClassLoader(), new Class<?>[] {command}, behavior);
             handler.getMethod("a", command).invoke(commands, pin);
         } catch (Exception e) {
@@ -74,7 +78,8 @@ public final class KrolAgent {
     }
 
     /** The ICommand methods of the pin command, told apart by name and parameters. */
-    private static Object answer(Object server, Object self, Method m, Object[] a) throws Exception {
+    private static Object answer(Object server, Object commands, Object self, Method m, Object[] a)
+            throws Exception {
         String n = m.getName();
         int params = m.getParameterCount();
         Class<?> ret = m.getReturnType();
@@ -91,13 +96,20 @@ public final class KrolAgent {
             return true; // canCommandSenderUseCommand
         }
         if (n.equals("a") && params == 2) {
-            String[] args = (String[]) a[1]; // processCommand
+            String[] all = (String[]) a[1]; // processCommand
+            // Everything after "--" is a command to run right after pinning.
+            int dash = java.util.Arrays.asList(all).indexOf("--");
+            String[] args = dash < 0 ? all : java.util.Arrays.copyOf(all, dash);
             pin(server, Long.parseLong(args[0]));
             if (args.length >= 2) {
                 setRandomTickSpeed(server, args[1]);
             }
             if (args.length >= 3) {
                 stopAfter(server, Integer.parseInt(args[2]));
+            }
+            if (dash >= 0) {
+                String then = String.join(" ", java.util.Arrays.copyOfRange(all, dash + 1, all.length));
+                Class.forName("j").getMethod("a", Class.forName("m"), String.class).invoke(commands, a[0], then);
             }
             return null;
         }
@@ -156,7 +168,7 @@ public final class KrolAgent {
         return (Object[]) worldsField.get(server);
     }
 
-    /** Seeds World.rand and World.updateLCG of every loaded world. */
+    /** Seeds World.rand and World.updateLCG of every loaded world, and Math.random(). */
     private static void pin(Object server, long seed) throws Exception {
         Object[] worlds = worlds(server);
         Class<?> world = Class.forName("adm");
@@ -174,5 +186,11 @@ public final class KrolAgent {
             lcg.setInt(w, (int) seed);
             mood.setInt(w, 12000);
         }
+        // Math.random() draws from one shared generator (primed TNT picks its motion
+        // with it).
+        Field mathRandom = Class.forName("java.lang.Math$RandomNumberGeneratorHolder")
+            .getDeclaredField("randomNumberGenerator");
+        mathRandom.setAccessible(true);
+        ((Random) mathRandom.get(null)).setSeed(seed);
     }
 }

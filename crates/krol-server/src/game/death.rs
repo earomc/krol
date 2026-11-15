@@ -99,6 +99,17 @@ impl Game {
                 let suffix = w.location.unwrap_or("generic");
                 Component::translate(format!("death.fell.accident.{suffix}"), vec![name])
             }
+            // EntityDamageSourceIndirect: the player who lit the TNT is named too.
+            (_, DamageSource::ExplosionBy(igniter)) => {
+                match self.players.iter().find(|p| p.entity_id == igniter) {
+                    Some(by) => Component::translate(
+                        "death.attack.explosion.player",
+                        vec![name, Arg::Component(Self::display_name(&by.profile))],
+                    ),
+                    // TODO(M5): the igniter's entity outlives its connection in vanilla.
+                    None => Component::translate("death.attack.explosion", vec![name]),
+                }
+            }
             // TODO(M5): falls finished or assisted by an attacker.
             _ => Component::translate(format!("death.attack.{}", last.source.name()), vec![name]),
         }

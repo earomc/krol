@@ -108,6 +108,9 @@ pub const PROTECTION: i16 = 0;
 /// `Enchantment.featherFalling`'s id.
 pub const FEATHER_FALLING: i16 = 2;
 
+/// `Enchantment.blastProtection`'s id.
+pub const BLAST_PROTECTION: i16 = 3;
+
 /// `Enchantment.fireProtection`'s id.
 pub const FIRE_PROTECTION: i16 = 1;
 

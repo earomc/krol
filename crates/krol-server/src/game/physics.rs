@@ -166,6 +166,9 @@ pub struct Body {
     /// Touched a cobweb in the last `doBlockCollisions` (`isInWeb`): the next move is
     /// slowed down and stops the motion.
     pub in_web: bool,
+    /// The motion was changed from outside (`velocityChanged`, `setBeenAttacked`): the
+    /// tracker sends it at its next update.
+    pub velocity_changed: bool,
 }
 
 impl Body {
@@ -185,6 +188,7 @@ impl Body {
             next_step_distance: 1,
             in_water: false,
             in_web: false,
+            velocity_changed: false,
         }
     }
 

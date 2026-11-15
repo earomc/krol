@@ -36,6 +36,10 @@ const FALLING_RANGE: i32 = 160;
 const FALLING_FREQUENCY: u32 = 20;
 /// `S0EPacketSpawnObject` type of falling blocks.
 const FALLING_OBJECT: i8 = 70;
+/// Primed TNT: range 160, every 10 ticks, with velocity updates; spawn object type 50.
+const TNT_RANGE: i32 = 160;
+const TNT_FREQUENCY: u32 = 10;
+const TNT_OBJECT: i8 = 50;
 /// Experience orbs: range 160, every 20 ticks, with velocity updates.
 const ORB_RANGE: i32 = 160;
 const ORB_FREQUENCY: u32 = 20;
@@ -189,6 +193,20 @@ impl Game {
                 player: None,
             });
         }
+        if let Some(t) = self.tnt.get(&entity_id) {
+            return Some(View {
+                pos: t.body.pos,
+                yaw: 0.0,
+                pitch: 0.0,
+                head: 0.0,
+                on_ground: t.body.on_ground,
+                motion: t.body.motion,
+                chunk: t.chunk,
+                airborne: false,
+                metadata_changed: false,
+                player: None,
+            });
+        }
         if let Some(o) = self.orbs.get(&entity_id) {
             return Some(View {
                 pos: o.body.pos,
@@ -255,6 +273,8 @@ impl Game {
             (ORB_RANGE, ORB_FREQUENCY, true)
         } else if self.falling.contains_key(&entity_id) {
             (FALLING_RANGE, FALLING_FREQUENCY, true)
+        } else if self.tnt.contains_key(&entity_id) {
+            (TNT_RANGE, TNT_FREQUENCY, true)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
         };
@@ -412,6 +432,29 @@ impl Game {
                 x: velocity.0,
                 y: velocity.1,
                 z: velocity.2,
+            });
+        } else if self.tnt.contains_key(&entity_id) {
+            // Data 0: the spawn packet carries no velocity.
+            packets.push(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind: TNT_OBJECT,
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                pitch: 0,
+                yaw: 0,
+                data: 0,
+                velocity: None,
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: super::tnt::PrimedTnt::metadata(),
+            });
+            packets.push(ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: speed(v.motion.0),
+                y: speed(v.motion.1),
+                z: speed(v.motion.2),
             });
         } else if let Some(o) = self.orbs.get(&entity_id) {
             packets.push(ClientboundPlay::SpawnExperienceOrb {
@@ -682,8 +725,32 @@ impl Game {
                 };
                 self.send_to_tracking_and_self(entity_id, &packet);
             }
+        } else if let Some(m) = self.take_velocity_changed(entity_id) {
+            let s = |m: f64| (m.clamp(-3.9, 3.9) * 8000.0) as i16;
+            let packet = ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: s(m.0),
+                y: s(m.1),
+                z: s(m.2),
+            };
+            self.send_to_tracking(entity_id, &packet);
         }
         rechecked
+    }
+
+    /// Clears a non-player entity's `velocityChanged` and returns its motion if it was
+    /// set.
+    fn take_velocity_changed(&mut self, entity_id: i32) -> Option<(f64, f64, f64)> {
+        let body = if let Some(it) = self.items.get_mut(&entity_id) {
+            &mut it.body
+        } else if let Some(o) = self.orbs.get_mut(&entity_id) {
+            &mut o.body
+        } else if let Some(f) = self.falling.get_mut(&entity_id) {
+            &mut f.body
+        } else {
+            &mut self.tnt.get_mut(&entity_id)?.body
+        };
+        std::mem::take(&mut body.velocity_changed).then_some(body.motion)
     }
 
     /// Changed metadata and attributes go to the viewers and the player itself

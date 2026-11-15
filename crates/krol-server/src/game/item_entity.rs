@@ -26,12 +26,17 @@ pub struct ItemEntity {
     pub ticks: i32,
     /// Removed from the world (`isDead`).
     pub dead: bool,
+    /// `health` (5): damage destroys the item at 0.
+    pub health: i32,
     /// The chunk the entity was last added to.
     pub chunk: (i32, i32),
     /// Metadata indices changed since the tracker last sent them (all of them on
     /// creation).
     pub dirty_metadata: std::collections::BTreeSet<u8>,
 }
+
+/// The health items and experience orbs start with.
+pub const ENTITY_HEALTH: i32 = 5;
 
 impl ItemEntity {
     /// Vanilla's metadata for an item entity.
@@ -63,14 +68,18 @@ fn has_subtypes(id: i16) -> bool {
 /// What a block drops when harvested without enchantments (`quantityDropped`,
 /// `getItemDropped`, `damageDropped`), using the world random like vanilla.
 /// TODO(M5): crops, beds and the other special drops.
-fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
+/// What a block drops: `quantityDropped` rolled up front, the item decided per drop
+/// ([`pick_drop`]).
+struct DropPlan {
+    block: u16,
+    meta: u16,
+    count: i32,
+    item: Option<i16>,
+    damage: i16,
+}
+
+fn drop_plan(rand: &mut krol_java::JavaRandom, state: u16) -> DropPlan {
     let (b, m) = (state >> 4, (state & 15) as i16);
-    let stack = |id: i16, damage: i16| ItemStack {
-        id,
-        count: 1,
-        damage,
-        nbt: None,
-    };
     // (quantity, item, damage); a quantity of 0 drops nothing.
     let (count, item, damage): (i32, Option<i16>, i16) = match b {
         1 => (1, Some(if m == 0 { 4 } else { 1 }), m),
@@ -139,32 +148,37 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
             }
         }
     };
-    let mut out = Vec::new();
-    for _ in 0..count {
-        // dropBlockAsItemWithChance: chance 1.0 still draws a float.
-        if rand.next_float() > 1.0 {
-            continue;
-        }
-        let item = match b {
-            13 => Some(if rand.next_int_bounded(10) == 0 {
-                318
-            } else {
-                13
-            }),
-            31 => (rand.next_int_bounded(8) == 0).then_some(295),
-            super::plants::DOUBLE_PLANT => {
-                if let Some((id, damage)) = super::plants::double_plant_drop(rand, m as u16) {
-                    out.push(stack(id, damage));
-                }
-                None
-            }
-            _ => item,
-        };
-        if let Some(id) = item {
-            out.push(stack(id, damage));
-        }
+    DropPlan {
+        block: b,
+        meta: m as u16,
+        count,
+        item,
+        damage,
     }
-    out
+}
+
+/// `getItemDropped` / `damageDropped` for one drop of `plan`.
+fn pick_drop(rand: &mut krol_java::JavaRandom, plan: &DropPlan) -> Option<ItemStack> {
+    let stack = |id: i16, damage: i16| ItemStack {
+        id,
+        count: 1,
+        damage,
+        nbt: None,
+    };
+    let item = match plan.block {
+        13 => Some(if rand.next_int_bounded(10) == 0 {
+            318
+        } else {
+            13
+        }),
+        31 => (rand.next_int_bounded(8) == 0).then_some(295),
+        super::plants::DOUBLE_PLANT => {
+            return super::plants::double_plant_drop(rand, plan.meta)
+                .map(|(id, damage)| stack(id, damage));
+        }
+        _ => plan.item,
+    };
+    item.map(|id| stack(id, plan.damage))
 }
 
 impl Game {
@@ -178,6 +192,17 @@ impl Game {
     /// Drops what the block leaves when harvested (`dropBlockAsItem`), unless the
     /// `doTileDrops` game rule is off.
     pub(super) fn drop_block_items(&mut self, pos: (i32, i32, i32), state: u16) {
+        self.drop_block_items_with_chance(pos, state, 1.0);
+    }
+
+    /// `dropBlockAsItemWithChance`: each drop happens if a random float is at most
+    /// `chance` (explosions drop with `1 / strength`); every roll is made even at 1.
+    pub(super) fn drop_block_items_with_chance(
+        &mut self,
+        pos: (i32, i32, i32),
+        state: u16,
+        chance: f32,
+    ) {
         if super::leaves::is_leaves(state >> 4) {
             self.drop_leaves(pos, state);
             return;
@@ -188,8 +213,14 @@ impl Game {
             }
             return;
         }
-        for stack in block_drops(&mut self.world_rand, state) {
-            self.spawn_as_entity(pos, stack);
+        let plan = drop_plan(&mut self.world_rand, state);
+        for _ in 0..plan.count {
+            if self.world_rand.next_float() > chance {
+                continue;
+            }
+            if let Some(stack) = pick_drop(&mut self.world_rand, &plan) {
+                self.spawn_as_entity(pos, stack);
+            }
         }
     }
 
@@ -226,8 +257,10 @@ impl Game {
         motion: Option<(f64, f64, f64)>,
     ) {
         let entity_id = self.next_entity_id();
-        // Vanilla uses Math.random() here.
-        let r = &mut self.world_rand;
+        // EntityItem: hoverStart (a field initializer), the yaw and the motion all come
+        // from Math.random().
+        let r = &mut self.math_random;
+        let _hover_start = r.next_double();
         let yaw = (r.next_double() * 360.0) as f32;
         let mx = f64::from((r.next_double() * f64::from(0.2f32) - f64::from(0.1f32)) as f32);
         let mz = f64::from((r.next_double() * f64::from(0.2f32) - f64::from(0.1f32)) as f32);
@@ -244,6 +277,7 @@ impl Game {
             pickup_delay: delay,
             ticks: 0,
             dead: false,
+            health: ENTITY_HEALTH,
             chunk: (
                 krol_java::math::floor_f64(pos.0) >> 4,
                 krol_java::math::floor_f64(pos.2) >> 4,
@@ -287,7 +321,8 @@ impl Game {
                 m.0 * m.0 * f64::from(0.2f32) + m.1 * m.1 + m.2 * m.2 * f64::from(0.2f32),
             ) * 0.2)
                 .min(1.0);
-            let r = &mut self.world_rand;
+            // The item's own random (unseeded in vanilla).
+            let r = &mut self.entity_rand;
             let pitch = 1.0 + (r.next_float() - r.next_float()) * 0.4;
             let pos = it.body.pos;
             self.play_sound_near_except(None, "game.neutral.swim.splash", pos, volume, pitch);

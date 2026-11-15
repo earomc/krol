@@ -48,15 +48,18 @@ until close), `login_start` (`protocol`, `name`). Observation paths listed in
 
 A scenario with `pin_random = true` in `[setup]` loads `parity/vanilla-agent` into
 vanilla (built by xtask with the local JDK: `javac`/`jar`, or `KROL_JAVAC` and
-`KROL_JAR_TOOL`). It adds the console command `krolpin <seed> [randomTickSpeed] [ticks]`, which seeds
-every world's `World.rand` and random tick generator (`updateLCG`), optionally sets the
-random tick speed in the same tick and back to 0 after exactly that many ticks; krol
-answers the same command in builds with the `parity` feature (xtask builds krol that
-way, into `target/parity-build`). Issue `krolpin` from the console right before the
-behavior to compare. With a player online every tick draws from the world random, so
-start and stop random ticks through `krolpin` itself rather than separate `gamerule`
-commands, whose tick depends on timing. Entity randoms (item arcs, sound pitches) are not
-pinned yet.
+`KROL_JAR_TOOL`). It adds the console command
+`krolpin <seed> [randomTickSpeed] [ticks] [-- <command>]`, which seeds every world's
+`World.rand`, random tick generator (`updateLCG`) and the JVM's `Math.random()` generator
+(primed TNT, item and orb motion), optionally sets the random tick speed in the same tick
+and back to 0 after exactly that many ticks, and runs the command after `--` right away
+in the same tick (e.g. a `setblock` that primes TNT); krol answers the same command in
+builds with the `parity` feature (xtask builds krol that way, into `target/parity-build`).
+Issue `krolpin` from the console right before the behavior to compare, once every player
+has joined: each active chunk draws from the world random every tick, so a player
+arriving later changes the draws. Start and stop random ticks, and trigger what should be
+compared, through `krolpin` itself rather than separate commands, whose tick depends on
+timing. Per-entity randoms (`Entity.rand`: sound pitches, knockback rolls) are not pinned.
 
 ## Writing race-free scenarios
 

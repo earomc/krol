@@ -442,3 +442,8 @@ scenarios = ["play/block_reactions"]
 id = "physics.collision_shapes"
 description = "Block collision shapes (addCollisionBoxesToList / getCollisionBoundingBox): stairs with inner and outer corners, fences, walls and panes connecting to their neighbors, doors (halves read each other), trapdoors, fence gates by axis, ladders, cauldrons, hoppers, brewing stands, end portal frames, skulls, cocoa, piston heads, cake, flower pots, dragon eggs. Not yet: anvils and double chests (vanilla uses the bounds a ray trace last left on the block)"
 scenarios = ["play/collision_shapes"]
+
+[[feature]]
+id = "world.explosions"
+description = "Explosions and TNT: rays with block resistance (data extracted from vanilla), the affected HashSet order and the explosion packet, drops rolled with 1/strength, entity damage by exposure (getBlockDensity) with difficulty scaling and blast protection, knockback, primed TNT (Math.random motion, fuse, tracking), chain reactions with short random fuses, priming by redstone, flint and steel and breaking explode-marked TNT; entities spawned during the entity loop update in the same tick. Not yet: fire charges, dispensers, burning arrows, flaming explosions, mobs"
+scenarios = ["play/tnt_pinned", "play/tnt_lit"]

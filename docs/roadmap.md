@@ -130,7 +130,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x22 Multi Block Change · 0x23 Block Change | ✅ | |
 | 0x24 Block Action | ✅ | Chests, note blocks, pistons |
 | 0x25 Block Break Animation | ✅ | |
-| 0x27 Explosion | ❌ | No explosions |
+| 0x27 Explosion | ✅ | |
 | 0x28 Effect | 🟡 | Many effects (doors, fire, bone meal, dispensers, block break 2001, ...); missing those of unimplemented features (records, potion splash, portal travel, ...) |
 | 0x29 Sound Effect | 🟡 | Block, step, player and liquid sounds; mob and many item sounds missing |
 | 0x2A Particle | 🟡 | Block dust on falls; most server-sent particles belong to missing features |
@@ -189,7 +189,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | `Teleporter` (nether portals), end portal travel | ❌ | |
 | `GameRules`: storage, `/gamerule`, all 1.8.8 rules listed | 🟡 | Honored: `doTileDrops`, `doFireTick`, `keepInventory`, `doMobLoot`, `naturalRegeneration`, `randomTickSpeed`, `doDaylightCycle`, `showDeathMessages`, `sendCommandFeedback`, `logAdminCommands`, `commandBlockOutput` (where commands exist), `reducedDebugInfo`. `doEntityDrops` for falling blocks. Pending with their features: `doMobSpawning`, `mobGriefing`, `doEntityDrops` for other entities |
 | `EnumDifficulty` (`/difficulty`, effects on hunger damage and fire) | 🟡 | Mob-related difficulty effects arrive with mobs; `DifficultyInstance` (regional difficulty) ❌ |
-| `Explosion` | ❌ | TNT, creepers, ghast fireballs, beds in the nether |
+| `Explosion` | ✅ | Rays with block resistance (extracted from vanilla), the affected `HashSet` order, entity damage by exposure (`getBlockDensity`), knockback, drops with 1/strength chance, chain TNT, the packet. Flaming explosions and mobs ❌; treeified `HashSet` buckets ❌ |
 | `SpawnerAnimals` (natural spawning, chunk generation spawns) | ❌ | |
 | `World.playAuxSFX`, `playSoundEffect`, `spawnParticle` routing | ✅ | |
 | `WorldManager` / `IWorldAccess` (block change and sound broadcasting) | ✅ | |
@@ -342,7 +342,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockDragonEgg` | ❌ | |
 | `BlockPortal`, `BlockEndPortal`, `BlockEndPortalFrame` | ❌ | |
 | `BlockSilverfish` | 🟡 | Drops nothing ✅; spawning silverfish ❌ |
-| `BlockTNT` | ❌ | |
+| `BlockTNT` | 🟡 | Primed by redstone, flint and steel, fire, explosions, breaking explode-marked TNT ✅; fire charges, burning arrows, dispensers ❌ |
 | `BlockRedstoneWire` | ✅ | Update order quirks reproduced |
 | `BlockRedstoneTorch` | ✅ | Burnout |
 | `BlockRedstoneLight` | ✅ | |
@@ -373,7 +373,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemTool`, `ItemPickaxe`, `ItemAxe`, `ItemSpade`, `ItemSword` | ✅ | Mining speed, wear. Sword blocking ❌, attack damage ❌ (no attacking) |
 | `ItemHoe` | ✅ | |
 | `ItemShears` | ✅ | Shearing sheep ❌ |
-| `ItemFlintAndSteel` | 🟡 | Fire ✅; portals, TNT, creepers ❌ |
+| `ItemFlintAndSteel` | 🟡 | Fire, lighting TNT ✅; portals, creepers ❌ |
 | `ItemBucket` | 🟡 | Water and lava in survival ✅; creative use, milking cows ❌ |
 | `ItemBucketMilk` | ✅ | |
 | `ItemFood`, `ItemAppleGold`, `ItemSoup`, `ItemFishFood` | ✅ | |
@@ -459,7 +459,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `Entity`: ids, `moveEntity` (collision, stepping, sneaking edges, webs), fall distance, water/lava handling, fire, `doBlockCollisions` | 🟡 | Cobwebs, soul sand, cactus, pressure plates ✅; portals, tripwires, detector rails ❌ |
 | `Entity.isEntityInsideOpaqueBlock` | ✅ | Suffocation (players) |
 | `DataWatcher` (metadata) | ✅ | |
-| `EntityLivingBase`: health, hurt time, hurt resistance, `attackEntityFrom`, armor, absorption, effects, attributes, air, death update | 🟡 | Knockback from attackers ❌, combat tracker death messages ✅ for implemented sources |
+| `EntityLivingBase`: health, hurt time, hurt resistance, `attackEntityFrom`, armor, absorption, effects, attributes, air, death update, knockback | 🟡 | Knockback from attacking entities ✅ (explosions); combat tracker death messages ✅ for implemented sources |
 | `EntityLiving` (mobs: AI tasks, equipment, despawning, leashes) | ❌ | |
 | `EntityCreature`, `EntityAgeable`, `EntityFlying`, `EntityHanging` | ❌ | |
 | `EntityTracker`, `EntityTrackerEntry` | 🟡 | All implemented entity kinds; ranges/intervals for missing kinds |
@@ -497,7 +497,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityItem` | ✅ | Physics, merging, pickup, despawn, water. Burning in lava/fire ❌ |
 | `EntityXPOrb` | ✅ | Lava ❌ |
 | `EntityFallingBlock` | ✅ | Anvils (damage), dragon eggs ❌ |
-| `EntityTNTPrimed` | ❌ | |
+| `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50). Saving with the chunk ❌ |
 | `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | ❌ | |
 | `EntityBoat` | ❌ | |
 | `EntityItemFrame`, `EntityPainting`, `EntityLeashKnot` | ❌ | |
@@ -542,7 +542,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Enchantment | Status | Notes |
 |---|---|---|
 | Protection, Fire Protection, Feather Falling | ✅ | |
-| Blast Protection, Projectile Protection | ❌ | Needs explosions/projectiles |
+| Blast Protection | ✅ | Damage and explosion knockback |
+| Projectile Protection | ❌ | Needs projectiles |
 | Respiration | ✅ | |
 | Aqua Affinity, Efficiency | ❌ | Mining speed (the underwater and in-air penalties are ✅) |
 | Unbreaking | ✅ | Tool and armor wear |
@@ -618,7 +619,7 @@ krol notice.
 |---|---|---|
 | `MathHelper` (sin table, floor, clamp, ...) | ✅ | JVM-verified (`krol-java`) |
 | `java.util.Random` | ✅ | JVM-verified |
-| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall ✅; generic, starve, outOfWorld, anvil, fallingBlock, explosion, player/mob/projectile/thorns, indirect magic, lightningBolt ❌ |
+| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, explosion, explosion.player (difficulty scaling, knockback from the igniter) ✅; generic, starve, outOfWorld, anvil, fallingBlock, player/mob/projectile/thorns, indirect magic, lightningBolt ❌ |
 | `CombatTracker` (death messages) | 🟡 | For implemented sources; fall variants ✅ |
 | `IChatComponent` JSON (text, translation, styles, click/hover events) | ✅ | |
 | `StatCollector` (translation of log lines) | ✅ | For the keys krol uses |

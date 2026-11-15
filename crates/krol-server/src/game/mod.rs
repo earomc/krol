@@ -18,6 +18,7 @@ mod damage;
 mod death;
 mod digging;
 mod dispenser;
+mod explosion;
 mod falling_block;
 mod farming;
 mod fire;
@@ -52,6 +53,7 @@ mod shapes;
 mod sign;
 mod special_recipes;
 pub mod stats;
+mod tnt;
 mod tracker;
 mod trees;
 mod vines;
@@ -160,6 +162,8 @@ const AMBIENT_COUNTDOWN_UNSET: i32 = -1;
 /// Player Digging status 5: the player let go of the item they were using.
 const RELEASE_USE_ITEM: i8 = 5;
 
+/// Keeps the unpinned `Math.random()` seed apart from the world random's.
+const MATH_RANDOM_SCRAMBLE: i64 = 0x5DEE_CE66;
 /// A player's bounding box (`EntityPlayer.setSize(0.6, 1.8)`).
 const PLAYER_WIDTH: f32 = 0.6;
 const PLAYER_HEIGHT: f32 = 1.8;
@@ -273,6 +277,8 @@ struct Game {
     torch_toggles: Vec<((i32, i32, i32), i64)>,
     /// Falling blocks by entity id.
     falling: std::collections::BTreeMap<i32, falling_block::FallingBlock>,
+    /// Primed TNT, by entity id.
+    tnt: std::collections::BTreeMap<i32, tnt::PrimedTnt>,
     /// Experience orbs by entity id.
     orbs: std::collections::BTreeMap<i32, xp_orb::XpOrb>,
     /// Dropped items by entity id.
@@ -290,6 +296,11 @@ struct Game {
     world_rand: krol_java::JavaRandom,
     /// `EnchantmentHelper.enchantmentRand` (unseeded in vanilla).
     enchant_rand: krol_java::JavaRandom,
+    /// The generator behind `Math.random()` (one per JVM in vanilla, unseeded).
+    math_random: krol_java::JavaRandom,
+    /// Stands in for the per-entity randoms of items and orbs (`Entity.rand`, unseeded
+    /// in vanilla and never pinned).
+    entity_rand: krol_java::JavaRandom,
     /// `save-on` / `save-off`.
     saving_enabled: bool,
     /// The world's unseeded `Random` (weather durations).
@@ -330,6 +341,7 @@ pub fn start(
         items: Default::default(),
         orbs: Default::default(),
         falling: Default::default(),
+        tnt: Default::default(),
         wire_gives_power: true,
         wire_queue: Vec::new(),
         torch_toggles: Vec::new(),
@@ -348,6 +360,20 @@ pub fn start(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_nanos() as i64),
+        ),
+        entity_rand: krol_java::JavaRandom::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| {
+                    (d.as_nanos() as i64).wrapping_add(MATH_RANDOM_SCRAMBLE)
+                }),
+        ),
+        math_random: krol_java::JavaRandom::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| {
+                    (d.as_nanos() as i64).wrapping_mul(MATH_RANDOM_SCRAMBLE)
+                }),
         ),
         enchant_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
@@ -474,12 +500,36 @@ impl Game {
         self.send_block_events();
         // World.updateEntities: entities update in the order they were added, which is
         // entity id order; dead items are removed when the loop reaches them.
+        // Entities spawned during the loop are appended to the list it walks
+        // (`loadedEntityList`), so they get their first update at its end, this tick.
         let mut order: Vec<i32> = self.players.iter().map(|p| p.entity_id).collect();
         order.extend(self.items.keys().copied());
         order.extend(self.orbs.keys().copied());
         order.extend(self.falling.keys().copied());
+        order.extend(self.tnt.keys().copied());
         order.sort_unstable();
-        for id in order {
+        let mut next = 0;
+        let mut newest = order.last().copied().unwrap_or(i32::MIN);
+        loop {
+            if next == order.len() {
+                let mut spawned: Vec<i32> = self
+                    .items
+                    .keys()
+                    .chain(self.orbs.keys())
+                    .chain(self.falling.keys())
+                    .chain(self.tnt.keys())
+                    .copied()
+                    .filter(|&e| e > newest)
+                    .collect();
+                spawned.sort_unstable();
+                let Some(&last) = spawned.last() else {
+                    break;
+                };
+                newest = last;
+                order.extend(spawned);
+            }
+            let id = order[next];
+            next += 1;
             if self.items.contains_key(&id) {
                 self.update_item(id);
                 continue;
@@ -490,6 +540,10 @@ impl Game {
             }
             if self.falling.contains_key(&id) {
                 self.update_falling(id);
+                continue;
+            }
+            if self.tnt.contains_key(&id) {
+                self.update_tnt(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -538,19 +592,28 @@ impl Game {
         }
         #[cfg(feature = "parity")]
         if let Some(args) = line.strip_prefix("krolpin ") {
-            // Parity hook, like parity/vanilla-agent: `krolpin <seed> [speed] [ticks]`
-            // seeds World.rand and World.updateLCG (Random.setSeed is the same as a new
-            // Random with that seed), optionally sets randomTickSpeed in the same tick
-            // and back to 0 after that many ticks.
+            // Parity hook, like parity/vanilla-agent: `krolpin <seed> [speed] [ticks]
+            // [-- <command>]` seeds World.rand, World.updateLCG and Math.random()
+            // (Random.setSeed is the same as a new Random with that seed), optionally sets
+            // randomTickSpeed in the same tick and back to 0 after that many ticks, and
+            // runs the command after `--` right away.
+            let (args, then) = match args.split_once(" -- ") {
+                Some((a, c)) => (a, Some(c.to_owned())),
+                None => (args, None),
+            };
             let args: Vec<&str> = args.split_whitespace().collect();
             if let Some(Ok(seed)) = args.first().map(|s| s.parse::<i64>()) {
                 self.world_rand = krol_java::JavaRandom::new(seed);
+                self.math_random = krol_java::JavaRandom::new(seed);
                 self.update_lcg = seed as i32;
                 self.ambient_countdown = random_ticks::PINNED_AMBIENT_COUNTDOWN;
                 if let Some(speed) = args.get(1) {
                     self.set_game_rule("randomTickSpeed", speed);
                 }
                 self.pin_stop_in = args.get(2).and_then(|t| t.parse().ok());
+            }
+            if let Some(command) = then {
+                self.execute_command(commands::Sender::Console, &command);
             }
             return;
         }

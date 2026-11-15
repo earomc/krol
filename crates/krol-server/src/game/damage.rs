@@ -33,6 +33,13 @@ pub enum DamageSource {
     /// Suffocating inside a block (`DamageSource.inWall`: bypasses armor, no
     /// exhaustion).
     InWall,
+    /// An explosion nobody set off (`DamageSource.setExplosionSource`: difficulty
+    /// scaled).
+    Explosion,
+    /// An explosion of TNT a player lit, with that player's entity id
+    /// (`EntityDamageSourceIndirect("explosion.player")`: difficulty scaled, knocks the
+    /// victim away from the player).
+    ExplosionBy(i32),
 }
 
 impl DamageSource {
@@ -48,6 +55,8 @@ impl DamageSource {
             Self::Wither => "wither",
             Self::Cactus => "cactus",
             Self::InWall => "inWall",
+            Self::Explosion => "explosion",
+            Self::ExplosionBy(_) => "explosion.player",
         }
     }
 
@@ -64,6 +73,25 @@ impl DamageSource {
         matches!(self, Self::OnFire | Self::InFire | Self::Lava)
     }
 
+    /// An explosion (`isExplosion`).
+    pub fn explosion(self) -> bool {
+        matches!(self, Self::Explosion | Self::ExplosionBy(_))
+    }
+
+    /// Scaled by the difficulty (`isDifficultyScaled`).
+    fn difficulty_scaled(self) -> bool {
+        self.explosion()
+    }
+
+    /// The entity the damage is attributed to (`getEntity`), which knocks the victim
+    /// back.
+    fn attacker(self) -> Option<i32> {
+        match self {
+            Self::ExplosionBy(id) => Some(id),
+            _ => None,
+        }
+    }
+
     /// Damage creative and spectator players take too (`canHarmInCreative`).
     fn harms_in_creative(self) -> bool {
         false
@@ -75,7 +103,9 @@ impl DamageSource {
             Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither | Self::InWall => {
                 0.0
             }
-            Self::InFire | Self::Lava | Self::Cactus => DEFAULT_HUNGER_DAMAGE,
+            Self::InFire | Self::Lava | Self::Cactus | Self::Explosion | Self::ExplosionBy(_) => {
+                DEFAULT_HUNGER_DAMAGE
+            }
         }
     }
 }
@@ -95,11 +125,19 @@ fn protection_modifier(id: i16, level: i32, source: DamageSource) -> i32 {
         PROTECTION => 0.75,
         FIRE_PROTECTION if source.fire() => 1.25,
         FEATHER_FALLING if source == DamageSource::Fall => 2.5,
-        // TODO(M5): blast (3) and projectile (4) protection.
+        super::item_data::BLAST_PROTECTION if source.explosion() => 1.5,
+        // TODO(M5): projectile protection (4).
         _ => return 0,
     };
     krol_java::math::floor_f32(f * factor)
 }
+
+/// `EnumDifficulty` ids.
+const PEACEFUL: i8 = 0;
+const EASY: i8 = 1;
+const HARD: i8 = 3;
+/// `knockBack`'s strength (`0.4F`), also the cap on the upward motion.
+const KNOCKBACK: f32 = 0.4;
 
 /// `DamageSource.hungerDamage` of damage that armor can block.
 const DEFAULT_HUNGER_DAMAGE: f32 = 0.3;
@@ -122,7 +160,20 @@ impl Game {
         if disable_damage && !source.harms_in_creative() {
             return false;
         }
-        if p.health() <= 0.0 || amount == 0.0 {
+        if p.health() <= 0.0 {
+            return false;
+        }
+        let mut amount = amount;
+        if source.difficulty_scaled() {
+            match self.level.data.data.get_i8("Difficulty") {
+                PEACEFUL => amount = 0.0,
+                EASY => amount = amount / 2.0 + 1.0,
+                HARD => amount = amount * 3.0 / 2.0,
+                _ => {}
+            }
+        }
+        let p = &mut self.players[i];
+        if amount == 0.0 {
             return false;
         }
         // EntityLivingBase (maxHurtResistantTime 20).
@@ -160,6 +211,17 @@ impl Game {
                 let _ = p.rand.next_double();
                 p.velocity_changed = true;
             }
+            let attacker = source
+                .attacker()
+                .and_then(|id| self.players.iter().find(|p| p.entity_id == id))
+                .map(|a| a.pos);
+            match attacker {
+                Some(from) => self.knock_back(i, from),
+                // attackedAtYaw is picked with Math.random().
+                None => {
+                    self.math_random.next_double();
+                }
+            }
         }
         let p = &mut self.players[i];
         let (pos, conn) = (p.pos, p.conn_id);
@@ -174,6 +236,34 @@ impl Game {
             self.play_sound_near_except(Some(conn), "game.player.hurt", pos, 1.0, pitch);
         }
         true
+    }
+
+    /// `EntityLivingBase.attackEntityFrom`'s knockback from the attacker at `from`
+    /// (`knockBack`; players have no knockback resistance, but the roll is made).
+    fn knock_back(&mut self, i: usize, from: (f64, f64, f64)) {
+        let p = &self.players[i];
+        let mut dx = from.0 - p.pos.0;
+        let mut dz = from.2 - p.pos.2;
+        while dx * dx + dz * dz < 1.0e-4 {
+            dx = (self.math_random.next_double() - self.math_random.next_double()) * 0.01;
+            dz = (self.math_random.next_double() - self.math_random.next_double()) * 0.01;
+        }
+        let p = &mut self.players[i];
+        // rand.nextDouble() >= knockback resistance (0 for players): always knocked back.
+        let _ = p.rand.next_double();
+        p.airborne = true;
+        let len = f64::from(krol_java::math::sqrt_f64(dx * dx + dz * dz));
+        let strength = f64::from(KNOCKBACK);
+        let m = &mut p.motion;
+        m.0 /= 2.0;
+        m.1 /= 2.0;
+        m.2 /= 2.0;
+        m.0 -= dx / len * strength;
+        m.1 += strength;
+        m.2 -= dz / len * strength;
+        if m.1 > f64::from(KNOCKBACK) {
+            m.1 = f64::from(KNOCKBACK);
+        }
     }
 
     /// `EntityLivingBase.getSoundPitch` for an adult.
