@@ -65,7 +65,7 @@ The nether and the end are ❌ (see [world](#netminecraftworld)).
 | `server-icon.png` favicon | 🟡 | Implemented; no scenario |
 | Legacy `0xFE` ping (beta, 1.4, 1.6 formats) | ✅ | |
 | `ServerConfigurationManager`: join/leave, player list, view distance, max players, the "joined the game" message | ✅ | |
-| Duplicate login (same UUID kicks the older connection) | ❌ | |
+| Duplicate login (same UUID kicks the older connection) | ✅ | The new login waits for the old session to leave (`DELAY_ACCEPT`) |
 | Whitelist, ops (levels, bypassesPlayerLimit), banned players/IPs, `usercache.json` | ✅ | |
 | Mojang profile lookup for unknown names (op/whitelist offline players) | ❌ | Only cached or online names resolve |
 | Online-mode authentication (session server `hasJoined`) | ✅ | No parity scenario (needs real accounts) |

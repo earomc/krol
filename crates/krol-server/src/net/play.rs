@@ -24,6 +24,7 @@ pub(super) async fn run<S>(
     peer: SocketAddr,
     version: ProtocolVersion,
     profile: GameProfile,
+    login_info: String,
 ) -> Result<(), ConnectionError>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -38,6 +39,7 @@ where
             peer,
             version,
             out: out_tx,
+            login_info,
         })
         .is_err()
     {

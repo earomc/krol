@@ -115,7 +115,17 @@ pub(super) async fn run<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
     match login(&mut conn, &mut ctx, version, deadline).await {
         Ok(Some(profile)) => match shared.game.get() {
             Some(game) => {
-                super::play::run(conn, shared.clone(), game.clone(), peer, version, profile).await
+                let info = ctx.info();
+                super::play::run(
+                    conn,
+                    shared.clone(),
+                    game.clone(),
+                    peer,
+                    version,
+                    profile,
+                    info,
+                )
+                .await
             }
             None => {
                 // No world loaded (world creation is not implemented yet).

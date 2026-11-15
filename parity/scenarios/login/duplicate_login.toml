@@ -1,0 +1,40 @@
+description = "Logging in while the same profile is online: the old session is kicked with \"You logged in from another location\", the new one waits for it to leave and joins with the data it just saved; a third player watches both"
+subsystem = "login"
+
+# Vanilla races its Netty thread here: the kick closes the channel off the main thread, so
+# the old session's "lost connection" line may show "Disconnected" instead of the kick
+# reason, and a "handleDisconnection() called twice" warning may follow. The golden is
+# the race-free outcome (the old session leaves on the next tick with the kick reason);
+# re-record until it shows that.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "watcher"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 9
+
+# The first session walks a block, so the second one must load what the kick saved.
+[[steps]]
+id = "first"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 8
+moves = [[0.25, 0, 0], [0.5, 0, 0], [0.75, 0, 0], [1.0, 0, 0]]
+
+[[steps]]
+id = "second"
+action = "play"
+protocol = 47
+name = "jeb_"
+seconds = 4
+
+[observe]
+log = true

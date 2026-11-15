@@ -122,6 +122,19 @@ impl DisconnectReason {
     }
 }
 
+/// A login handed to the game: joins at once, or waits in `delayed_joins`.
+#[derive(Debug)]
+struct DelayedJoin {
+    conn_id: u64,
+    profile: GameProfile,
+    peer: SocketAddr,
+    version: ProtocolVersion,
+    out: UnboundedSender<Outgoing>,
+    login_info: String,
+    /// Taken when vanilla's `createPlayerForUser` builds the entity.
+    entity_id: i32,
+}
+
 /// Events from the network layer.
 #[derive(Debug)]
 pub enum GameEvent {
@@ -137,6 +150,9 @@ pub enum GameEvent {
         version: ProtocolVersion,
         /// The player's outgoing queue.
         out: UnboundedSender<Outgoing>,
+        /// Vanilla's `getConnectionInfo()` of the login handler, logged if the
+        /// connection drops while the login waits for an older session to leave.
+        login_info: String,
     },
     /// A play packet from a player.
     Packet {
@@ -268,6 +284,9 @@ struct Game {
     user_cache: crate::usercache::UserCache,
     /// Players disconnected by the server, removed (with logs) in the next network tick.
     pending_removals: Vec<(u64, Component)>,
+    /// Logins waiting for the same profile's older session to leave (vanilla's
+    /// `LoginState.DELAY_ACCEPT`), oldest first.
+    delayed_joins: Vec<DelayedJoin>,
     /// Entity tracker entries.
     tracker: tracker::Tracker,
     /// `BlockRedstoneWire.canProvidePower`: off while a wire computes its input.
@@ -361,6 +380,7 @@ pub fn start(
         last_status_refresh: None,
         stopping: false,
         pending_removals: Vec::new(),
+        delayed_joins: Vec::new(),
         tracker: Default::default(),
         items: Default::default(),
         orbs: Default::default(),
@@ -594,6 +614,9 @@ impl Game {
         self.tick_tile_entities();
         self.tick_moving();
         self.update_tracked_entities();
+        // NetworkSystem.networkTick: waiting logins are older connections than the
+        // ones finishing their login this tick.
+        self.accept_delayed_joins();
         for event in late {
             self.handle_event(event);
         }
@@ -803,7 +826,16 @@ impl Game {
                 peer,
                 version,
                 out,
-            } => self.join(conn_id, profile, peer, version, out),
+                login_info,
+            } => self.login(DelayedJoin {
+                conn_id,
+                profile,
+                peer,
+                version,
+                out,
+                login_info,
+                entity_id: 0,
+            }),
             GameEvent::Packet { conn_id, packet } => {
                 if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
                     self.handle_packet(i, packet);
@@ -825,6 +857,17 @@ impl Game {
                 }
             }
             GameEvent::Disconnected { conn_id, reason } => {
+                if let Some(i) = self.delayed_joins.iter().position(|d| d.conn_id == conn_id) {
+                    // Still in the login state: NetHandlerLoginServer.onDisconnect.
+                    let join = self.delayed_joins.remove(i);
+                    let text = match reason {
+                        DisconnectReason::Closed => "End of stream".to_owned(),
+                        DisconnectReason::Timeout => "Timed out".to_owned(),
+                        DisconnectReason::Internal(e) => format!("Internal Exception: {e}"),
+                    };
+                    info!("{} lost connection: {text}", join.login_info);
+                    return;
+                }
                 // A kick already scheduled its own removal with the kick reason.
                 if self.pending_removals.iter().any(|(c, _)| *c == conn_id) {
                     return;
@@ -973,14 +1016,53 @@ impl Game {
     }
 
     /// Vanilla `initializeConnectionToPlayer` + `playerLoggedIn`.
-    fn join(
-        &mut self,
-        conn_id: u64,
-        profile: GameProfile,
-        peer: SocketAddr,
-        version: ProtocolVersion,
-        out: UnboundedSender<Outgoing>,
-    ) {
+    /// Vanilla `NetHandlerLoginServer.tryAcceptPlayer` after Login Success:
+    /// `createPlayerForUser` kicks every session of the same profile, and the new one
+    /// then waits until they have left.
+    fn login(&mut self, mut join: DelayedJoin) {
+        let mut online = false;
+        for i in 0..self.players.len() {
+            if self.players[i].profile.id == join.profile.id {
+                online = true;
+                self.kick(i, "You logged in from another location");
+            }
+        }
+        // createPlayerForUser builds the player entity right away, taking its id.
+        join.entity_id = self.next_entity_id;
+        self.next_entity_id += 1;
+        if online {
+            self.delayed_joins.push(join);
+        } else {
+            self.join(join);
+        }
+    }
+
+    /// Vanilla `NetHandlerLoginServer.update` in `DELAY_ACCEPT`: joins once no player
+    /// with the profile's UUID is left.
+    fn accept_delayed_joins(&mut self) {
+        let mut i = 0;
+        while i < self.delayed_joins.len() {
+            let id = self.delayed_joins[i].profile.id;
+            if self.players.iter().any(|p| p.profile.id == id) {
+                i += 1;
+            } else {
+                let join = self.delayed_joins.remove(i);
+                self.join(join);
+            }
+        }
+    }
+
+    /// Vanilla `initializeConnectionToPlayer`.
+    fn join(&mut self, join: DelayedJoin) {
+        let DelayedJoin {
+            conn_id,
+            profile,
+            peer,
+            version,
+            out,
+            entity_id,
+            ..
+        } = join;
         self.user_cache.add(profile.id, &profile.name);
         let stored = load_player_data(&self.level.dir, profile.id);
         let gamemode = match &stored {
@@ -995,8 +1077,6 @@ impl Game {
             None => (self.spawn_position(self.config.gamemode), (0.0, 0.0)),
         };
         let profile_id = profile.id;
-        let entity_id = self.next_entity_id;
-        self.next_entity_id += 1;
         let loaded = stored.is_some();
         // Vanilla reads what is stored and keeps defaults for everything missing, then
         // writes a complete record back.
