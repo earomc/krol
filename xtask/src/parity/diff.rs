@@ -88,6 +88,45 @@ pub fn collapse_repeats(observations: &mut Value, types: &[String]) {
     }
 }
 
+/// Drops packets of the listed types that repeat an identical packet earlier in the
+/// same run of consecutive listed-type packets.
+pub fn dedupe_runs(observations: &mut Value, types: &[String]) {
+    let Some(streams) = observations.as_object_mut() else {
+        return;
+    };
+    for stream in streams.values_mut() {
+        let Some(obj) = stream.as_object_mut() else {
+            continue;
+        };
+        let (Some(Value::Array(sequence)), Some(Value::Array(packets))) =
+            (obj.get("sequence").cloned(), obj.get("packets").cloned())
+        else {
+            continue;
+        };
+        if sequence.len() != packets.len() {
+            continue;
+        }
+        let mut kept: Vec<(Value, Value)> = Vec::new();
+        let mut run: Vec<(Value, Value)> = Vec::new();
+        for (t, p) in sequence.into_iter().zip(packets) {
+            let listed = t.as_str().is_some_and(|t| types.iter().any(|x| x == t));
+            if !listed {
+                run.clear();
+                kept.push((t, p));
+                continue;
+            }
+            if run.iter().any(|(rt, rp)| *rt == t && *rp == p) {
+                continue;
+            }
+            run.push((t.clone(), p.clone()));
+            kept.push((t, p));
+        }
+        let (sequence, packets): (Vec<Value>, Vec<Value>) = kept.into_iter().unzip();
+        obj.insert("sequence".into(), Value::Array(sequence));
+        obj.insert("packets".into(), Value::Array(packets));
+    }
+}
+
 /// Computes the differences between `expected` and `actual`, skipping ignored paths
 /// (an ignored path also hides everything below it) and accepting numbers within the
 /// tolerance of their path.
@@ -271,6 +310,43 @@ mod tests {
         assert_eq!(
             x,
             stream(&[("a", 1), ("a", 2), ("b", 0), ("b", 0), ("a", 2)])
+        );
+    }
+
+    #[test]
+    fn runs_dedupe() {
+        let types = vec!["p".to_owned()];
+        let stream = |seq: &[(&str, i32)]| {
+            json!({ "bot": {
+                "sequence": seq.iter().map(|(t, _)| t).collect::<Vec<_>>(),
+                "packets": seq.iter().map(|(t, v)| json!({ "packet": t, "v": v })).collect::<Vec<_>>(),
+            }})
+        };
+        // A cycle of three properties sent twice, another packet, then the cycle again.
+        let mut x = stream(&[
+            ("p", 0),
+            ("p", 1),
+            ("p", 2),
+            ("p", 0),
+            ("p", 1),
+            ("p", 2),
+            ("s", 0),
+            ("p", 0),
+            ("p", 1),
+            ("p", 2),
+        ]);
+        dedupe_runs(&mut x, &types);
+        assert_eq!(
+            x,
+            stream(&[
+                ("p", 0),
+                ("p", 1),
+                ("p", 2),
+                ("s", 0),
+                ("p", 0),
+                ("p", 1),
+                ("p", 2)
+            ])
         );
     }
 

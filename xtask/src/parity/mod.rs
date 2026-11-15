@@ -385,6 +385,10 @@ fn run_one(
             diff::canonicalize_unordered(&mut expected, group);
             diff::canonicalize_unordered(&mut actual, group);
         }
+        if !sc.observe.dedupe_runs.is_empty() {
+            diff::dedupe_runs(&mut expected, &sc.observe.dedupe_runs);
+            diff::dedupe_runs(&mut actual, &sc.observe.dedupe_runs);
+        }
         if !sc.observe.collapse_repeats.is_empty() {
             diff::collapse_repeats(&mut expected, &sc.observe.collapse_repeats);
             diff::collapse_repeats(&mut actual, &sc.observe.collapse_repeats);

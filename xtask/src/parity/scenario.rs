@@ -175,6 +175,13 @@ pub struct Observe {
     /// times (in vanilla too). Each entry should carry a comment in the TOML saying why.
     #[serde(default)]
     pub collapse_repeats: Vec<String>,
+    /// Packet types (as named in a bot's `sequence`) whose copies within one run of
+    /// consecutive packets of those types count once, for packets a server resends a
+    /// timing-dependent number of times as a group (in vanilla too: an enchanting
+    /// table's seven window properties go out every tick). Each entry should carry a
+    /// comment in the TOML saying why.
+    #[serde(default)]
+    pub dedupe_runs: Vec<String>,
 }
 
 /// Loads all scenarios under `root`, optionally filtered by a name substring.
