@@ -34,6 +34,8 @@ const DEATH_PARTICLES: usize = 20;
 const MAX_AIR: i16 = 300;
 /// The air supply at which a drowning player takes damage (and goes back to 0).
 const DROWN_AT: i16 = -20;
+/// Farmland is trampled when a random float is below the fall distance minus this.
+const TRAMPLE_OFFSET: f32 = 0.5;
 /// Suffocation damage per tick inside a block.
 const SUFFOCATION_DAMAGE: f32 = 1.0;
 /// A player's width (`EntityPlayer.setSize(0.6, 1.8)`).
@@ -69,6 +71,15 @@ impl Game {
     fn move_player(&mut self, i: usize, d: (f64, f64, f64)) -> MoveOutcome {
         let mut body = self.body(i);
         let outcome = physics::move_entity(&mut self.level.overworld, &mut body, d.0, d.1, d.2);
+        // Block.onEntityCollidedWithBlock(world, pos, entity) of the block walked on.
+        if let Some((pos, state)) = outcome.walked_on
+            && matches!(
+                state >> 4,
+                super::ids::block::REDSTONE_ORE | super::ids::block::LIT_REDSTONE_ORE
+            )
+        {
+            self.activate_redstone_ore(pos, state);
+        }
         let p = &mut self.players[i];
         p.pos = body.pos;
         p.motion = body.motion;
@@ -661,12 +672,19 @@ impl Game {
                 let distance = p.fall_distance;
                 p.fall_distance = 0.0;
                 // Block.onFallenUpon: slime cancels the damage (unless sneaking), hay
-                // bales reduce it; farmland trampling is TODO(M5).
+                // bales reduce it.
                 let multiplier = match block {
                     165 if !p.sneaking => 0.0,
                     170 => 0.2,
                     _ => 1.0,
                 };
+                // BlockFarmland.onFallenUpon: the faller's random decides whether it is
+                // trampled into dirt (always from 1.5 blocks up).
+                if block == super::ids::block::FARMLAND
+                    && p.rand.next_float() < distance - TRAMPLE_OFFSET
+                {
+                    self.set_block_notify(below, super::ids::block::DIRT << 4);
+                }
                 self.player_fall(i, distance, multiplier);
             }
         } else if dy < 0.0 {

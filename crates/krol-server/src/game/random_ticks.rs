@@ -20,6 +20,8 @@ const LCG_INCREMENT: i32 = 1_013_904_223;
 /// (1 in 16).
 const THUNDER_ODDS: i32 = 100_000;
 const ICE_AND_SNOW_ODDS: i32 = 16;
+/// `BlockRedstoneOre.spawnParticles` spawns 6 particles (3 random floats each).
+const ORE_PARTICLES: usize = 6;
 /// The random light check around a player reaches 5 blocks each way.
 const PLAYER_LIGHT_CHECK_RANGE: i32 = 11;
 /// Light thresholds.
@@ -319,6 +321,20 @@ impl Game {
             _ if super::mushrooms::is_mushroom(id) => self.mushroom_tick(pos, state),
             block::COCOA => self.cocoa_tick(pos, state),
             _ => {}
+        }
+    }
+
+    /// `BlockRedstoneOre.activate` (left-click, right-click, walking on it): the
+    /// particles still draw from the world random on the server, then unlit ore lights
+    /// up.
+    pub(super) fn activate_redstone_ore(&mut self, pos: (i32, i32, i32), state: u16) {
+        for _ in 0..ORE_PARTICLES {
+            self.world_rand.next_float();
+            self.world_rand.next_float();
+            self.world_rand.next_float();
+        }
+        if state >> 4 == block::REDSTONE_ORE {
+            self.set_block_notify(pos, block::LIT_REDSTONE_ORE << 4);
         }
     }
 

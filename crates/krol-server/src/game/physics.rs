@@ -302,6 +302,14 @@ pub struct StepSound {
     pub pitch: f32,
 }
 
+/// `slime`.
+const SLIME: u16 = 165;
+/// Walking on slime slows entities moving slower than this vertically...
+const SLIME_SLOW_BELOW: f64 = 0.1;
+/// ...to this much of their horizontal motion, plus a bit per vertical speed.
+const SLIME_SLOWDOWN: f64 = 0.4;
+const SLIME_SLOWDOWN_PER_SPEED: f64 = 0.2;
+
 /// `BlockSoulSand.onEntityCollidedWithBlock` keeps this much of the horizontal motion.
 pub const SOUL_SAND_SLOWDOWN: f64 = 0.4;
 /// A move in a cobweb covers a quarter of the distance horizontally...
@@ -325,6 +333,9 @@ pub struct MoveOutcome {
     pub step: Option<StepSound>,
     /// Volume of the swim sound to play before the step sound (steps in water).
     pub swim: Option<f32>,
+    /// The block walked on (`onEntityCollidedWithBlock(world, pos, entity)` of the block
+    /// below, for entities that trigger walking and end the move on the ground).
+    pub walked_on: Option<((i32, i32, i32), u16)>,
 }
 
 fn creep(d: f64) -> f64 {
@@ -478,7 +489,7 @@ fn move_entity_inner(
     }
     if y0 != y {
         // Block.onLanded: slime bounces unless sneaking, everything else stops.
-        if below_state >> 4 == 165 && !body.sneaking {
+        if below_state >> 4 == SLIME && !body.sneaking {
             if body.motion.1 < 0.0 {
                 body.motion.1 = -body.motion.1;
             }
@@ -494,7 +505,16 @@ fn move_entity_inner(
         if below_state >> 4 != 65 {
             wy = 0.0;
         }
-        // TODO(M5): onEntityCollidedWithBlock for the block below (soul sand, slime).
+        if body.on_ground {
+            // BlockSlime.onEntityCollidedWithBlock: walking on slime is slow.
+            if below_state >> 4 == SLIME && body.motion.1.abs() < SLIME_SLOW_BELOW && !body.sneaking
+            {
+                let f = SLIME_SLOWDOWN + body.motion.1.abs() * SLIME_SLOWDOWN_PER_SPEED;
+                body.motion.0 *= f;
+                body.motion.2 *= f;
+            }
+            outcome.walked_on = Some((below, below_state));
+        }
         let step = krol_java::math::sqrt_f64(wx * wx + wy * wy + wz * wz);
         body.distance_walked_on_step =
             (f64::from(body.distance_walked_on_step) + f64::from(step) * 0.6) as f32;

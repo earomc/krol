@@ -96,6 +96,12 @@ impl Game {
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         let (id, meta) = (state >> 4, state & 15);
         match id {
+            // BlockRedstoneOre.onBlockActivated lights the ore but leaves the click to
+            // the held item.
+            block::REDSTONE_ORE | block::LIT_REDSTONE_ORE => {
+                self.activate_redstone_ore(pos, state);
+                false
+            }
             // BlockCake.onBlockActivated: always takes the click.
             super::farming::CAKE => {
                 self.eat_cake(i, pos);

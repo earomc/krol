@@ -76,7 +76,7 @@ The nether and the end are ❌ (see [world](#netminecraftworld)).
 | Spawn chunk loading ("Preparing spawn area") | ✅ | |
 | Resource pack (`resource-pack`, `resource-pack-hash`) | ❌ | |
 | `network-compression-threshold` | ✅ | |
-| `enable-command-block`, `op-permission-level`, `spawn-protection` | 🟡 | `op-permission-level` ✅; `spawn-protection` only sets the spawn fuzz radius (building protection ❌); command blocks ❌ |
+| `enable-command-block`, `op-permission-level`, `spawn-protection` | 🟡 | `op-permission-level`, `spawn-protection` (digging, placing, buckets; spawn fuzz radius) ✅; command blocks ❌ |
 | `max-world-size`, `max-build-height` | 🟡 | Build height checks ✅; world border/size ❌ |
 | `snooper-enabled` | ➖ | No snooper (nothing observable for players) |
 | RCON (`enable-rcon`) | ❌ | `server.rcon.*` |
@@ -298,18 +298,18 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockBush`, `BlockFlower`, `BlockYellowFlower`, `BlockRedFlower`, `BlockTallGrass`, `BlockDeadBush`, `BlockDoublePlant` | ✅ | Support rules, drops, bone meal, shears. Double plant: the creative/shears-specific harvest rules (`onBlockHarvested`) 🟡 |
 | `BlockMushroom`, `BlockHugeMushroom` | ✅ | Spreading, light rule, huge mushrooms, drops |
 | `BlockCrops`, `BlockCarrot`, `BlockPotato`, `BlockStem`, `BlockNetherWart` | ✅ | Growth, bone meal, drops. Stems growing pumpkins/melons ✅ |
-| `BlockFarmland` | 🟡 | Moisture, drying, reverting ✅; trampling ❌ |
+| `BlockFarmland` | ✅ | Moisture, drying, reverting, trampling by players (mobs with mob griefing arrive with mobs) |
 | `BlockReed`, `BlockCactus` | ✅ | Growth, support, cactus damage |
 | `BlockCocoa` | ✅ | Placement, growth, bone meal, drops. Collision box ❌ |
 | `BlockVine` | ✅ | Growth in all directions, support, shears. Climbing ✅ |
 | `BlockLilyPad` | 🟡 | Placement rule; `ItemLilyPad` on water ❌ |
-| `BlockSnow` (layers), `BlockSnowBlock`, `BlockIce` | 🟡 | Melting, placement rules, layer stacking ✅; ice turning into water when broken ❌; snowballs from snow ✅ via drops |
+| `BlockSnow` (layers), `BlockSnowBlock`, `BlockIce` | ✅ | Melting, placement rules, layer stacking, snowball drops, ice turning into water when broken above something solid or liquid (silk touch ❌, nether vaporizing ❌ with the nether) |
 | `BlockFire` | ✅ | Spread, burning, rain, netherrack. Nether portal lighting ❌ |
 | `BlockLiquid`, `BlockDynamicLiquid`, `BlockStaticLiquid` | ✅ | Flow, mixing, lava fire. Nether lava speed ❌ (no nether) |
 | `BlockSponge` | ❌ | Absorbing water; wet sponge drying in furnaces ✅ |
 | `BlockSoulSand` | ✅ | Collision box, slowing entities |
 | `BlockWeb` | ✅ | Slowing entities (`setInWeb`), fall distance reset |
-| `BlockSlime` | 🟡 | Fall damage cancel, pistons ✅; bouncing and the walking slowdown ❌ |
+| `BlockSlime` | ✅ | Fall damage cancel, bouncing, walking slowdown, pistons |
 | `BlockLadder` | ✅ | Placement, support, climbing |
 | `BlockTorch` | ✅ | |
 | `BlockSlab`, `BlockStoneSlab*`, `BlockWoodSlab`, `BlockHalfStoneSlab*`, `BlockDoubleStoneSlab*` | ✅ | Placement, merging, collision |
@@ -351,7 +351,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockBasePressurePlate`, `BlockPressurePlate`, `BlockPressurePlateWeighted` | ✅ | Entity kinds limited to those krol has |
 | `BlockPistonBase`, `BlockPistonExtension`, `BlockPistonMoving` | 🟡 | Moving entities ❌ |
 | `BlockNote` | ✅ | |
-| `BlockRedstoneOre` | 🟡 | Lit ore reverting on random ticks, drops, XP ✅; lighting up on click, left-click and stepping ❌ |
+| `BlockRedstoneOre` | ✅ | Lighting up on left-click, right-click and walking (with the particle draws on the world random), reverting on random ticks, drops, XP |
 | `BlockDaylightDetector` | ❌ | |
 | `BlockTripWire`, `BlockTripWireHook` | ❌ | |
 | `BlockRail`, `BlockRailBase`, `BlockRailDetector`, `BlockRailPowered` | ❌ | Shapes, powering, minecarts |

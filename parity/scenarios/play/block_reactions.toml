@@ -1,0 +1,111 @@
+description = "Small block reactions: farmland trampled by a 2-block fall, redstone ore lighting up when walked on, left-clicked (digging aborted) and right-clicked (the hoe in hand still gets the click), ice dug by hand turning into flowing water above grass and vanishing above air"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data, holding a hoe in slot 0) joins at the spawn
+# (-471.5, 4, -434.5), on the farmland. He rises 2 blocks and falls back (a trample is
+# certain from 1.5 blocks), walks one block east onto redstone ore, then clicks.
+# Random block ticks are off, so lit ore stays lit. The ice above air is dug before
+# the other ice's water could flow under it; the session lasts until that water has
+# stopped spreading (the server stops at a wall-clock time).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_gardener.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -472 3 -435 farmland"
+
+[[steps]]
+action = "console"
+command = "setblock -471 3 -435 redstone_ore"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -433 redstone_ore"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -433 redstone_ore"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -438 ice"
+
+[[steps]]
+action = "console"
+command = "setblock -469 5 -436 ice"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 11
+chat = [
+    "@2500 !hold 0",
+    "@2800 !dig -473 4 -433 1",
+    "@3100 !dig -473 4 -433 1 1",
+    "@3400 !place -470 4 -433 1",
+    "@3800 !dig -469 5 -436 1",
+    "@5000 !dig -469 5 -436 1 2",
+    "@5400 !dig -472 4 -438 1",
+    "@6600 !dig -472 4 -438 1 2",
+]
+moves = [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0.5, 0, 0],
+    [0, 1.0, 0, 0],
+    [0, 1.5, 0, 0],
+    [0, 2.0, 0, 0],
+    [0, 2, 0, 0],
+    [0, 2, 0, 0],
+    [0, 1.5, 0, 0],
+    [0, 1.0, 0, 0],
+    [0, 0.5, 0, 0],
+    [0, 0, 0, 1],
+    [],
+    [],
+    [],
+    [],
+    [0.2, 0, 0],
+    [0.4, 0, 0],
+    [0.6, 0, 0],
+    [0.8, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+    [1.0, 0, 0],
+]
+
+[observe]
+log = true
+blocks = [
+    [-472, 3, -435], [-471, 3, -435], [-473, 4, -433], [-470, 4, -433],
+    [-472, 4, -438], [-471, 4, -438], [-473, 4, -438], [-472, 4, -437], [-472, 4, -439],
+    [-469, 5, -436], [-469, 4, -436],
+]
+ignore = ["player"]

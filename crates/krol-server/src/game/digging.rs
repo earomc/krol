@@ -349,7 +349,14 @@ impl Game {
             // The hardness is the clicked block's, even if the click removes it (the
             // last slice of a cake).
             hardness = self.relative_hardness_for(i, pos);
-            // Block.onBlockClicked. TODO(M5): redstone ore lighting up, dragon eggs.
+            // Block.onBlockClicked. TODO(M5): dragon eggs.
+            if matches!(
+                b,
+                super::ids::block::REDSTONE_ORE | super::ids::block::LIT_REDSTONE_ORE
+            ) {
+                let state = self.level.overworld.block(pos.0, pos.1, pos.2);
+                self.activate_redstone_ore(pos, state);
+            }
             if b == super::ids::block::NOTEBLOCK {
                 self.click_note_block(i, pos);
             }
@@ -452,7 +459,7 @@ impl Game {
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         let b = state >> 4;
         self.break_effect(i, pos, state);
-        // TODO(M5): onBlockHarvested / onBlockDestroyedByPlayer (doors, beds, ice).
+        // TODO(M5): onBlockHarvested / onBlockDestroyedByPlayer (doors, beds).
         self.drop_container_contents(pos);
         self.set_block_notify(pos, 0);
         self.destroyed_by_player(pos, state);
@@ -487,6 +494,15 @@ impl Game {
             }
             self.add_exhaustion(i, 0.025);
             self.drop_block_items(pos, state);
+            // BlockIce.harvestBlock (no silk touch yet): melts into water when something
+            // solid or liquid is below.
+            if b == super::ids::block::ICE {
+                let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
+                let m = super::block_data::material(below);
+                if m.blocks_movement() || m.is_liquid() {
+                    self.set_block_notify(pos, super::ids::block::FLOWING_WATER << 4);
+                }
+            }
             // TODO(M5): not with silk touch (the ore drops itself).
             self.drop_block_xp(pos, b);
         }
