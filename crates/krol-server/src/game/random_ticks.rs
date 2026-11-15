@@ -34,7 +34,6 @@ const CROP_MAX_AGE: u16 = 7;
 const WART_MAX_AGE: u16 = 3;
 /// Nether wart grows on 1 in 10 ticks; saplings try on 1 in 7.
 const WART_ODDS: i32 = 10;
-const SAPLING_ODDS: i32 = 7;
 /// Sugar cane and cactus grow to 3 blocks, each step after 16 ticks.
 const CANE_MAX_HEIGHT: i32 = 3;
 const CANE_MAX_AGE: u16 = 15;
@@ -308,11 +307,9 @@ impl Game {
             }
             block::SAPLING => {
                 self.check_plant(pos, state);
-                if self.light_from_neighbors((pos.0, pos.1 + 1, pos.2)) >= CROPS_GROW_AT
-                    && self.world_rand.next_int_bounded(SAPLING_ODDS) == 0
-                {
-                    // TODO(M6): grow a tree.
-                }
+                // Vanilla quirk: growth still uses the state from before the bush check,
+                // even if the sapling just popped off.
+                self.sapling_tick(pos, state);
             }
             block::TALLGRASS | block::DEADBUSH | block::YELLOW_FLOWER | block::RED_FLOWER => {
                 self.check_plant(pos, state);

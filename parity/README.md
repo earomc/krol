@@ -38,12 +38,14 @@ until close), `login_start` (`protocol`, `name`). Observation paths listed in
 
 A scenario with `pin_random = true` in `[setup]` loads `parity/vanilla-agent` into
 vanilla (built by xtask with the local JDK: `javac`/`jar`, or `KROL_JAVAC` and
-`KROL_JAR_TOOL`). It adds the console command `krolpin <seed>`, which seeds every
-world's `World.rand` and random tick generator (`updateLCG`); krol answers the same
-command in builds with the `parity` feature (xtask builds krol that way, into
-`target/parity-build`). Issue `krolpin` from the console before the behavior to compare;
-make sure nothing else draws from the world random in between (no player means no
-random block ticks or light checks). Entity randoms (item arcs, sound pitches) are not
+`KROL_JAR_TOOL`). It adds the console command `krolpin <seed> [randomTickSpeed] [ticks]`, which seeds
+every world's `World.rand` and random tick generator (`updateLCG`), optionally sets the
+random tick speed in the same tick and back to 0 after exactly that many ticks; krol
+answers the same command in builds with the `parity` feature (xtask builds krol that
+way, into `target/parity-build`). Issue `krolpin` from the console right before the
+behavior to compare. With a player online every tick draws from the world random, so
+start and stop random ticks through `krolpin` itself rather than separate `gamerule`
+commands, whose tick depends on timing. Entity randoms (item arcs, sound pitches) are not
 pinned yet.
 
 ## Writing race-free scenarios

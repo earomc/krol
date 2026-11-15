@@ -49,6 +49,7 @@ mod sign;
 mod special_recipes;
 pub mod stats;
 mod tracker;
+mod trees;
 pub mod world;
 mod xp_orb;
 
@@ -253,6 +254,9 @@ struct Game {
     /// `World.updateLCG`: picks random tick positions (vanilla starts it at random;
     /// krol at 0).
     update_lcg: i32,
+    /// Parity hook: ticks until `krolpin` sets randomTickSpeed back to 0.
+    #[cfg_attr(not(feature = "parity"), allow(dead_code))]
+    pin_stop_in: Option<u32>,
     /// `World.ambientTickCountdown`: ticks until the next cave mood sound check.
     ambient_countdown: i32,
     /// `World.skylightSubtracted`: how much time and weather darken the sky.
@@ -323,6 +327,7 @@ pub fn start(
         torch_toggles: Vec::new(),
         update_lcg: 0,
         ambient_countdown: AMBIENT_COUNTDOWN_UNSET,
+        pin_stop_in: None,
         skylight_subtracted: 0,
         ticks_this_tick: Vec::new(),
         moving_progress: Default::default(),
@@ -503,6 +508,15 @@ impl Game {
         for event in late {
             self.handle_event(event);
         }
+        // Where vanilla updates its tickables (the vanilla agent's krolpin countdown).
+        #[cfg(feature = "parity")]
+        if let Some(left) = self.pin_stop_in {
+            let left = left.saturating_sub(1);
+            self.pin_stop_in = (left > 0).then_some(left);
+            if left == 0 {
+                self.set_game_rule("randomTickSpeed", "0");
+            }
+        }
         for line in commands {
             self.console_command(&line);
         }
@@ -515,15 +529,21 @@ impl Game {
             return;
         }
         #[cfg(feature = "parity")]
-        if let Some(seed) = line
-            .strip_prefix("krolpin ")
-            .and_then(|s| s.trim().parse::<i64>().ok())
-        {
-            // Parity hook: seeds World.rand and World.updateLCG like the vanilla agent
-            // (Random.setSeed is the same as a new Random with that seed).
-            self.world_rand = krol_java::JavaRandom::new(seed);
-            self.update_lcg = seed as i32;
-            self.ambient_countdown = random_ticks::PINNED_AMBIENT_COUNTDOWN;
+        if let Some(args) = line.strip_prefix("krolpin ") {
+            // Parity hook, like parity/vanilla-agent: `krolpin <seed> [speed] [ticks]`
+            // seeds World.rand and World.updateLCG (Random.setSeed is the same as a new
+            // Random with that seed), optionally sets randomTickSpeed in the same tick
+            // and back to 0 after that many ticks.
+            let args: Vec<&str> = args.split_whitespace().collect();
+            if let Some(Ok(seed)) = args.first().map(|s| s.parse::<i64>()) {
+                self.world_rand = krol_java::JavaRandom::new(seed);
+                self.update_lcg = seed as i32;
+                self.ambient_countdown = random_ticks::PINNED_AMBIENT_COUNTDOWN;
+                if let Some(speed) = args.get(1) {
+                    self.set_game_rule("randomTickSpeed", speed);
+                }
+                self.pin_stop_in = args.get(2).and_then(|t| t.parse().ok());
+            }
             return;
         }
         self.execute_command(commands::Sender::Console, line);

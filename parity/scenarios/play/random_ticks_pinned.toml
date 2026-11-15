@@ -117,20 +117,12 @@ protocol = 47
 name = "jeb_"
 seconds = 14
 
+# One command seeds the random, starts random ticks and stops them after exactly
+# 120 ticks, so nothing depends on when console lines land.
 [[steps]]
 action = "console"
-command = "krolpin 1234567"
-wait_ms = 300
-
-[[steps]]
-action = "console"
-command = "gamerule randomTickSpeed 30"
-wait_ms = 6000
-
-[[steps]]
-action = "console"
-command = "gamerule randomTickSpeed 0"
-wait_ms = 4000
+command = "krolpin 1234567 30 120"
+wait_ms = 9000
 
 [observe]
 log = true

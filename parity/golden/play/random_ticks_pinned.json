@@ -34,7 +34,6 @@
         "entity_properties",
         "block_change",
         "block_change",
-        "block_change",
         "block_change"
       ],
       "packets": [
@@ -130,19 +129,15 @@
           "packet": "entity_properties"
         },
         {
-          "hex": "ffff8b800ffffe4b20",
-          "packet": "block_change"
-        },
-        {
           "hex": "ffff8a000ffffe5120",
           "packet": "block_change"
         },
         {
-          "hex": "ffff8a800ffffe4b20",
+          "hex": "ffff8b000ffffe4d20",
           "packet": "block_change"
         },
         {
-          "hex": "ffff89800ffffe4b20",
+          "hex": "ffff8a800ffffe4f20",
           "packet": "block_change"
         }
       ],
@@ -254,8 +249,6 @@
       "[Server thread/INFO]: Block placed",
       "[Server thread/INFO]: jeb_[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
       "[Server thread/INFO]: jeb_ joined the game",
-      "[Server thread/INFO]: Game rule has been updated",
-      "[Server thread/INFO]: Game rule has been updated",
       "[Server thread/INFO]: jeb_ lost connection: TextComponent{text='Disconnected', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",
       "[Server thread/INFO]: jeb_ left the game",
       "[Server thread/INFO]: Stopping the server",
@@ -270,17 +263,17 @@
       "-476,3,-439": "3:0",
       "-476,3,-435": "3:0",
       "-476,3,-431": "3:0",
-      "-474,3,-437": "2:0",
+      "-474,3,-437": "3:0",
       "-474,3,-433": "3:0",
       "-472,3,-439": "3:0",
       "-472,3,-435": "3:0",
       "-472,3,-431": "2:0",
-      "-470,3,-437": "2:0",
-      "-470,3,-433": "3:0",
+      "-470,3,-437": "3:0",
+      "-470,3,-433": "2:0",
       "-468,3,-439": "3:0",
-      "-468,3,-435": "3:0",
+      "-468,3,-435": "2:0",
       "-468,3,-431": "60:7",
-      "-466,3,-437": "2:0",
+      "-466,3,-437": "3:0",
       "-466,3,-433": "3:0",
       "-469,4,-430": "59:0",
       "-467,4,-430": "59:0",

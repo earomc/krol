@@ -1321,18 +1321,7 @@ impl Game {
             },
             _ => {
                 let value = args[1..].join(" ");
-                let mut compound = self
-                    .level
-                    .data
-                    .data
-                    .get_compound("GameRules")
-                    .cloned()
-                    .unwrap_or_default();
-                compound.insert(args[0], Tag::String(value));
-                self.level
-                    .data
-                    .data
-                    .insert("GameRules", Tag::Compound(compound));
+                self.set_game_rule(args[0], &value);
                 self.notify(
                     sender,
                     "gamerule",
@@ -1347,6 +1336,22 @@ impl Game {
 
     /// All game rules (defaults overlaid with `level.dat`), sorted by name like vanilla's
     /// `TreeMap`.
+    /// `GameRules.setOrCreateGameRule`.
+    pub(super) fn set_game_rule(&mut self, name: &str, value: &str) {
+        let mut compound = self
+            .level
+            .data
+            .data
+            .get_compound("GameRules")
+            .cloned()
+            .unwrap_or_default();
+        compound.insert(name, Tag::String(value.to_owned()));
+        self.level
+            .data
+            .data
+            .insert("GameRules", Tag::Compound(compound));
+    }
+
     pub(super) fn game_rules(&self) -> Vec<(String, String)> {
         let mut rules: std::collections::BTreeMap<String, String> = DEFAULT_GAME_RULES
             .iter()

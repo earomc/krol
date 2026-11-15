@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //
 // A test-only Java agent for the vanilla 1.8.8 server used by the parity suite
-// (AGENTS.md section 10.2). It adds one console command, `krolpin <seed>`, which seeds
+// (AGENTS.md section 10.2). It adds one console command,
+// `krolpin <seed> [randomTickSpeed] [ticks]`, which seeds
 // every world's random (World.rand) and random block tick generator (World.updateLCG),
-// and sets the cave mood countdown to 12000 (World.ambientTickCountdown)
+// and sets the cave mood countdown to 12000 (World.ambientTickCountdown). With a speed it
+// also sets the randomTickSpeed game rule in the same tick, and with a tick count it sets
+// the rule back to 0 at the end of that many ticks (through a tickable, which runs after
+// the worlds' ticks), so a scenario can run random ticks for an exact number of ticks
 // so that behavior driven by them can be compared with krol exactly; krol answers the
 // same command in builds with the `parity` feature.
 //
@@ -16,6 +20,8 @@
 //   k                                          ICommand
 //   adm.s / adm.m                              World.rand / World.updateLCG
 //   adm.L                                      World.ambientTickCountdown
+//   adm.Q() / adk.a(String, String)            World.getGameRules / GameRules.setOrCreateGameRule
+//   MinecraftServer.a(km), km.c()              registerTickable(ITickable), ITickable.update
 //
 // Built by `cargo xtask parity` (javac --release 8) and loaded with -javaagent only for
 // scenarios that set `pin_random`.
@@ -85,7 +91,14 @@ public final class KrolAgent {
             return true; // canCommandSenderUseCommand
         }
         if (n.equals("a") && params == 2) {
-            pin(server, Long.parseLong(((String[]) a[1])[0])); // processCommand
+            String[] args = (String[]) a[1]; // processCommand
+            pin(server, Long.parseLong(args[0]));
+            if (args.length >= 2) {
+                setRandomTickSpeed(server, args[1]);
+            }
+            if (args.length >= 3) {
+                stopAfter(server, Integer.parseInt(args[2]));
+            }
             return null;
         }
         if (n.equals("a") && params == 3) {
@@ -110,11 +123,42 @@ public final class KrolAgent {
         throw new UnsupportedOperationException(n);
     }
 
-    /** Seeds World.rand and World.updateLCG of every loaded world. */
-    private static void pin(Object server, long seed) throws Exception {
+    /** Sets the randomTickSpeed game rule (shared by all worlds). */
+    private static void setRandomTickSpeed(Object server, String speed) throws Exception {
+        Object overworld = worlds(server)[0];
+        Object rules = Class.forName("adm").getMethod("Q").invoke(overworld);
+        rules.getClass().getMethod("a", String.class, String.class).invoke(rules, "randomTickSpeed", speed);
+    }
+
+    /** Sets randomTickSpeed to 0 at the end of the `ticks`-th tick from now. */
+    private static void stopAfter(Object server, int ticks) throws Exception {
+        Class<?> tickable = Class.forName("km");
+        final int[] left = {ticks};
+        InvocationHandler count = (proxy, method, a) -> {
+            if (method.getName().equals("c") && left[0] > 0 && --left[0] == 0) {
+                setRandomTickSpeed(server, "0");
+            }
+            if (method.getName().equals("hashCode")) {
+                return System.identityHashCode(proxy);
+            }
+            if (method.getName().equals("equals")) {
+                return proxy == a[0];
+            }
+            return null;
+        };
+        Object hook = Proxy.newProxyInstance(tickable.getClassLoader(), new Class<?>[] {tickable}, count);
+        Class.forName("net.minecraft.server.MinecraftServer").getMethod("a", tickable).invoke(server, hook);
+    }
+
+    private static Object[] worlds(Object server) throws Exception {
         Field worldsField = server.getClass().getSuperclass().getDeclaredField("d");
         worldsField.setAccessible(true);
-        Object[] worlds = (Object[]) worldsField.get(server);
+        return (Object[]) worldsField.get(server);
+    }
+
+    /** Seeds World.rand and World.updateLCG of every loaded world. */
+    private static void pin(Object server, long seed) throws Exception {
+        Object[] worlds = worlds(server);
         Class<?> world = Class.forName("adm");
         Field rand = world.getDeclaredField("s");
         rand.setAccessible(true);
