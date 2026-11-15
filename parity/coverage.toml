@@ -320,13 +320,13 @@ scenarios = ["play/lighting"]
 
 [[feature]]
 id = "world.random_ticks"
-description = "Random block ticks: active chunks in vanilla order, updateLCG positions, randomTickSpeed, skylightSubtracted; grass/mycelium spreading and dying, farmland, crops, stems, sugar cane, cactus, ice and snow melting, redstone ore, nether wart, plants without soil; farmland, cactus and snow layer placement. Saplings growing into spruce, birch, oak and small jungle trees (WorldGenTaiga2, WorldGenForest, WorldGenTrees with vines and cocoa) and fancy oaks (WorldGenBigTree). Not yet: acacia, dark oak, 2x2 trees, bone meal, fire, vines, mushrooms, lightning, freezing and snowfall"
+description = "Random block ticks: active chunks in vanilla order, updateLCG positions, randomTickSpeed, skylightSubtracted; grass/mycelium spreading and dying, farmland, crops, stems, sugar cane, cactus, ice and snow melting, redstone ore, nether wart, plants without soil; farmland, cactus and snow layer placement. Saplings growing into spruce, birch, oak and small jungle trees (WorldGenTaiga2, WorldGenForest, WorldGenTrees with vines and cocoa) fancy oaks (WorldGenBigTree), acacia (WorldGenSavannaTree) and dark oak from 2x2 saplings (WorldGenCanopyTree). Not yet: 2x2 spruce and jungle trees, bone meal, fire, vines, mushrooms, lightning, freezing and snowfall"
 scenarios = ["play/random_ticks"]
 
 [[feature]]
 id = "parity.pin_random"
 description = "The parity suite pins vanilla's world random and random tick generator (parity/vanilla-agent, krolpin) to compare random-driven behavior exactly; fire spreading, lava receding and random block ticks (grass spreading) compared block for block; the cave mood countdown is modeled and pinned too"
-scenarios = ["play/fire_spread_pinned", "play/lava_recede_pinned", "play/random_ticks_pinned", "play/saplings_pinned", "play/oaks_pinned"]
+scenarios = ["play/fire_spread_pinned", "play/lava_recede_pinned", "play/random_ticks_pinned", "play/saplings_pinned", "play/oaks_pinned", "play/savanna_trees_pinned"]
 
 [[feature]]
 id = "world.leaf_decay"

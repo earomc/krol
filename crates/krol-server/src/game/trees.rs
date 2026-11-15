@@ -1,7 +1,7 @@
 //! Saplings and the tree generators they use (vanilla `BlockSapling`, `WorldGenTrees`,
 //! `WorldGenForest`, `WorldGenTaiga2`). World generation will reuse the generators.
 //!
-//! TODO(M5): acacia, dark oak and the 2x2 trees.
+//! TODO(M5): the 2x2 spruce and jungle trees.
 
 use krol_java::JavaRandom;
 
@@ -18,6 +18,12 @@ const OAK: u16 = 0;
 const SPRUCE: u16 = 1;
 const BIRCH: u16 = 2;
 const JUNGLE: u16 = 3;
+/// Acacia and dark oak: `leaves2`/`log2` variants 0 and 1, sapling types 4 and 5.
+const ACACIA: u16 = 4;
+const DARK_OAK: u16 = 5;
+/// Their variants in `log2` and `leaves2` (type minus 4).
+const ACACIA_VARIANT: u16 = ACACIA - 4;
+const DARK_OAK_VARIANT: u16 = DARK_OAK - 4;
 /// Saplings need this much light above them to grow, and grow 1 time in 7.
 const SAPLING_LIGHT: i32 = 9;
 const SAPLING_GROW_CHANCE: i32 = 7;
@@ -556,6 +562,220 @@ impl BigTree {
     }
 }
 
+/// `EnumFacing.Plane.HORIZONTAL.random`: north, east, south or west, as `(dx, dz)`.
+fn random_horizontal(g: &mut Gen) -> (i32, i32) {
+    [(0, -1), (1, 0), (0, 1), (-1, 0)][g.rand().next_int_bounded(4) as usize]
+}
+
+/// `WorldGenSavannaTree.func_175924_b`: acacia leaves where there is air or leaves.
+fn acacia_leaves(g: &mut Gen, p: (i32, i32, i32)) {
+    if matches!(material(g.id(p)), Material::Air | Material::Leaves) {
+        g.set(p, block::LEAVES2 << 4 | ACACIA_VARIANT);
+    }
+}
+
+/// `WorldGenSavannaTree`: acacia, a trunk that bends to one side and maybe a second
+/// branch, each ending in a flat crown.
+fn acacia_tree(g: &mut Gen, pos: (i32, i32, i32)) -> bool {
+    let height = g.rand().next_int_bounded(3) + g.rand().next_int_bounded(3) + 5;
+    if pos.1 < 1 || pos.1 + height + 1 > 256 || !space_for_trunk(g, pos, height) {
+        return false;
+    }
+    let below = g.id((pos.0, pos.1 - 1, pos.2));
+    if !matches!(below, block::GRASS | block::DIRT) || pos.1 >= 256 - height - 1 {
+        return false;
+    }
+    g.set_dirt((pos.0, pos.1 - 1, pos.2));
+    let wood = block::LOG2 << 4 | ACACIA_VARIANT;
+    let lean = random_horizontal(g);
+    let bend_at = height - g.rand().next_int_bounded(4) - 1;
+    let mut bend = 3 - g.rand().next_int_bounded(3);
+    let (mut x, mut z) = (pos.0, pos.2);
+    let mut top = 0;
+    for k in 0..height {
+        let y = pos.1 + k;
+        if k >= bend_at && bend > 0 {
+            x += lean.0;
+            z += lean.1;
+            bend -= 1;
+        }
+        if matches!(material(g.id((x, y, z))), Material::Air | Material::Leaves) {
+            g.set((x, y, z), wood);
+            top = y;
+        }
+    }
+    let crown = (x, top, z);
+    for dx in -3i32..=3 {
+        for dz in -3i32..=3 {
+            if dx.abs() != 3 || dz.abs() != 3 {
+                acacia_leaves(g, (crown.0 + dx, crown.1, crown.2 + dz));
+            }
+        }
+    }
+    let up = (crown.0, crown.1 + 1, crown.2);
+    for dx in -1..=1 {
+        for dz in -1..=1 {
+            acacia_leaves(g, (up.0 + dx, up.1, up.2 + dz));
+        }
+    }
+    for (dx, dz) in [(2, 0), (-2, 0), (0, 2), (0, -2)] {
+        acacia_leaves(g, (up.0 + dx, up.1, up.2 + dz));
+    }
+    let (mut x, mut z) = (pos.0, pos.2);
+    let branch = random_horizontal(g);
+    if branch != lean {
+        let mut k = bend_at - g.rand().next_int_bounded(2) - 1;
+        let mut left = 1 + g.rand().next_int_bounded(3);
+        let mut end = 0;
+        while k < height && left > 0 {
+            if k >= 1 {
+                let y = pos.1 + k;
+                x += branch.0;
+                z += branch.1;
+                if matches!(material(g.id((x, y, z))), Material::Air | Material::Leaves) {
+                    g.set((x, y, z), wood);
+                    end = y;
+                }
+            }
+            k += 1;
+            left -= 1;
+        }
+        if end > 0 {
+            let c = (x, end, z);
+            for dx in -2i32..=2 {
+                for dz in -2i32..=2 {
+                    if dx.abs() != 2 || dz.abs() != 2 {
+                        acacia_leaves(g, (c.0 + dx, c.1, c.2 + dz));
+                    }
+                }
+            }
+            for dx in -1..=1 {
+                for dz in -1..=1 {
+                    acacia_leaves(g, (c.0 + dx, c.1 + 1, c.2 + dz));
+                }
+            }
+        }
+    }
+    true
+}
+
+/// `WorldGenCanopyTree.func_181639_b`: a dark oak log where a tree may grow.
+fn canopy_log(g: &mut Gen, p: (i32, i32, i32)) {
+    if g.can_grow_into(p) {
+        g.set(p, block::LOG2 << 4 | DARK_OAK_VARIANT);
+    }
+}
+
+/// `WorldGenCanopyTree.func_150526_a`: dark oak leaves in air only.
+fn canopy_leaves(g: &mut Gen, p: (i32, i32, i32)) {
+    if material(g.id(p)) == Material::Air {
+        g.set(p, block::LEAVES2 << 4 | DARK_OAK_VARIANT);
+    }
+}
+
+/// `WorldGenCanopyTree`: dark oak, a 2x2 trunk (`pos` is its north-west corner) that
+/// may lean, a wide flat crown and short side branches.
+fn dark_oak_tree(g: &mut Gen, pos: (i32, i32, i32)) -> bool {
+    let height = g.rand().next_int_bounded(3) + g.rand().next_int_bounded(2) + 6;
+    let (x0, y0, z0) = pos;
+    if y0 < 1 || y0 + height + 1 >= 256 {
+        return false;
+    }
+    if !matches!(g.id((x0, y0 - 1, z0)), block::GRASS | block::DIRT) {
+        return false;
+    }
+    // func_181638_a: the space around the corner column.
+    for dy in 0..=height + 1 {
+        let r = if dy == 0 {
+            0
+        } else if dy >= height - 1 {
+            2
+        } else {
+            1
+        };
+        for dx in -r..=r {
+            for dz in -r..=r {
+                if !g.can_grow_into((x0 + dx, y0 + dy, z0 + dz)) {
+                    return false;
+                }
+            }
+        }
+    }
+    for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+        g.set_dirt((x0 + dx, y0 - 1, z0 + dz));
+    }
+    let lean = random_horizontal(g);
+    let bend_at = height - g.rand().next_int_bounded(4);
+    let mut bend = 2 - g.rand().next_int_bounded(3);
+    let (mut x, mut z) = (x0, z0);
+    let top = y0 + height - 1;
+    for k in 0..height {
+        if k >= bend_at && bend > 0 {
+            x += lean.0;
+            z += lean.1;
+            bend -= 1;
+        }
+        let p = (x, y0 + k, z);
+        if matches!(material(g.id(p)), Material::Air | Material::Leaves) {
+            for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                canopy_log(g, (p.0 + dx, p.1, p.2 + dz));
+            }
+        }
+    }
+    for dx in -2..=0 {
+        for dz in -2..=0 {
+            let mirrored = |g: &mut Gen, y: i32| {
+                canopy_leaves(g, (x + dx, y, z + dz));
+                canopy_leaves(g, (1 + x - dx, y, z + dz));
+                canopy_leaves(g, (x + dx, y, 1 + z - dz));
+                canopy_leaves(g, (1 + x - dx, y, 1 + z - dz));
+            };
+            mirrored(g, top - 1);
+            if (dx > -2 || dz > -1) && (dx != -1 || dz != -2) {
+                mirrored(g, top + 1);
+            }
+        }
+    }
+    if g.rand().next_boolean() {
+        for (dx, dz) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
+            canopy_leaves(g, (x + dx, top + 2, z + dz));
+        }
+    }
+    for dx in -3i32..=4 {
+        for dz in -3i32..=4 {
+            let corner = (dx == -3 || dx == 4) && (dz == -3 || dz == 4);
+            if !corner && (dx.abs() < 3 || dz.abs() < 3) {
+                canopy_leaves(g, (x + dx, top, z + dz));
+            }
+        }
+    }
+    for dx in -1..=2 {
+        for dz in -1..=2 {
+            let outer = !(0..=1).contains(&dx) || !(0..=1).contains(&dz);
+            if outer && g.rand().next_int_bounded(3) <= 0 {
+                let length = g.rand().next_int_bounded(3) + 2;
+                // Vanilla quirk: the branch logs start from the unshifted base.
+                for k in 0..length {
+                    canopy_log(g, (x0 + dx, top - k - 1, z0 + dz));
+                }
+                for ax in -1..=1 {
+                    for az in -1..=1 {
+                        canopy_leaves(g, (x + dx + ax, top, z + dz + az));
+                    }
+                }
+                for ax in -2i32..=2 {
+                    for az in -2i32..=2 {
+                        if ax.abs() != 2 || az.abs() != 2 {
+                            canopy_leaves(g, (x + dx + ax, top - 1, z + dz + az));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    true
+}
+
 impl Game {
     /// `BlockSapling.updateTick` after the bush check: in enough light, 1 time in 7 the
     /// sapling grows.
@@ -582,17 +802,37 @@ impl Game {
         // Drawn for every kind, before the kind is looked at.
         let big = self.world_rand.next_int_bounded(BIG_TREE_CHANCE) == 0;
         let kind = state & SAPLING_TYPE;
-        let jungle_height = if kind == JUNGLE {
-            // TODO(M5): four jungle saplings make a mega jungle tree.
-            Some(4 + self.world_rand.next_int_bounded(7))
+        // Spruce, jungle and dark oak look for a 2x2 of their saplings that includes this
+        // one (corner offsets 0 and -1, x outer).
+        let square = if matches!(kind, SPRUCE | JUNGLE | DARK_OAK) {
+            self.sapling_square(pos, kind)
         } else {
             None
         };
-        // TODO(M5): acacia, dark oak and the 2x2 spruce and jungle trees.
-        if !matches!(kind, OAK | SPRUCE | BIRCH | JUNGLE) {
-            return;
+        let mut jungle_height = 4;
+        match (kind, square) {
+            (SPRUCE, Some(_)) => {
+                // TODO(M5): WorldGenMegaPineTree(false, nextBoolean()).
+                let _ = self.world_rand.next_boolean();
+                return;
+            }
+            // TODO(M5): WorldGenMegaJungle.
+            (JUNGLE, Some(_)) => return,
+            (JUNGLE, None) => jungle_height = 4 + self.world_rand.next_int_bounded(7),
+            // A single dark oak sapling does not grow.
+            (DARK_OAK, None) => return,
+            _ => {}
         }
-        self.set_block_flags(pos, 0, 0);
+        let corner = square.unwrap_or((0, 0));
+        let base = (pos.0 + corner.0, pos.1, pos.2 + corner.1);
+        let cells: &[(i32, i32)] = if square.is_some() {
+            &[(0, 0), (1, 0), (0, 1), (1, 1)]
+        } else {
+            &[(0, 0)]
+        };
+        for &(dx, dz) in cells {
+            self.set_block_flags((base.0 + dx, base.1, base.2 + dz), 0, 0);
+        }
         let mut g = Gen {
             game: self,
             notify: true,
@@ -602,26 +842,28 @@ impl Game {
                 let seed = g.rand().next_long();
                 BigTree {
                     rand: JavaRandom::new(seed),
-                    base: pos,
+                    base,
                     height_limit: 0,
                     height: 0,
                     nodes: Vec::new(),
                 }
                 .generate(&mut g)
             }
-            SPRUCE => spruce_tree(&mut g, pos),
-            BIRCH => birch_tree(&mut g, pos, false),
+            SPRUCE => spruce_tree(&mut g, base),
+            BIRCH => birch_tree(&mut g, base, false),
             JUNGLE => small_tree(
                 &mut g,
-                pos,
-                jungle_height.unwrap_or(4),
+                base,
+                jungle_height,
                 block::LOG << 4 | JUNGLE,
                 block::LEAVES << 4 | JUNGLE,
                 false,
             ),
+            ACACIA => acacia_tree(&mut g, base),
+            DARK_OAK => dark_oak_tree(&mut g, base),
             _ => small_tree(
                 &mut g,
-                pos,
+                base,
                 4,
                 block::LOG << 4 | OAK,
                 block::LEAVES << 4 | OAK,
@@ -629,7 +871,32 @@ impl Game {
             ),
         };
         if !grown {
-            self.set_block_flags(pos, state, 0);
+            // Every cleared sapling comes back as the one that grew.
+            for &(dx, dz) in cells {
+                self.set_block_flags((base.0 + dx, base.1, base.2 + dz), state, 0);
+            }
         }
+    }
+
+    /// `BlockSapling.func_181624_a`: the north-west corner offset of a 2x2 of saplings
+    /// of `kind` that includes `pos`, trying offsets 0 and -1 (x outer).
+    fn sapling_square(&mut self, pos: (i32, i32, i32), kind: u16) -> Option<(i32, i32)> {
+        let is = |g: &mut Self, x: i32, z: i32| {
+            let s = g.level.overworld.block(x, pos.1, z);
+            s >> 4 == block::SAPLING && s & SAPLING_TYPE == kind
+        };
+        for i in [0, -1] {
+            for j in [0, -1] {
+                let (x, z) = (pos.0 + i, pos.2 + j);
+                if is(self, x, z)
+                    && is(self, x + 1, z)
+                    && is(self, x, z + 1)
+                    && is(self, x + 1, z + 1)
+                {
+                    return Some((i, j));
+                }
+            }
+        }
+        None
     }
 }
