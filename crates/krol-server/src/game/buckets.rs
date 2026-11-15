@@ -129,6 +129,41 @@ impl Game {
         UseResult::Resized
     }
 
+    /// `ItemGlassBottle.onItemRightClick`: aimed at water (any level), the bottle fills
+    /// (in creative too).
+    pub(super) fn fill_bottle(&mut self, i: usize, held: &ItemStack) -> UseResult {
+        let Some(hit) = self.view_ray_trace(i, true) else {
+            return UseResult::Unchanged;
+        };
+        if self.is_block_protected(i, hit.pos) || !self.can_edit(i) {
+            return UseResult::Unchanged;
+        }
+        let state = self.level.overworld.block(hit.pos.0, hit.pos.1, hit.pos.2);
+        if material(state >> 4) != Material::Water {
+            return UseResult::Unchanged;
+        }
+        self.count_item_use(i);
+        let water = || ItemStack {
+            id: item::POTION,
+            count: 1,
+            damage: 0,
+            nbt: None,
+        };
+        if held.count <= 1 {
+            return UseResult::Replaced(Some(water()));
+        }
+        let p = &mut self.players[i];
+        let slot = 36 + p.selected;
+        if let Some(s) = p.inventory[slot].as_mut() {
+            s.count -= 1;
+        }
+        let mut new = water();
+        if !super::item_entity::add_to_inventory(&mut p.inventory, &mut new) {
+            self.toss(i, water(), false);
+        }
+        UseResult::Resized
+    }
+
     /// `ItemBucket.tryPlaceContainedLiquid` in a world where water does not vaporize.
     fn place_liquid(&mut self, at: (i32, i32, i32), liquid: u16) -> bool {
         if !(0..256).contains(&at.1) {

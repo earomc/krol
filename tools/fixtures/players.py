@@ -14,6 +14,9 @@
 #   and steel (scenarios that would otherwise switch game modes from the console,
 #   which races with the bot's actions).
 # - notch_bed.dat: Notch in survival mode at jeb_'s usual spawn spot, holding two beds.
+# - notch_potions.dat: Notch in survival mode at jeb_'s usual spawn spot, holding a
+#   swiftness potion, two instant health II potions, two glass bottles and a potion with
+#   a custom effect (strength II for 10 s).
 # - notch_creative_flint.dat: the same in creative mode (explosions cannot hurt him).
 #
 # Run: python tools/fixtures/players.py
@@ -51,9 +54,16 @@ def float_list(n, values):
     return list_(n, 5, [struct.pack('>f', v) for v in values])
 
 
-def item(slot, item_id, count, damage):
-    return compound_payload(byte('Count', count), short('Damage', damage), byte('Slot', slot),
-                            string('id', item_id))
+def item(slot, item_id, count, damage, tag=None):
+    fields = [byte('Count', count), short('Damage', damage), byte('Slot', slot),
+              string('id', item_id)]
+    if tag is not None:
+        fields.append(tag)
+    return compound_payload(*fields)
+
+
+def compound(n, *tags):
+    return tag(10, n, compound_payload(*tags))
 
 
 def player(path, pos, inventory, extra=(), game_type=0):
@@ -82,6 +92,14 @@ player(DIR + 'notch_flint.dat', [-471.5, 4.0, -434.5], [
 ])
 player(DIR + 'notch_bed.dat', [-471.5, 4.0, -434.5], [
     item(0, 'minecraft:bed', 2, 0),
+])
+player(DIR + 'notch_potions.dat', [-471.5, 4.0, -434.5], [
+    item(0, 'minecraft:potion', 1, 8194),
+    item(1, 'minecraft:potion', 2, 8261),
+    item(2, 'minecraft:glass_bottle', 2, 0),
+    item(3, 'minecraft:potion', 1, 0, compound('tag', list_('CustomPotionEffects', 10, [
+        compound_payload(byte('Id', 5), byte('Amplifier', 1), int_('Duration', 200)),
+    ]))),
 ])
 player(DIR + 'notch_creative_flint.dat', [-471.5, 4.0, -434.5], [
     item(0, 'minecraft:flint_and_steel', 1, 0),

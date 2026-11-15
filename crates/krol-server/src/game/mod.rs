@@ -42,6 +42,7 @@ mod pistons;
 mod placement;
 mod plants;
 pub mod player;
+mod potion_helper;
 mod potions;
 mod powered_blocks;
 mod pressure_plates;
@@ -1608,16 +1609,22 @@ impl Game {
             }
             id if item_data::armor_points(id) > 0 => self.equip_armor(i, &held),
             ids::item::MILK_BUCKET => {
-                self.start_drinking_milk(i, &held);
+                self.start_drinking(i, &held);
                 buckets::UseResult::Kept
             }
+            // TODO(M5): splash potions are thrown.
+            ids::item::POTION if i32::from(held.damage) & potion_helper::SPLASH == 0 => {
+                self.start_drinking(i, &held);
+                buckets::UseResult::Kept
+            }
+            ids::item::GLASS_BOTTLE => self.fill_bottle(i, &held),
             id if food::food(id, held.damage).is_some() => {
                 if let Some(f) = food::food(id, held.damage) {
                     self.start_eating(i, &held, f);
                 }
                 buckets::UseResult::Kept
             }
-            // TODO(M4): food, potions, bows, throwables and the other usable items.
+            // TODO(M4): bows, throwables and the other usable items.
             _ => buckets::UseResult::Unchanged,
         };
         let slot = 36 + self.players[i].selected;

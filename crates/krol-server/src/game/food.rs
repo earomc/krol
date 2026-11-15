@@ -140,8 +140,9 @@ impl Game {
         self.players[i].using.is_some()
     }
 
-    /// `ItemBucketMilk.onItemRightClick`: milk is drunk in any game mode.
-    pub(super) fn start_drinking_milk(&mut self, i: usize, held: &ItemStack) {
+    /// `ItemBucketMilk.onItemRightClick` / `ItemPotion.onItemRightClick` (drinkable
+    /// potions): drunk in any game mode, with no animation.
+    pub(super) fn start_drinking(&mut self, i: usize, held: &ItemStack) {
         let p = &mut self.players[i];
         let slot = 36 + p.selected;
         let same = p
@@ -230,6 +231,11 @@ impl Game {
             self.clear_item_in_use(i);
             return;
         };
+        if stack.id == super::ids::item::POTION {
+            self.potion_drunk(i, slot, stack);
+            self.clear_item_in_use(i);
+            return;
+        }
         if stack.id == super::ids::item::MILK_BUCKET {
             // ItemBucketMilk.onItemUseFinish.
             let mut milk = stack.clone();
@@ -289,6 +295,39 @@ impl Game {
         self.clear_item_in_use(i);
     }
 
+    /// `ItemPotion.onItemUseFinish`: the effects (custom ones from the item's NBT, else
+    /// those of its damage value), then an empty bottle in survival.
+    fn potion_drunk(&mut self, i: usize, slot: usize, stack: ItemStack) {
+        let creative = self.players[i].gamemode == 1;
+        let mut left = stack.clone();
+        if !creative {
+            left.count -= 1;
+        }
+        for e in potion_item_effects(&stack) {
+            self.add_effect(i, e);
+        }
+        if let Some(stat) = super::digging::use_stat(stack.id) {
+            self.players[i].stats.add(&stat, 1);
+        }
+        let bottle = || ItemStack {
+            id: super::ids::item::GLASS_BOTTLE,
+            count: 1,
+            damage: 0,
+            nbt: None,
+        };
+        let p = &mut self.players[i];
+        if creative {
+            p.inventory[slot] = Some(left);
+        } else if left.count <= 0 {
+            p.inventory[slot] = Some(bottle());
+        } else {
+            p.inventory[slot] = Some(left);
+            // Vanilla quirk: with no room the bottle is simply lost.
+            let mut b = bottle();
+            super::item_entity::add_to_inventory(&mut p.inventory, &mut b);
+        }
+    }
+
     /// `ItemFood.onFoodEaten` and its overrides (`ItemAppleGold`, `ItemFishFood`).
     fn food_eaten(&mut self, i: usize, id: i16, damage: i16) {
         use super::potions::{Effect, effect};
@@ -330,4 +369,43 @@ impl Game {
             _ => {}
         }
     }
+}
+
+/// `ItemPotion.getEffects`: `CustomPotionEffects` from the item's NBT
+/// (`PotionEffect.readCustomPotionEffectFromNBT`), else the damage value's effects.
+pub fn potion_item_effects(stack: &ItemStack) -> Vec<super::potions::Effect> {
+    use super::potions::Effect;
+    if let Some(list) = stack
+        .nbt
+        .as_ref()
+        .and_then(|n| n.get_list("CustomPotionEffects", krol_nbt::TagType::Compound))
+    {
+        return list
+            .iter()
+            .filter_map(|t| match t {
+                krol_nbt::Tag::Compound(c) => {
+                    let id = c.get_i8("Id");
+                    super::potions::effect_type(i32::from(id))?;
+                    Some(Effect {
+                        id: id as u8,
+                        amplifier: c.get_i8("Amplifier") as u8,
+                        duration: c.get_i32("Duration"),
+                        ambient: c.get_bool("Ambient"),
+                        particles: !c.contains_key("ShowParticles") || c.get_bool("ShowParticles"),
+                    })
+                }
+                _ => None,
+            })
+            .collect();
+    }
+    super::potion_helper::potion_effects(i32::from(stack.damage))
+        .into_iter()
+        .map(|(id, duration, amplifier)| Effect {
+            id: id as u8,
+            amplifier: amplifier as u8,
+            duration,
+            ambient: false,
+            particles: true,
+        })
+        .collect()
 }

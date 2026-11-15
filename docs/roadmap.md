@@ -379,7 +379,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemFood`, `ItemAppleGold`, `ItemSoup`, `ItemFishFood` | ✅ | |
 | `ItemDye` | ✅ | Bone meal, cocoa beans. Dyeing sheep ❌ |
 | `ItemArmor` | 🟡 | Equipping, protection, wear ✅; leather dye ✅ (crafting); dispensing armor ❌ |
-| `ItemPotion`, `ItemGlassBottle` | ❌ | Drinking, splash potions, filling bottles |
+| `ItemPotion`, `ItemGlassBottle` | 🟡 | Drinking (effects from the damage value via a port of `PotionHelper`, checked against all 32768 values, or `CustomPotionEffects`), filling bottles at water ✅; splash potions (thrown) ❌ |
 | `ItemExpBottle` | ❌ | |
 | `ItemBow` | ❌ | |
 | `ItemFishingRod` | ❌ | |
@@ -534,7 +534,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Attribute effects: speed, slowness, strength, weakness | ✅ | Strength/weakness only affect attacking, which is ❌ |
 | Haste, mining fatigue (dig speed) | ❌ | |
 | Jump boost, night vision, blindness, nausea, water breathing, fire resistance, resistance, invisibility | 🟡 | Fire resistance and resistance ✅ (golden apples); jump boost/water breathing server effects ❌; client-side effects ➖ |
-| `PotionHelper` (brewing), potion items | ❌ | |
+| `PotionHelper` | 🟡 | `getPotionEffects` ✅; `applyIngredient` (brewing) ❌ |
 | Effect particles' random draws on the entity random | ❌ | |
 
 ## net.minecraft.enchantment

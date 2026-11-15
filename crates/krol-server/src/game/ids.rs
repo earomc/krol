@@ -278,6 +278,10 @@ pub mod item {
     pub const WATER_BUCKET: i16 = 326;
     /// `lava_bucket`.
     pub const LAVA_BUCKET: i16 = 327;
+    /// `potion` (the damage value encodes the effects).
+    pub const POTION: i16 = 373;
+    /// `glass_bottle`.
+    pub const GLASS_BOTTLE: i16 = 374;
     /// `milk_bucket`.
     pub const MILK_BUCKET: i16 = 335;
     /// `redstone` (the dust).

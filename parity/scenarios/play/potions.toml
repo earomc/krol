@@ -1,0 +1,54 @@
+description = "Potions: drinking swiftness (effect, empty bottle in its place), instant health II from a stack of two (the bottle goes to another slot), filling a glass bottle from a stack of two at a water source (water bottle added), drinking a potion with a custom effect from its NBT"
+subsystem = "play"
+
+# Notch (survival, from fixture data: swiftness in slot 0, two instant health II in slot
+# 1, two glass bottles in slot 2, a potion with CustomPotionEffects strength II in slot
+# 3) stands at the spawn (-471.5, 4, -434.5). The water source is in the ground one block
+# north; he looks at it (yaw 180, pitch 60). Drinking takes 32 movement packets.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_potions.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -472 3 -436 water"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 12
+chat = [
+    "@1000 !hold 0",
+    "@1300 !use",
+    "@3800 !hold 1",
+    "@4100 !use",
+    "@6600 !hold 2",
+    "@6900 !look 180 60",
+    "@7400 !use",
+    "@8000 !hold 3",
+    "@8300 !use",
+]
+
+[observe]
+log = true
+files = ["world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat"]
+ignore = [
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]
+
+# Effects count down once per movement packet: the durations left at logout vary by a
+# few packets.
+[observe.tolerance]
+"file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.ActiveEffects[0].Duration" = 8
+"file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.ActiveEffects[1].Duration" = 8

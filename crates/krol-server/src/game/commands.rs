@@ -383,7 +383,11 @@ type CommandResult = Result<(), CommandError>;
 fn item_by_text(text: &str) -> Result<i16, CommandError> {
     let location = match text.split_once(':') {
         Some((domain, path)) => {
-            let domain = if domain.is_empty() { "minecraft" } else { domain };
+            let domain = if domain.is_empty() {
+                "minecraft"
+            } else {
+                domain
+            };
             format!("{}:{path}", domain.to_ascii_lowercase())
         }
         None => format!("minecraft:{text}"),
@@ -1051,7 +1055,7 @@ impl Game {
         let mut removed = 0;
         let p = &mut self.players[i];
         let take = |slot: &mut Option<krol_protocol::packets::play::ItemStack>,
-                        removed: &mut i32|
+                    removed: &mut i32|
          -> bool {
             let Some(stack) = slot.as_mut().filter(|s| matches(s)) else {
                 return false;

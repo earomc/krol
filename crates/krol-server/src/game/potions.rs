@@ -78,6 +78,10 @@ pub struct EffectType {
     pub instant: bool,
     /// The translation key (`getName`).
     pub name: &'static str,
+    /// `getEffectiveness`: scales potion durations.
+    pub effectiveness: f64,
+    /// `isUsable` (left out of `PotionHelper.getPotionEffects(damage, false)`).
+    pub usable: bool,
 }
 
 fn table() -> &'static [Option<EffectType>; IDS] {
@@ -86,14 +90,20 @@ fn table() -> &'static [Option<EffectType>; IDS] {
         let mut t = [None; IDS];
         for line in include_str!("../../data/potions.txt").lines() {
             let f: Vec<&str> = line.split_whitespace().collect();
-            if let [id, color, instant, _bad, name] = f[..]
-                && let (Ok(id), Ok(color)) = (id.parse::<usize>(), i32::from_str_radix(color, 16))
+            if let [id, color, instant, _bad, name, effectiveness, usable] = f[..]
+                && let (Ok(id), Ok(color), Ok(effectiveness)) = (
+                    id.parse::<usize>(),
+                    i32::from_str_radix(color, 16),
+                    effectiveness.parse::<f64>(),
+                )
                 && id < IDS
             {
                 t[id] = Some(EffectType {
                     color,
                     instant: instant == "1",
                     name,
+                    effectiveness,
+                    usable: usable == "1",
                 });
             }
         }

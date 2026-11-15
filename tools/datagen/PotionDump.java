@@ -6,7 +6,7 @@
 // Run: java -cp reference/tools/server-srg.jar tools/datagen/PotionDump.java > potions.txt
 //
 // Output, one effect per line, in id order:
-//   <id> <liquid color, hex> <instant 0|1> <bad 0|1> <name>
+//   <id> <liquid color, hex> <instant 0|1> <bad 0|1> <name> <effectiveness> <usable 0|1>
 
 public class PotionDump {
     public static void main(String[] args) throws Exception {
@@ -22,7 +22,9 @@ public class PotionDump {
                 .append(Integer.toHexString((Integer) potion.getMethod("func_76401_j").invoke(p))).append(' ')
                 .append(((Boolean) potion.getMethod("func_76403_b").invoke(p)) ? 1 : 0).append(' ')
                 .append(bad.getBoolean(p) ? 1 : 0).append(' ')
-                .append(potion.getMethod("func_76393_a").invoke(p)).append('\n');
+                .append(potion.getMethod("func_76393_a").invoke(p)).append(' ')
+                .append(potion.getMethod("func_76388_g").invoke(p)).append(' ')
+                .append(((Boolean) potion.getMethod("func_76395_i").invoke(p)) ? 1 : 0).append('\n');
         }
         System.out.print(out);
     }

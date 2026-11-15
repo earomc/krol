@@ -457,3 +457,8 @@ scenarios = ["play/beds", "play/beds_broken"]
 id = "commands.clear_kill_spawnpoint"
 description = "/clear (matching by item resource location and data, maxCount counting and limits, main inventory then armor then cursor, failure), /spawnpoint (feet or coordinates, forced spawn points used on respawn), /kill (out-of-world damage: harms creative players, bypasses respawn protection; getEntity errors). Not yet: data tags, entity selectors"
 scenarios = ["commands/clear_kill_spawnpoint"]
+
+[[feature]]
+id = "item.potions"
+description = "Potions: drinking (32 updates, drink sounds, status 9) with effects from PotionHelper.getPotionEffects (port checked against every damage value) or CustomPotionEffects, the empty bottle (in the slot or added elsewhere; none in creative), glass bottles filled at water (in creative too, the water bottle added or tossed). Not yet: splash potions, brewing"
+scenarios = ["play/potions"]
