@@ -2,6 +2,7 @@
 //!
 //! ```text
 //! cargo xtask parity run      [--filter <substr>]   run scenarios against krol, diff vs golden
+//!                             [--protocol 5] [--jobs N] (4 scenarios at once by default)
 //! cargo xtask parity record   [--filter <substr>]   record vanilla observations (needs KROL_VANILLA_JAR)
 //! cargo xtask parity diff     <scenario>            show the diff for one scenario from the last report
 //! cargo xtask parity coverage                       feature coverage from parity/coverage.toml

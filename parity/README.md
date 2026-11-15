@@ -10,6 +10,15 @@ cargo xtask parity diff status/modern_ping  # one scenario's diffs from the last
 cargo xtask parity coverage                 # feature coverage (parity/coverage.toml)
 ```
 
+`run` takes `--protocol 5` (replay the play scenarios as 1.7 clients) and `--jobs N` (`-j N`,
+scenarios at once, default 4, capped at the CPU count). Scenarios mostly wait on scripted bot
+sessions, so 4 jobs bring a full run from about 18 to about 5 minutes. A scenario that fails
+during a parallel run is run once more on its own; if it passes then, it counts as passed and
+is marked "failed in parallel, passed alone" (`retried_alone` in the report). Those are
+scenarios whose bot timing races with the tick: worth making robust (see the rules below).
+`record` takes `--jobs` too but defaults to 1: every recording starts a JVM, whose default
+heap is a quarter of the RAM.
+
 Environment (never commit the jars):
 
 | Variable | Purpose |

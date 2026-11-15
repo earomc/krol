@@ -9,6 +9,8 @@ mod server;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -47,15 +49,69 @@ pub fn main(args: &[String]) -> Result<ExitCode> {
                 .map(|p| p.parse::<i32>())
                 .transpose()
                 .context("--protocol takes 47 or 5")?;
-            run(filter.as_deref(), protocol == Some(5))
+            let jobs = jobs(args, DEFAULT_RUN_JOBS)?;
+            run(filter.as_deref(), protocol == Some(5), jobs)
         }
-        Some("record") => record(filter.as_deref(), args.iter().any(|a| a == "--rerecord")),
+        Some("record") => {
+            let jobs = jobs(args, DEFAULT_RECORD_JOBS)?;
+            record(
+                filter.as_deref(),
+                args.iter().any(|a| a == "--rerecord"),
+                jobs,
+            )
+        }
         Some("diff") => show_diff(args.get(1).context("usage: parity diff <scenario>")?),
         Some("coverage") => coverage(),
         _ => bail!(
-            "usage: cargo xtask parity <run|record|diff|coverage> [--filter <substr>] [--protocol 5]"
+            "usage: cargo xtask parity <run|record|diff|coverage> [--filter <substr>] [--protocol 5] [--jobs N]"
         ),
     }
+}
+
+/// Scenarios run at once by `parity run` unless `--jobs` says otherwise. Scenarios spend
+/// most of their time waiting for scripted bot sessions, and a krol server needs little
+/// CPU or memory, so a few at once cut the wall time without disturbing tick timing.
+const DEFAULT_RUN_JOBS: usize = 4;
+/// `parity record` starts a JVM per scenario (vanilla's default heap is a quarter of the
+/// RAM), so it stays sequential unless asked.
+const DEFAULT_RECORD_JOBS: usize = 1;
+
+/// `--jobs N` / `-j N`, capped at the number of CPUs.
+fn jobs(args: &[String], default: usize) -> Result<usize> {
+    let value = flag_value(args, "--jobs").or_else(|| flag_value(args, "-j"));
+    let jobs = match value {
+        Some(v) => v
+            .parse::<usize>()
+            .context("--jobs takes a positive number")?,
+        None => default,
+    };
+    let cpus = std::thread::available_parallelism().map_or(1, usize::from);
+    Ok(jobs.clamp(1, cpus))
+}
+
+/// Runs `f` on every item with up to `jobs` worker threads; the results keep the order
+/// of the items.
+fn parallel_map<T: Sync, R: Send>(items: &[T], jobs: usize, f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let next = AtomicUsize::new(0);
+    let results: Vec<Mutex<Option<R>>> = items.iter().map(|_| Mutex::new(None)).collect();
+    std::thread::scope(|s| {
+        for _ in 0..jobs.min(items.len()) {
+            s.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    let Some(item) = items.get(i) else { break };
+                    let r = f(item);
+                    if let Ok(mut slot) = results[i].lock() {
+                        *slot = Some(r);
+                    }
+                }
+            });
+        }
+    });
+    results
+        .into_iter()
+        .filter_map(|m| m.into_inner().ok().flatten())
+        .collect()
 }
 
 fn flag_value(args: &[String], flag: &str) -> Option<String> {
@@ -127,6 +183,10 @@ struct ScenarioReport {
     /// Path of the full krol observations for inspection.
     #[serde(skip_serializing_if = "Option::is_none")]
     actual_observations: Option<String>,
+    /// Failed while other scenarios ran at the same time and passed when run alone: a
+    /// timing-sensitive scenario worth making robust.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    retried_alone: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -149,7 +209,7 @@ impl From<Difference> for DiffEntry {
 /// Runs the scenarios. With `v5`, only scenarios with play sessions run, every session
 /// connects as a 1.7 client (protocol 5), and both the vanilla recording and krol's
 /// observation are reduced to what a 1.7 client can observe before comparing.
-fn run(filter: Option<&str>, v5: bool) -> Result<ExitCode> {
+fn run(filter: Option<&str>, v5: bool, jobs: usize) -> Result<ExitCode> {
     let mut scenarios = scenario::load_all(&parity_root().join("scenarios"), filter)?;
     if v5 {
         scenarios.retain(|sc| {
@@ -170,9 +230,7 @@ fn run(filter: Option<&str>, v5: bool) -> Result<ExitCode> {
     }
     let krol = build_krol()?;
     let vanilla = vanilla_target();
-    let mut reports = Vec::new();
-
-    for sc in &scenarios {
+    let run_logged = |sc: &scenario::Scenario| {
         eprintln!("parity: {} ...", sc.name);
         let report = match run_one(sc, &krol, vanilla.as_ref(), v5) {
             Ok(r) => r,
@@ -187,9 +245,27 @@ fn run(filter: Option<&str>, v5: bool) -> Result<ExitCode> {
                 diffs: Vec::new(),
                 error: Some(format!("{e:#}")),
                 actual_observations: None,
+                retried_alone: false,
             },
         };
-        reports.push(report);
+        eprintln!("parity: {} {}", sc.name, report.status);
+        report
+    };
+    let mut reports = parallel_map(&scenarios, jobs, run_logged);
+    // Scenarios whose bot timing races with the tick fail more often under load; give
+    // each failure one run on its own and keep the first result if that fails too.
+    if jobs > 1 {
+        for (sc, report) in scenarios.iter().zip(reports.iter_mut()) {
+            if report.status == "fail" {
+                let alone = run_logged(sc);
+                if alone.status == "pass" {
+                    *report = ScenarioReport {
+                        retried_alone: true,
+                        ..alone
+                    };
+                }
+            }
+        }
     }
 
     let summary = summarize(&reports);
@@ -207,6 +283,7 @@ fn run(filter: Option<&str>, v5: bool) -> Result<ExitCode> {
                 r.first_divergence.as_deref().unwrap_or("?")
             ),
             "error" => format!(" ({})", r.error.as_deref().unwrap_or("?")),
+            _ if r.retried_alone => " (failed in parallel, passed alone)".to_owned(),
             _ => String::new(),
         };
         println!(
@@ -231,10 +308,12 @@ fn run(filter: Option<&str>, v5: bool) -> Result<ExitCode> {
 
 fn summarize(reports: &[ScenarioReport]) -> String {
     let count = |s: &str| reports.iter().filter(|r| r.status == s).count();
+    let retried = reports.iter().filter(|r| r.retried_alone).count();
     format!(
-        "{} scenarios: {} pass, {} fail, {} error, {} no_golden",
+        "{} scenarios: {} pass ({} only alone), {} fail, {} error, {} no_golden",
         reports.len(),
         count("pass"),
+        retried,
         count("fail"),
         count("error"),
         count("no_golden")
@@ -288,6 +367,7 @@ fn run_one(
         diffs: Vec::new(),
         error: None,
         actual_observations: Some(actual_path.display().to_string()),
+        retried_alone: false,
     };
     if let Some(expected) = expected {
         let diffs = diff::diff(
@@ -308,19 +388,20 @@ fn run_one(
     Ok(report)
 }
 
-fn record(filter: Option<&str>, rerecord: bool) -> Result<ExitCode> {
+fn record(filter: Option<&str>, rerecord: bool, jobs: usize) -> Result<ExitCode> {
     let vanilla = vanilla_target().context(
         "set KROL_VANILLA_JAR to the vanilla 1.8.8 server jar (and optionally KROL_JAVA)",
     )?;
     let scenarios = scenario::load_all(&parity_root().join("scenarios"), filter)?;
-    for sc in &scenarios {
+    let results = parallel_map(&scenarios, jobs, |sc| -> Result<()> {
         let path = golden_path(&sc.name);
         if path.exists() && !rerecord {
             println!("skip     {} (golden exists; use --rerecord)", sc.name);
-            continue;
+            return Ok(());
         }
         let observations =
-            observe::run(sc, &vanilla, &work_dir(&sc.name, "vanilla"), &parity_root())?;
+            observe::run(sc, &vanilla, &work_dir(&sc.name, "vanilla"), &parity_root())
+                .with_context(|| format!("recording {}", sc.name))?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -330,8 +411,18 @@ fn record(filter: Option<&str>, rerecord: bool) -> Result<ExitCode> {
         };
         std::fs::write(&path, serde_json::to_string_pretty(&golden)? + "\n")?;
         println!("recorded {}", sc.name);
+        Ok(())
+    });
+    let mut failed = false;
+    for e in results.into_iter().filter_map(Result::err) {
+        eprintln!("error: {e:#}");
+        failed = true;
     }
-    Ok(ExitCode::SUCCESS)
+    Ok(if failed {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    })
 }
 
 fn show_diff(name: &str) -> Result<ExitCode> {

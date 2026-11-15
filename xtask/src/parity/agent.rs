@@ -12,8 +12,17 @@ use super::repo_root;
 /// The agent's source file.
 const SOURCE: &str = "parity/vanilla-agent/KrolAgent.java";
 
-/// The agent jar, built when missing or older than its source.
+/// The agent jar, built when missing or older than its source (one build at a time:
+/// parallel recordings share the output directory).
 pub fn jar() -> Result<PathBuf> {
+    static BUILD: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = BUILD
+        .lock()
+        .map_err(|_| anyhow::anyhow!("agent build lock poisoned"))?;
+    build_jar()
+}
+
+fn build_jar() -> Result<PathBuf> {
     let root = repo_root();
     let source = root.join(SOURCE);
     let out = root.join("target").join("parity").join("vanilla-agent");

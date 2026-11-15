@@ -45,9 +45,21 @@ pub struct RunningServer {
     pub started: bool,
 }
 
-/// Returns a currently free local TCP port.
+/// Returns a currently free local TCP port that no other scenario of this run was
+/// given (the probe socket closes before the server binds, so parallel scenarios could
+/// otherwise get the same one).
 pub fn free_port() -> Result<u16> {
-    Ok(TcpListener::bind("127.0.0.1:0")?.local_addr()?.port())
+    static HANDED_OUT: std::sync::Mutex<Vec<u16>> = std::sync::Mutex::new(Vec::new());
+    loop {
+        let port = TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
+        let mut taken = HANDED_OUT
+            .lock()
+            .map_err(|_| anyhow::anyhow!("port registry poisoned"))?;
+        if !taken.contains(&port) {
+            taken.push(port);
+            return Ok(port);
+        }
+    }
 }
 
 /// Prepares `dir` according to `setup` and returns the chosen port.
