@@ -164,6 +164,12 @@ pub struct Observe {
     /// should carry a comment in the TOML saying why.
     #[serde(default)]
     pub tolerance: super::diff::Tolerances,
+    /// Groups of packet types (as named in a bot's `sequence`) whose order among
+    /// themselves is not compared where they follow each other directly, for packets
+    /// whose order depends on which tick a console command or bot packet lands in (in
+    /// vanilla too). Each group should carry a comment in the TOML saying why.
+    #[serde(default)]
+    pub unordered: Vec<Vec<String>>,
 }
 
 /// Loads all scenarios under `root`, optionally filtered by a name substring.

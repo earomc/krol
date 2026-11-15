@@ -369,7 +369,12 @@ fn run_one(
         actual_observations: Some(actual_path.display().to_string()),
         retried_alone: false,
     };
-    if let Some(expected) = expected {
+    if let Some(mut expected) = expected {
+        let mut actual = actual;
+        for group in &sc.observe.unordered {
+            diff::canonicalize_unordered(&mut expected, group);
+            diff::canonicalize_unordered(&mut actual, group);
+        }
         let diffs = diff::diff(
             &expected,
             &actual,

@@ -18,6 +18,44 @@ pub struct Difference {
 /// below it).
 pub type Tolerances = std::collections::BTreeMap<String, f64>;
 
+/// Puts every run of directly adjacent packets whose types are all in `group` into a
+/// canonical order, in each bot stream of `observations` (objects with parallel
+/// `sequence` and `packets` arrays).
+pub fn canonicalize_unordered(observations: &mut Value, group: &[String]) {
+    let Some(streams) = observations.as_object_mut() else {
+        return;
+    };
+    for stream in streams.values_mut() {
+        let Some(obj) = stream.as_object_mut() else {
+            continue;
+        };
+        let (Some(Value::Array(sequence)), Some(Value::Array(packets))) =
+            (obj.get("sequence").cloned(), obj.get("packets").cloned())
+        else {
+            continue;
+        };
+        if sequence.len() != packets.len() {
+            continue;
+        }
+        let in_group = |v: &Value| v.as_str().is_some_and(|t| group.iter().any(|g| g == t));
+        let mut pairs: Vec<(Value, Value)> = sequence.into_iter().zip(packets).collect();
+        let mut start = 0;
+        while start < pairs.len() {
+            let mut end = start;
+            while end < pairs.len() && in_group(&pairs[end].0) {
+                end += 1;
+            }
+            if end > start + 1 {
+                pairs[start..end].sort_by_key(|(t, p)| format!("{t}{p}"));
+            }
+            start = end.max(start + 1);
+        }
+        let (sequence, packets): (Vec<Value>, Vec<Value>) = pairs.into_iter().unzip();
+        obj.insert("sequence".into(), Value::Array(sequence));
+        obj.insert("packets".into(), Value::Array(packets));
+    }
+}
+
 /// Computes the differences between `expected` and `actual`, skipping ignored paths
 /// (an ignored path also hides everything below it) and accepting numbers within the
 /// tolerance of their path.
@@ -178,6 +216,26 @@ fn line_diff(path: &str, e: &[Value], a: &[Value], out: &mut Vec<Difference>) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn unordered_runs_are_canonical() {
+        let group = vec!["a".to_owned(), "b".to_owned()];
+        let stream = |seq: &[&str]| {
+            json!({ "bot": {
+                "sequence": seq,
+                "packets": seq.iter().map(|t| json!({ "packet": t })).collect::<Vec<_>>(),
+            }})
+        };
+        let mut x = stream(&["c", "b", "a", "c", "b"]);
+        let mut y = stream(&["c", "a", "b", "c", "b"]);
+        canonicalize_unordered(&mut x, &group);
+        canonicalize_unordered(&mut y, &group);
+        assert_eq!(x, y);
+        // Packets outside the group still keep their place.
+        let mut z = stream(&["b", "c", "a"]);
+        canonicalize_unordered(&mut z, &group);
+        assert_eq!(z, stream(&["b", "c", "a"]));
+    }
 
     #[test]
     fn structured_paths_and_ignores() {

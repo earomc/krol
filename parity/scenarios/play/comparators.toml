@@ -4,7 +4,9 @@ subsystem = "play"
 # jeb_ joins at the spawn in adventure mode (no spawn offset) and is made creative from
 # the console. He looks east before placing the comparator, so it reads the chest to
 # its west and powers the lamp to its east. Random block ticks are off: the grass under
-# the lamp would turn into dirt at a random time.
+# the lamp would turn into dirt at a random time. Clicks are 800 ms apart: the comparator
+# and the lamp react 2-3 ticks after a click, which must land before the next click's
+# confirmation even when the machine is busy.
 
 [setup]
 world = "fixtures/worlds/flat"
@@ -20,7 +22,7 @@ action = "play"
 background = true
 protocol = 47
 name = "jeb_"
-seconds = 11
+seconds = 14
 chat = [
     "@2500 !creative 36 54 1 0",
     "@2600 !creative 37 404 1 0",
@@ -34,19 +36,19 @@ chat = [
     "@4200 !place -468 3 -433 1",
     "@4500 !place -470 4 -433 1",
     "@4800 !click 1 27 0 1 0 4 64 0",
-    "@5100 !click 1 0 0 2 0",
-    "@5400 !close 1",
-    "@5800 !place -469 4 -433 1",
-    "@6300 !place -470 4 -433 1",
-    "@6600 !click 2 0 0 1 0 4 64 0",
-    "@6900 !click 2 27 0 2 0",
-    "@7200 !close 2",
+    "@5600 !click 1 0 0 2 0",
+    "@6400 !close 1",
+    "@7200 !place -469 4 -433 1",
+    "@8000 !place -470 4 -433 1",
+    "@8800 !click 2 0 0 1 0 4 64 0",
+    "@9600 !click 2 27 0 2 0",
+    "@10400 !close 2",
 ]
 
 [[steps]]
 action = "console"
 command = "gamemode 1 jeb_"
-wait_ms = 10700
+wait_ms = 13700
 
 [observe]
 log = true

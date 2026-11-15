@@ -59,6 +59,12 @@ ignore = [
     "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
 ]
 
+# An effect's attribute modifiers are applied by the command, its particle color by the
+# player's next movement packet. The player tracker flushes every 2 ticks, so whether the
+# properties go out before the color metadata or right after it depends on the tick the
+# command lands in (in vanilla too).
+unordered = [["entity_metadata", "entity_properties"]]
+
 # Effects count down once per movement packet: the durations left at logout vary by
 # a packet or two.
 [observe.tolerance]

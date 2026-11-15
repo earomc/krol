@@ -81,3 +81,11 @@ into server ticks. Rules learned from flaky scenarios:
   own burning for the hurt cooldown; prefer one with a single effect (cactus).
 - When something genuinely counts packets (stats, durations left), use a commented
   `[observe.tolerance]` entry for exactly those values.
+- **Leave room after a click for what it triggers**: when a click sets off block changes
+  a few ticks later (comparators, lamps), give the next action 800 ms so those land first
+  even on a busy machine (parallel runs).
+- When two packets' order depends on which tick a console command lands in (in vanilla
+  too: e.g. an effect's attribute properties vs its particle color, which waits for the
+  next movement packet, with the player tracker flushing every 2 ticks), declare them in
+  a commented `[observe] unordered = [["entity_metadata", "entity_properties"]]` group:
+  directly adjacent packets of those types are compared in a canonical order.
