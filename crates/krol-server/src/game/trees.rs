@@ -1,7 +1,7 @@
 //! Saplings and the tree generators they use (vanilla `BlockSapling`, `WorldGenTrees`,
-//! `WorldGenForest`, `WorldGenTaiga2`). World generation will reuse the generators.
-//!
-//! TODO(M5): the 2x2 spruce and jungle trees.
+//! `WorldGenForest`, `WorldGenTaiga2`, `WorldGenBigTree`, `WorldGenSavannaTree`,
+//! `WorldGenCanopyTree`, `WorldGenMegaJungle`, `WorldGenMegaPineTree`). World generation
+//! will reuse the generators.
 
 use krol_java::JavaRandom;
 
@@ -776,6 +776,195 @@ fn dark_oak_tree(g: &mut Gen, pos: (i32, i32, i32)) -> bool {
     true
 }
 
+/// `WorldGenHugeTrees.func_150533_a`: base height plus up to 2, plus the extra height.
+fn huge_height(g: &mut Gen, base: i32, extra: i32) -> i32 {
+    let mut h = g.rand().next_int_bounded(3) + base;
+    if extra > 1 {
+        h += g.rand().next_int_bounded(extra);
+    }
+    h
+}
+
+/// `WorldGenHugeTrees.func_175929_a`: room for a 2x2 tree (`pos` is its north-west
+/// corner) on grass or dirt, which becomes dirt.
+fn huge_tree_fits(g: &mut Gen, pos: (i32, i32, i32), height: i32) -> bool {
+    if pos.1 < 1 || pos.1 + height + 1 > 256 {
+        return false;
+    }
+    for dy in 0..=1 + height {
+        let r = if dy == 0 { 1 } else { 2 };
+        for dx in -r..=r {
+            for dz in -r..=r {
+                let y = pos.1 + dy;
+                if !(0..256).contains(&y) || !g.can_grow_into((pos.0 + dx, y, pos.2 + dz)) {
+                    return false;
+                }
+            }
+        }
+    }
+    if !matches!(g.id((pos.0, pos.1 - 1, pos.2)), block::GRASS | block::DIRT) || pos.1 < 2 {
+        return false;
+    }
+    for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+        g.set_dirt((pos.0 + dx, pos.1 - 1, pos.2 + dz));
+    }
+    true
+}
+
+/// `WorldGenHugeTrees.func_175925_a`: a round leaf layer around a 2x2 center.
+fn huge_leaf_layer(g: &mut Gen, center: (i32, i32, i32), r: i32, leaves: u16) {
+    let rr = r * r;
+    for dx in -r..=r + 1 {
+        for dz in -r..=r + 1 {
+            let (ex, ez) = (dx - 1, dz - 1);
+            if dx * dx + dz * dz <= rr
+                || ex * ex + ez * ez <= rr
+                || dx * dx + ez * ez <= rr
+                || ex * ex + dz * dz <= rr
+            {
+                let p = (center.0 + dx, center.1, center.2 + dz);
+                if matches!(material(g.id(p)), Material::Air | Material::Leaves) {
+                    g.set(p, leaves);
+                }
+            }
+        }
+    }
+}
+
+/// `WorldGenHugeTrees.func_175928_b`: a round leaf layer around one block.
+fn small_leaf_layer(g: &mut Gen, center: (i32, i32, i32), r: i32, leaves: u16) {
+    let rr = r * r;
+    for dx in -r..=r {
+        for dz in -r..=r {
+            if dx * dx + dz * dz <= rr {
+                let p = (center.0 + dx, center.1, center.2 + dz);
+                if matches!(material(g.id(p)), Material::Air | Material::Leaves) {
+                    g.set(p, leaves);
+                }
+            }
+        }
+    }
+}
+
+/// `WorldGenMegaJungle.func_181632_a`: a vine 2 times in 3, in air.
+fn jungle_vine(g: &mut Gen, p: (i32, i32, i32), side: u16) {
+    if g.rand().next_int_bounded(3) > 0 && g.id(p) == block::AIR {
+        g.set(p, VINE << 4 | side);
+    }
+}
+
+/// `WorldGenMegaJungle` (base height 10, up to 20 more when grown from saplings).
+fn mega_jungle_tree(g: &mut Gen, pos: (i32, i32, i32)) -> bool {
+    let wood = block::LOG << 4 | JUNGLE;
+    let leaves = block::LEAVES << 4 | JUNGLE;
+    let height = huge_height(g, MEGA_JUNGLE_BASE, MEGA_JUNGLE_EXTRA);
+    if !huge_tree_fits(g, pos, height) {
+        return false;
+    }
+    let top = (pos.0, pos.1 + height, pos.2);
+    // func_175930_c: the crown, radius 5, 4 and 3 from the bottom.
+    for i in -2..=0 {
+        huge_leaf_layer(g, (top.0, top.1 + i, top.2), 3 - i, leaves);
+    }
+    let mut y = pos.1 + height - 2 - g.rand().next_int_bounded(4);
+    while y > pos.1 + height / 2 {
+        let angle = g.rand().next_float() * std::f32::consts::PI * 2.0;
+        let (cos, sin) = (krol_java::math::cos(angle), krol_java::math::sin(angle));
+        let (mut bx, mut bz) = (pos.0, pos.2);
+        for k in 0..5 {
+            bx = pos.0 + (1.5 + cos * k as f32) as i32;
+            bz = pos.2 + (1.5 + sin * k as f32) as i32;
+            g.set((bx, y - 3 + k / 2, bz), wood);
+        }
+        let depth = 1 + g.rand().next_int_bounded(2);
+        for ly in y - depth..=y {
+            small_leaf_layer(g, (bx, ly, bz), 1 - (ly - y), leaves);
+        }
+        y -= 2 + g.rand().next_int_bounded(4);
+    }
+    for k in 0..height {
+        let p = (pos.0, pos.1 + k, pos.2);
+        if g.can_grow_into(p) {
+            g.set(p, wood);
+            if k > 0 {
+                jungle_vine(g, (p.0 - 1, p.1, p.2), VINE_EAST);
+                jungle_vine(g, (p.0, p.1, p.2 - 1), VINE_SOUTH);
+            }
+        }
+        if k < height - 1 {
+            let east = (p.0 + 1, p.1, p.2);
+            if g.can_grow_into(east) {
+                g.set(east, wood);
+                if k > 0 {
+                    jungle_vine(g, (east.0 + 1, east.1, east.2), VINE_WEST);
+                    jungle_vine(g, (east.0, east.1, east.2 - 1), VINE_SOUTH);
+                }
+            }
+            let south_east = (p.0 + 1, p.1, p.2 + 1);
+            if g.can_grow_into(south_east) {
+                g.set(south_east, wood);
+                if k > 0 {
+                    jungle_vine(g, (south_east.0 + 1, south_east.1, south_east.2), VINE_WEST);
+                    jungle_vine(
+                        g,
+                        (south_east.0, south_east.1, south_east.2 + 1),
+                        VINE_NORTH,
+                    );
+                }
+            }
+            let south = (p.0, p.1, p.2 + 1);
+            if g.can_grow_into(south) {
+                g.set(south, wood);
+                if k > 0 {
+                    jungle_vine(g, (south.0 - 1, south.1, south.2), VINE_EAST);
+                    jungle_vine(g, (south.0, south.1, south.2 + 1), VINE_NORTH);
+                }
+            }
+        }
+    }
+    true
+}
+
+/// `WorldGenMegaPineTree` (base height 13, up to 15 more): the 2x2 spruce. Grown from
+/// saplings it does not notify neighbors (vanilla quirk).
+fn mega_spruce_tree(g: &mut Gen, pos: (i32, i32, i32), use_base_height: bool) -> bool {
+    let wood = block::LOG << 4 | SPRUCE;
+    let leaves = block::LEAVES << 4 | SPRUCE;
+    let height = huge_height(g, MEGA_SPRUCE_BASE, MEGA_SPRUCE_EXTRA);
+    if !huge_tree_fits(g, pos, height) {
+        return false;
+    }
+    // func_150541_c: the cone of leaf layers.
+    let top = pos.1 + height;
+    let crown = g.rand().next_int_bounded(5) + if use_base_height { MEGA_SPRUCE_BASE } else { 3 };
+    let mut previous = 0;
+    for y in top - crown..=top {
+        let dy = top - y;
+        let r = krol_java::math::floor_f32(dy as f32 / crown as f32 * 3.5);
+        let extra = i32::from(dy > 0 && r == previous && (y & 1) == 0);
+        huge_leaf_layer(g, (pos.0, y, pos.2), r + extra, leaves);
+        previous = r;
+    }
+    for k in 0..height {
+        for (dx, dz) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
+            if (dx, dz) != (0, 0) && k >= height - 1 {
+                continue;
+            }
+            let p = (pos.0 + dx, pos.1 + k, pos.2 + dz);
+            if matches!(material(g.id(p)), Material::Air | Material::Leaves) {
+                g.set(p, wood);
+            }
+        }
+    }
+    true
+}
+
+/// `WorldGenMegaJungle` and `WorldGenMegaPineTree` heights when grown from saplings.
+const MEGA_JUNGLE_BASE: i32 = 10;
+const MEGA_JUNGLE_EXTRA: i32 = 20;
+const MEGA_SPRUCE_BASE: i32 = 13;
+const MEGA_SPRUCE_EXTRA: i32 = 15;
+
 impl Game {
     /// `BlockSapling.updateTick` after the bush check: in enough light, 1 time in 7 the
     /// sapling grows.
@@ -810,14 +999,10 @@ impl Game {
             None
         };
         let mut jungle_height = 4;
+        let mut tall_spruce_crown = false;
         match (kind, square) {
-            (SPRUCE, Some(_)) => {
-                // TODO(M5): WorldGenMegaPineTree(false, nextBoolean()).
-                let _ = self.world_rand.next_boolean();
-                return;
-            }
-            // TODO(M5): WorldGenMegaJungle.
-            (JUNGLE, Some(_)) => return,
+            // new WorldGenMegaPineTree(false, rand.nextBoolean()).
+            (SPRUCE, Some(_)) => tall_spruce_crown = self.world_rand.next_boolean(),
             (JUNGLE, None) => jungle_height = 4 + self.world_rand.next_int_bounded(7),
             // A single dark oak sapling does not grow.
             (DARK_OAK, None) => return,
@@ -833,11 +1018,15 @@ impl Game {
         for &(dx, dz) in cells {
             self.set_block_flags((base.0 + dx, base.1, base.2 + dz), 0, 0);
         }
+        let mega = square.is_some();
         let mut g = Gen {
             game: self,
-            notify: true,
+            // WorldGenMegaPineTree is made with notify off.
+            notify: !(mega && kind == SPRUCE),
         };
         let grown = match kind {
+            SPRUCE if mega => mega_spruce_tree(&mut g, base, tall_spruce_crown),
+            JUNGLE if mega => mega_jungle_tree(&mut g, base),
             OAK if big => {
                 let seed = g.rand().next_long();
                 BigTree {

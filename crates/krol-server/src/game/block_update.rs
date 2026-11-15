@@ -173,6 +173,10 @@ impl Game {
                 self.fire_neighbor_changed(pos);
                 return;
             }
+            super::vines::VINE => {
+                self.vine_neighbor_changed(pos, state);
+                return;
+            }
             block::REDSTONE_WIRE => {
                 if self.wire_can_stay(pos) {
                     self.wire_neighbor_changed(pos, state);

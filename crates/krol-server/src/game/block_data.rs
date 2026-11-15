@@ -66,6 +66,16 @@ impl Material {
         self.is_solid() && self != Self::Web
     }
 
+    /// `Material.isOpaque`: not translucent (leaves, glass, TNT, ice, snow layers and
+    /// cactus are) and blocking movement.
+    pub fn is_opaque(self) -> bool {
+        let translucent = matches!(
+            self,
+            Self::Leaves | Self::Glass | Self::Tnt | Self::Ice | Self::Snow | Self::Cactus
+        );
+        !translucent && self.blocks_movement()
+    }
+
     /// `Material.isLiquid`.
     pub fn is_liquid(self) -> bool {
         matches!(self, Self::Water | Self::Lava)

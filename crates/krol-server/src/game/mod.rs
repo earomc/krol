@@ -50,6 +50,7 @@ mod special_recipes;
 pub mod stats;
 mod tracker;
 mod trees;
+mod vines;
 pub mod world;
 mod xp_orb;
 
