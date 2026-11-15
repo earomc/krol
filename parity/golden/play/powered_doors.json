@@ -1120,6 +1120,7 @@
       "[Server thread/INFO]: Preparing level \"world\"",
       "[Server thread/INFO]: Preparing start region for level 0",
       "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
+      "[Server thread/INFO]: Game rule has been updated",
       "[Server thread/INFO]: jeb_[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
       "[Server thread/INFO]: jeb_ joined the game",
       "[Server thread/INFO]: Set jeb_'s game mode to Creative Mode",

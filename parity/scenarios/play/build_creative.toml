@@ -11,6 +11,12 @@ properties = { online-mode = "false", level-type = "FLAT", generate-structures =
 [setup.files]
 "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_creative.dat"
 
+# Random block ticks would change blocks near the player (grass dying under placed
+# blocks, spreading onto exposed dirt) at random times.
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
 [[steps]]
 id = "builder"
 action = "play"

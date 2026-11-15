@@ -9,6 +9,12 @@ subsystem = "play"
 world = "fixtures/worlds/flat"
 properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
 
+# Random block ticks would change blocks near the player (grass dying under placed
+# blocks, spreading onto exposed dirt) at random times.
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
 [[steps]]
 id = "crafter"
 action = "play"

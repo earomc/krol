@@ -721,6 +721,7 @@
       "[Server thread/INFO]: Preparing level \"world\"",
       "[Server thread/INFO]: Preparing start region for level 0",
       "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
+      "[Server thread/INFO]: Game rule has been updated",
       "[Server thread/INFO]: Notch[/127.0.0.1:<port>] logged in with entity id 0 at (-473.5, 4.0, -440.5)",
       "[Server thread/INFO]: Notch joined the game",
       "[Server thread/INFO]: Notch lost connection: TextComponent{text='Disconnected', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",
@@ -813,7 +814,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": 229057053,
+      "XpSeed": 837004652,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -842,9 +843,9 @@
       "value": {
         "stat.useItem.minecraft.bread": 1,
         "stat.useItem.minecraft.mushroom_stew": 1,
-        "stat.playOneMinute": 235,
+        "stat.playOneMinute": 236,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 235,
+        "stat.timeSinceDeath": 236,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [
