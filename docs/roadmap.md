@@ -320,7 +320,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockCarpet` | ✅ | |
 | `BlockPumpkin` | 🟡 | Placement ✅; building iron golems and snow golems ❌ |
 | `BlockWorkbench` | ✅ | Crafting window |
-| `BlockChest` | ✅ | Trapped chests open like chests; their redstone output from viewers ❌ |
+| `BlockChest` | ✅ | Trapped chests: weak and strong power from viewers; neighbors notified on open/close |
 | `BlockEnderChest` | 🟡 | Placement, window, blocked by a normal cube on top, lid events and sounds, 8 obsidian ✅; silk touch ❌ |
 | `BlockFurnace` | ✅ | |
 | `BlockDispenser`, `BlockDropper` | 🟡 | Default behavior ✅; special dispense behaviors ❌ |

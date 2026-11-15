@@ -145,6 +145,7 @@ impl Game {
             _ if super::pressure_plates::is_plate(id) => {
                 super::pressure_plates::plate_strength(state)
             }
+            block::TRAPPED_CHEST => self.trapped_chest_power(pos),
             _ => 0,
         }
     }
@@ -172,6 +173,7 @@ impl Game {
             _ if super::pressure_plates::is_plate(id) && side == UP => {
                 super::pressure_plates::plate_strength(state)
             }
+            block::TRAPPED_CHEST if side == UP => self.trapped_chest_power(pos),
             _ => 0,
         }
     }

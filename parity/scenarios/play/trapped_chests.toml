@@ -1,0 +1,57 @@
+description = "Trapped chest redstone output: weak power by number of viewers (wire next to it shows 1, then 2), a lamp beside it, strong power into the block below (a lamp next to that block lights), all off again once both players close it"
+subsystem = "redstone"
+
+# Everything is set from the console before the players join. Notch opens the chest,
+# jeb_ opens it too, jeb_ closes it, then Notch. Both stand at the spawn in adventure
+# mode and open it with an empty hand.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -433 trapped_chest 2"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -432 redstone_wire"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -433 redstone_lamp"
+
+[[steps]]
+action = "console"
+command = "setblock -471 3 -433 redstone_lamp"
+
+[[steps]]
+id = "notch"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 9
+chat = [
+    "@2500 !place -470 4 -433 1",
+    "@6500 !close 1",
+]
+
+[[steps]]
+id = "jeb"
+action = "play"
+protocol = 47
+name = "jeb_"
+seconds = 5
+chat = [
+    "@2000 !place -470 4 -433 1",
+    "@3500 !close 1",
+]
+
+[observe]
+log = true
+blocks = [[-470, 4, -433], [-470, 4, -432], [-469, 4, -433], [-471, 3, -433]]

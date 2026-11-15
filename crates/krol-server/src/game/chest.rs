@@ -5,8 +5,7 @@
 //! the same contents. The runtime state vanilla keeps on the tile entity (players using
 //! it, lid angle) is kept here for chests that are open or closing.
 //!
-//! TODO(M4): lock codes, ocelots sitting on chests, trapped chest
-//! redstone output, comparators.
+//! TODO(M4): lock codes, ocelots sitting on chests.
 //! TODO(M4): vanilla's sync counter starts when the tile entity is loaded; krol starts
 //! it when a chest first opens, which shifts the 200-tick viewer recount.
 
@@ -264,6 +263,21 @@ impl Game {
         c.viewers += delta;
         let viewers = c.viewers;
         self.queue_block_event(pos, block, EVENT_VIEWERS, viewers);
+        // Every chest tells its neighbors and the block below (a trapped chest's power
+        // just changed).
+        self.notify_neighbors(pos, block);
+        self.notify_neighbors((pos.0, pos.1 - 1, pos.2), block);
+    }
+
+    /// `BlockChest.getWeakPower` of a trapped chest: its number of viewers, at most 15.
+    pub(super) fn trapped_chest_power(&mut self, pos: (i32, i32, i32)) -> i32 {
+        if self.level.overworld.tile_entity(pos).is_none() {
+            return 0;
+        }
+        self.chests
+            .iter()
+            .find(|c| c.pos == pos)
+            .map_or(0, |c| c.viewers.clamp(0, 15))
     }
 
     /// `World.addBlockEvent`: identical queued events are not added twice.
