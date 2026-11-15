@@ -757,6 +757,8 @@ pub enum ClientboundPlay {
         param: u8,
         block: i32,
     },
+    /// `0x0A`: a player lies down in the bed at `pos`.
+    UseBed { entity_id: i32, pos: BlockPos },
     /// `0x25`
     BlockBreakAnimation {
         entity_id: i32,
@@ -915,6 +917,7 @@ impl ClientboundPlay {
             Self::UpdateTileEntity { .. } => 0x35,
             Self::SignEditorOpen { .. } => 0x36,
             Self::BlockBreakAnimation { .. } => 0x25,
+            Self::UseBed { .. } => 0x0a,
             Self::Explosion { .. } => 0x27,
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
@@ -1354,6 +1357,9 @@ impl ClientboundPlay {
                 records,
                 motion,
             } => write_explosion(&mut w, *pos, *radius, records, *motion),
+            Self::UseBed { entity_id, pos } => {
+                w.varint(*entity_id).position(pos.0, pos.1, pos.2);
+            }
             Self::Particle {
                 id,
                 long_distance,
@@ -1553,6 +1559,10 @@ impl ClientboundPlay {
                 stage: r.i8()?,
             },
             0x27 => read_explosion(&mut r)?,
+            0x0a => Self::UseBed {
+                entity_id: r.varint()?,
+                pos: r.position()?,
+            },
             0x0d => Self::CollectItem {
                 collected: r.varint()?,
                 collector: r.varint()?,
@@ -1982,6 +1992,18 @@ mod tests {
                 assert_eq!(decoded, packet);
             }
         }
+    }
+
+    #[test]
+    fn use_bed_round_trip() {
+        let p = ClientboundPlay::UseBed {
+            entity_id: 5,
+            pos: (1, 64, -1),
+        };
+        let bytes = p.encode(V).unwrap();
+        // Position: x << 38 | (y & 0xfff) << 26 | (z & 0x3ffffff).
+        assert_eq!(bytes, [0x0a, 5, 0, 0, 0, 0x41, 0x03, 0xff, 0xff, 0xff]);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
     }
 
     #[test]

@@ -830,6 +830,12 @@ impl V5Translator {
                     .i8(*stage);
                 one(w);
             }
+            // Protocol 5: int entity id, int x, unsigned byte y, int z.
+            ClientboundPlay::UseBed { entity_id, pos } => {
+                let mut w = packet(0x0a);
+                w.i32(*entity_id).i32(pos.0).u8(pos.1 as u8).i32(pos.2);
+                one(w);
+            }
             // Protocol 5 sends explosions exactly like 47.
             ClientboundPlay::Explosion {
                 pos,

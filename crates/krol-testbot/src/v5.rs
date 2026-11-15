@@ -344,6 +344,10 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
             param: r.u8()?,
             block: r.varint()?,
         }),
+        0x0a => Some(ClientboundPlay::UseBed {
+            entity_id: r.i32()?,
+            pos: (r.i32()?, i32::from(r.u8()?), r.i32()?),
+        }),
         // Protocol 5 sends explosions exactly like 47.
         0x27 => {
             let pos = (r.f32()?, r.f32()?, r.f32()?);

@@ -33,6 +33,7 @@ fn name(id: i32) -> String {
         0x07 => "respawn",
         0x08 => "position_look",
         0x09 => "held_item_change",
+        0x0a => "use_bed",
         0x0b => "animation",
         0x0c => "spawn_player",
         0x0e => "spawn_object",
@@ -109,6 +110,7 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
             flags,
         } => json!({ "x": x, "y": y, "z": z, "yaw": yaw, "pitch": pitch, "flags": flags }),
         ClientboundPlay::HeldItemChange { slot } => json!({ "slot": slot }),
+        ClientboundPlay::UseBed { pos, .. } => json!({ "pos": [pos.0, pos.1, pos.2] }),
         ClientboundPlay::Explosion {
             pos,
             radius,
