@@ -13,7 +13,12 @@ use super::server::{RunningServer, Target};
 /// Runs `scenario` against `target` in `dir`, returning normalized observations.
 pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path) -> Result<Value> {
     let port = super::server::prepare_dir(dir, &scenario.setup, parity_root)?;
-    let mut server = RunningServer::start(target, dir, port)?;
+    let agent = if scenario.setup.pin_random && matches!(target, Target::Vanilla { .. }) {
+        Some(super::agent::jar()?)
+    } else {
+        None
+    };
+    let mut server = RunningServer::start(target, dir, port, agent.as_deref())?;
     let mut obs = Map::new();
     obs.insert("started".into(), Value::Bool(server.started));
 

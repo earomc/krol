@@ -34,6 +34,18 @@ Step actions: `status_ping` (`protocol`, `payload`), `raw` (`hex`: first chunk, 
 until close), `login_start` (`protocol`, `name`). Observation paths listed in
 `observe.ignore` are excluded — use only for documented, deliberate deviations.
 
+## Pinning vanilla's randoms
+
+A scenario with `pin_random = true` in `[setup]` loads `parity/vanilla-agent` into
+vanilla (built by xtask with the local JDK: `javac`/`jar`, or `KROL_JAVAC` and
+`KROL_JAR_TOOL`). It adds the console command `krolpin <seed>`, which seeds every
+world's `World.rand` and random tick generator (`updateLCG`); krol answers the same
+command in builds with the `parity` feature (xtask builds krol that way, into
+`target/parity-build`). Issue `krolpin` from the console before the behavior to compare;
+make sure nothing else draws from the world random in between (no player means no
+random block ticks or light checks). Entity randoms (item arcs, sound pitches) are not
+pinned yet.
+
 ## Writing race-free scenarios
 
 Vanilla and krol only compare equal when nothing depends on how the bot's packets fall

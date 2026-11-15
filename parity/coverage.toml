@@ -324,6 +324,11 @@ description = "Random block ticks: active chunks in vanilla order, updateLCG pos
 scenarios = ["play/random_ticks"]
 
 [[feature]]
+id = "parity.pin_random"
+description = "The parity suite pins vanilla's world random and random tick generator (parity/vanilla-agent, krolpin) to compare random-driven behavior exactly; first used for fire spreading block for block"
+scenarios = ["play/fire_spread_pinned"]
+
+[[feature]]
 id = "world.leaf_decay"
 description = "Leaf decay: breaking logs (radius 4) and leaves (radius 1) marks leaves to check, the random tick's distance check through leaves (4 blocks from a log), decay with vanilla's sapling and apple drops, player-placed leaves never decaying (and keeping the check mark)"
 scenarios = ["play/leaf_decay"]

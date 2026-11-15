@@ -98,11 +98,15 @@ fn copy_dir(src: &Path, dest: &Path) -> Result<()> {
 
 impl RunningServer {
     /// Starts `target` in `dir` and waits until it is ready or has exited.
-    pub fn start(target: &Target, dir: &Path, port: u16) -> Result<Self> {
+    /// `agent` is a Java agent jar loaded into vanilla (`-javaagent`).
+    pub fn start(target: &Target, dir: &Path, port: u16, agent: Option<&Path>) -> Result<Self> {
         let mut cmd = match target {
             Target::Krol(exe) => Command::new(exe),
             Target::Vanilla { java, jar } => {
                 let mut c = Command::new(java);
+                if let Some(agent) = agent {
+                    c.arg(format!("-javaagent:{}", agent.display()));
+                }
                 c.arg("-Xmx1G").arg("-jar").arg(jar).arg("nogui");
                 c
             }

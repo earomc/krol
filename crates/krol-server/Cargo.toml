@@ -8,6 +8,12 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+# Test hooks for the vanilla parity suite (AGENTS.md 10.2): the `krolpin <seed>` console
+# command that seeds the world random and the random tick generator, like
+# parity/vanilla-agent does for vanilla.
+parity = []
+
 [dependencies]
 krol-java = { path = "../krol-java" }
 krol-nbt = { path = "../krol-nbt" }

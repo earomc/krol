@@ -46,6 +46,11 @@ pub struct Setup {
     /// A world directory (relative to `parity/`) copied to `<server>/world`.
     #[serde(default)]
     pub world: Option<String>,
+    /// Load `parity/vanilla-agent` into vanilla, which adds the `krolpin <seed>` console
+    /// command (krol has it in `parity` builds): it seeds the world random and the
+    /// random tick generator so that behavior driven by them compares exactly.
+    #[serde(default)]
+    pub pin_random: bool,
 }
 
 fn yes() -> bool {

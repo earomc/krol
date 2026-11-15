@@ -508,6 +508,17 @@ impl Game {
         if line.trim().is_empty() {
             return;
         }
+        #[cfg(feature = "parity")]
+        if let Some(seed) = line
+            .strip_prefix("krolpin ")
+            .and_then(|s| s.trim().parse::<i64>().ok())
+        {
+            // Parity hook: seeds World.rand and World.updateLCG like the vanilla agent
+            // (Random.setSeed is the same as a new Random with that seed).
+            self.world_rand = krol_java::JavaRandom::new(seed);
+            self.update_lcg = seed as i32;
+            return;
+        }
         self.execute_command(commands::Sender::Console, line);
     }
 

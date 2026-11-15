@@ -1,5 +1,6 @@
 //! The vanilla parity suite (see `AGENTS.md` §10.2).
 
+mod agent;
 mod diff;
 mod observe;
 mod play;
@@ -73,7 +74,18 @@ fn vanilla_target() -> Option<Target> {
 
 fn build_krol() -> Result<Target> {
     let status = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
-        .args(["build", "--quiet", "--package", "krol"])
+        // The parity hooks (`krolpin`) are only in builds with the `parity` feature,
+        // kept in their own target directory so normal builds do not rebuild.
+        .args([
+            "build",
+            "--quiet",
+            "--package",
+            "krol",
+            "--features",
+            "parity",
+            "--target-dir",
+            "target/parity-build",
+        ])
         .current_dir(repo_root())
         .status()
         .context("running cargo build")?;
@@ -82,6 +94,7 @@ fn build_krol() -> Result<Target> {
     }
     let exe = repo_root()
         .join("target")
+        .join("parity-build")
         .join("debug")
         .join(format!("krol{}", std::env::consts::EXE_SUFFIX));
     Ok(Target::Krol(exe))
