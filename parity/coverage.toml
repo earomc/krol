@@ -452,3 +452,8 @@ scenarios = ["play/tnt_pinned", "play/tnt_lit"]
 id = "blocks.beds"
 description = "Beds: ItemBed placement (facing, two halves, solid tops), BlockBed activation (head lookup, occupied bit set with flag 4, tile.bed.noSleep / tile.bed.occupied), trySleep (lying position, use bed to viewers and self), the sleep timer, waking (leave-bed animation, safe exit spot, spawn point), the night skip when everyone is fully asleep (time, weather reset), halves breaking together with drops from the foot, respawning at the bed or the missing-bed message (clonePlayer drops the spawn point). Not yet: mobs keeping players awake, beds exploding outside the overworld, the sleeping box size"
 scenarios = ["play/beds", "play/beds_broken"]
+
+[[feature]]
+id = "commands.clear_kill_spawnpoint"
+description = "/clear (matching by item resource location and data, maxCount counting and limits, main inventory then armor then cursor, failure), /spawnpoint (feet or coordinates, forced spawn points used on respawn), /kill (out-of-world damage: harms creative players, bypasses respawn protection; getEntity errors). Not yet: data tags, entity selectors"
+scenarios = ["commands/clear_kill_spawnpoint"]

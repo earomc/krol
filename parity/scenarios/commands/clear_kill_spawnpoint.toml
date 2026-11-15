@@ -1,0 +1,97 @@
+description = "Commands /clear, /spawnpoint and /kill from the console: counting matching items (maxCount 0), removing some, an unknown item, all of one item, everything and nothing left; spawn points at the feet and at coordinates (forced), usage and missing-player errors; killing a player (out of the world) who then respawns at the forced spawn point"
+subsystem = "commands"
+
+# Notch (survival, from fixture data: seeds, carrots, potatoes, ...) stands at
+# (-471.5, 4, -434.5). Console commands run 300 ms apart once he has joined; he asks to
+# respawn well after the kill.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_farmer.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 14
+chat = ["@9000 !respawn"]
+
+[[steps]]
+action = "console"
+command = "clear Notch wheat_seeds 0 0"
+
+[[steps]]
+action = "console"
+command = "clear Notch wheat_seeds -1 3"
+
+[[steps]]
+action = "console"
+command = "clear Notch nonexistent_thing"
+
+[[steps]]
+action = "console"
+command = "clear Notch Carrot"
+
+[[steps]]
+action = "console"
+command = "clear Notch minecraft:potato 0"
+
+[[steps]]
+action = "console"
+command = "clear Notch"
+
+[[steps]]
+action = "console"
+command = "clear Notch"
+
+[[steps]]
+action = "console"
+command = "spawnpoint Notch"
+
+[[steps]]
+action = "console"
+command = "spawnpoint"
+
+[[steps]]
+action = "console"
+command = "spawnpoint Notch 1 2"
+
+[[steps]]
+action = "console"
+command = "spawnpoint Notch -462 4 -430"
+
+[[steps]]
+action = "console"
+command = "kill"
+
+[[steps]]
+action = "console"
+command = "kill Steve"
+
+[[steps]]
+action = "console"
+command = "kill Notch"
+
+[[steps]]
+action = "wait"
+ms = 10000
+
+[observe]
+log = true
+files = ["world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat"]
+ignore = [
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+    # The motion at logout depends on how many movement updates followed the respawn
+    # (packet timing).
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.Motion",
+]

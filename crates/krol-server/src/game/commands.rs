@@ -378,6 +378,23 @@ pub enum CommandError {
 
 type CommandResult = Result<(), CommandError>;
 
+/// `CommandBase.getItemByText`: an item by resource location (no numeric ids;
+/// `ResourceLocation` lowercases the namespace only).
+fn item_by_text(text: &str) -> Result<i16, CommandError> {
+    let location = match text.split_once(':') {
+        Some((domain, path)) => {
+            let domain = if domain.is_empty() { "minecraft" } else { domain };
+            format!("{}:{path}", domain.to_ascii_lowercase())
+        }
+        None => format!("minecraft:{text}"),
+    };
+    krol_world::items::id_for_name(&location)
+        .ok_or_else(|| err("commands.give.item.notFound", vec![s(location)]))
+}
+
+/// The creative game mode.
+const CREATIVE: i32 = 1;
+
 fn usage(name: &str) -> CommandError {
     CommandError::Usage(spec(name).map_or("", |c| c.usage_key))
 }
@@ -968,8 +985,164 @@ impl Game {
                 self.stopping = true;
                 Ok(())
             }
+            "kill" => self.cmd_kill(sender, args),
+            "clear" => self.cmd_clear(sender, args),
+            "spawnpoint" => self.cmd_spawnpoint(sender, args),
             _ => self.not_implemented(sender, name),
         }
+    }
+
+    /// Vanilla `CommandBase.getEntity` for the entities krol has as command targets:
+    /// a player by name, else (for a well-formed UUID) not found.
+    fn find_entity(&self, target: &str) -> Result<usize, CommandError> {
+        self.find_player(target).map_err(|_| {
+            if parse_uuid_like_java(target) {
+                err("commands.generic.entity.notFound", vec![s(target)])
+            } else {
+                err("commands.generic.entity.invalidUuid", vec![])
+            }
+        })
+    }
+
+    /// `/kill [player|entity]` (`CommandKill`): `onKillCommand`, out-of-world damage of
+    /// `Float.MAX_VALUE`.
+    fn cmd_kill(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        let i = match args.first() {
+            Some(target) => self.find_entity(target)?,
+            None => self.require_player(sender, None)?,
+        };
+        let name = Arg::Component(Self::display_name(&self.players[i].profile));
+        self.attack_player(i, super::damage::DamageSource::OutOfWorld, f32::MAX);
+        self.notify(
+            sender,
+            "kill",
+            false,
+            "commands.kill.successful",
+            vec![name],
+        );
+        Ok(())
+    }
+
+    /// `/clear [player] [item] [data] [maxCount] [dataTag]` (`CommandClearInventory`,
+    /// `InventoryPlayer.clearMatchingItems`): the main inventory (hotbar first), the
+    /// armor (boots first), then the item on the cursor.
+    fn cmd_clear(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        let i = self.require_player(sender, args.first())?;
+        let item = match args.get(1) {
+            Some(text) => Some(item_by_text(text)?),
+            None => None,
+        };
+        let data = match args.get(2) {
+            Some(a) => parse_int(a, -1, i32::MAX)?,
+            None => -1,
+        };
+        let max = match args.get(3) {
+            Some(a) => parse_int(a, -1, i32::MAX)?,
+            None => -1,
+        };
+        if args.len() >= 5 {
+            return self.not_implemented(sender, "clear (data tag)");
+        }
+        let matches = |stack: &krol_protocol::packets::play::ItemStack| {
+            item.is_none_or(|id| stack.id == id) && (data <= -1 || i32::from(stack.damage) == data)
+        };
+        // mainInventory (0-8 hotbar, 9-35 main), then armorInventory (boots first).
+        let slots: Vec<usize> = (36..45).chain(9..36).chain([8, 7, 6, 5]).collect();
+        let mut removed = 0;
+        let p = &mut self.players[i];
+        let take = |slot: &mut Option<krol_protocol::packets::play::ItemStack>,
+                        removed: &mut i32|
+         -> bool {
+            let Some(stack) = slot.as_mut().filter(|s| matches(s)) else {
+                return false;
+            };
+            let count = i32::from(stack.count);
+            let k = if max <= 0 {
+                count
+            } else {
+                (max - *removed).min(count)
+            };
+            *removed += k;
+            if max != 0 {
+                stack.count -= k as i8;
+                if stack.count == 0 {
+                    *slot = None;
+                }
+                if max > 0 && *removed >= max {
+                    return true;
+                }
+            }
+            false
+        };
+        let mut done = false;
+        for slot in slots {
+            if take(&mut p.inventory[slot], &mut removed) {
+                done = true;
+                break;
+            }
+        }
+        if !done {
+            take(&mut p.window.cursor, &mut removed);
+        }
+        self.detect_inventory_changes(i);
+        let p = &self.players[i];
+        if p.gamemode != CREATIVE {
+            // updateHeldItem: the cursor.
+            p.send(ClientboundPlay::SetSlot {
+                window: -1,
+                slot: -1,
+                item: p.window.cursor.clone(),
+            });
+        }
+        let name = p.profile.name.clone();
+        if removed == 0 {
+            return Err(err("commands.clear.failure", vec![s(name)]));
+        }
+        if max == 0 {
+            self.reply(
+                sender,
+                &t("commands.clear.testing", vec![s(name), s(removed)]),
+            );
+        } else {
+            self.notify(
+                sender,
+                "clear",
+                false,
+                "commands.clear.success",
+                vec![s(name), s(removed)],
+            );
+        }
+        Ok(())
+    }
+
+    /// `/spawnpoint [player] [<x> <y> <z>]` (`CommandSetSpawnpoint`): a forced spawn
+    /// point at the coordinates or the player's block position.
+    fn cmd_spawnpoint(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        if args.len() > 1 && args.len() < 4 {
+            return Err(usage("spawnpoint"));
+        }
+        let i = self.require_player(sender, args.first())?;
+        let pos = if args.len() > 3 {
+            self.parse_block_pos(sender, &args[1..4])?
+        } else {
+            // Entity.getPosition: the block at the feet, half a block up.
+            let p = self.players[i].pos;
+            (
+                krol_java::math::floor_f64(p.0),
+                krol_java::math::floor_f64(p.1 + 0.5),
+                krol_java::math::floor_f64(p.2),
+            )
+        };
+        super::beds::set_forced_spawn_point(&mut self.players[i], pos);
+        let name = self.players[i].profile.name.clone();
+        self.notify(
+            sender,
+            "spawnpoint",
+            false,
+            "commands.spawnpoint.success",
+            vec![s(name), s(pos.0), s(pos.1), s(pos.2)],
+        );
+        Ok(())
     }
 
     fn not_implemented(&self, sender: Sender, name: &str) -> CommandResult {

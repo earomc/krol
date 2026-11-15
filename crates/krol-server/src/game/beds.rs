@@ -459,6 +459,13 @@ pub fn spawn_point(data: &krol_nbt::Compound) -> Option<((i32, i32, i32), bool)>
     })
 }
 
+/// `EntityPlayer.setSpawnPoint(pos, true)` (`/spawnpoint`): respawns there as long as
+/// the two blocks are free, bed or not.
+pub fn set_forced_spawn_point(p: &mut super::player::Player, pos: (i32, i32, i32)) {
+    set_spawn_point(p, Some(pos));
+    p.data.insert("SpawnForced", krol_nbt::Tag::Byte(1));
+}
+
 /// `EntityPlayer.setSpawnPoint(pos, false)`: the bed becomes the spawn point (none
 /// clears it).
 fn set_spawn_point(p: &mut super::player::Player, bed: Option<(i32, i32, i32)>) {

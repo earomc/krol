@@ -579,7 +579,9 @@ krol notice.
 | `effect` | ✅ | |
 | `setblock` | 🟡 | Data tags ❌ |
 | `tp` | 🟡 | Coordinates and players ✅; some forms (entity targets, rotation) ❌ |
-| `achievement` · `blockdata` · `clear` · `clone` · `debug` · `enchant` · `entitydata` · `execute` · `fill` · `give` · `kill` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spawnpoint` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | |
+| `kill` · `spawnpoint` | ✅ | Players as targets (selectors ❌) |
+| `clear` | 🟡 | Data tags ❌ |
+| `achievement` · `blockdata` · `clone` · `debug` · `enchant` · `entitydata` · `execute` · `fill` · `give` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | `give` needs item display names (`en_US.lang`) |
 | `publish` | ➖ | LAN only |
 | `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | ❌ | Plain player names only |
 | `CommandResultStats` (`/stats` triggers) | ❌ | |
@@ -619,7 +621,7 @@ krol notice.
 |---|---|---|
 | `MathHelper` (sin table, floor, clamp, ...) | ✅ | JVM-verified (`krol-java`) |
 | `java.util.Random` | ✅ | JVM-verified |
-| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, explosion, explosion.player (difficulty scaling, knockback from the igniter) ✅; generic, starve, outOfWorld, anvil, fallingBlock, player/mob/projectile/thorns, indirect magic, lightningBolt ❌ |
+| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, outOfWorld, explosion, explosion.player (difficulty scaling, knockback from the igniter) ✅; generic, starve, anvil, fallingBlock, player/mob/projectile/thorns, indirect magic, lightningBolt ❌ |
 | `CombatTracker` (death messages) | 🟡 | For implemented sources; fall variants ✅ |
 | `IChatComponent` JSON (text, translation, styles, click/hover events) | ✅ | |
 | `StatCollector` (translation of log lines) | ✅ | For the keys krol uses |

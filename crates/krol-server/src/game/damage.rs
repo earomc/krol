@@ -33,6 +33,9 @@ pub enum DamageSource {
     /// Suffocating inside a block (`DamageSource.inWall`: bypasses armor, no
     /// exhaustion).
     InWall,
+    /// `/kill` (`DamageSource.outOfWorld`: bypasses armor and respawn protection, harms
+    /// creative players, no exhaustion).
+    OutOfWorld,
     /// An explosion nobody set off (`DamageSource.setExplosionSource`: difficulty
     /// scaled).
     Explosion,
@@ -55,6 +58,7 @@ impl DamageSource {
             Self::Wither => "wither",
             Self::Cactus => "cactus",
             Self::InWall => "inWall",
+            Self::OutOfWorld => "outOfWorld",
             Self::Explosion => "explosion",
             Self::ExplosionBy(_) => "explosion.player",
         }
@@ -64,7 +68,13 @@ impl DamageSource {
     pub fn unblockable(self) -> bool {
         matches!(
             self,
-            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither | Self::InWall
+            Self::Fall
+                | Self::Drown
+                | Self::OnFire
+                | Self::Magic
+                | Self::Wither
+                | Self::InWall
+                | Self::OutOfWorld
         )
     }
 
@@ -94,15 +104,19 @@ impl DamageSource {
 
     /// Damage creative and spectator players take too (`canHarmInCreative`).
     fn harms_in_creative(self) -> bool {
-        false
+        self == Self::OutOfWorld
     }
 
     /// Exhaustion added to the victim (`getHungerDamage`).
     fn hunger_damage(self) -> f32 {
         match self {
-            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither | Self::InWall => {
-                0.0
-            }
+            Self::Fall
+            | Self::Drown
+            | Self::OnFire
+            | Self::Magic
+            | Self::Wither
+            | Self::InWall
+            | Self::OutOfWorld => 0.0,
             Self::InFire | Self::Lava | Self::Cactus | Self::Explosion | Self::ExplosionBy(_) => {
                 DEFAULT_HUNGER_DAMAGE
             }
@@ -152,7 +166,10 @@ impl Game {
         let p = &mut self.players[i];
         // EntityPlayerMP: fall damage ignores the respawn protection when PvP is on.
         let fall_ignores_protection = pvp && source.name() == "fall";
-        if !fall_ignores_protection && p.respawn_invulnerability > 0 {
+        if !fall_ignores_protection
+            && p.respawn_invulnerability > 0
+            && source != DamageSource::OutOfWorld
+        {
             return false;
         }
         // EntityPlayer.
