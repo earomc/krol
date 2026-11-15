@@ -8,7 +8,6 @@
 //! redstone torches' power, double chests' second half, and the neighbor checks of
 //! cactus and mushrooms.
 
-use super::block_data::{self, Material};
 use super::ids;
 use super::world::World;
 
@@ -109,41 +108,9 @@ impl Click {
     }
 }
 
-/// Blocks with an opaque, full, non-power-providing cube (`isBlockNormalCube`), for the
-/// blocks krol models.
+/// `Block.isNormalCube`: an opaque, full, non-power-providing cube.
 pub fn is_normal_cube(state: u16) -> bool {
-    let id = state >> 4;
-    let m = block_data::material(id);
-    let translucent = matches!(
-        m,
-        Material::Leaves
-            | Material::Glass
-            | Material::Ice
-            | Material::Tnt
-            | Material::Snow
-            | Material::Cactus
-            | Material::Air
-            | Material::Water
-            | Material::Lava
-            | Material::Plants
-            | Material::Vine
-            | Material::Circuits
-            | Material::Carpet
-            | Material::Fire
-            | Material::Portal
-            | Material::Web
-    );
-    let full = !matches!(
-        id,
-        26 | 44 | 126 | 182 | 53 | 67 | 108 | 109 | 114 | 128 | 134..=136 | 156 | 163 | 164
-            | 180 | 54 | 130 | 146 | 81 | 88 | 60 | 78 | 92 | 116 | 117 | 118 | 120 | 122 | 138
-            | 140 | 144 | 145 | 151 | 154 | 178 | 85 | 101 | 102 | 107 | 113 | 139 | 160
-            | 183..=192 | 64 | 71 | 96 | 167 | 193..=197 | 29 | 33 | 34 | 36 | 65
-            // Pressure plates.
-            | 70 | 72 | 147 | 148
-    );
-    // Redstone blocks provide power.
-    !translucent && full && id != 152
+    super::light_data::normal_cube(state >> 4)
 }
 
 /// `World.doesBlockHaveSolidTopSurface`: opaque full cubes, upside-down stairs and

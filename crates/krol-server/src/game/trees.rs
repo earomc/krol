@@ -264,11 +264,7 @@ fn birch_tree(g: &mut Gen, pos: (i32, i32, i32), tall: bool) -> bool {
 /// `Block.isFullBlock` for what spruce leaves may not replace: blocks that were opaque
 /// cubes when registered (leaves count, see `Block`'s constructor).
 pub(super) fn full_block(id: u16) -> bool {
-    super::leaves::is_leaves(id) || super::light_data::opacity(id) == 255 && !is_single_slab(id)
-}
-
-fn is_single_slab(id: u16) -> bool {
-    matches!(id, 44 | 126 | 182)
+    super::light_data::full_block(id)
 }
 
 /// `WorldGenTaiga2`: spruce.

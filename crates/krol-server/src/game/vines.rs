@@ -58,11 +58,7 @@ fn offset(p: (i32, i32, i32), d: Dir) -> (i32, i32, i32) {
 /// A full, solid cube (`isFullCube() && blocksMovement()`); leaves count.
 fn full_solid(state: u16) -> bool {
     let id = state >> 4;
-    if !material(id).blocks_movement() {
-        return false;
-    }
-    let boxes = super::physics::block_boxes(state, (0, 0, 0));
-    boxes.len() == 1 && boxes[0].min == [0.0; 3] && boxes[0].max == [1.0; 3]
+    material(id).blocks_movement() && super::light_data::full_cube(id)
 }
 
 impl Game {
