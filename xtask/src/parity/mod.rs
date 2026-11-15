@@ -131,10 +131,13 @@ fn vanilla_target() -> Option<Target> {
 fn build_krol() -> Result<Target> {
     let status = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
         // The parity hooks (`krolpin`) are only in builds with the `parity` feature,
-        // kept in their own target directory so normal builds do not rebuild.
+        // kept in their own target directory so normal builds do not rebuild. The
+        // `parity` profile is optimized but keeps overflow checks and debug assertions.
         .args([
             "build",
             "--quiet",
+            "--profile",
+            "parity",
             "--package",
             "krol",
             "--features",
@@ -151,7 +154,7 @@ fn build_krol() -> Result<Target> {
     let exe = repo_root()
         .join("target")
         .join("parity-build")
-        .join("debug")
+        .join("parity")
         .join(format!("krol{}", std::env::consts::EXE_SUFFIX));
     Ok(Target::Krol(exe))
 }

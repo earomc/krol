@@ -22,3 +22,12 @@ thiserror = "2"
 flate2 = "1"
 tracing = "0.1"
 tokio = { version = "1", features = ["net", "io-util", "rt-multi-thread", "macros", "time", "sync", "signal"] }
+
+# The binary `cargo xtask parity` runs: optimized so heavy scenarios keep up with 20 TPS
+# like vanilla does, but with overflow checks and debug assertions still on, so
+# missing `wrapping_*` arithmetic shows up as a panic in parity runs.
+[profile.parity]
+inherits = "dev"
+opt-level = 2
+debug = "line-tables-only"
+incremental = true
