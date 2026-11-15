@@ -311,6 +311,7 @@ impl Game {
             pos,
             slots: Vec::new(),
             parts: vec![pos],
+            ender: false,
             sent: vec![None; layout.len()],
             fields: [0; 4],
             taken: 0,

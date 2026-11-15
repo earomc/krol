@@ -321,7 +321,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockPumpkin` | 🟡 | Placement ✅; building iron golems and snow golems ❌ |
 | `BlockWorkbench` | ✅ | Crafting window |
 | `BlockChest` | ✅ | Trapped chests open like chests; their redstone output from viewers ❌ |
-| `BlockEnderChest` | ❌ | Ender inventory window |
+| `BlockEnderChest` | 🟡 | Placement, window, blocked by a normal cube on top, lid events and sounds, 8 obsidian ✅; silk touch ❌ |
 | `BlockFurnace` | ✅ | |
 | `BlockDispenser`, `BlockDropper` | 🟡 | Default behavior ✅; special dispense behaviors ❌ |
 | `BlockHopper` | ✅ | Minecart hoppers ❌ |
@@ -414,7 +414,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ContainerFurnace`, `SlotFurnaceFuel`, `SlotFurnaceOutput` | ✅ | |
 | `ContainerDispenser` | ✅ | |
 | `ContainerHopper` | ✅ | |
-| `InventoryEnderChest` | ❌ | |
+| `InventoryEnderChest` | ✅ | `EnderItems` in player data |
 | `ContainerEnchantment` | ❌ | |
 | `ContainerBrewingStand` | ✅ | Slot rules, shift-click, brew time property; the potion achievement ❌ |
 | `ContainerRepair` (anvil, renaming via `MC|ItemName`) | ❌ | |
@@ -437,7 +437,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `TileEntityNote` | ✅ | |
 | `TileEntityComparator` | ✅ | |
 | `TileEntityPiston` | ✅ | |
-| `TileEntityEnderChest` | ❌ | |
+| `TileEntityEnderChest` | ✅ | Ticks with the other tickables; the 20-tick viewer resync (`% 20 * 4` quirk) |
 | `TileEntityEnchantmentTable` | ❌ | |
 | `TileEntityBrewingStand` | ✅ | Brewing with vanilla's list-identity rules, the unsaved ingredient (a reload restarts the brew) |
 | `TileEntityBeacon` | ❌ | |

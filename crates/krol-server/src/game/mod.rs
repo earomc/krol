@@ -20,6 +20,7 @@ mod damage;
 mod death;
 mod digging;
 mod dispenser;
+mod ender_chest;
 mod explosion;
 mod falling_block;
 mod farming;
@@ -1010,12 +1011,12 @@ impl Game {
                 Some("Furnace") => self.tick_furnace(pos),
                 Some("Hopper") => self.tick_hopper(pos),
                 Some("Cauldron") => self.tick_brewing_stand(pos),
+                Some("EnderChest") => self.tick_ender_chest(pos),
                 _ => {}
             }
         }
     }
 
-    /// Vanilla `initializeConnectionToPlayer` + `playerLoggedIn`.
     /// Vanilla `NetHandlerLoginServer.tryAcceptPlayer` after Login Success:
     /// `createPlayerForUser` kicks every session of the same profile, and the new one
     /// then waits until they have left.
@@ -1052,7 +1053,7 @@ impl Game {
         }
     }
 
-    /// Vanilla `initializeConnectionToPlayer`.
+    /// Vanilla `initializeConnectionToPlayer` + `playerLoggedIn`.
     fn join(&mut self, join: DelayedJoin) {
         let DelayedJoin {
             conn_id,

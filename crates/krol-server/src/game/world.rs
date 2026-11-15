@@ -91,6 +91,8 @@ pub struct World {
     /// Furnaces, hoppers and brewing stands in the order they were added
     /// (`tickableTileEntities`); chests and moving pistons keep their own lists.
     pub tickables: Vec<(i32, i32, i32)>,
+    /// Ender chest tile entities' lid state, by position.
+    pub ender_chests: HashMap<(i32, i32, i32), super::ender_chest::EnderChestState>,
     /// Moving piston blocks in the order they were created (`TileEntityPiston` in
     /// vanilla's `tickableTileEntities`).
     pub moving: Vec<(i32, i32, i32)>,
@@ -134,6 +136,7 @@ impl World {
             pending_changes: HashMap::new(),
             pending_order: Vec::new(),
             tickables: Vec::new(),
+            ender_chests: HashMap::new(),
             scheduler: Default::default(),
             moving: Vec::new(),
             total_time: 0,
@@ -274,6 +277,10 @@ impl World {
                     let p = (c.get_i32("x"), c.get_i32("y"), c.get_i32("z"));
                     match c.get_str("id") {
                         "Furnace" | "Hopper" | "Cauldron" => self.tickables.push(p),
+                        "EnderChest" => {
+                            self.tickables.push(p);
+                            self.ender_chests.insert(p, Default::default());
+                        }
                         _ => {}
                     }
                 }
@@ -438,6 +445,7 @@ impl World {
     pub fn remove_tile_entity(&mut self, pos: (i32, i32, i32)) {
         self.chunk(pos.0 >> 4, pos.2 >> 4);
         self.tickables.retain(|&p| p != pos);
+        self.ender_chests.remove(&pos);
         if let Some(index) = self.tile_entity_index(pos) {
             self.chunk_mut(pos.0 >> 4, pos.2 >> 4)
                 .tile_entities
@@ -468,9 +476,24 @@ impl World {
             super::brewing::BREWING_STAND => "Cauldron",
             block::DISPENSER => "Trap",
             block::DROPPER => "Dropper",
+            block::ENDER_CHEST => "EnderChest",
             _ => return,
         };
         if self.tile_entity_index(pos).is_some() {
+            return;
+        }
+        if id == "EnderChest" {
+            // TileEntityEnderChest writes only what every tile entity writes.
+            let mut c = Compound::new();
+            c.insert("id", Tag::String(id.into()));
+            c.insert("x", Tag::Int(pos.0));
+            c.insert("y", Tag::Int(pos.1));
+            c.insert("z", Tag::Int(pos.2));
+            let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
+            let _ = list.push(Tag::Compound(c));
+            sort_tile_entities(list);
+            self.tickables.push(pos);
+            self.ender_chests.insert(pos, Default::default());
             return;
         }
         if id == "Comparator" || id == "Music" {

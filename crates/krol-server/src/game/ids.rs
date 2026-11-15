@@ -193,6 +193,8 @@ pub mod block {
     pub const WOODEN_BUTTON: u16 = 143;
     /// `trapped_chest`.
     pub const TRAPPED_CHEST: u16 = 146;
+    /// `ender_chest`.
+    pub const ENDER_CHEST: u16 = 130;
     /// `light_weighted_pressure_plate`.
     pub const LIGHT_PRESSURE_PLATE: u16 = 147;
     /// `heavy_weighted_pressure_plate`.

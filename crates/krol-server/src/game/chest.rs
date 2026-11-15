@@ -5,7 +5,7 @@
 //! the same contents. The runtime state vanilla keeps on the tile entity (players using
 //! it, lid angle) is kept here for chests that are open or closing.
 //!
-//! TODO(M4): ender chests, lock codes, ocelots sitting on chests, trapped chest
+//! TODO(M4): lock codes, ocelots sitting on chests, trapped chest
 //! redstone output, comparators.
 //! TODO(M4): vanilla's sync counter starts when the tile entity is loaded; krol starts
 //! it when a chest first opens, which shifts the 200-tick viewer recount.
@@ -234,6 +234,7 @@ impl Game {
             pos,
             slots: Vec::new(),
             parts,
+            ender: false,
             sent: vec![None; layout.len()],
             fields: [0; 4],
             taken: 0,
@@ -298,6 +299,8 @@ impl Game {
                     self.piston_event(e.pos, state, e.action, e.param)
                 } else if e.block == block::NOTEBLOCK {
                     self.note_event(e.pos, e.action, e.param)
+                } else if e.block == block::ENDER_CHEST {
+                    self.ender_chest_event(e.pos, e.action, e.param)
                 } else if block::is_chest(e.block) && e.action == EVENT_VIEWERS {
                     // TileEntityChest.receiveClientEvent.
                     let has_te = self.level.overworld.tile_entity(e.pos).is_some();

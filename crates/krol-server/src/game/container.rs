@@ -238,6 +238,8 @@ pub struct OpenContainer {
     pub slots: Vec<Option<ItemStack>>,
     /// The tile entities whose inventories the window shows (chests, furnaces).
     pub parts: Vec<(i32, i32, i32)>,
+    /// The window shows the player's ender inventory; `pos` is the ender chest.
+    pub ender: bool,
     /// Window properties last sent (furnaces).
     pub fields: [i32; 4],
     /// Items taken from a furnace's output not yet counted (`SlotFurnaceOutput`).
@@ -408,6 +410,11 @@ impl Game {
                 flat.extend(p.inventory[9..45].iter().cloned());
                 flat
             }
+            Some(o) if o.ender => {
+                let mut flat = super::ender_chest::ender_items(&p.data);
+                flat.extend(p.inventory[9..45].iter().cloned());
+                flat
+            }
             Some(o) if !o.parts.is_empty() => {
                 let mut flat = self.chest_contents(&o.parts);
                 flat.extend(p.inventory[9..45].iter().cloned());
@@ -469,6 +476,18 @@ impl Game {
             let own = super::dispenser::DISPENSER_SLOTS;
             self.set_dispenser_items(pos, &flat[..own]);
             self.players[i].inventory[9..45].clone_from_slice(&flat[own..]);
+            return;
+        }
+        if self.players[i]
+            .window
+            .open
+            .as_ref()
+            .is_some_and(|o| o.ender)
+        {
+            let own = super::ender_chest::ENDER_SLOTS;
+            let p = &mut self.players[i];
+            super::ender_chest::set_ender_items(&mut p.data, &flat[..own]);
+            p.inventory[9..45].clone_from_slice(&flat[own..]);
             return;
         }
         if let Some(parts) = self.players[i]
@@ -1026,7 +1045,9 @@ impl Game {
         let closed = self.players[i].window.open.take();
         self.players[i].window.locked = false;
         // ContainerChest.onContainerClosed: the chests lose a viewer.
-        if let Some(o) = closed
+        if let Some(o) = closed.as_ref().filter(|o| o.ender) {
+            self.change_ender_viewers(o.pos, -1);
+        } else if let Some(o) = closed
             && matches!(o.layout, Layout::Chest(_))
             && self.players[i].gamemode != 3
         {
@@ -1066,6 +1087,7 @@ impl Game {
             pos,
             slots: vec![None; 10],
             parts: Vec::new(),
+            ender: false,
             sent: vec![None; Layout::Workbench.len()],
             fields: [0; 4],
             taken: 0,
@@ -1086,7 +1108,7 @@ impl Game {
         let Some(o) = &self.players[i].window.open else {
             return;
         };
-        let (pos, layout) = (o.pos, o.layout);
+        let (pos, layout, ender) = (o.pos, o.layout, o.ender);
         let parts = o.parts.clone();
         let player = self.players[i].pos;
         let near = |pos: (i32, i32, i32)| {
@@ -1102,6 +1124,8 @@ impl Game {
             Layout::Workbench => {
                 w.block(pos.0, pos.1, pos.2) >> 4 == block::CRAFTING_TABLE && near(pos)
             }
+            // InventoryEnderChest.isUseableByPlayer: the chest is still there and near.
+            Layout::Chest(_) if ender => w.ender_chests.contains_key(&pos) && near(pos),
             // TileEntityChest.isUseableByPlayer, for each half.
             Layout::Chest(_) => parts.iter().all(|&p| {
                 block::is_chest(w.block(p.0, p.1, p.2) >> 4)

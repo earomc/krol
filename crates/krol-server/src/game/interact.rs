@@ -172,6 +172,10 @@ impl Game {
                 self.activate_chest(i, pos, id);
                 true
             }
+            block::ENDER_CHEST => {
+                self.activate_ender_chest(i, pos);
+                true
+            }
             block::LEVER => {
                 self.activate_lever(pos);
                 true
