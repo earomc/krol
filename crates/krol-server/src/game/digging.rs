@@ -330,7 +330,7 @@ impl Game {
     }
 
     /// Vanilla `ItemInWorldManager.onBlockClicked` for survival and adventure players.
-    pub(super) fn start_digging(&mut self, i: usize, pos: (i32, i32, i32)) {
+    pub(super) fn start_digging(&mut self, i: usize, pos: (i32, i32, i32), face: i8) {
         let gamemode = self.players[i].gamemode;
         if gamemode == 3 {
             return;
@@ -339,8 +339,9 @@ impl Game {
             // TODO(M5): CanDestroy tags; without them adventure players cannot dig.
             return;
         }
-        // TODO(M5): punching out fire on the clicked face (extinguishFire).
+        // The clicked block is read before fire on its face is punched out.
         let b = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
+        self.extinguish_fire(pos, face);
         let dig = &mut self.players[i].dig;
         dig.initial = dig.ticks;
         let mut hardness = 1.0;

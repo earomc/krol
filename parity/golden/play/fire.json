@@ -10,8 +10,8 @@
         },
         {
           "type": "success",
-          "uuid": "a762f560-4fce-3236-812a-b80efff0b62b",
-          "username": "jeb_"
+          "uuid": "b50ad385-829d-3141-a216-7e7d7539ba7f",
+          "username": "Notch"
         }
       ],
       "sequence": [
@@ -28,21 +28,11 @@
         "world_border",
         "window_items",
         "set_slot",
+        "set_slot",
         "update_health",
         "set_experience",
         "entity_metadata",
         "entity_properties",
-        "player_abilities",
-        "player_list_item",
-        "change_game_state",
-        "player_abilities",
-        "chat",
-        "set_slot",
-        "player_abilities",
-        "player_list_item",
-        "change_game_state",
-        "player_abilities",
-        "chat",
         "sound_effect",
         "block_change",
         "block_change",
@@ -53,11 +43,13 @@
         "block_change",
         "set_slot",
         "block_change",
-        "multi_block_change"
+        "0x28",
+        "block_change",
+        "block_change"
       ],
       "packets": [
         {
-          "gamemode": 2,
+          "gamemode": 0,
           "dimension": 0,
           "difficulty": 1,
           "max_players": 20,
@@ -97,11 +89,11 @@
           "packet": "statistics"
         },
         {
-          "hex": "0001a762f5604fce3236812ab80efff0b62b046a65625f00020000",
+          "hex": "0001b50ad385829d3141a2167e7d7539ba7f054e6f74636800000000",
           "packet": "player_list_item"
         },
         {
-          "hex": "0001a762f5604fce3236812ab80efff0b62b046a65625f00020000",
+          "hex": "0001b50ad385829d3141a2167e7d7539ba7f054e6f74636800000000",
           "packet": "player_list_item"
         },
         {
@@ -118,11 +110,15 @@
           "packet": "world_border"
         },
         {
-          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff010301000000ffffffffffffffffffffffffffffffff",
           "packet": "window_items"
         },
         {
           "hex": "ffffffffff",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "000024010301000000",
           "packet": "set_slot"
         },
         {
@@ -146,60 +142,6 @@
             ]
           ],
           "packet": "entity_properties"
-        },
-        {
-          "flags": 13,
-          "flying_speed": 0.05000000074505806,
-          "walking_speed": 0.10000000149011612,
-          "packet": "player_abilities"
-        },
-        {
-          "hex": "0101a762f5604fce3236812ab80efff0b62b01",
-          "packet": "player_list_item"
-        },
-        {
-          "hex": "033f800000",
-          "packet": "change_game_state"
-        },
-        {
-          "flags": 13,
-          "flying_speed": 0.05000000074505806,
-          "walking_speed": 0.10000000149011612,
-          "packet": "player_abilities"
-        },
-        {
-          "json": "{\"translate\":\"gameMode.changed\"}",
-          "position": 1,
-          "packet": "chat"
-        },
-        {
-          "hex": "000024010301000000",
-          "packet": "set_slot"
-        },
-        {
-          "flags": 0,
-          "flying_speed": 0.05000000074505806,
-          "walking_speed": 0.10000000149011612,
-          "packet": "player_abilities"
-        },
-        {
-          "hex": "0101a762f5604fce3236812ab80efff0b62b00",
-          "packet": "player_list_item"
-        },
-        {
-          "hex": "0300000000",
-          "packet": "change_game_state"
-        },
-        {
-          "flags": 0,
-          "flying_speed": 0.05000000074505806,
-          "walking_speed": 0.10000000149011612,
-          "packet": "player_abilities"
-        },
-        {
-          "json": "{\"translate\":\"gameMode.changed\"}",
-          "position": 1,
-          "packet": "chat"
         },
         {
           "name": "fire.ignite",
@@ -252,20 +194,19 @@
           "packet": "block_change"
         },
         {
-          "hex": "ffffffe2ffffffe4027c03007c0400",
-          "packet": "multi_block_change"
-        }
-      ],
-      "chat": [
-        {
-          "json": "{\"translate\":\"gameMode.changed\"}",
-          "position": 1
+          "hex": "000003ecffff89c013fffe4c0000000000",
+          "packet": "0x28"
         },
         {
-          "json": "{\"translate\":\"gameMode.changed\"}",
-          "position": 1
+          "hex": "ffff89c013fffe4c00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "ffff89c00ffffe4c00",
+          "packet": "block_change"
         }
       ],
+      "chat": [],
       "chunks": [
         "-20,-18,0001",
         "-20,-19,0001",
@@ -739,13 +680,12 @@
       "[Server thread/INFO]: Preparing start region for level 0",
       "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
       "[Server thread/INFO]: Block placed",
-      "[Server thread/INFO]: jeb_[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
-      "[Server thread/INFO]: jeb_ joined the game",
-      "[Server thread/INFO]: Set jeb_'s game mode to Creative Mode",
-      "[Server thread/INFO]: Set jeb_'s game mode to Survival Mode",
-      "[Server thread/INFO]: Block placed",
-      "[Server thread/INFO]: jeb_ lost connection: TextComponent{text='Disconnected', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",
-      "[Server thread/INFO]: jeb_ left the game",
+      "[Server thread/INFO]: Game rule has been updated",
+      "[Server thread/INFO]: Game rule has been updated",
+      "[Server thread/INFO]: Notch[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
+      "[Server thread/INFO]: Notch joined the game",
+      "[Server thread/INFO]: Notch lost connection: TextComponent{text='Disconnected', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",
+      "[Server thread/INFO]: Notch left the game",
       "[Server thread/INFO]: Stopping the server",
       "[Server thread/INFO]: Stopping server",
       "[Server thread/INFO]: Saving players",
@@ -755,14 +695,14 @@
       "[Server thread/INFO]: Saving chunks for level 'world'/The End"
     ],
     "blocks": {
-      "-470,4,-433": "51:2",
+      "-470,4,-433": "51:1",
       "-473,4,-436": "0:0",
       "-473,3,-436": "0:0"
     },
     "light": {
       "-470,4,-433": "15:15"
     },
-    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat": {
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat": {
       "AbsorptionAmount": "0f",
       "Air": "300s",
       "Attributes": [
@@ -826,11 +766,11 @@
       "SelectedItemSlot": 0,
       "SleepTimer": "0s",
       "Sleeping": "0b",
-      "UUIDLeast": "-9139290119231982037L",
-      "UUIDMost": "-6385271527653363146L",
+      "UUIDLeast": "-6767082312774862209L",
+      "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": 0,
+      "XpSeed": -1581183612,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -841,25 +781,27 @@
         "mayfly": "0b",
         "walkSpeed": "0.1f"
       },
-      "foodExhaustionLevel": "0f",
+      "foodExhaustionLevel": "0.025f",
       "foodLevel": 20,
       "foodSaturationLevel": "5f",
       "foodTickTimer": 0,
       "playerGameType": 0
     },
-    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json": {
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json": {
       "keys": [
         "stat.playOneMinute",
         "stat.useItem.minecraft.flint_and_steel",
         "stat.leaveGame",
         "stat.timeSinceDeath",
+        "stat.mineBlock.minecraft.dirt",
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.playOneMinute": 225,
+        "stat.playOneMinute": 175,
         "stat.useItem.minecraft.flint_and_steel": 2,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 225,
+        "stat.timeSinceDeath": 175,
+        "stat.mineBlock.minecraft.dirt": 1,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [

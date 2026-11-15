@@ -89,6 +89,24 @@ impl Game {
         }
     }
 
+    /// `World.extinguishFire`: fire on the clicked face of a block is punched out
+    /// (effect 1004 to everyone nearby). Returns whether there was fire.
+    pub(super) fn extinguish_fire(&mut self, pos: (i32, i32, i32), face: i8) -> bool {
+        let Ok(face) = u8::try_from(face) else {
+            return false;
+        };
+        if face > 5 {
+            return false;
+        }
+        let at = super::placement::offset(pos, face);
+        if self.fire_block(at) >> 4 != block::FIRE {
+            return false;
+        }
+        self.block_effect_data(EXTINGUISH_EFFECT, at, 0);
+        self.set_block_notify(at, 0);
+        true
+    }
+
     /// `BlockFire.onNeighborBlockChange`.
     pub(super) fn fire_neighbor_changed(&mut self, p: (i32, i32, i32)) {
         if !self.fire_can_stay(p) {
@@ -425,6 +443,9 @@ const PLAYER_HEIGHT: f32 = 1.8;
 const WET_FIZZ_VOLUME: f32 = 0.7;
 const WET_FIZZ_PITCH: f32 = 1.6;
 const WET_FIZZ_SPREAD: f32 = 0.4;
+
+/// The `Effect` id of fire being punched out.
+const EXTINGUISH_EFFECT: i32 = 1004;
 
 /// `fire.ignite` pitch: base plus a random spread.
 const IGNITE_PITCH_BASE: f32 = 0.8;

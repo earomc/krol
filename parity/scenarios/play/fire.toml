@@ -1,45 +1,43 @@
-description = "Fire: flint and steel in survival lights the block above netherrack (burns forever) and above grass (goes out when the grass below is removed), and wears by one per use; fire.ignite sound, use statistic"
+description = "Fire: flint and steel in survival lights the block above netherrack (burns forever) and above grass (goes out when the grass below is dug away), and wears by one per use; fire.ignite sound, use statistic"
 subsystem = "play"
 
-# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, gets flint and steel in
-# creative mode and uses it in survival mode. Fire ages and spreads with the unseeded
-# world random, so only fire that cannot change on its own is kept until the end.
+# Notch (survival, from fixture data, holding flint and steel) stands at the spawn
+# (-471.5, 4, -434.5). Everything that has to happen in order is the bot's own doing:
+# console steps run before it joins. Fire ages and spreads with the unseeded world
+# random, so only fire that cannot change on its own is kept until the end. Tile drops
+# are off (the grass would drop and be picked up at random).
 
 [setup]
 world = "fixtures/worlds/flat"
 properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_flint.dat"
 
 [[steps]]
 action = "console"
 command = "setblock -470 3 -433 netherrack"
 
 [[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doTileDrops false"
+
+[[steps]]
 id = "player"
 action = "play"
-background = true
 protocol = 47
-name = "jeb_"
-seconds = 12
+name = "Notch"
+seconds = 9
 chat = [
-    "@2500 !creative 36 259 1 0",
-    "@6000 !place -470 3 -433 1",
-    "@6400 !place -473 3 -436 1",
+    "@2500 !place -470 3 -433 1",
+    "@2900 !place -473 3 -436 1",
+    "@3500 !dig -473 3 -436 1",
+    "@5500 !dig -473 3 -436 1 2",
 ]
-
-[[steps]]
-action = "console"
-command = "gamemode 1 jeb_"
-wait_ms = 4500
-
-[[steps]]
-action = "console"
-command = "gamemode 0 jeb_"
-wait_ms = 5000
-
-[[steps]]
-action = "console"
-command = "setblock -473 3 -436 air"
-wait_ms = 3500
 
 [observe]
 log = true
@@ -47,12 +45,13 @@ blocks = [[-470, 4, -433], [-473, 4, -436], [-473, 3, -436]]
 # The netherrack fire's age is random; its light shows it still burns.
 light = [[-470, 4, -433]]
 files = [
-    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
-    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
 ]
 ignore = [
     "blocks.-470,4,-433",
-    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
-    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
-    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
 ]

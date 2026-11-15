@@ -1293,7 +1293,7 @@ impl Game {
     }
 
     /// Vanilla `processPlayerDigging` for start/abort/stop.
-    fn digging(&mut self, i: usize, status: i8, pos: (i32, i32, i32)) {
+    fn digging(&mut self, i: usize, status: i8, pos: (i32, i32, i32), face: i8) {
         if matches!(status, 3 | 4) {
             // processPlayerDigging: drop one item or the whole stack.
             if self.players[i].gamemode != 3 {
@@ -1321,9 +1321,12 @@ impl Game {
                 if self.is_block_protected(i, pos) {
                     self.send_block(i, pos);
                 } else if self.players[i].gamemode == 1 {
-                    self.block_clicked(i, pos);
+                    // onBlockClicked: creative players punch out fire instead of breaking.
+                    if !self.extinguish_fire(pos, face) {
+                        self.block_clicked(i, pos);
+                    }
                 } else {
-                    self.start_digging(i, pos);
+                    self.start_digging(i, pos, face);
                 }
             }
             _ => {
@@ -1877,11 +1880,7 @@ impl Game {
             ServerboundPlay::CreativeInventoryAction { slot, item } => {
                 self.creative_inventory_action(i, slot, item);
             }
-            ServerboundPlay::Digging {
-                status,
-                pos,
-                face: _,
-            } => self.digging(i, status, pos),
+            ServerboundPlay::Digging { status, pos, face } => self.digging(i, status, pos, face),
             ServerboundPlay::BlockPlacement {
                 pos,
                 face,

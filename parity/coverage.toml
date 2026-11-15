@@ -340,7 +340,7 @@ scenarios = ["play/drowning"]
 
 [[feature]]
 id = "world.fire"
-description = "Fire: support rules, ageing and burning out, spreading and burning flammable blocks (vanilla encouragement/flammability table, difficulty, humid biomes), dying in the rain (canLightningStrike with precipitation height and biome weather), netherrack; flint and steel with item wear (unbreaking, breaking). Not yet: TNT, portals"
+description = "Fire: support rules, ageing and burning out, spreading and burning flammable blocks (vanilla encouragement/flammability table, difficulty, humid biomes), dying in the rain (canLightningStrike with precipitation height and biome weather), netherrack; flint and steel with item wear (unbreaking, breaking), punching out fire (extinguishFire). Not yet: TNT, portals"
 scenarios = ["play/fire"]
 
 [[feature]]
