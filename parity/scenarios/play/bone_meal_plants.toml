@@ -1,7 +1,7 @@
 description = "Bone meal on grass-like plants: tall grass and a fern become double plants, a dead bush, a covered tall grass and the upper half of double grass don't grow, a sunflower drops a copy; a double plant loses its upper half when the lower one is dug and both halves go when the soil changes"
 subsystem = "blocks"
 
-# Notch (survival, from fixture data, holding 16 bone meal in slot 1) stands at the
+# Notch (survival, from fixture data, holding bone meal in slot 1) stands at the
 # spawn (-471.5, 4, -434.5). Bone meal on the grass block first scatters random tall
 # grass and flowers around (-476, 4, -440); the observed spots are all taken by then.
 # Item positions are random, so only blocks are compared.

@@ -95,6 +95,12 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
             },
         ),
         13 => (1, None, 0), // decided per drop below
+        // BlockHugeMushroom: up to 2 small mushrooms.
+        99 | 100 => (
+            (rand.next_int_bounded(10) - 7).max(0),
+            Some(b as i16 - 60),
+            0,
+        ),
         16 => (1, Some(263), 0),
         56 => (1, Some(264), 0),
         129 => (1, Some(388), 0),

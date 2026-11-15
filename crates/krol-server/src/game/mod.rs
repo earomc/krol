@@ -32,6 +32,7 @@ mod leaves;
 mod light_data;
 mod liquids;
 mod movement;
+mod mushrooms;
 mod noise;
 mod note_block;
 pub mod physics;
@@ -1714,6 +1715,10 @@ impl Game {
             return;
         }
         self.finish_placement(i, target, state);
+        // BlockDoublePlant.onBlockPlacedBy: the upper half.
+        if state >> 4 == plants::DOUBLE_PLANT {
+            self.place_double_plant_top(target);
+        }
         // BlockPistonBase.onBlockPlacedBy: checks whether to extend.
         if pistons::is_piston(state >> 4) {
             let now = self.level.overworld.block(target.0, target.1, target.2);

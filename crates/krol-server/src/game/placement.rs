@@ -373,6 +373,14 @@ pub fn placed_state(
             };
             ok.then(|| id << 4 | u16::from(meta))
         }
+        // BlockMushroom.canPlaceBlockAt.
+        ids::block::BROWN_MUSHROOM | ids::block::RED_MUSHROOM => {
+            super::mushrooms::mushroom_can_stay(world, at).then_some(id << 4)
+        }
+        // BlockDoublePlant.canPlaceBlockAt: room for the upper half.
+        super::plants::DOUBLE_PLANT => (matches!(below >> 4, 2 | 3 | 60)
+            && world.block(at.0, at.1 + 1, at.2) >> 4 == ids::block::AIR)
+            .then(|| id << 4 | u16::from(meta)),
         // BlockReed.canPlaceBlockAt: sugar cane on cane, or on grass, dirt or sand by water.
         ids::block::REEDS => {
             super::random_ticks::cane_can_stay(world, at, false).then_some(id << 4)

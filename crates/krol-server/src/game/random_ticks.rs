@@ -316,6 +316,7 @@ impl Game {
                 self.check_plant(pos, state);
             }
             super::plants::DOUBLE_PLANT => self.check_double_plant(pos, state),
+            _ if super::mushrooms::is_mushroom(id) => self.mushroom_tick(pos, state),
             _ => {}
         }
     }

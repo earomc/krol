@@ -1,0 +1,81 @@
+description = "Mushrooms: placed on mycelium but not on grass in daylight, popping off when their mycelium turns to stone, and bone meal growing a brown and a red huge mushroom (stems compared; the heights are random); a sunflower placed as two halves"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data: bone meal in slot 1, mushrooms in slots 2 and 3,
+# sunflowers in slot 4) stands at the spawn (-471.5, 4, -434.5). Bone meal grows a
+# huge mushroom 40% of the time; ten tries each leave a 0.6% chance of no growth.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_gardener.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -475 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -478 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -478 4 -438 brown_mushroom"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 12
+chat = [
+    "@1000 !hold 2",
+    "@1300 !place -468 3 -433 1",
+    "@1600 !hold 3",
+    "@1900 !place -475 3 -433 1",
+    "@2200 !place -472 3 -438 1",
+    "@2500 !hold 4",
+    "@2800 !place -470 3 -438 1",
+    "@3100 !hold 1",
+    "@3400 !place -468 4 -433 1",
+    "@3700 !place -475 4 -433 1",
+    "@4000 !place -468 4 -433 1",
+    "@4300 !place -475 4 -433 1",
+    "@4600 !place -468 4 -433 1",
+    "@4900 !place -475 4 -433 1",
+    "@5200 !place -468 4 -433 1",
+    "@5500 !place -475 4 -433 1",
+    "@5800 !place -468 4 -433 1",
+    "@6100 !place -475 4 -433 1",
+    "@6400 !place -468 4 -433 1",
+    "@6700 !place -475 4 -433 1",
+    "@7000 !place -468 4 -433 1",
+    "@7300 !place -475 4 -433 1",
+    "@7600 !place -468 4 -433 1",
+    "@7900 !place -475 4 -433 1",
+    "@8200 !place -468 4 -433 1",
+    "@8500 !place -475 4 -433 1",
+    "@8800 !place -468 4 -433 1",
+    "@9100 !place -475 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "setblock -478 3 -438 stone"
+
+[observe]
+log = true
+blocks = [
+    [-468, 4, -433], [-468, 5, -433], [-468, 6, -433], [-468, 7, -433], [-475, 4, -433], [-475, 5, -433], [-475, 6, -433], [-475, 7, -433], [-472, 4, -438], [-478, 3, -438], [-478, 4, -438], [-470, 4, -438], [-470, 5, -438],
+]
+ignore = ["player"]

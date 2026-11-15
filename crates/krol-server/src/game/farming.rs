@@ -1,7 +1,7 @@
 //! Hoes and bone meal (vanilla `ItemHoe`, `ItemDye.applyBonemeal` and the `IGrowable`
 //! blocks krol models).
 //!
-//! TODO(M5): bone meal on mushrooms (huge mushrooms) and cocoa.
+//! TODO(M5): bone meal on cocoa.
 
 use super::Game;
 use super::block_data::{Material, material};
@@ -123,6 +123,7 @@ impl Game {
             block::WHEAT | block::CARROTS | block::POTATOES => age < MAX_AGE,
             block::PUMPKIN_STEM | block::MELON_STEM => age != MAX_AGE,
             block::SAPLING => true,
+            _ if super::mushrooms::is_mushroom(id) => true,
             _ => self.plant_can_grow(pos, state).unwrap_or(false),
         };
         if !grows {
@@ -135,6 +136,7 @@ impl Game {
                     self.grow_sapling(pos, state);
                 }
             }
+            _ if super::mushrooms::is_mushroom(id) => self.bone_meal_mushroom(pos, state),
             block::GRASS | block::TALLGRASS | super::plants::DOUBLE_PLANT => {
                 self.grow_plant(pos, state);
             }

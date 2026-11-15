@@ -8,7 +8,7 @@
 # - notch_farmer.dat: Notch in survival mode at jeb_'s usual spawn spot, holding wheat
 #   seeds, carrots, potatoes, pumpkin and melon seeds, nether wart, sugar cane and cake.
 # - notch_gardener.dat: Notch in survival mode at jeb_'s usual spawn spot, holding a
-#   wooden hoe and 16 bone meal.
+#   wooden hoe, 64 bone meal, brown and red mushrooms and sunflowers.
 # - notch_flint.dat: Notch in survival mode at jeb_'s usual spawn spot, holding flint
 #   and steel (scenarios that would otherwise switch game modes from the console,
 #   which races with the bot's actions).
@@ -89,5 +89,8 @@ player(DIR + 'notch_farmer.dat', [-471.5, 4.0, -434.5], [
 ])
 player(DIR + 'notch_gardener.dat', [-471.5, 4.0, -434.5], [
     item(0, 'minecraft:wooden_hoe', 1, 0),
-    item(1, 'minecraft:dye', 16, 15),
+    item(1, 'minecraft:dye', 64, 15),
+    item(2, 'minecraft:brown_mushroom', 4, 0),
+    item(3, 'minecraft:red_mushroom', 4, 0),
+    item(4, 'minecraft:double_plant', 2, 0),
 ])

@@ -1,7 +1,7 @@
 description = "Bone meal in survival: four uses grow a wheat crop and a pumpkin stem to full age (2 to 5 stages each), one more on the grown wheat is not used up; outcome compared (the stages added are random)"
 subsystem = "blocks"
 
-# Notch (survival, from fixture data, holding 16 bone meal in slot 1) stands at the
+# Notch (survival, from fixture data, holding bone meal in slot 1) stands at the
 # spawn (-471.5, 4, -434.5). How many uses each plant takes is random, so the packets,
 # the bone meal left and the use statistics are not compared; the grown plants are.
 

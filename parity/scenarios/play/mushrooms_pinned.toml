@@ -1,0 +1,411 @@
+description = "Mushrooms spreading on random ticks with the world random pinned: a brown and a red mushroom on a 9x9 mycelium patch (the mycelium ticks too), compared block for block"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode and stands still. The blocks are set before
+# he joins; random ticks run for exactly 600 ticks after `krolpin`.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2", view-distance = "3" }
+pin_random = true
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -470 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -467 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -464 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -463 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -438 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -437 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -436 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -435 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -434 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -433 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -432 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -431 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -430 mycelium"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -434 brown_mushroom"
+
+[[steps]]
+action = "console"
+command = "setblock -464 4 -432 red_mushroom"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 38
+
+[[steps]]
+action = "console"
+command = "krolpin 5 1000 600"
+wait_ms = 34000
+
+[observe]
+log = true
+blocks = [
+    [-471, 3, -439], [-470, 3, -439], [-469, 3, -439], [-468, 3, -439], [-467, 3, -439], [-466, 3, -439], [-465, 3, -439], [-464, 3, -439],
+    [-463, 3, -439], [-462, 3, -439], [-461, 3, -439], [-471, 3, -438], [-470, 3, -438], [-469, 3, -438], [-468, 3, -438], [-467, 3, -438],
+    [-466, 3, -438], [-465, 3, -438], [-464, 3, -438], [-463, 3, -438], [-462, 3, -438], [-461, 3, -438], [-471, 3, -437], [-470, 3, -437],
+    [-469, 3, -437], [-468, 3, -437], [-467, 3, -437], [-466, 3, -437], [-465, 3, -437], [-464, 3, -437], [-463, 3, -437], [-462, 3, -437],
+    [-461, 3, -437], [-471, 3, -436], [-470, 3, -436], [-469, 3, -436], [-468, 3, -436], [-467, 3, -436], [-466, 3, -436], [-465, 3, -436],
+    [-464, 3, -436], [-463, 3, -436], [-462, 3, -436], [-461, 3, -436], [-471, 3, -435], [-470, 3, -435], [-469, 3, -435], [-468, 3, -435],
+    [-467, 3, -435], [-466, 3, -435], [-465, 3, -435], [-464, 3, -435], [-463, 3, -435], [-462, 3, -435], [-461, 3, -435], [-471, 3, -434],
+    [-470, 3, -434], [-469, 3, -434], [-468, 3, -434], [-467, 3, -434], [-466, 3, -434], [-465, 3, -434], [-464, 3, -434], [-463, 3, -434],
+    [-462, 3, -434], [-461, 3, -434], [-471, 3, -433], [-470, 3, -433], [-469, 3, -433], [-468, 3, -433], [-467, 3, -433], [-466, 3, -433],
+    [-465, 3, -433], [-464, 3, -433], [-463, 3, -433], [-462, 3, -433], [-461, 3, -433], [-471, 3, -432], [-470, 3, -432], [-469, 3, -432],
+    [-468, 3, -432], [-467, 3, -432], [-466, 3, -432], [-465, 3, -432], [-464, 3, -432], [-463, 3, -432], [-462, 3, -432], [-461, 3, -432],
+    [-471, 3, -431], [-470, 3, -431], [-469, 3, -431], [-468, 3, -431], [-467, 3, -431], [-466, 3, -431], [-465, 3, -431], [-464, 3, -431],
+    [-463, 3, -431], [-462, 3, -431], [-461, 3, -431], [-471, 3, -430], [-470, 3, -430], [-469, 3, -430], [-468, 3, -430], [-467, 3, -430],
+    [-466, 3, -430], [-465, 3, -430], [-464, 3, -430], [-463, 3, -430], [-462, 3, -430], [-461, 3, -430], [-471, 3, -429], [-470, 3, -429],
+    [-469, 3, -429], [-468, 3, -429], [-467, 3, -429], [-466, 3, -429], [-465, 3, -429], [-464, 3, -429], [-463, 3, -429], [-462, 3, -429],
+    [-461, 3, -429], [-471, 4, -439], [-470, 4, -439], [-469, 4, -439], [-468, 4, -439], [-467, 4, -439], [-466, 4, -439], [-465, 4, -439],
+    [-464, 4, -439], [-463, 4, -439], [-462, 4, -439], [-461, 4, -439], [-471, 4, -438], [-470, 4, -438], [-469, 4, -438], [-468, 4, -438],
+    [-467, 4, -438], [-466, 4, -438], [-465, 4, -438], [-464, 4, -438], [-463, 4, -438], [-462, 4, -438], [-461, 4, -438], [-471, 4, -437],
+    [-470, 4, -437], [-469, 4, -437], [-468, 4, -437], [-467, 4, -437], [-466, 4, -437], [-465, 4, -437], [-464, 4, -437], [-463, 4, -437],
+    [-462, 4, -437], [-461, 4, -437], [-471, 4, -436], [-470, 4, -436], [-469, 4, -436], [-468, 4, -436], [-467, 4, -436], [-466, 4, -436],
+    [-465, 4, -436], [-464, 4, -436], [-463, 4, -436], [-462, 4, -436], [-461, 4, -436], [-471, 4, -435], [-470, 4, -435], [-469, 4, -435],
+    [-468, 4, -435], [-467, 4, -435], [-466, 4, -435], [-465, 4, -435], [-464, 4, -435], [-463, 4, -435], [-462, 4, -435], [-461, 4, -435],
+    [-471, 4, -434], [-470, 4, -434], [-469, 4, -434], [-468, 4, -434], [-467, 4, -434], [-466, 4, -434], [-465, 4, -434], [-464, 4, -434],
+    [-463, 4, -434], [-462, 4, -434], [-461, 4, -434], [-471, 4, -433], [-470, 4, -433], [-469, 4, -433], [-468, 4, -433], [-467, 4, -433],
+    [-466, 4, -433], [-465, 4, -433], [-464, 4, -433], [-463, 4, -433], [-462, 4, -433], [-461, 4, -433], [-471, 4, -432], [-470, 4, -432],
+    [-469, 4, -432], [-468, 4, -432], [-467, 4, -432], [-466, 4, -432], [-465, 4, -432], [-464, 4, -432], [-463, 4, -432], [-462, 4, -432],
+    [-461, 4, -432], [-471, 4, -431], [-470, 4, -431], [-469, 4, -431], [-468, 4, -431], [-467, 4, -431], [-466, 4, -431], [-465, 4, -431],
+    [-464, 4, -431], [-463, 4, -431], [-462, 4, -431], [-461, 4, -431], [-471, 4, -430], [-470, 4, -430], [-469, 4, -430], [-468, 4, -430],
+    [-467, 4, -430], [-466, 4, -430], [-465, 4, -430], [-464, 4, -430], [-463, 4, -430], [-462, 4, -430], [-461, 4, -430], [-471, 4, -429],
+    [-470, 4, -429], [-469, 4, -429], [-468, 4, -429], [-467, 4, -429], [-466, 4, -429], [-465, 4, -429], [-464, 4, -429], [-463, 4, -429],
+    [-462, 4, -429], [-461, 4, -429], [-471, 5, -439], [-470, 5, -439], [-469, 5, -439], [-468, 5, -439], [-467, 5, -439], [-466, 5, -439],
+    [-465, 5, -439], [-464, 5, -439], [-463, 5, -439], [-462, 5, -439], [-461, 5, -439], [-471, 5, -438], [-470, 5, -438], [-469, 5, -438],
+    [-468, 5, -438], [-467, 5, -438], [-466, 5, -438], [-465, 5, -438], [-464, 5, -438], [-463, 5, -438], [-462, 5, -438], [-461, 5, -438],
+    [-471, 5, -437], [-470, 5, -437], [-469, 5, -437], [-468, 5, -437], [-467, 5, -437], [-466, 5, -437], [-465, 5, -437], [-464, 5, -437],
+    [-463, 5, -437], [-462, 5, -437], [-461, 5, -437], [-471, 5, -436], [-470, 5, -436], [-469, 5, -436], [-468, 5, -436], [-467, 5, -436],
+    [-466, 5, -436], [-465, 5, -436], [-464, 5, -436], [-463, 5, -436], [-462, 5, -436], [-461, 5, -436], [-471, 5, -435], [-470, 5, -435],
+    [-469, 5, -435], [-468, 5, -435], [-467, 5, -435], [-466, 5, -435], [-465, 5, -435], [-464, 5, -435], [-463, 5, -435], [-462, 5, -435],
+    [-461, 5, -435], [-471, 5, -434], [-470, 5, -434], [-469, 5, -434], [-468, 5, -434], [-467, 5, -434], [-466, 5, -434], [-465, 5, -434],
+    [-464, 5, -434], [-463, 5, -434], [-462, 5, -434], [-461, 5, -434], [-471, 5, -433], [-470, 5, -433], [-469, 5, -433], [-468, 5, -433],
+    [-467, 5, -433], [-466, 5, -433], [-465, 5, -433], [-464, 5, -433], [-463, 5, -433], [-462, 5, -433], [-461, 5, -433], [-471, 5, -432],
+    [-470, 5, -432], [-469, 5, -432], [-468, 5, -432], [-467, 5, -432], [-466, 5, -432], [-465, 5, -432], [-464, 5, -432], [-463, 5, -432],
+    [-462, 5, -432], [-461, 5, -432], [-471, 5, -431], [-470, 5, -431], [-469, 5, -431], [-468, 5, -431], [-467, 5, -431], [-466, 5, -431],
+    [-465, 5, -431], [-464, 5, -431], [-463, 5, -431], [-462, 5, -431], [-461, 5, -431], [-471, 5, -430], [-470, 5, -430], [-469, 5, -430],
+    [-468, 5, -430], [-467, 5, -430], [-466, 5, -430], [-465, 5, -430], [-464, 5, -430], [-463, 5, -430], [-462, 5, -430], [-461, 5, -430],
+    [-471, 5, -429], [-470, 5, -429], [-469, 5, -429], [-468, 5, -429], [-467, 5, -429], [-466, 5, -429], [-465, 5, -429], [-464, 5, -429],
+    [-463, 5, -429], [-462, 5, -429], [-461, 5, -429],
+]
+ignore = ["player"]

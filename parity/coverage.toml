@@ -370,8 +370,13 @@ scenarios = ["play/planting"]
 
 [[feature]]
 id = "blocks.farming_tools"
-description = "Hoes (ItemHoe: grass and dirt to farmland, coarse dirt to dirt, the new block's step sound, wear) and bone meal (ItemDye.applyBonemeal on crops, stems and saplings: 2-5 stages, 45% sapling growth, used up whenever the plant can grow, effect 2005), on grass (BlockGrass.grow: 128 attempts, biome flowers via pickRandomFlower), tall grass and ferns (double plants) and double plants (a copy dropped); double plants breaking as a pair (BlockDoublePlant.checkAndDropBlock). Not yet: bone meal on mushrooms and cocoa; the exact spots grass bone meal fills are random and not compared"
+description = "Hoes (ItemHoe: grass and dirt to farmland, coarse dirt to dirt, the new block's step sound, wear) and bone meal (ItemDye.applyBonemeal on crops, stems and saplings: 2-5 stages, 45% sapling growth, used up whenever the plant can grow, effect 2005), on grass (BlockGrass.grow: 128 attempts, biome flowers via pickRandomFlower), tall grass and ferns (double plants) and double plants (a copy dropped); double plants breaking as a pair (BlockDoublePlant.checkAndDropBlock). Not yet: bone meal on cocoa; the exact spots grass bone meal fills are random and not compared"
 scenarios = ["play/tilling", "play/bone_meal", "play/bone_meal_plants"]
+
+[[feature]]
+id = "blocks.mushrooms"
+description = "Mushrooms (BlockMushroom): placement and staying rules (mycelium, podzol, or a full block in light below 13), spreading on random ticks (crowding, the random walk), bone meal growing huge mushrooms 40% of the time (WorldGenBigMushroom, the inside-block quirk), huge mushroom drops. The huge mushroom caps are compared only by their stems (random heights); sunflowers placed as two halves"
+scenarios = ["play/mushrooms", "play/mushrooms_pinned"]
 
 [[feature]]
 id = "entity.armor"

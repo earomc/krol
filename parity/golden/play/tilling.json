@@ -30,6 +30,9 @@
         "set_slot",
         "set_slot",
         "set_slot",
+        "set_slot",
+        "set_slot",
+        "set_slot",
         "update_health",
         "set_experience",
         "entity_metadata",
@@ -119,7 +122,7 @@
           "packet": "world_border"
         },
         {
-          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff012201000000015f10000f00ffffffffffffffffffffffffffff",
+          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff012201000000015f40000f0000270400000000280400000000af02000000ffffffffffffffff",
           "packet": "window_items"
         },
         {
@@ -131,7 +134,19 @@
           "packet": "set_slot"
         },
         {
-          "hex": "000025015f10000f00",
+          "hex": "000025015f40000f00",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "000026002704000000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "000027002804000000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "00002800af02000000",
           "packet": "set_slot"
         },
         {
@@ -790,10 +805,28 @@
           "id": "minecraft:wooden_hoe"
         },
         {
-          "Count": "16b",
+          "Count": "64b",
           "Damage": "15s",
           "Slot": "1b",
           "id": "minecraft:dye"
+        },
+        {
+          "Count": "4b",
+          "Damage": "0s",
+          "Slot": "2b",
+          "id": "minecraft:brown_mushroom"
+        },
+        {
+          "Count": "4b",
+          "Damage": "0s",
+          "Slot": "3b",
+          "id": "minecraft:red_mushroom"
+        },
+        {
+          "Count": "2b",
+          "Damage": "0s",
+          "Slot": "4b",
+          "id": "minecraft:double_plant"
         }
       ],
       "Invulnerable": "0b",
@@ -826,7 +859,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": -321989772,
+      "XpSeed": -1318649234,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -853,9 +886,9 @@
       ],
       "value": {
         "stat.useItem.minecraft.wooden_hoe": 3,
-        "stat.playOneMinute": 115,
+        "stat.playOneMinute": 116,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 115,
+        "stat.timeSinceDeath": 116,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [

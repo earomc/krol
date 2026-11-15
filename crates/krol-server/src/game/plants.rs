@@ -226,6 +226,12 @@ impl Game {
         }
     }
 
+    /// `BlockDoublePlant.onBlockPlacedBy`: the upper half above a placed lower half.
+    pub(super) fn place_double_plant_top(&mut self, lower: (i32, i32, i32)) {
+        let up = (lower.0, lower.1 + 1, lower.2);
+        self.set_block_flags(up, DOUBLE_PLANT << 4 | UPPER_STATE, flags::SEND);
+    }
+
     /// `BlockDoublePlant.checkAndDropBlock` (on neighbor changes and random ticks): an
     /// upper half needs its lower half, a lower half its upper half and soil. Both
     /// halves go; only a lower half drops its items.
