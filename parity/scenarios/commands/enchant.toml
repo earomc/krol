@@ -1,0 +1,107 @@
+description = "/enchant from the console: usage, unknown player, empty hand, unknown id, invalid and too small numbers, an enchantment the item cannot take, a level too high, success by name and id, incompatible and repeated enchantments (with server-translated names), the case-sensitive name path, the one-character domain quirk, smite on an axe, efficiency and silk touch on shears"
+subsystem = "commands"
+
+# jeb_ is made creative to get a diamond sword, an iron axe and shears in the hotbar,
+# and selects the axe and then the shears while the console enchants what he holds.
+# Bot actions and the console commands that depend on them are a second or more apart:
+# the bot's clock starts with its connection, and vanilla logs in more slowly.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+chat = [
+    "@2500 !creative 36 276 1 0",
+    "@2700 !creative 37 258 1 0",
+    "@2900 !creative 38 359 1 0",
+    "@9000 !hold 1",
+    "@11000 !hold 2",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+
+[[steps]]
+action = "console"
+command = "enchant"
+
+[[steps]]
+action = "console"
+command = "enchant Nobody 16"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ 16"
+wait_ms = 2900
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ 99"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ foo"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ -3"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ 0"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ sharpness 6"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ minecraft:sharpness 5"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ 17"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ 16"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ Sharpness"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ a:knockback 2"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ unbreaking 3"
+wait_ms = 1700
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ smite 2"
+wait_ms = 2000
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ efficiency 5"
+
+[[steps]]
+action = "console"
+command = "enchant jeb_ silk_touch"
+wait_ms = 1500
+
+[observe]
+log = true
+files = ["world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat"]
+ignore = ["file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer"]

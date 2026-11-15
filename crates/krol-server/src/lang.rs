@@ -161,6 +161,13 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "potion.absorption" => "Absorption",
         "potion.saturation" => "Saturation",
         "commands.effect.success" => "Given %1$s (ID %2$d) * %3$d to %4$s for %5$d seconds",
+        "commands.enchant.notFound" => "There is no such enchantment with ID %d",
+        "commands.enchant.noItem" => "The target doesn't hold an item",
+        "commands.enchant.cantEnchant" => {
+            "The selected enchantment can't be added to the target item"
+        }
+        "commands.enchant.cantCombine" => "%1$s can't be combined with %2$s",
+        "commands.enchant.success" => "Enchanting succeeded",
         "commands.effect.success.removed" => "Took %1$s from %2$s",
         "commands.effect.success.removed.all" => "Took all effects from %s",
         "commands.effect.failure.notActive" => {

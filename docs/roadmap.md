@@ -553,7 +553,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting | ❌ | Needs attacking and mobs |
 | Power, Punch, Flame, Infinity | ❌ | Needs bows |
 | Luck of the Sea, Lure | ❌ | Needs fishing |
-| `EnchantmentHelper` (enchanting table selection, `/enchant`) | 🟡 | Table selection (`calcItemStackEnchantability`, `buildEnchantmentList`, `mapEnchantmentData` in Java `HashMap` order) ✅; `/enchant`, `addRandomEnchantment` ❌ |
+| `EnchantmentHelper` (enchanting table selection, `/enchant`) | 🟡 | Table selection (`calcItemStackEnchantability`, `buildEnchantmentList`, `mapEnchantmentData` in Java `HashMap` order), `/enchant` (`canApply`, compatibility, translated names) ✅; `addRandomEnchantment` ❌ |
 
 ## net.minecraft.dispenser
 
@@ -576,12 +576,12 @@ krol notice.
 | `xp` · `kick` · `setidletimeout` · `setworldspawn` · `stop` | ✅ | |
 | `save-all` · `save-on` · `save-off` | ✅ | |
 | `op` · `deop` · `ban` · `pardon` · `ban-ip` · `pardon-ip` · `banlist` · `whitelist` | ✅ | |
-| `effect` | ✅ | |
+| `effect` · `enchant` | ✅ | |
 | `setblock` | 🟡 | Data tags ❌ |
 | `tp` | 🟡 | Coordinates and players ✅; some forms (entity targets, rotation) ❌ |
 | `kill` · `spawnpoint` | ✅ | Players as targets (selectors ❌) |
 | `clear` | 🟡 | Data tags ❌ |
-| `achievement` · `blockdata` · `clone` · `debug` · `enchant` · `entitydata` · `execute` · `fill` · `give` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | `give` needs item display names (`en_US.lang`) |
+| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `give` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | `give` needs item display names (`en_US.lang`) |
 | `publish` | ➖ | LAN only |
 | `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | ❌ | Plain player names only |
 | `CommandResultStats` (`/stats` triggers) | ❌ | |

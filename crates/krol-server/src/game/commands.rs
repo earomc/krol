@@ -879,6 +879,7 @@ impl Game {
             "gamerule" => self.cmd_gamerule(sender, args),
             "setblock" => self.cmd_setblock(sender, args),
             "effect" => self.cmd_effect(sender, args),
+            "enchant" => self.cmd_enchant(sender, args),
             "save-off" | "save-on" => {
                 let enable = name == "save-on";
                 if self.saving_enabled == enable {
@@ -1336,6 +1337,55 @@ impl Game {
     }
 
     /// Vanilla `CommandEffect` (on players).
+    /// Vanilla `CommandEnchant`: enchants the held item of a player.
+    fn cmd_enchant(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        use super::enchanting as ench;
+        if args.len() < 2 {
+            return Err(usage("enchant"));
+        }
+        let target = self.find_player(args[0])?;
+        let id = match parse_int(args[1], 0, i32::MAX) {
+            Ok(id) => id,
+            Err(e) => match ench::by_name(args[1]) {
+                Some(id) => i32::from(id),
+                None => return Err(e),
+            },
+        };
+        let Some(stack) = self.players[target].held().cloned() else {
+            return Err(err("commands.enchant.noItem", vec![]));
+        };
+        if !ench::exists(id) {
+            return Err(err("commands.enchant.notFound", vec![s(id)]));
+        }
+        let id = id as i16;
+        if !ench::can_apply(id, &stack) {
+            return Err(err("commands.enchant.cantEnchant", vec![]));
+        }
+        let level = if args.len() >= 3 {
+            parse_int(args[2], 1, ench::max_level_of(id))?
+        } else {
+            1
+        };
+        for (other, other_level) in super::item_data::enchantments(&stack) {
+            if ench::exists(i32::from(other)) && !ench::can_apply_together(other, id) {
+                return Err(err(
+                    "commands.enchant.cantCombine",
+                    vec![
+                        s(ench::translated_name(id, level)),
+                        s(ench::translated_name(other, other_level)),
+                    ],
+                ));
+            }
+        }
+        let p = &mut self.players[target];
+        let slot = 36 + p.selected;
+        if let Some(held) = p.inventory[slot].as_mut() {
+            ench::enchant_stack(held, id, level);
+        }
+        self.notify(sender, "enchant", false, "commands.enchant.success", vec![]);
+        Ok(())
+    }
+
     fn cmd_effect(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
         use super::potions::{Effect, effect_by_name, effect_type};
         if args.len() < 2 {

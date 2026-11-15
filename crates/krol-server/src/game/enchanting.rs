@@ -171,6 +171,141 @@ fn compatible(chosen: i16, other: i16) -> bool {
     }
 }
 
+/// Registry names (`Enchantment.locationEnchantments`), in the order of [`ENCHANTMENTS`].
+const NAMES: [&str; 25] = [
+    "protection",
+    "fire_protection",
+    "feather_falling",
+    "blast_protection",
+    "projectile_protection",
+    "respiration",
+    "aqua_affinity",
+    "thorns",
+    "depth_strider",
+    "sharpness",
+    "smite",
+    "bane_of_arthropods",
+    "knockback",
+    "fire_aspect",
+    "looting",
+    "efficiency",
+    "silk_touch",
+    "unbreaking",
+    "fortune",
+    "power",
+    "punch",
+    "flame",
+    "infinity",
+    "luck_of_the_sea",
+    "lure",
+];
+
+/// English names (`en_US.lang`, translated on the server), in the order of
+/// [`ENCHANTMENTS`].
+const ENGLISH: [&str; 25] = [
+    "Protection",
+    "Fire Protection",
+    "Feather Falling",
+    "Blast Protection",
+    "Projectile Protection",
+    "Respiration",
+    "Aqua Affinity",
+    "Thorns",
+    "Depth Strider",
+    "Sharpness",
+    "Smite",
+    "Bane of Arthropods",
+    "Knockback",
+    "Fire Aspect",
+    "Looting",
+    "Efficiency",
+    "Silk Touch",
+    "Unbreaking",
+    "Fortune",
+    "Power",
+    "Punch",
+    "Flame",
+    "Infinity",
+    "Luck of the Sea",
+    "Lure",
+];
+
+/// Whether enchantment `id` exists (`Enchantment.getEnchantmentById` is not null).
+pub fn exists(id: i32) -> bool {
+    ENCHANTMENTS.iter().any(|&e| i32::from(e) == id)
+}
+
+/// `Enchantment.getEnchantmentByLocation`: the id for a registry name. Like
+/// `ResourceLocation`, the domain is lowercased and the path kept as typed.
+pub fn by_name(name: &str) -> Option<i16> {
+    let (domain, path) = match name.find(':') {
+        // Vanilla quirk: a one-character domain is dropped (only `i > 1` takes it).
+        Some(i) if i > 1 => (name[..i].to_lowercase(), &name[i + 1..]),
+        Some(i) => ("minecraft".to_owned(), &name[i + 1..]),
+        None => ("minecraft".to_owned(), name),
+    };
+    if domain != "minecraft" {
+        return None;
+    }
+    NAMES
+        .iter()
+        .position(|n| *n == path)
+        .map(|k| ENCHANTMENTS[k])
+}
+
+/// `Enchantment.getTranslatedName`: the English name and the level as a Roman numeral
+/// (levels without a translation show their key).
+pub fn translated_name(id: i16, level: i32) -> String {
+    const LEVELS: [&str; 10] = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+    let name = ENCHANTMENTS
+        .iter()
+        .position(|&e| e == id)
+        .map_or("", |k| ENGLISH[k]);
+    let level = usize::try_from(level)
+        .ok()
+        .and_then(|l| l.checked_sub(1))
+        .and_then(|l| LEVELS.get(l))
+        .map_or_else(|| format!("enchantment.level.{level}"), |l| (*l).to_owned());
+    format!("{name} {level}")
+}
+
+/// `Enchantment.canApply`: the kind's items, plus each enchantment's extras (axes for
+/// the damage enchantments, any armor for thorns, shears for efficiency and silk touch,
+/// anything damageable for unbreaking).
+pub fn can_apply(id: i16, stack: &ItemStack) -> bool {
+    const SHEARS: i16 = 359;
+    let extra = match id {
+        16..=18 => matches!(stack.id, 258 | 271 | 275 | 279 | 286),
+        7 => armor_slot(stack.id).is_some(),
+        32 | 33 => stack.id == SHEARS,
+        // ItemStack.isItemStackDamageable: not with the Unbreakable tag.
+        34 => {
+            super::item_data::max_damage(stack.id) > 0
+                && !stack
+                    .nbt
+                    .as_ref()
+                    .is_some_and(|c| c.get_i8("Unbreakable") != 0)
+        }
+        _ => false,
+    };
+    extra || applies(kind(id), stack.id)
+}
+
+/// `Enchantment.getMaxLevel`, for commands.
+pub fn max_level_of(id: i16) -> i32 {
+    max_level(id)
+}
+
+/// `chosen.canApplyTogether(other)`, for commands.
+pub fn can_apply_together(chosen: i16, other: i16) -> bool {
+    compatible(chosen, other)
+}
+
+/// `ItemStack.addEnchantment`, for commands.
+pub fn enchant_stack(stack: &mut ItemStack, id: i16, level: i32) {
+    add_enchantment(stack, id, level, false);
+}
+
 /// The tool material or armor material index of an item, if it has one.
 fn armor_slot(item: i16) -> Option<i16> {
     (298..=317).contains(&item).then(|| (item - 298) % 4)
