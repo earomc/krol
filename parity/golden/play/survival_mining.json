@@ -1054,7 +1054,7 @@
           "name": "step.gravel",
           "x": -3764,
           "y": 24,
-          "z": -3520,
+          "z": -3518,
           "volume": 0.15000000596046448,
           "pitch": 63,
           "packet": "sound_effect"
@@ -1662,7 +1662,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": 1684395343,
+      "XpSeed": 1634503295,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",
@@ -1673,7 +1673,7 @@
         "mayfly": "0b",
         "walkSpeed": "0.1f"
       },
-      "foodExhaustionLevel": "0.08999999f",
+      "foodExhaustionLevel": "0.11999998f",
       "foodLevel": 20,
       "foodSaturationLevel": "5f",
       "foodTickTimer": 0,
@@ -1689,7 +1689,7 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.walkOneCm": 400,
+        "stat.walkOneCm": 700,
         "stat.playOneMinute": 160,
         "stat.leaveGame": 1,
         "stat.timeSinceDeath": 160,
