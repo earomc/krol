@@ -344,6 +344,23 @@ pub fn decode(frame: &[u8]) -> Result<Received, BotError> {
             param: r.u8()?,
             block: r.varint()?,
         }),
+        // Protocol 5 sends explosions exactly like 47.
+        0x27 => {
+            let pos = (r.f32()?, r.f32()?, r.f32()?);
+            let radius = r.f32()?;
+            let count = r.i32()?;
+            let mut records = Vec::new();
+            for _ in 0..count.max(0) {
+                records.push((r.i8()?, r.i8()?, r.i8()?));
+            }
+            let motion = (r.f32()?, r.f32()?, r.f32()?);
+            Some(ClientboundPlay::Explosion {
+                pos,
+                radius,
+                records,
+                motion,
+            })
+        }
         0x25 => Some(ClientboundPlay::BlockBreakAnimation {
             entity_id: r.varint()?,
             pos: (r.i32()?, r.i32()?, r.i32()?),

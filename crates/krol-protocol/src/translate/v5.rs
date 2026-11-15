@@ -830,6 +830,17 @@ impl V5Translator {
                     .i8(*stage);
                 one(w);
             }
+            // Protocol 5 sends explosions exactly like 47.
+            ClientboundPlay::Explosion {
+                pos,
+                radius,
+                records,
+                motion,
+            } => {
+                let mut w = packet(0x27);
+                crate::packets::play::write_explosion(&mut w, *pos, *radius, records, *motion);
+                one(w);
+            }
             ClientboundPlay::Particle {
                 id,
                 pos,

@@ -54,6 +54,7 @@ fn name(id: i32) -> String {
         0x22 => "multi_block_change",
         0x23 => "block_change",
         0x26 => "map_chunk_bulk",
+        0x27 => "explosion",
         0x29 => "sound_effect",
         0x2b => "change_game_state",
         0x2f => "set_slot",
@@ -108,6 +109,16 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
             flags,
         } => json!({ "x": x, "y": y, "z": z, "yaw": yaw, "pitch": pitch, "flags": flags }),
         ClientboundPlay::HeldItemChange { slot } => json!({ "slot": slot }),
+        ClientboundPlay::Explosion {
+            pos,
+            radius,
+            records,
+            motion,
+        } => json!({
+            "pos": [pos.0, pos.1, pos.2], "radius": radius,
+            "records": records.iter().map(|r| [r.0, r.1, r.2]).collect::<Vec<_>>(),
+            "motion": [motion.0, motion.1, motion.2],
+        }),
         ClientboundPlay::PlayerAbilities {
             flags,
             flying_speed,

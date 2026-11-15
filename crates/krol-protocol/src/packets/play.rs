@@ -763,6 +763,15 @@ pub enum ClientboundPlay {
         pos: BlockPos,
         stage: i8,
     },
+    /// `0x27`: an explosion at `pos` with `radius`; `records` are the destroyed blocks
+    /// relative to the truncated (`(int)`) position, `motion` the knockback for the
+    /// receiving player.
+    Explosion {
+        pos: (f32, f32, f32),
+        radius: f32,
+        records: Vec<(i8, i8, i8)>,
+        motion: (f32, f32, f32),
+    },
     /// `0x2A`
     Particle {
         id: i32,
@@ -906,6 +915,7 @@ impl ClientboundPlay {
             Self::UpdateTileEntity { .. } => 0x35,
             Self::SignEditorOpen { .. } => 0x36,
             Self::BlockBreakAnimation { .. } => 0x25,
+            Self::Explosion { .. } => 0x27,
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
             Self::Respawn { .. } => 0x07,
@@ -1338,6 +1348,12 @@ impl ClientboundPlay {
                     .position(pos.0, pos.1, pos.2)
                     .i8(*stage);
             }
+            Self::Explosion {
+                pos,
+                radius,
+                records,
+                motion,
+            } => write_explosion(&mut w, *pos, *radius, records, *motion),
             Self::Particle {
                 id,
                 long_distance,
@@ -1536,6 +1552,7 @@ impl ClientboundPlay {
                 pos: r.position()?,
                 stage: r.i8()?,
             },
+            0x27 => read_explosion(&mut r)?,
             0x0d => Self::CollectItem {
                 collected: r.varint()?,
                 collector: r.varint()?,
@@ -1629,6 +1646,40 @@ fn encode_player_list(w: &mut PacketWriter, action: &PlayerListAction) -> Result
         }
     }
     Ok(())
+}
+
+/// Body of `S27PacketExplosion` (the same in protocols 47 and 5).
+pub(crate) fn write_explosion(
+    w: &mut PacketWriter,
+    pos: (f32, f32, f32),
+    radius: f32,
+    records: &[(i8, i8, i8)],
+    motion: (f32, f32, f32),
+) {
+    w.f32(pos.0).f32(pos.1).f32(pos.2).f32(radius);
+    w.i32(records.len() as i32);
+    for r in records {
+        w.i8(r.0).i8(r.1).i8(r.2);
+    }
+    w.f32(motion.0).f32(motion.1).f32(motion.2);
+}
+
+/// Reads the body of `S27PacketExplosion`.
+fn read_explosion(r: &mut PacketReader<'_>) -> Result<ClientboundPlay, DecodeError> {
+    let pos = (r.f32()?, r.f32()?, r.f32()?);
+    let radius = r.f32()?;
+    let count = r.i32()?;
+    let mut records = Vec::new();
+    for _ in 0..count.max(0) {
+        records.push((r.i8()?, r.i8()?, r.i8()?));
+    }
+    let motion = (r.f32()?, r.f32()?, r.f32()?);
+    Ok(ClientboundPlay::Explosion {
+        pos,
+        radius,
+        records,
+        motion,
+    })
 }
 
 #[cfg(test)]
@@ -1931,6 +1982,25 @@ mod tests {
                 assert_eq!(decoded, packet);
             }
         }
+    }
+
+    #[test]
+    fn explosion_round_trip() {
+        let p = ClientboundPlay::Explosion {
+            pos: (1.5, 2.0, -3.0),
+            radius: 4.0,
+            records: vec![(1, -1, 0)],
+            motion: (0.0, 0.5, 0.0),
+        };
+        let bytes = p.encode(V).unwrap();
+        assert_eq!(
+            bytes,
+            [
+                0x27, 0x3f, 0xc0, 0, 0, 0x40, 0, 0, 0, 0xc0, 0x40, 0, 0, 0x40, 0x80, 0, 0, 0, 0, 0,
+                1, 1, 0xff, 0, 0, 0, 0, 0, 0x3f, 0, 0, 0, 0, 0, 0, 0
+            ]
+        );
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
     }
 
     #[test]
