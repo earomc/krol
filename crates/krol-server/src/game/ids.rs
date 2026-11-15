@@ -155,6 +155,8 @@ pub mod block {
     pub const PUMPKIN: u16 = 86;
     /// `soul_sand`.
     pub const SOUL_SAND: u16 = 88;
+    /// `web` (cobweb).
+    pub const WEB: u16 = 30;
     /// `melon_block`.
     pub const MELON_BLOCK: u16 = 103;
     /// `pumpkin_stem`.

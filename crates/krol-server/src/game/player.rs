@@ -94,6 +94,8 @@ pub struct Player {
     pub fall_distance: f32,
     /// In water (`inWater`).
     pub in_water: bool,
+    /// Touched a cobweb in the last move (`isInWeb`).
+    pub in_web: bool,
     /// No living update has run yet (`Entity.firstUpdate`): entering water then does
     /// not splash.
     pub first_update: bool,

@@ -198,10 +198,11 @@ impl Game {
         // doBlockCollisions, with the orb in the world.
         let bb = orb.body.bb();
         self.orbs.insert(id, orb);
-        self.block_collisions(&bb);
+        let touched = self.block_collisions(&bb);
         let Some(mut orb) = self.orbs.remove(&id) else {
             return;
         };
+        orb.body.touched(touched);
         let p = orb.body.pos;
         let mut friction = DRAG;
         if orb.body.on_ground {

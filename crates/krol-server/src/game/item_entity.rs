@@ -304,10 +304,11 @@ impl Game {
         // doBlockCollisions, with the item in the world.
         let bb = it.body.bb();
         self.items.insert(id, it);
-        self.block_collisions(&bb);
+        let touched = self.block_collisions(&bb);
         let Some(mut it) = self.items.remove(&id) else {
             return;
         };
+        it.body.touched(touched);
         let p = it.body.pos;
         let crossed = prev.0 as i32 != p.0 as i32
             || prev.1 as i32 != p.1 as i32

@@ -159,6 +159,9 @@ const AMBIENT_COUNTDOWN_UNSET: i32 = -1;
 /// Player Digging status 5: the player let go of the item they were using.
 const RELEASE_USE_ITEM: i8 = 5;
 
+/// A player's bounding box (`EntityPlayer.setSize(0.6, 1.8)`).
+const PLAYER_WIDTH: f32 = 0.6;
+const PLAYER_HEIGHT: f32 = 1.8;
 /// The first armor item (`leather_helmet`); armor comes in sets of four.
 const ARMOR_FIRST_ID: i16 = 298;
 
@@ -757,14 +760,17 @@ impl Game {
             z = sz + rand.next_int_bounded(radius * 2) - radius;
             y = self.top_solid_block(x, z);
         }
-        // Move up out of blocks (approximation of vanilla's bounding box check).
-        while y < 255
-            && (self.level.overworld.block(x, y, z) != 0
-                || self.level.overworld.block(x, y + 1, z) != 0)
-        {
-            y += 1;
+        // Move up while the player's box hits collision boxes (cobwebs, plants and other
+        // blocks without one do not count).
+        let mut pos = (f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5);
+        while pos.1 < 255.0 {
+            let bb = physics::Aabb::at(pos, PLAYER_WIDTH, PLAYER_HEIGHT);
+            if physics::colliding_boxes(&mut self.level.overworld, &bb).is_empty() {
+                break;
+            }
+            pos.1 += 1.0;
         }
-        (f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5)
+        pos
     }
 
     fn top_solid_block(&mut self, x: i32, z: i32) -> i32 {
@@ -956,6 +962,7 @@ impl Game {
             airborne: false,
             fall_distance: data.get_f32("FallDistance"),
             in_water: false,
+            in_web: false,
             first_update: true,
             using: None,
             // Vanilla quirk: loaded effects do not set potionsNeedUpdate, so their

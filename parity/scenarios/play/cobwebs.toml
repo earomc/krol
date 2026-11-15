@@ -1,0 +1,94 @@
+description = "Cobwebs: a player spawning in a cobweb rises 7 blocks and falls back into it without fall damage (setInWeb resets the fall distance), then walks east out of it at full speed while the server slows every move inside the web (moved wrongly corrections), seen by another player"
+subsystem = "physics"
+
+# jeb_ (adventure, so he takes damage) joins at the spawn (-471.5, 4, -434.5) with a
+# cobweb at his feet; Notch watches from his fixture spot. The bot does not slow itself
+# down in the web like a real client, which makes the server's corrections visible.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_away.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -435 web"
+
+[[steps]]
+id = "watcher"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 10
+
+[[steps]]
+id = "mover"
+action = "play"
+protocol = 47
+name = "jeb_"
+seconds = 7
+moves = [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 1, 0, 0],
+    [0, 2, 0, 0],
+    [0, 3, 0, 0],
+    [0, 4, 0, 0],
+    [0, 5, 0, 0],
+    [0, 6, 0, 0],
+    [0, 7, 0, 0],
+    [0, 6, 0, 0],
+    [0, 5, 0, 0],
+    [0, 4, 0, 0],
+    [0, 3, 0, 0],
+    [0, 2, 0, 0],
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
+    [],
+    [],
+    [],
+    [],
+    [0.2, 0, 0],
+    [0.4, 0, 0],
+    [0.6, 0, 0],
+    [0.8, 0, 0],
+    [1.0, 0, 0],
+    [1.2, 0, 0],
+    [1.4, 0, 0],
+    [1.6, 0, 0],
+    [1.8, 0, 0],
+    [2.0, 0, 0],
+    [2.2, 0, 0],
+    [2.4, 0, 0],
+    [2.6, 0, 0],
+    [2.8, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+    [3.0, 0, 0],
+]
+
+[observe]
+log = true

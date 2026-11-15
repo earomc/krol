@@ -307,8 +307,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockFire` | ✅ | Spread, burning, rain, netherrack. Nether portal lighting ❌ |
 | `BlockLiquid`, `BlockDynamicLiquid`, `BlockStaticLiquid` | ✅ | Flow, mixing, lava fire. Nether lava speed ❌ (no nether) |
 | `BlockSponge` | ❌ | Absorbing water; wet sponge drying in furnaces ✅ |
-| `BlockSoulSand` | 🟡 | Collision box ✅; slowing entities ❌ |
-| `BlockWeb` | ❌ | Slowing entities (`setInWeb`) |
+| `BlockSoulSand` | ✅ | Collision box, slowing entities |
+| `BlockWeb` | ✅ | Slowing entities (`setInWeb`), fall distance reset |
 | `BlockSlime` | 🟡 | Fall damage cancel, pistons ✅; bouncing and the walking slowdown ❌ |
 | `BlockLadder` | ✅ | Placement, support, climbing |
 | `BlockTorch` | ✅ | |
@@ -456,7 +456,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Class | Status | Notes |
 |---|---|---|
-| `Entity`: ids, `moveEntity` (collision, stepping, sneaking edges), fall distance, water/lava handling, fire, `doBlockCollisions` | 🟡 | Webs, portals, soul sand, cactus (✅), pressure plates (✅) — webs, soul sand and portals ❌ |
+| `Entity`: ids, `moveEntity` (collision, stepping, sneaking edges, webs), fall distance, water/lava handling, fire, `doBlockCollisions` | 🟡 | Cobwebs, soul sand, cactus, pressure plates ✅; portals, tripwires, detector rails ❌ |
 | `Entity.isEntityInsideOpaqueBlock` | ✅ | Suffocation (players) |
 | `DataWatcher` (metadata) | ✅ | |
 | `EntityLivingBase`: health, hurt time, hurt resistance, `attackEntityFrom`, armor, absorption, effects, attributes, air, death update | 🟡 | Knockback from attackers ❌, combat tracker death messages ✅ for implemented sources |

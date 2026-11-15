@@ -427,3 +427,8 @@ scenarios = ["play/crafting"]
 id = "entity.suffocation"
 description = "Suffocation: Entity.isEntityInsideOpaqueBlock (8 points around the eyes, isVisuallyOpaque from the extracted block table), inWall damage of 1 (bypasses armor, no exhaustion), the death message. Not yet: world border damage"
 scenarios = ["play/suffocation"]
+
+[[feature]]
+id = "entity.block_collisions"
+description = "Entity.doBlockCollisions effects on movement: cobwebs (setInWeb: the next move covers 0.25/0.05/0.25 of the distance and stops the motion, fall distance reset), soul sand (horizontal motion times 0.4 per block touched) for players, items, XP orbs and falling blocks; new players placed above collision boxes only (not above cobwebs or plants). Soul sand and items in cobwebs have no scenario yet (their effect shows in random item arcs)"
+scenarios = ["play/cobwebs"]

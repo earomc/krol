@@ -60,6 +60,7 @@ impl Game {
         b.distance_walked_on_step = p.distance_walked_on_step;
         b.next_step_distance = p.next_step_distance;
         b.in_water = p.in_water;
+        b.in_web = p.in_web;
         b
     }
 
@@ -71,6 +72,7 @@ impl Game {
         let p = &mut self.players[i];
         p.pos = body.pos;
         p.motion = body.motion;
+        p.in_web = body.in_web;
         p.on_ground = body.on_ground;
         p.collided_horizontally = body.collided_horizontally;
         p.distance_walked_on_step = body.distance_walked_on_step;
@@ -89,7 +91,17 @@ impl Game {
         let p = &self.players[i];
         if p.gamemode != 3 {
             let bb = Aabb::at(p.pos, 0.6, 1.8);
-            self.block_collisions_of(&bb, Some(i));
+            let touched = self.block_collisions_of(&bb, Some(i));
+            let p = &mut self.players[i];
+            let mut body = Body::player(p.pos, p.on_ground);
+            body.motion = p.motion;
+            body.touched(touched);
+            p.motion = body.motion;
+            if touched.web {
+                // Entity.setInWeb.
+                p.in_web = true;
+                p.fall_distance = 0.0;
+            }
             self.player_move_fire(i);
         }
         outcome

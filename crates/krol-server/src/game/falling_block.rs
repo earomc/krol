@@ -190,10 +190,11 @@ impl Game {
         // doBlockCollisions, with the falling block in the world.
         let bb = f.body.bb();
         self.falling.insert(id, f);
-        self.block_collisions(&bb);
+        let touched = self.block_collisions(&bb);
         let Some(mut f) = self.falling.remove(&id) else {
             return;
         };
+        f.body.touched(touched);
         f.body.motion.0 *= f64::from(DRAG);
         f.body.motion.1 *= f64::from(DRAG);
         f.body.motion.2 *= f64::from(DRAG);

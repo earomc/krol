@@ -248,6 +248,9 @@ pub struct Body {
     pub next_step_distance: i32,
     /// In water (`inWater`, from the last `handleWaterMovement`): steps also splash.
     pub in_water: bool,
+    /// Touched a cobweb in the last `doBlockCollisions` (`isInWeb`): the next move is
+    /// slowed down and stops the motion.
+    pub in_web: bool,
 }
 
 impl Body {
@@ -266,6 +269,19 @@ impl Body {
             distance_walked_on_step: 0.0,
             next_step_distance: 1,
             in_water: false,
+            in_web: false,
+        }
+    }
+
+    /// Applies what `doBlockCollisions` found: cobwebs (`setInWeb`) and soul sand
+    /// (each soul sand block touched slows the horizontal motion to 40%).
+    pub fn touched(&mut self, t: Touched) {
+        if t.web {
+            self.in_web = true;
+        }
+        for _ in 0..t.soul_sand {
+            self.motion.0 *= SOUL_SAND_SLOWDOWN;
+            self.motion.2 *= SOUL_SAND_SLOWDOWN;
         }
     }
 
@@ -284,6 +300,22 @@ pub struct StepSound {
     pub volume: f32,
     /// Pitch.
     pub pitch: f32,
+}
+
+/// `BlockSoulSand.onEntityCollidedWithBlock` keeps this much of the horizontal motion.
+pub const SOUL_SAND_SLOWDOWN: f64 = 0.4;
+/// A move in a cobweb covers a quarter of the distance horizontally...
+const WEB_HORIZONTAL: f64 = 0.25;
+/// ...and `0.05F` of it vertically.
+const WEB_VERTICAL: f32 = 0.05;
+
+/// Blocks with an effect on entities that `doBlockCollisions` found.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Touched {
+    /// A cobweb (`BlockWeb`).
+    pub web: bool,
+    /// How many soul sand blocks (`BlockSoulSand`).
+    pub soul_sand: u32,
 }
 
 /// What a move did besides changing the body.
@@ -313,8 +345,8 @@ fn clip(boxes: &[Aabb], bb: &Aabb, axis: usize, mut d: f64) -> f64 {
     d
 }
 
-/// Vanilla `Entity.moveEntity` for an entity that is not riding, in no web and not
-/// noclipping. `walks` is `canTriggerWalking` and that the entity is a player for the
+/// Vanilla `Entity.moveEntity` for an entity that is not riding and not noclipping
+/// (cobwebs slow it down, see [`Body::in_web`]). `walks` is `canTriggerWalking` and that the entity is a player for the
 /// sneak edge check.
 pub fn move_entity(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64) -> MoveOutcome {
     move_entity_inner(world, body, dx, dy, dz, true)
@@ -337,6 +369,13 @@ fn move_entity_inner(
     let mut outcome = MoveOutcome::default();
     let start = body.pos;
     let (mut x, mut y, mut z) = (dx, dy, dz);
+    if body.in_web {
+        body.in_web = false;
+        x *= WEB_HORIZONTAL;
+        y *= f64::from(WEB_VERTICAL);
+        z *= WEB_HORIZONTAL;
+        body.motion = (0.0, 0.0, 0.0);
+    }
     let (mut x0, y0, mut z0) = (x, y, z);
     let mut bb = body.bb();
     let edge = body.on_ground && body.sneaking;
@@ -471,7 +510,8 @@ fn move_entity_inner(
             outcome.step = step_sound(world, below, below_state);
         }
     }
-    // TODO(M5): doBlockCollisions (webs, portals, pressure plates, cactus), fire.
+    // doBlockCollisions runs in the callers (`Game::block_collisions`), which see the
+    // whole world.
     outcome
 }
 
