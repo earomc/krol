@@ -161,6 +161,12 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
         ServerboundPlay::CloseWindow { window } => {
             w.varint(0x0d).i8(*window);
         }
+        ServerboundPlay::EnchantItem {
+            window,
+            enchantment,
+        } => {
+            w.varint(0x11).i8(*window).i8(*enchantment);
+        }
         ServerboundPlay::UpdateSign { pos, lines } => {
             w.varint(0x12).i32(pos.0).i16(pos.1 as i16).i32(pos.2);
             for line in lines {

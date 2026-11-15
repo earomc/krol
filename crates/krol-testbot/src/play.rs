@@ -54,7 +54,8 @@ pub struct PlayObservation {
 /// `!swing` (arm animation),
 /// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0),
 /// `!click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]`,
-/// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`.
+/// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`, `!enchant <window>
+/// <button>`.
 /// Optional
 /// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
 /// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1; `[]` sends nothing that
@@ -308,6 +309,11 @@ fn action_or_chat(
         }],
         Some("close") => vec![ServerboundPlay::CloseWindow {
             window: num(1) as i8,
+        }],
+        // !enchant <window> <button>: picks an enchanting table offer (0-2).
+        Some("enchant") => vec![ServerboundPlay::EnchantItem {
+            window: num(1) as i8,
+            enchantment: num(2) as i8,
         }],
         // !sign <x> <y> <z> <line1>|<line2>|<line3>|<line4> (plain text lines)
         Some("sign") => {

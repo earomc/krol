@@ -432,6 +432,12 @@ impl ServerboundPlay {
             Self::CloseWindow { window } => {
                 w.varint(0x0d).i8(*window);
             }
+            Self::EnchantItem {
+                window,
+                enchantment,
+            } => {
+                w.varint(0x11).i8(*window).i8(*enchantment);
+            }
             Self::UpdateSign { pos, lines } => {
                 w.varint(0x12).position(pos.0, pos.1, pos.2);
                 for line in lines {
@@ -1724,11 +1730,24 @@ mod tests {
                 channel: "MC|Brand".into(),
                 data: b"\x07vanilla".to_vec(),
             },
+            ServerboundPlay::EnchantItem {
+                window: 3,
+                enchantment: 2,
+            },
         ];
         for p in packets {
             let bytes = p.encode().unwrap().unwrap();
             assert_eq!(ServerboundPlay::decode(&bytes, V).unwrap(), p);
         }
+    }
+
+    #[test]
+    fn enchant_item_bytes() {
+        let p = ServerboundPlay::EnchantItem {
+            window: 3,
+            enchantment: 2,
+        };
+        assert_eq!(p.encode().unwrap().unwrap(), [0x11, 0x03, 0x02]);
     }
 
     #[test]
