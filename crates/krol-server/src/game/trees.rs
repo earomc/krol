@@ -1,7 +1,7 @@
 //! Saplings and the tree generators they use (vanilla `BlockSapling`, `WorldGenTrees`,
 //! `WorldGenForest`, `WorldGenTaiga2`). World generation will reuse the generators.
 //!
-//! TODO(M5): fancy oak (`WorldGenBigTree`), acacia, dark oak and the 2x2 trees.
+//! TODO(M5): acacia, dark oak and the 2x2 trees.
 
 use krol_java::JavaRandom;
 
@@ -330,6 +330,232 @@ fn spruce_tree(g: &mut Gen, pos: (i32, i32, i32)) -> bool {
     true
 }
 
+/// `WorldGenBigTree`: the fancy oak, with its own random seeded from the world's.
+struct BigTree {
+    rand: JavaRandom,
+    base: (i32, i32, i32),
+    height_limit: i32,
+    height: i32,
+    /// Leaf clusters: position and the trunk height their branch starts at.
+    nodes: Vec<((i32, i32, i32), i32)>,
+}
+
+/// `WorldGenBigTree` constants.
+const HEIGHT_ATTENUATION: f64 = 0.618;
+const BRANCH_SLOPE: f64 = 0.381;
+const SCALE_WIDTH: f64 = 1.0;
+const LEAF_DENSITY: f64 = 1.0;
+const HEIGHT_LIMIT_LIMIT: i32 = 12;
+const LEAF_DISTANCE_LIMIT: i32 = 4;
+/// Log axis bits (`BlockLog.EnumAxis`).
+const AXIS_X: u16 = 4;
+const AXIS_Z: u16 = 8;
+
+/// `new BlockPos(base.x + dx, base.y + dy, base.z + dz)` with doubles (floored).
+fn add_f(p: (i32, i32, i32), dx: f64, dy: f64, dz: f64) -> (i32, i32, i32) {
+    let floor = krol_java::math::floor_f64;
+    (
+        floor(f64::from(p.0) + dx),
+        floor(f64::from(p.1) + dy),
+        floor(f64::from(p.2) + dz),
+    )
+}
+
+fn greatest_distance(d: (i32, i32, i32)) -> i32 {
+    let (x, y, z) = (d.0.abs(), d.1.abs(), d.2.abs());
+    if z > x && z > y {
+        z
+    } else if y > x {
+        y
+    } else {
+        x
+    }
+}
+
+/// The points of the line from `a` to `b` that `WorldGenBigTree` steps along.
+fn line_points(a: (i32, i32, i32), b: (i32, i32, i32)) -> Vec<(i32, i32, i32)> {
+    let d = (b.0 - a.0, b.1 - a.1, b.2 - a.2);
+    let n = greatest_distance(d);
+    let (sx, sy, sz) = (
+        d.0 as f32 / n as f32,
+        d.1 as f32 / n as f32,
+        d.2 as f32 / n as f32,
+    );
+    (0..=n)
+        .map(|k| {
+            add_f(
+                a,
+                f64::from(0.5 + k as f32 * sx),
+                f64::from(0.5 + k as f32 * sy),
+                f64::from(0.5 + k as f32 * sz),
+            )
+        })
+        .collect()
+}
+
+impl BigTree {
+    /// `checkBlockLine`: the step at which the line hits something a tree cannot grow
+    /// into, or -1.
+    fn check_line(g: &mut Gen, a: (i32, i32, i32), b: (i32, i32, i32)) -> i32 {
+        let d = (b.0 - a.0, b.1 - a.1, b.2 - a.2);
+        if greatest_distance(d) == 0 {
+            return -1;
+        }
+        for (k, p) in line_points(a, b).into_iter().enumerate() {
+            if !g.can_grow_into(p) {
+                return k as i32;
+            }
+        }
+        -1
+    }
+
+    /// `layerSize`.
+    fn layer_size(&self, y: i32) -> f32 {
+        if (y as f32) < self.height_limit as f32 * 0.3 {
+            return -1.0;
+        }
+        let half = self.height_limit as f32 / 2.0;
+        let dy = half - y as f32;
+        let mut size = krol_java::math::sqrt_f32(half * half - dy * dy);
+        if dy == 0.0 {
+            size = half;
+        } else if dy.abs() >= half {
+            return 0.0;
+        }
+        size * 0.5
+    }
+
+    /// `generateLeafNodeList`.
+    fn leaf_nodes(&mut self, g: &mut Gen) {
+        self.height = (f64::from(self.height_limit) * HEIGHT_ATTENUATION) as i32;
+        if self.height >= self.height_limit {
+            self.height = self.height_limit - 1;
+        }
+        let density = LEAF_DENSITY * f64::from(self.height_limit) / 13.0;
+        let per_layer = ((1.382 + density * density) as i32).max(1);
+        let top = self.base.1 + self.height;
+        let mut y = self.height_limit - LEAF_DISTANCE_LIMIT;
+        self.nodes = vec![((self.base.0, self.base.1 + y, self.base.2), top)];
+        while y >= 0 {
+            let size = self.layer_size(y);
+            if size >= 0.0 {
+                for _ in 0..per_layer {
+                    let radius =
+                        SCALE_WIDTH * f64::from(size) * (f64::from(self.rand.next_float()) + 0.328);
+                    let angle = f64::from(self.rand.next_float() * 2.0) * std::f64::consts::PI;
+                    // Vanilla uses Math.sin/cos here (within an ulp of these).
+                    let dx = radius * angle.sin() + 0.5;
+                    let dz = radius * angle.cos() + 0.5;
+                    let node = add_f(self.base, dx, f64::from(y - 1), dz);
+                    let above = (node.0, node.1 + LEAF_DISTANCE_LIMIT, node.2);
+                    if Self::check_line(g, node, above) != -1 {
+                        continue;
+                    }
+                    let ox = self.base.0 - node.0;
+                    let oz = self.base.2 - node.2;
+                    let branch =
+                        f64::from(node.1) - f64::from(ox * ox + oz * oz).sqrt() * BRANCH_SLOPE;
+                    let branch_y = if branch > f64::from(top) {
+                        top
+                    } else {
+                        branch as i32
+                    };
+                    let start = (self.base.0, branch_y, self.base.2);
+                    if Self::check_line(g, start, node) == -1 {
+                        self.nodes.push((node, branch_y));
+                    }
+                }
+            }
+            y -= 1;
+        }
+    }
+
+    /// `func_181631_a`: one round layer of a leaf cluster.
+    fn leaf_layer(g: &mut Gen, center: (i32, i32, i32), size: f32) {
+        let r = (f64::from(size) + 0.618) as i32;
+        for dx in -r..=r {
+            for dz in -r..=r {
+                let a = f64::from(dx.abs()) + 0.5;
+                let b = f64::from(dz.abs()) + 0.5;
+                if a * a + b * b <= f64::from(size * size) {
+                    let p = (center.0 + dx, center.1, center.2 + dz);
+                    if matches!(material(g.id(p)), Material::Air | Material::Leaves) {
+                        g.set(p, block::LEAVES << 4);
+                    }
+                }
+            }
+        }
+    }
+
+    /// `leafSize`.
+    fn leaf_size(y: i32) -> f32 {
+        if !(0..LEAF_DISTANCE_LIMIT).contains(&y) {
+            -1.0
+        } else if y != 0 && y != LEAF_DISTANCE_LIMIT - 1 {
+            3.0
+        } else {
+            2.0
+        }
+    }
+
+    /// `func_175937_a`: a line of logs, each turned along the line's main axis.
+    fn log_line(g: &mut Gen, a: (i32, i32, i32), b: (i32, i32, i32)) {
+        for p in line_points(a, b) {
+            let dx = (p.0 - a.0).abs();
+            let dz = (p.2 - a.2).abs();
+            let m = dx.max(dz);
+            let axis = if m > 0 && dx == m {
+                AXIS_X
+            } else if m > 0 && dz == m {
+                AXIS_Z
+            } else {
+                0
+            };
+            g.set(p, block::LOG << 4 | axis);
+        }
+    }
+
+    fn generate(mut self, g: &mut Gen) -> bool {
+        self.height_limit = 5 + self.rand.next_int_bounded(HEIGHT_LIMIT_LIMIT);
+        // validTreeLocation.
+        if !matches!(
+            g.id((self.base.0, self.base.1 - 1, self.base.2)),
+            block::DIRT | block::GRASS | block::FARMLAND
+        ) {
+            return false;
+        }
+        let top = (
+            self.base.0,
+            self.base.1 + self.height_limit - 1,
+            self.base.2,
+        );
+        let blocked = Self::check_line(g, self.base, top);
+        if blocked != -1 {
+            if blocked < 6 {
+                return false;
+            }
+            self.height_limit = blocked;
+        }
+        self.leaf_nodes(g);
+        for &(node, _) in &self.nodes {
+            for k in 0..LEAF_DISTANCE_LIMIT {
+                Self::leaf_layer(g, (node.0, node.1 + k, node.2), Self::leaf_size(k));
+            }
+        }
+        let trunk_top = (self.base.0, self.base.1 + self.height, self.base.2);
+        Self::log_line(g, self.base, trunk_top);
+        for &(node, branch_y) in &self.nodes {
+            let start = (self.base.0, branch_y, self.base.2);
+            // leafNodeNeedsBase.
+            let needs = f64::from(branch_y - self.base.1) >= f64::from(self.height_limit) * 0.2;
+            if start != node && needs {
+                Self::log_line(g, start, node);
+            }
+        }
+        true
+    }
+}
+
 impl Game {
     /// `BlockSapling.updateTick` after the bush check: in enough light, 1 time in 7 the
     /// sapling grows.
@@ -362,8 +588,8 @@ impl Game {
         } else {
             None
         };
-        // TODO(M5): fancy oak, acacia, dark oak and the 2x2 spruce and jungle trees.
-        if (kind == OAK && big) || !matches!(kind, OAK | SPRUCE | BIRCH | JUNGLE) {
+        // TODO(M5): acacia, dark oak and the 2x2 spruce and jungle trees.
+        if !matches!(kind, OAK | SPRUCE | BIRCH | JUNGLE) {
             return;
         }
         self.set_block_flags(pos, 0, 0);
@@ -372,6 +598,17 @@ impl Game {
             notify: true,
         };
         let grown = match kind {
+            OAK if big => {
+                let seed = g.rand().next_long();
+                BigTree {
+                    rand: JavaRandom::new(seed),
+                    base: pos,
+                    height_limit: 0,
+                    height: 0,
+                    nodes: Vec::new(),
+                }
+                .generate(&mut g)
+            }
             SPRUCE => spruce_tree(&mut g, pos),
             BIRCH => birch_tree(&mut g, pos, false),
             JUNGLE => small_tree(
