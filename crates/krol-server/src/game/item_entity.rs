@@ -182,6 +182,12 @@ impl Game {
             self.drop_leaves(pos, state);
             return;
         }
+        if state >> 4 == super::ids::block::COCOA {
+            for _ in 0..super::farming::cocoa_drops(state & 15) {
+                self.spawn_as_entity(pos, super::farming::cocoa_beans());
+            }
+            return;
+        }
         for stack in block_drops(&mut self.world_rand, state) {
             self.spawn_as_entity(pos, stack);
         }

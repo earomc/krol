@@ -1626,6 +1626,10 @@ impl Game {
             self.use_bone_meal(i, pos);
             return;
         }
+        if farming::is_cocoa_beans(stack.id, stack.damage) {
+            self.place_cocoa(i, pos, face as u8);
+            return;
+        }
         if let Some((soil, crop)) = placement::seed_crop(stack.id) {
             self.plant_seeds(i, pos, face as u8, soil, crop);
             return;

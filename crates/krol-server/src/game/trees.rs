@@ -34,8 +34,6 @@ const VINE_SOUTH: u16 = 1;
 const VINE_WEST: u16 = 2;
 const VINE_NORTH: u16 = 4;
 const VINE_EAST: u16 = 8;
-/// `cocoa`.
-const COCOA: u16 = 127;
 
 /// What a tree generator writes and reads: a world with its random.
 struct Gen<'a> {
@@ -218,7 +216,7 @@ fn small_tree(
                     if g.rand().next_int_bounded(4 - k) == 0 {
                         let age = g.rand().next_int_bounded(3) as u16;
                         let q = (pos.0 - fx, pos.1 + height - 5 + k, pos.2 - fz);
-                        g.set(q, COCOA << 4 | index | age << 2);
+                        g.set(q, block::COCOA << 4 | index | age << 2);
                     }
                 }
             }

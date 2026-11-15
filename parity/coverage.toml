@@ -370,8 +370,8 @@ scenarios = ["play/planting"]
 
 [[feature]]
 id = "blocks.farming_tools"
-description = "Hoes (ItemHoe: grass and dirt to farmland, coarse dirt to dirt, the new block's step sound, wear) and bone meal (ItemDye.applyBonemeal on crops, stems and saplings: 2-5 stages, 45% sapling growth, used up whenever the plant can grow, effect 2005), on grass (BlockGrass.grow: 128 attempts, biome flowers via pickRandomFlower), tall grass and ferns (double plants) and double plants (a copy dropped); double plants breaking as a pair (BlockDoublePlant.checkAndDropBlock). Not yet: bone meal on cocoa; the exact spots grass bone meal fills are random and not compared"
-scenarios = ["play/tilling", "play/bone_meal", "play/bone_meal_plants"]
+description = "Hoes (ItemHoe: grass and dirt to farmland, coarse dirt to dirt, the new block's step sound, wear) and bone meal (ItemDye.applyBonemeal on crops, stems and saplings: 2-5 stages, 45% sapling growth, used up whenever the plant can grow, effect 2005), on grass (BlockGrass.grow: 128 attempts, biome flowers via pickRandomFlower), tall grass and ferns (double plants) and double plants (a copy dropped); double plants breaking as a pair (BlockDoublePlant.checkAndDropBlock). Cocoa (BlockCocoa: ItemDye placement on jungle logs, random growth, bone meal, drops). The exact spots grass bone meal fills are random and not compared"
+scenarios = ["play/tilling", "play/bone_meal", "play/bone_meal_plants", "play/cocoa"]
 
 [[feature]]
 id = "blocks.mushrooms"

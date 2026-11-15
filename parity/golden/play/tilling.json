@@ -33,6 +33,7 @@
         "set_slot",
         "set_slot",
         "set_slot",
+        "set_slot",
         "update_health",
         "set_experience",
         "entity_metadata",
@@ -122,7 +123,7 @@
           "packet": "world_border"
         },
         {
-          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff012201000000015f40000f0000270400000000280400000000af02000000ffffffffffffffff",
+          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff012201000000015f40000f0000270400000000280400000000af02000000015f08000300ffffffffffff",
           "packet": "window_items"
         },
         {
@@ -147,6 +148,10 @@
         },
         {
           "hex": "00002800af02000000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "000029015f08000300",
           "packet": "set_slot"
         },
         {
@@ -827,6 +832,12 @@
           "Damage": "0s",
           "Slot": "4b",
           "id": "minecraft:double_plant"
+        },
+        {
+          "Count": "8b",
+          "Damage": "3s",
+          "Slot": "5b",
+          "id": "minecraft:dye"
         }
       ],
       "Invulnerable": "0b",
@@ -859,7 +870,7 @@
       "UUIDMost": "-5401272232702037695L",
       "XpLevel": 0,
       "XpP": "0f",
-      "XpSeed": -1318649234,
+      "XpSeed": 2065205256,
       "XpTotal": 0,
       "abilities": {
         "flySpeed": "0.05f",

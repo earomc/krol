@@ -1,0 +1,57 @@
+description = "Cocoa beans: placed on the side of a jungle log facing it (not on its top, not on oak), three bone meal uses ripen a pod in two stages (the third is not used), and a pod drops when its log goes"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data: bone meal in slot 1, cocoa beans in slot 5) stands
+# at the spawn (-471.5, 4, -434.5).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_gardener.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -433 log 3"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -433 log 3"
+
+[[steps]]
+action = "console"
+command = "setblock -467 4 -436 log 0"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 6
+chat = [
+    "@1000 !hold 5",
+    "@1300 !place -469 4 -433 4",
+    "@1600 !place -469 4 -433 1",
+    "@1900 !place -473 4 -433 2",
+    "@2200 !place -467 4 -436 4",
+    "@2500 !hold 1",
+    "@2800 !place -470 4 -433 1",
+    "@3100 !place -470 4 -433 1",
+    "@3400 !place -470 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -433 air"
+
+[observe]
+log = true
+blocks = [
+    [-470, 4, -433], [-469, 5, -433], [-473, 4, -434], [-473, 4, -433], [-468, 4, -436],
+]
+ignore = ["player"]

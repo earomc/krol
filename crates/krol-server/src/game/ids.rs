@@ -75,6 +75,8 @@ pub mod block {
     pub const YELLOW_FLOWER: u16 = 37;
     /// `red_flower`.
     pub const RED_FLOWER: u16 = 38;
+    /// `cocoa`.
+    pub const COCOA: u16 = 127;
     /// `torch`.
     pub const TORCH: u16 = 50;
     /// `obsidian`.

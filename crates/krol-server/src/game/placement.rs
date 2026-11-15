@@ -47,7 +47,7 @@ fn horizontal(index: i32) -> u8 {
 }
 
 /// `getHorizontalIndex` of a horizontal face.
-fn horizontal_index(face: u8) -> u8 {
+pub fn horizontal_index(face: u8) -> u8 {
     match face {
         SOUTH => 0,
         WEST => 1,

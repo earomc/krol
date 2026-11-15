@@ -185,6 +185,10 @@ impl Game {
                 self.check_double_plant(pos, state);
                 return;
             }
+            block::COCOA => {
+                self.cocoa_neighbor_changed(pos, state);
+                return;
+            }
             _ if super::mushrooms::is_mushroom(id) => {
                 self.check_mushroom(pos, state);
                 return;
