@@ -96,6 +96,12 @@ pub struct Player {
     pub in_water: bool,
     /// Touched a cobweb in the last move (`isInWeb`).
     pub in_web: bool,
+    /// Lying in a bed (`sleeping`).
+    pub sleeping: bool,
+    /// `sleepTimer`: ticks in bed (100 is fully asleep), then up to 110 after waking.
+    pub sleep_timer: i32,
+    /// The head of the bed the player last lay in (`playerLocation`).
+    pub bed: Option<(i32, i32, i32)>,
     /// No living update has run yet (`Entity.firstUpdate`): entering water then does
     /// not splash.
     pub first_update: bool,
@@ -347,8 +353,13 @@ impl Player {
 
     /// `EntityPlayer.getEyeHeight`.
     pub fn eye_height(&self) -> f32 {
-        // TODO(M4): sleeping players' eyes are at 0.2.
-        if self.sneaking { 1.62 - 0.08 } else { 1.62 }
+        if self.sleeping {
+            0.2
+        } else if self.sneaking {
+            1.62 - 0.08
+        } else {
+            1.62
+        }
     }
 
     /// The held item (vanilla `inventory.getCurrentItem()`).
@@ -364,6 +375,10 @@ impl Player {
         self.data.insert("Motion", doubles(&[m.0, m.1, m.2]));
         self.data
             .insert("FallDistance", Tag::Float(self.fall_distance));
+        self.data
+            .insert("Sleeping", Tag::Byte(i8::from(self.sleeping)));
+        self.data
+            .insert("SleepTimer", Tag::Short(self.sleep_timer as i16));
         // Vanilla EntityPlayer.writeEntityToNBT also stores the held item on its own.
         match self.held().and_then(item_to_nbt) {
             Some(c) => {

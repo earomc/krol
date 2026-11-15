@@ -110,7 +110,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 |---|---|---|
 | 0x00 Keep Alive · 0x01 Join Game · 0x02 Chat · 0x03 Time Update · 0x05 Spawn Position · 0x06 Update Health · 0x07 Respawn · 0x08 Player Position And Look · 0x09 Held Item Change | ✅ | |
 | 0x04 Entity Equipment | ✅ | Players only |
-| 0x0A Use Bed | ❌ | Beds missing |
+| 0x0A Use Bed | ✅ | |
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
@@ -134,7 +134,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x28 Effect | 🟡 | Many effects (doors, fire, bone meal, dispensers, block break 2001, ...); missing those of unimplemented features (records, potion splash, portal travel, ...) |
 | 0x29 Sound Effect | 🟡 | Block, step, player and liquid sounds; mob and many item sounds missing |
 | 0x2A Particle | 🟡 | Block dust on falls; most server-sent particles belong to missing features |
-| 0x2B Change Game State | 🟡 | Rain, game mode, respawn screen; missing: bed spawn message, demo, credits, arrow hit, mob appearance |
+| 0x2B Change Game State | 🟡 | Rain, game mode, respawn screen, missing bed; missing: demo, credits, arrow hit, mob appearance |
 | 0x2C Spawn Global Entity | ❌ | Lightning |
 | 0x2D Open Window · 0x2E Close Window · 0x2F Set Slot · 0x30 Window Items · 0x31 Window Property · 0x32 Confirm Transaction | ✅ | For the implemented windows |
 | 0x33 Update Sign · 0x36 Sign Editor Open | ✅ | |
@@ -327,7 +327,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockHopper` | ✅ | Minecart hoppers ❌ |
 | `BlockSign`, `BlockStandingSign`, `BlockWallSign` | ✅ | |
 | `BlockCake` | ✅ | |
-| `BlockBed` | ❌ | Sleeping, spawn point, skipping the night, nether explosion |
+| `BlockBed` | 🟡 | Placement, sleeping (occupied bit written quietly like vanilla), skipping the night, spawn point, halves breaking together, drops from the foot ✅; mobs keeping players awake, nether explosion ❌ |
 | `BlockAnvil` | 🟡 | Placement ✅; falling, damage, repair window ❌ |
 | `BlockEnchantmentTable` | ❌ | |
 | `BlockBrewingStand` | ❌ | |
@@ -367,7 +367,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemReed` (sugar cane, cake, repeater, comparator, brewing stand, cauldron, flower pot, skull?) | 🟡 | Sugar cane, cake, repeaters, comparators ✅; brewing stand, cauldron, flower pot ❌ |
 | `ItemSeeds`, `ItemSeedFood` | ✅ | |
 | `ItemDoor`, `ItemSign`, `ItemRedstone` | ✅ | |
-| `ItemBed` | ❌ | |
+| `ItemBed` | ✅ | |
 | `ItemSkull`, `ItemBanner` | ❌ | |
 | `ItemLilyPad` | ❌ | |
 | `ItemTool`, `ItemPickaxe`, `ItemAxe`, `ItemSpade`, `ItemSword` | ✅ | Mining speed, wear. Sword blocking ❌, attack damage ❌ (no attacking) |
@@ -481,7 +481,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Sneaking, sprinting (metadata, speed boost, hunger) | ✅ | |
 | Suffocation, drowning, burning, fall damage, cactus | ✅ | |
 | Damage outside the world border | ❌ | |
-| Sleeping | ❌ | |
+| Sleeping | 🟡 | Use bed, sleep timer, waking (day, bed gone, leaving, night skipped), spawn point, respawning at the bed or being told it is missing ✅; the 0.2 x 0.2 sleeping box, players saved asleep moved out of the bed ❌ |
 | Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ❌ | |
 | Interacting with entities (`interactWith`) | ❌ | |
 | Riding (`mountEntity`) | ❌ | |

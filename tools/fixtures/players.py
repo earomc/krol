@@ -13,6 +13,7 @@
 # - notch_flint.dat: Notch in survival mode at jeb_'s usual spawn spot, holding flint
 #   and steel (scenarios that would otherwise switch game modes from the console,
 #   which races with the bot's actions).
+# - notch_bed.dat: Notch in survival mode at jeb_'s usual spawn spot, holding two beds.
 # - notch_creative_flint.dat: the same in creative mode (explosions cannot hurt him).
 #
 # Run: python tools/fixtures/players.py
@@ -78,6 +79,9 @@ player(DIR + 'notch_hungry.dat', [-473.5, 4.0, -440.5], [
 ], (int_('foodLevel', 10), float_('foodSaturationLevel', 0.0)))
 player(DIR + 'notch_flint.dat', [-471.5, 4.0, -434.5], [
     item(0, 'minecraft:flint_and_steel', 1, 0),
+])
+player(DIR + 'notch_bed.dat', [-471.5, 4.0, -434.5], [
+    item(0, 'minecraft:bed', 2, 0),
 ])
 player(DIR + 'notch_creative_flint.dat', [-471.5, 4.0, -434.5], [
     item(0, 'minecraft:flint_and_steel', 1, 0),

@@ -211,15 +211,10 @@ impl Game {
         let pos = self.spawn_position(default_mode);
         let p = &mut self.players[i];
         let gamemode = p.gamemode;
+        // clonePlayer does not keep the spawn point: only a bed found again sets it.
+        let spawn_point = super::beds::spawn_point(&p.data);
         let mut data = default_player_data(gamemode);
-        for key in [
-            "XpSeed",
-            "EnderItems",
-            "SpawnX",
-            "SpawnY",
-            "SpawnZ",
-            "SpawnForced",
-        ] {
+        for key in ["XpSeed", "EnderItems"] {
             if let Some(v) = p.data.get(key) {
                 data.insert(key, v.clone());
             }
@@ -280,6 +275,24 @@ impl Game {
                     other.send(update.clone());
                 }
             }
+        }
+        // The bed of the spawn point, if it is still there (else the player is told).
+        let mut pos = pos;
+        if let Some(at) = self.bed_respawn(i, spawn_point) {
+            pos = at;
+            while pos.1 < 255.0 {
+                let bb = super::physics::Aabb::at(pos, 0.6, 1.8);
+                if super::physics::colliding_boxes(&mut self.level.overworld, &bb).is_empty() {
+                    break;
+                }
+                pos.1 += 1.0;
+            }
+            let p = &mut self.players[i];
+            p.pos = pos;
+            p.entity_chunk = (
+                krol_java::math::floor_f64(pos.0) >> 4,
+                krol_java::math::floor_f64(pos.2) >> 4,
+            );
         }
         let difficulty = self.config.difficulty as u8;
         let level_type = self.level.data.generator_name().to_owned();

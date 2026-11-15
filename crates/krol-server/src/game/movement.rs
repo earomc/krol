@@ -34,6 +34,8 @@ const DEATH_PARTICLES: usize = 20;
 const MAX_AIR: i16 = 300;
 /// The air supply at which a drowning player takes damage (and goes back to 0).
 const DROWN_AT: i16 = -20;
+/// Entity action: leaving the bed.
+const LEAVE_BED: i32 = 2;
 /// Farmland is trampled when a random float is below the fall distance minus this.
 const TRAMPLE_OFFSET: f32 = 0.5;
 /// Suffocation damage per tick inside a block.
@@ -353,6 +355,7 @@ impl Game {
         if p.xp_cooldown > 0 {
             p.xp_cooldown -= 1;
         }
+        self.sleep_tick(i);
         self.send_equipment_changes(i);
         // Entity.handleWaterMovement: flowing water pushes players who are not flying.
         let (water, push) = {
@@ -872,7 +875,16 @@ impl Game {
             return;
         }
         player.movement.last_move_tick = player.movement.network_ticks;
-        // TODO(M5): riding and sleeping players.
+        // TODO(M5): riding.
+        if player.sleeping {
+            // A sleeping player updates but stays where it lies.
+            self.living_move(i);
+            self.player_update(i);
+            self.send_health_if_changed(i);
+            let p = &mut self.players[i];
+            p.pos = p.movement.last_pos;
+            return;
+        }
         let prev_y = player.pos.1;
         player.movement.last_pos = player.pos;
         let last = player.pos;
@@ -1000,6 +1012,11 @@ impl Game {
 
     /// Vanilla `processEntityAction`.
     pub(super) fn entity_action(&mut self, i: usize, action: i32) {
+        // C0BPacketEntityAction.Action.STOP_SLEEPING.
+        if action == LEAVE_BED {
+            self.wake_up(i, false, true, true);
+            return;
+        }
         let p = &mut self.players[i];
         match action {
             0 | 1 => {

@@ -447,3 +447,8 @@ scenarios = ["play/collision_shapes"]
 id = "world.explosions"
 description = "Explosions and TNT: rays with block resistance (data extracted from vanilla), the affected HashSet order and the explosion packet, drops rolled with 1/strength, entity damage by exposure (getBlockDensity) with difficulty scaling and blast protection, knockback, primed TNT (Math.random motion, fuse, tracking), chain reactions with short random fuses, priming by redstone, flint and steel and breaking explode-marked TNT; entities spawned during the entity loop update in the same tick. Not yet: fire charges, dispensers, burning arrows, flaming explosions, mobs"
 scenarios = ["play/tnt_pinned", "play/tnt_lit"]
+
+[[feature]]
+id = "blocks.beds"
+description = "Beds: ItemBed placement (facing, two halves, solid tops), BlockBed activation (head lookup, occupied bit set with flag 4, tile.bed.noSleep / tile.bed.occupied), trySleep (lying position, use bed to viewers and self), the sleep timer, waking (leave-bed animation, safe exit spot, spawn point), the night skip when everyone is fully asleep (time, weather reset), halves breaking together with drops from the foot, respawning at the bed or the missing-bed message (clonePlayer drops the spawn point). Not yet: mobs keeping players awake, beds exploding outside the overworld, the sleeping box size"
+scenarios = ["play/beds", "play/beds_broken"]

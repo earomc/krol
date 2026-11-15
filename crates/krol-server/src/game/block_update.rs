@@ -189,6 +189,10 @@ impl Game {
                 self.tnt_check_power(pos);
                 return;
             }
+            super::beds::BED => {
+                self.bed_neighbor_changed(pos, state);
+                return;
+            }
             block::COCOA => {
                 self.cocoa_neighbor_changed(pos, state);
                 return;

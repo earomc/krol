@@ -1,0 +1,77 @@
+description = "Beds broken: after sleeping through the night (spawn point set), the player breaks the bed's head by hand, the foot goes with it (no drop with tile drops off); after dying he is told his bed is missing and respawns at the world spawn"
+subsystem = "play"
+
+# Notch (survival, from fixture data, holding two beds, facing south) stands at the
+# spawn (-471.5, 4, -434.5). The bed goes on the grass 1.5 blocks south (foot at
+# (-471, 4, -433), head south of it). Instant damage VI from the console kills him well
+# after he woke up and well before he asks to respawn; keepInventory leaves no drops.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_bed.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule keepInventory true"
+
+[[steps]]
+action = "console"
+command = "gamerule doTileDrops false"
+
+[[steps]]
+action = "console"
+command = "time set 18000"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 19
+chat = [
+    "@1000 !hold 0",
+    "@1500 !place -471 3 -433 1",
+    "@2000 !place -471 4 -433 1",
+    "@9000 !dig -471 4 -432 1",
+    "@10000 !dig -471 4 -432 1 2",
+    "@13500 !respawn",
+]
+
+# Background sessions start 1.5 s before the next step, so this lands about 11.5 s
+# after the join: after waking (about 7 s), before the respawn (13.5 s). The session lasts
+# until all chunks have been sent again after the respawn (10 per tick).
+[[steps]]
+action = "wait"
+ms = 10000
+
+[[steps]]
+action = "console"
+command = "effect Notch instant_damage 1 5"
+wait_ms = 9000
+
+[observe]
+log = true
+blocks = [[-471, 4, -433], [-471, 4, -432]]
+files = ["world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat"]
+ignore = [
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    # The motion at logout depends on how many movement updates followed the respawn
+    # (packet timing).
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.Motion",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+]
+
+# After waking, Notch stands 0.1 above the floor (the safe exit spot) and the bot never
+# falls, so his server-side vertical motion alternates between one and two gravity steps
+# (-0.0784 and -0.1552, sent as -627 and -1241); which one the death's velocity packet
+# carries depends on packet timing.
+[observe.tolerance]
+"player.packets[38].y" = 614

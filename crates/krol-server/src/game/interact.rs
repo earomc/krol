@@ -102,6 +102,8 @@ impl Game {
                 self.activate_redstone_ore(pos, state);
                 false
             }
+            // BlockBed.onBlockActivated (overworld).
+            super::beds::BED => self.use_bed(i, pos, state),
             // BlockTNT.onBlockActivated: flint and steel lights it.
             super::tnt::TNT => self.light_tnt(i, pos),
             // BlockCake.onBlockActivated: always takes the click.

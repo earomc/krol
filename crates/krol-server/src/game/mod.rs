@@ -6,6 +6,7 @@
 //! player's [`Outgoing`] queue.
 
 mod attributes;
+mod beds;
 mod biome;
 pub mod block_data;
 mod block_update;
@@ -279,6 +280,8 @@ struct Game {
     falling: std::collections::BTreeMap<i32, falling_block::FallingBlock>,
     /// Primed TNT, by entity id.
     tnt: std::collections::BTreeMap<i32, tnt::PrimedTnt>,
+    /// Every player but spectators lies in bed (`allPlayersSleeping`).
+    all_sleeping: bool,
     /// Experience orbs by entity id.
     orbs: std::collections::BTreeMap<i32, xp_orb::XpOrb>,
     /// Dropped items by entity id.
@@ -342,6 +345,7 @@ pub fn start(
         orbs: Default::default(),
         falling: Default::default(),
         tnt: Default::default(),
+        all_sleeping: false,
         wire_gives_power: true,
         wire_queue: Vec::new(),
         torch_toggles: Vec::new(),
@@ -483,6 +487,7 @@ impl Game {
 
         self.refresh_status();
         self.tick_weather();
+        self.check_all_asleep();
         self.update_skylight_subtracted();
         self.tick_time();
         self.tick_scheduled();
@@ -975,6 +980,13 @@ impl Game {
         let on_ground = loaded && data.get_bool("OnGround");
         let inventory = player::inventory_window(&data);
         let selected = data.get_i32("SelectedItemSlot").clamp(0, 8) as usize;
+        // EntityPlayer.readEntityFromNBT: a player saved asleep wakes up at once
+        // (timer 0). TODO(M5): and is moved next to the bed it lay in.
+        let data_sleep_timer = if data.get_bool("Sleeping") {
+            0
+        } else {
+            data.get_i16("SleepTimer")
+        };
         let player = Player {
             conn_id,
             entity_id,
@@ -1027,6 +1039,9 @@ impl Game {
             fall_distance: data.get_f32("FallDistance"),
             in_water: false,
             in_web: false,
+            sleeping: false,
+            sleep_timer: i32::from(data_sleep_timer),
+            bed: None,
             first_update: true,
             using: None,
             // Vanilla quirk: loaded effects do not set potionsNeedUpdate, so their
@@ -1476,6 +1491,7 @@ impl Game {
         }
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         self.break_effect(i, pos, state);
+        self.bed_harvested_creative(pos, state);
         // BlockPistonExtension.onBlockHarvested: in creative the base goes first.
         if state >> 4 == ids::block::PISTON_HEAD {
             let base = placement::offset(pos, placement::opposite(pistons::facing(state & 15)));
@@ -1695,6 +1711,10 @@ impl Game {
         }
         if farming::is_bone_meal(stack.id, stack.damage) {
             self.use_bone_meal(i, pos);
+            return;
+        }
+        if stack.id == beds::BED_ITEM {
+            self.place_bed(i, pos, face as u8);
             return;
         }
         if farming::is_cocoa_beans(stack.id, stack.damage) {
@@ -2150,6 +2170,8 @@ impl Game {
         // World.removeEntity: viewers destroy the player entity.
         self.untrack_player(i);
         let player = self.players.remove(i);
+        // World.removeEntity: the others may all be asleep now.
+        self.update_sleeping_flag();
         let remove =
             ClientboundPlay::PlayerListItem(PlayerListAction::Remove(vec![player.profile.id]));
         for p in &self.players {
