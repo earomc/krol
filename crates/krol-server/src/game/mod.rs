@@ -37,6 +37,7 @@ mod note_block;
 pub mod physics;
 mod pistons;
 mod placement;
+mod plants;
 pub mod player;
 mod potions;
 mod powered_blocks;

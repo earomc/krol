@@ -1,8 +1,7 @@
 //! Hoes and bone meal (vanilla `ItemHoe`, `ItemDye.applyBonemeal` and the `IGrowable`
 //! blocks krol models).
 //!
-//! TODO(M5): bone meal on grass (flowers and tall grass by biome), tall grass and
-//! double plants, mushrooms (huge mushrooms) and cocoa.
+//! TODO(M5): bone meal on mushrooms (huge mushrooms) and cocoa.
 
 use super::Game;
 use super::block_data::{Material, material};
@@ -124,7 +123,7 @@ impl Game {
             block::WHEAT | block::CARROTS | block::POTATOES => age < MAX_AGE,
             block::PUMPKIN_STEM | block::MELON_STEM => age != MAX_AGE,
             block::SAPLING => true,
-            _ => false,
+            _ => self.plant_can_grow(pos, state).unwrap_or(false),
         };
         if !grows {
             return false;
@@ -135,6 +134,9 @@ impl Game {
                 if f64::from(self.world_rand.next_float()) < SAPLING_BONE_MEAL_CHANCE {
                     self.grow_sapling(pos, state);
                 }
+            }
+            block::GRASS | block::TALLGRASS | super::plants::DOUBLE_PLANT => {
+                self.grow_plant(pos, state);
             }
             _ => {
                 // BlockCrops.grow / BlockStem.growStem: 2 to 5 stages more.

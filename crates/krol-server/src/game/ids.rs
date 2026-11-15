@@ -260,6 +260,8 @@ pub mod item {
     pub const WOODEN_AXE: i16 = 271;
     /// `stick`.
     pub const STICK: i16 = 280;
+    /// `wheat_seeds`.
+    pub const WHEAT_SEEDS: i16 = 295;
     /// `wooden_hoe`.
     pub const WOODEN_HOE: i16 = 290;
     /// `sign`.

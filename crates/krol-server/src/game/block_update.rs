@@ -181,6 +181,10 @@ impl Game {
                 self.cake_neighbor_changed(pos);
                 return;
             }
+            super::plants::DOUBLE_PLANT => {
+                self.check_double_plant(pos, state);
+                return;
+            }
             block::REDSTONE_WIRE => {
                 if self.wire_can_stay(pos) {
                     self.wire_neighbor_changed(pos, state);

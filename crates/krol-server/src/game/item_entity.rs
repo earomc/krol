@@ -62,7 +62,7 @@ fn has_subtypes(id: i16) -> bool {
 
 /// What a block drops when harvested without enchantments (`quantityDropped`,
 /// `getItemDropped`, `damageDropped`), using the world random like vanilla.
-/// TODO(M5): leaves, crops, doors, beds, double plants and the other special drops.
+/// TODO(M5): crops, beds and the other special drops.
 fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
     let (b, m) = (state >> 4, (state & 15) as i16);
     let stack = |id: i16, damage: i16| ItemStack {
@@ -123,7 +123,8 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
             (1, Some(super::ids::item::SIGN), 0)
         }
         20 | 79 | 102 | 160 | 52 | 97 | 18 | 161 => (0, None, 0),
-        31 => (1, None, 0), // seeds, decided per drop below
+        31 | super::plants::DOUBLE_PLANT => (1, None, 0), // decided per drop below
+        super::ids::block::DEADBUSH => (0, None, 0),
         _ => {
             if krol_world::items::name_for_id(b as i16).is_some() {
                 (1, Some(b as i16), 0)
@@ -145,6 +146,12 @@ fn block_drops(rand: &mut krol_java::JavaRandom, state: u16) -> Vec<ItemStack> {
                 13
             }),
             31 => (rand.next_int_bounded(8) == 0).then_some(295),
+            super::plants::DOUBLE_PLANT => {
+                if let Some((id, damage)) = super::plants::double_plant_drop(rand, m as u16) {
+                    out.push(stack(id, damage));
+                }
+                None
+            }
             _ => item,
         };
         if let Some(id) = item {

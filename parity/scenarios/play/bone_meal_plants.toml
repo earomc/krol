@@ -1,0 +1,106 @@
+description = "Bone meal on grass-like plants: tall grass and a fern become double plants, a dead bush, a covered tall grass and the upper half of double grass don't grow, a sunflower drops a copy; a double plant loses its upper half when the lower one is dug and both halves go when the soil changes"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data, holding 16 bone meal in slot 1) stands at the
+# spawn (-471.5, 4, -434.5). Bone meal on the grass block first scatters random tall
+# grass and flowers around (-476, 4, -440); the observed spots are all taken by then.
+# Item positions are random, so only blocks are compared.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_gardener.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Tall grass, a fern and a dead bush.
+[[steps]]
+action = "console"
+command = "setblock -470 4 -433 tallgrass 1"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -433 tallgrass 2"
+
+[[steps]]
+action = "console"
+command = "setblock -474 4 -433 tallgrass 0"
+
+# Tall grass under stone.
+[[steps]]
+action = "console"
+command = "setblock -468 4 -436 tallgrass 1"
+
+[[steps]]
+action = "console"
+command = "setblock -468 5 -436 stone"
+
+# A sunflower, double grass, a rose bush and a peony (lower halves first).
+[[steps]]
+action = "console"
+command = "setblock -470 4 -436 double_plant 0"
+
+[[steps]]
+action = "console"
+command = "setblock -470 5 -436 double_plant 10"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -436 double_plant 2"
+
+[[steps]]
+action = "console"
+command = "setblock -472 5 -436 double_plant 10"
+
+[[steps]]
+action = "console"
+command = "setblock -474 4 -436 double_plant 4"
+
+[[steps]]
+action = "console"
+command = "setblock -474 5 -436 double_plant 10"
+
+[[steps]]
+action = "console"
+command = "setblock -468 4 -433 double_plant 5"
+
+[[steps]]
+action = "console"
+command = "setblock -468 5 -433 double_plant 10"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 8
+chat = [
+    "@1000 !hold 1",
+    "@1300 !place -476 3 -440 1",
+    "@1600 !place -470 4 -433 1",
+    "@1900 !place -472 4 -433 1",
+    "@2200 !place -474 4 -433 1",
+    "@2500 !place -468 4 -436 1",
+    "@2800 !place -470 5 -436 1",
+    "@3100 !place -472 5 -436 1",
+    "@3400 !dig -474 4 -436 1",
+]
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -433 stone"
+
+[observe]
+log = true
+blocks = [
+    [-470, 4, -433], [-470, 5, -433], [-472, 4, -433], [-472, 5, -433],
+    [-474, 4, -433], [-474, 5, -433], [-468, 4, -436], [-468, 5, -436],
+    [-470, 4, -436], [-470, 5, -436], [-472, 4, -436], [-472, 5, -436],
+    [-474, 4, -436], [-474, 5, -436], [-468, 3, -433], [-468, 4, -433],
+    [-468, 5, -433],
+]
+ignore = ["player"]

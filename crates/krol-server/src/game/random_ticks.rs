@@ -315,6 +315,7 @@ impl Game {
             block::TALLGRASS | block::DEADBUSH | block::YELLOW_FLOWER | block::RED_FLOWER => {
                 self.check_plant(pos, state);
             }
+            super::plants::DOUBLE_PLANT => self.check_double_plant(pos, state),
             _ => {}
         }
     }

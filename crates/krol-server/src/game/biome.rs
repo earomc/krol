@@ -96,8 +96,18 @@ impl Game {
     ///
     /// TODO(M6): vanilla generates the biome of such columns.
     pub(super) fn biome_at(&mut self, x: i32, z: i32) -> Biome {
+        biome(self.biome_id_at(x, z))
+    }
+
+    /// The biome id at a column (`BiomeGenBase.biomeID` of
+    /// [`Self::biome_at`]): unknown ids and chunks without biomes count as plains.
+    pub(super) fn biome_id_at(&mut self, x: i32, z: i32) -> u8 {
         let id = self.level.overworld.biome_id(x, z);
-        biome(if id == u8::MAX { PLAINS } else { id })
+        if id == u8::MAX || table()[usize::from(id)].is_none() {
+            PLAINS
+        } else {
+            id
+        }
     }
 
     /// `Chunk.getPrecipitationHeight`: one above the highest block that blocks
