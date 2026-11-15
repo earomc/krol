@@ -444,6 +444,7 @@ impl Game {
                 items
             }
             block::HOPPER => self.hopper_contents(pos),
+            super::brewing::BREWING_STAND => self.brewing_contents(pos),
             block::DISPENSER | block::DROPPER => self.dispenser_contents(pos),
             _ => return,
         };

@@ -11,6 +11,7 @@ mod biome;
 pub mod block_data;
 mod block_update;
 pub mod blocks;
+mod brewing;
 mod buckets;
 mod chest;
 pub mod commands;
@@ -294,6 +295,9 @@ struct Game {
     sign_editors: std::collections::HashMap<(i32, i32, i32), u64>,
     /// `currentItemBurnTime` of furnaces (not saved by vanilla).
     furnace_burn: std::collections::HashMap<(i32, i32, i32), i32>,
+    /// The ingredient each brewing stand started brewing with (`ingredientID`, not
+    /// saved).
+    brewing_ingredient: std::collections::HashMap<(i32, i32, i32), i16>,
     /// Queued block events (`WorldServer.field_147490_S`).
     block_events: Vec<chest::BlockEvent>,
     /// The world's random (`World.rand`, unseeded in vanilla).
@@ -360,6 +364,7 @@ pub fn start(
         chests: Vec::new(),
         block_events: Vec::new(),
         furnace_burn: Default::default(),
+        brewing_ingredient: Default::default(),
         sign_editors: Default::default(),
         world_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
@@ -571,6 +576,7 @@ impl Game {
         self.tick_chests();
         self.tick_furnaces();
         self.tick_hoppers();
+        self.tick_brewing();
         self.tick_moving();
         self.update_tracked_entities();
         for event in late {

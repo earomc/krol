@@ -1,0 +1,39 @@
+description = "Brewing stands: placing one, opening it (window, brew time property, interaction stat), shift-clicking three water bottles into the bottle slots (one each) and a nether wart into the ingredient slot, the 400-tick brew with its property updates and the bottle bits on the block, three awkward potions"
+subsystem = "blocks"
+
+# Notch (survival, from fixture data: a brewing stand in slot 0, water bottles in slots
+# 1-3, a nether wart in slot 4) stands at the spawn (-471.5, 4, -434.5). The stand
+# goes on the grass at (-470, 4, -433). Window 1: bottles 0-2, ingredient 3, main
+# inventory 4-30, hotbar 31-39.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_brewer.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 28
+chat = [
+    "@1000 !hold 0",
+    "@1300 !place -470 3 -433 1",
+    "@2000 !place -470 4 -433 1",
+    "@3000 !click 1 32 0 1 1 373 1 0",
+    "@3500 !click 1 33 0 2 1 373 1 0",
+    "@4000 !click 1 34 0 3 1 373 1 0",
+    "@4500 !click 1 35 0 4 1 372 1 0",
+]
+
+[observe]
+log = true
+blocks = [[-470, 4, -433]]
+tile_entities = [[-470, 4, -433]]

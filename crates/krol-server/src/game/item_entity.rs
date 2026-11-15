@@ -140,6 +140,7 @@ fn drop_plan(rand: &mut krol_java::JavaRandom, state: u16) -> DropPlan {
         20 | 79 | 102 | 160 | 52 | 97 | 18 | 161 => (0, None, 0),
         31 | super::plants::DOUBLE_PLANT => (1, None, 0), // decided per drop below
         super::ids::block::DEADBUSH => (0, None, 0),
+        super::brewing::BREWING_STAND => (1, Some(super::brewing::BREWING_STAND_ITEM), 0),
         super::beds::BED if super::beds::drops_item(m as u16) => {
             (1, Some(super::beds::BED_ITEM), 0)
         }

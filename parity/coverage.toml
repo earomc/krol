@@ -462,3 +462,8 @@ scenarios = ["commands/clear_kill_spawnpoint"]
 id = "item.potions"
 description = "Potions: drinking (32 updates, drink sounds, status 9) with effects from PotionHelper.getPotionEffects (port checked against every damage value) or CustomPotionEffects, the empty bottle (in the slot or added elsewhere; none in creative), glass bottles filled at water (in creative too, the water bottle added or tossed). Not yet: splash potions, brewing"
 scenarios = ["play/potions"]
+
+[[feature]]
+id = "blocks.brewing_stands"
+description = "Brewing stands: placing (ItemReed), the window (minecraft:brewing_stand, brew time property, stat.brewingstandInteraction), slot rules and shift-click, TileEntityBrewingStand.update (400-tick brews, canBrew / brewPotions with vanilla's cached-list identity, PotionHelper.applyIngredient, the unsaved ingredient), the bottle bits on the block, contents dropped when broken. Not yet: hoppers, comparators, the potion achievement"
+scenarios = ["play/brewing"]

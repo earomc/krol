@@ -4,7 +4,7 @@
 //!
 //! A click works on a flat view of the open window (container slots followed by the
 //! player's main inventory and hotbar), which is written back afterwards.
-//! TODO(M4): dispensers, hoppers, brewing stands and the other containers.
+//! TODO(M4): enchanting tables, anvils, beacons and the other containers.
 
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
@@ -27,6 +27,8 @@ pub enum Layout {
     Hopper,
     /// A dispenser or dropper: nine slots, main, hotbar.
     Dispenser,
+    /// A brewing stand: three bottles, the ingredient, main, hotbar.
+    Brewing,
 }
 
 impl Layout {
@@ -38,6 +40,7 @@ impl Layout {
             Self::Furnace => 39,
             Self::Hopper => super::hopper::HOPPER_SLOTS + 36,
             Self::Dispenser => super::dispenser::DISPENSER_SLOTS + 36,
+            Self::Brewing => super::brewing::SLOTS + 36,
         }
     }
 
@@ -45,7 +48,7 @@ impl Layout {
     fn has_result(self) -> bool {
         !matches!(
             self,
-            Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser
+            Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser | Self::Brewing
         )
     }
 
@@ -54,7 +57,9 @@ impl Layout {
         match self {
             Self::Player => (1..5, 2),
             Self::Workbench => (1..10, 3),
-            Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser => (0..0, 0),
+            Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser | Self::Brewing => {
+                (0..0, 0)
+            }
         }
     }
 
@@ -67,6 +72,7 @@ impl Layout {
             Self::Furnace => 3,
             Self::Hopper => super::hopper::HOPPER_SLOTS,
             Self::Dispenser => super::dispenser::DISPENSER_SLOTS,
+            Self::Brewing => super::brewing::SLOTS,
         }
     }
 
@@ -88,6 +94,7 @@ impl Layout {
             Self::Furnace => k >= 3,
             Self::Hopper => k >= super::hopper::HOPPER_SLOTS,
             Self::Dispenser => k >= super::dispenser::DISPENSER_SLOTS,
+            Self::Brewing => k >= super::brewing::SLOTS,
         }
     }
 
@@ -95,6 +102,14 @@ impl Layout {
     fn accepts(self, k: usize, stack: &ItemStack) -> bool {
         if k == 0 && self.has_result() {
             return false; // crafting results
+        }
+        // ContainerBrewingStand.Potion / Ingredient.isItemValid.
+        if self == Self::Brewing {
+            return match k {
+                0..=2 => super::brewing::fits_bottle_slot(stack),
+                3 => super::brewing::is_ingredient(stack),
+                _ => true,
+            };
         }
         if self == Self::Furnace {
             return match k {
@@ -118,6 +133,7 @@ impl Layout {
     /// bucket.
     fn limit(self, k: usize, stack: &ItemStack) -> i8 {
         if (self == Self::Player && (5..=8).contains(&k))
+            || (self == Self::Brewing && k < 3)
             || (self == Self::Furnace && k == super::furnace::FUEL && stack.id == item::BUCKET)
         {
             1
@@ -174,6 +190,19 @@ impl Layout {
                 }
                 3..=29 => merge(slots, &mut stack, 30, 39, false),
                 _ => merge(slots, &mut stack, 3, 30, false),
+            },
+            // ContainerBrewingStand.transferStackInSlot.
+            Self::Brewing => match index {
+                0..=3 => merge(slots, &mut stack, 4, 40, true),
+                _ if slots[3].is_none() && super::brewing::is_ingredient(&stack) => {
+                    merge(slots, &mut stack, 3, 4, false)
+                }
+                _ if super::brewing::fits_bottle_slot(&stack) => {
+                    merge(slots, &mut stack, 0, 3, false)
+                }
+                4..=30 => merge(slots, &mut stack, 31, 40, false),
+                31..=39 => merge(slots, &mut stack, 4, 31, false),
+                _ => merge(slots, &mut stack, 4, 40, false),
             },
             Self::Chest(rows) => {
                 let own = usize::from(rows) * 9;
@@ -369,6 +398,11 @@ impl Game {
                 flat.extend(p.inventory[9..45].iter().cloned());
                 flat
             }
+            Some(o) if o.layout == Layout::Brewing => {
+                let mut flat = self.brewing_items(o.pos);
+                flat.extend(p.inventory[9..45].iter().cloned());
+                flat
+            }
             Some(o) if o.layout == Layout::Dispenser => {
                 let mut flat = self.dispenser_items(o.pos);
                 flat.extend(p.inventory[9..45].iter().cloned());
@@ -410,6 +444,18 @@ impl Game {
         {
             let own = super::hopper::HOPPER_SLOTS;
             self.set_hopper_items(pos, &flat[..own]);
+            self.players[i].inventory[9..45].clone_from_slice(&flat[own..]);
+            return;
+        }
+        if let Some(pos) = self.players[i]
+            .window
+            .open
+            .as_ref()
+            .filter(|o| o.layout == Layout::Brewing)
+            .map(|o| o.pos)
+        {
+            let own = super::brewing::SLOTS;
+            self.set_brewing_items(pos, &flat[..own]);
             self.players[i].inventory[9..45].clone_from_slice(&flat[own..]);
             return;
         }
@@ -890,6 +936,7 @@ impl Game {
             }
             // Window properties are still sent.
             self.send_furnace_fields(i);
+            self.send_brewing_fields(i);
         } else {
             let p = &mut self.players[i];
             p.window.pending = Some((window, action));
@@ -944,6 +991,7 @@ impl Game {
             p.send(packet);
         }
         self.send_furnace_fields(i);
+        self.send_brewing_fields(i);
         Some(())
     }
 
@@ -1069,6 +1117,12 @@ impl Game {
             // TileEntityDispenser.isUseableByPlayer.
             Layout::Dispenser => {
                 super::dispenser::is_dispenser(w.block(pos.0, pos.1, pos.2) >> 4)
+                    && w.tile_entity(pos).is_some()
+                    && near(pos)
+            }
+            // TileEntityBrewingStand.isUseableByPlayer.
+            Layout::Brewing => {
+                w.block(pos.0, pos.1, pos.2) >> 4 == super::brewing::BREWING_STAND
                     && w.tile_entity(pos).is_some()
                     && near(pos)
             }

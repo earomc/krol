@@ -356,6 +356,8 @@ pub fn placed_state(
         CAKE => super::block_data::material(below >> 4)
             .is_solid()
             .then_some(id << 4),
+        // BlockBrewingStand: placed like any block (no bottles yet).
+        super::brewing::BREWING_STAND => state(0),
         // Farmland is an ordinary block item (dry when placed).
         ids::block::FARMLAND => state(0),
         // BlockCactus.canPlaceBlockAt: sand or cactus below, nothing solid beside.
@@ -405,6 +407,7 @@ pub fn reed_block(item: i16) -> Option<u16> {
     match item {
         338 => Some(ids::block::REEDS),
         354 => Some(CAKE),
+        super::brewing::BREWING_STAND_ITEM => Some(super::brewing::BREWING_STAND),
         _ => None,
     }
 }

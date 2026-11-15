@@ -17,6 +17,8 @@
 # - notch_potions.dat: Notch in survival mode at jeb_'s usual spawn spot, holding a
 #   swiftness potion, two instant health II potions, two glass bottles and a potion with
 #   a custom effect (strength II for 10 s).
+# - notch_brewer.dat: Notch in survival mode at jeb_'s usual spawn spot, holding a
+#   brewing stand, three water bottles and a nether wart.
 # - notch_creative_flint.dat: the same in creative mode (explosions cannot hurt him).
 #
 # Run: python tools/fixtures/players.py
@@ -100,6 +102,13 @@ player(DIR + 'notch_potions.dat', [-471.5, 4.0, -434.5], [
     item(3, 'minecraft:potion', 1, 0, compound('tag', list_('CustomPotionEffects', 10, [
         compound_payload(byte('Id', 5), byte('Amplifier', 1), int_('Duration', 200)),
     ]))),
+])
+player(DIR + 'notch_brewer.dat', [-471.5, 4.0, -434.5], [
+    item(0, 'minecraft:brewing_stand', 1, 0),
+    item(1, 'minecraft:potion', 1, 0),
+    item(2, 'minecraft:potion', 1, 0),
+    item(3, 'minecraft:potion', 1, 0),
+    item(4, 'minecraft:nether_wart', 1, 0),
 ])
 player(DIR + 'notch_creative_flint.dat', [-471.5, 4.0, -434.5], [
     item(0, 'minecraft:flint_and_steel', 1, 0),

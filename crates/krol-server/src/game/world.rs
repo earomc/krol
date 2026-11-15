@@ -93,6 +93,8 @@ pub struct World {
     pub furnaces: Vec<(i32, i32, i32)>,
     /// Hopper tile entities in the order they were loaded or created.
     pub hoppers: Vec<(i32, i32, i32)>,
+    /// Brewing stands, in load order.
+    pub brewing_stands: Vec<(i32, i32, i32)>,
     /// Moving piston blocks in the order they were created (`TileEntityPiston` in
     /// vanilla's `tickableTileEntities`).
     pub moving: Vec<(i32, i32, i32)>,
@@ -137,6 +139,7 @@ impl World {
             pending_order: Vec::new(),
             furnaces: Vec::new(),
             hoppers: Vec::new(),
+            brewing_stands: Vec::new(),
             scheduler: Default::default(),
             moving: Vec::new(),
             total_time: 0,
@@ -278,6 +281,7 @@ impl World {
                     match c.get_str("id") {
                         "Furnace" => self.furnaces.push(p),
                         "Hopper" => self.hoppers.push(p),
+                        "Cauldron" => self.brewing_stands.push(p),
                         _ => {}
                     }
                 }
@@ -443,6 +447,7 @@ impl World {
         self.chunk(pos.0 >> 4, pos.2 >> 4);
         self.furnaces.retain(|&p| p != pos);
         self.hoppers.retain(|&p| p != pos);
+        self.brewing_stands.retain(|&p| p != pos);
         if let Some(index) = self.tile_entity_index(pos) {
             self.chunk_mut(pos.0 >> 4, pos.2 >> 4)
                 .tile_entities
@@ -470,6 +475,7 @@ impl World {
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => "Comparator",
             block::NOTEBLOCK => "Music",
             block::HOPPER => "Hopper",
+            super::brewing::BREWING_STAND => "Cauldron",
             block::DISPENSER => "Trap",
             block::DROPPER => "Dropper",
             _ => return,
@@ -509,6 +515,10 @@ impl World {
                 // A new hopper's transferCooldown is -1.
                 c.insert("TransferCooldown", Tag::Int(-1));
                 self.hoppers.push(pos);
+            }
+            if id == "Cauldron" {
+                c.insert("BrewTime", Tag::Short(0));
+                self.brewing_stands.push(pos);
             }
             if id == "Furnace" {
                 c.insert("BurnTime", Tag::Short(0));

@@ -184,6 +184,10 @@ impl Game {
                 self.activate_hopper(i, pos);
                 true
             }
+            super::brewing::BREWING_STAND => {
+                self.activate_brewing_stand(i, pos);
+                true
+            }
             block::DISPENSER | block::DROPPER => {
                 self.activate_dispenser(i, pos, id);
                 true

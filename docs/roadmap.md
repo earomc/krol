@@ -330,7 +330,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockBed` | 🟡 | Placement, sleeping (occupied bit written quietly like vanilla), skipping the night, spawn point, halves breaking together, drops from the foot ✅; mobs keeping players awake, nether explosion ❌ |
 | `BlockAnvil` | 🟡 | Placement ✅; falling, damage, repair window ❌ |
 | `BlockEnchantmentTable` | ❌ | |
-| `BlockBrewingStand` | ❌ | |
+| `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped ✅; hoppers and comparators ❌ |
 | `BlockCauldron` | ❌ | Filling, rain, armor washing, comparator output |
 | `BlockBeacon` | ❌ | |
 | `BlockFlowerPot` | ❌ | |
@@ -364,7 +364,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemStack`: NBT, display names, lore, `onBlockDestroyed` wear | ✅ | |
 | `ItemBlock`, `ItemMultiTexture`, `ItemCloth`, `ItemColored`, `ItemLeaves`, `ItemSlab`, `ItemPiston`, `ItemSnow`, `ItemDoublePlant` | ✅ | |
 | `ItemAnvilBlock` | 🟡 | Placement only |
-| `ItemReed` (sugar cane, cake, repeater, comparator, brewing stand, cauldron, flower pot, skull?) | 🟡 | Sugar cane, cake, repeaters, comparators ✅; brewing stand, cauldron, flower pot ❌ |
+| `ItemReed` (sugar cane, cake, repeater, comparator, brewing stand, cauldron, flower pot, skull?) | 🟡 | Sugar cane, cake, repeaters, comparators, brewing stands ✅; cauldron, flower pot ❌ |
 | `ItemSeeds`, `ItemSeedFood` | ✅ | |
 | `ItemDoor`, `ItemSign`, `ItemRedstone` | ✅ | |
 | `ItemBed` | ✅ | |
@@ -416,7 +416,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ContainerHopper` | ✅ | |
 | `InventoryEnderChest` | ❌ | |
 | `ContainerEnchantment` | ❌ | |
-| `ContainerBrewingStand` | ❌ | |
+| `ContainerBrewingStand` | ✅ | Slot rules, shift-click, brew time property; the potion achievement ❌ |
 | `ContainerRepair` (anvil, renaming via `MC|ItemName`) | ❌ | |
 | `ContainerBeacon` | ❌ | |
 | `ContainerMerchant`, `InventoryMerchant`, `SlotMerchantResult` | ❌ | |
@@ -439,7 +439,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `TileEntityPiston` | ✅ | |
 | `TileEntityEnderChest` | ❌ | |
 | `TileEntityEnchantmentTable` | ❌ | |
-| `TileEntityBrewingStand` | ❌ | |
+| `TileEntityBrewingStand` | ✅ | Brewing with vanilla's list-identity rules, the unsaved ingredient (a reload restarts the brew) |
 | `TileEntityBeacon` | ❌ | |
 | `TileEntityMobSpawner`, `MobSpawnerBaseLogic` | ❌ | |
 | `TileEntitySkull` | ❌ | |
@@ -534,7 +534,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Attribute effects: speed, slowness, strength, weakness | ✅ | Strength/weakness only affect attacking, which is ❌ |
 | Haste, mining fatigue (dig speed) | ❌ | |
 | Jump boost, night vision, blindness, nausea, water breathing, fire resistance, resistance, invisibility | 🟡 | Fire resistance and resistance ✅ (golden apples); jump boost/water breathing server effects ❌; client-side effects ➖ |
-| `PotionHelper` | 🟡 | `getPotionEffects` ✅; `applyIngredient` (brewing) ❌ |
+| `PotionHelper` | ✅ | `getPotionEffects`, `applyIngredient` |
 | Effect particles' random draws on the entity random | ❌ | |
 
 ## net.minecraft.enchantment
