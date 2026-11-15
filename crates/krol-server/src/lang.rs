@@ -20,6 +20,7 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "death.attack.magic" => "%1$s was killed by magic",
         "death.attack.wither" => "%1$s withered away",
         "death.attack.cactus" => "%1$s was pricked to death",
+        "death.attack.inWall" => "%1$s suffocated in a wall",
         "death.fell.accident.generic" => "%1$s fell from a high place",
         "death.fell.accident.ladder" => "%1$s fell off a ladder",
         "death.fell.accident.vines" => "%1$s fell off some vines",

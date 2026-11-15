@@ -320,7 +320,7 @@ scenarios = ["play/lighting"]
 
 [[feature]]
 id = "world.random_ticks"
-description = "Random block ticks: active chunks in vanilla order, updateLCG positions, randomTickSpeed, skylightSubtracted; grass/mycelium spreading and dying, farmland, crops, stems, sugar cane, cactus, ice and snow melting, redstone ore, nether wart, plants without soil; farmland, cactus and snow layer placement. Saplings growing into spruce, birch, oak and small jungle trees (WorldGenTaiga2, WorldGenForest, WorldGenTrees with vines and cocoa) fancy oaks (WorldGenBigTree), acacia (WorldGenSavannaTree) dark oak from 2x2 saplings (WorldGenCanopyTree), mega spruce and mega jungle trees (WorldGenMegaPineTree without block updates, WorldGenMegaJungle), vines growing and falling off. Not yet: bone meal, fire, vines, mushrooms, lightning, freezing and snowfall"
+description = "Random block ticks: active chunks in vanilla order, updateLCG positions, randomTickSpeed, skylightSubtracted; grass/mycelium spreading and dying, farmland, crops, stems, sugar cane, cactus, ice and snow melting, redstone ore, nether wart, plants without soil; farmland, cactus and snow layer placement. Saplings growing into spruce, birch, oak and small jungle trees (WorldGenTaiga2, WorldGenForest, WorldGenTrees with vines and cocoa) fancy oaks (WorldGenBigTree), acacia (WorldGenSavannaTree) dark oak from 2x2 saplings (WorldGenCanopyTree), mega spruce and mega jungle trees (WorldGenMegaPineTree without block updates, WorldGenMegaJungle), vines growing and falling off, mushrooms spreading, cocoa growing. Not yet: lightning, freezing and snowfall"
 scenarios = ["play/random_ticks"]
 
 [[feature]]
@@ -345,7 +345,7 @@ scenarios = ["play/water_push"]
 
 [[feature]]
 id = "entity.drowning"
-description = "Air supply: isInsideOfMaterial (eye height against the water surface), air going down under water (respiration), drowning damage every 20 ticks without air (no knockback), refill on surfacing, hurtTime, the death update dropping a dead player's experience after 20 ticks. Not yet: suffocation in blocks, removing the dead body from trackers"
+description = "Air supply: isInsideOfMaterial (eye height against the water surface), air going down under water (respiration), drowning damage every 20 ticks without air (no knockback), refill on surfacing, hurtTime, the death update dropping a dead player's experience after 20 ticks. Not yet: removing the dead body from trackers"
 scenarios = ["play/drowning"]
 
 [[feature]]
@@ -422,3 +422,8 @@ scenarios = ["play/inventory_clicks"]
 id = "play.crafting"
 description = "Crafting: recipe table extracted from vanilla, 2x2 grid, crafting table window (open, clicks, result, close), stat.craftItem, stat.useItem"
 scenarios = ["play/crafting"]
+
+[[feature]]
+id = "entity.suffocation"
+description = "Suffocation: Entity.isEntityInsideOpaqueBlock (8 points around the eyes, isVisuallyOpaque from the extracted block table), inWall damage of 1 (bypasses armor, no exhaustion), the death message. Not yet: world border damage"
+scenarios = ["play/suffocation"]

@@ -34,6 +34,12 @@ const DEATH_PARTICLES: usize = 20;
 const MAX_AIR: i16 = 300;
 /// The air supply at which a drowning player takes damage (and goes back to 0).
 const DROWN_AT: i16 = -20;
+/// Suffocation damage per tick inside a block.
+const SUFFOCATION_DAMAGE: f32 = 1.0;
+/// A player's width (`EntityPlayer.setSize(0.6, 1.8)`).
+const PLAYER_WIDTH: f32 = 0.6;
+/// The spectator game mode.
+const SPECTATOR: i32 = 3;
 /// Drowning damage.
 const DROWN_DAMAGE: f32 = 2.0;
 /// Bubble particles spawned when drowning damage hits.
@@ -216,6 +222,32 @@ impl Game {
         eye_y < f64::from((y + 1) as f32 - gap)
     }
 
+    /// `Entity.isEntityInsideOpaqueBlock` for a player: any of 8 points around the eyes
+    /// in a visually opaque block (spectators pass through blocks).
+    fn inside_opaque_block(&mut self, i: usize) -> bool {
+        let p = &self.players[i];
+        if p.gamemode == SPECTATOR {
+            return false;
+        }
+        let (pos, eye) = (p.pos, p.eye_height());
+        let mut last = None;
+        for k in 0..8 {
+            let side = |bit: i32| (bit % 2) as f32 - 0.5;
+            let y = floor_f64(pos.1 + f64::from(side(k) * 0.1) + f64::from(eye));
+            let x = floor_f64(pos.0 + f64::from(side(k >> 1) * PLAYER_WIDTH * 0.8));
+            let z = floor_f64(pos.2 + f64::from(side(k >> 2) * PLAYER_WIDTH * 0.8));
+            if last == Some((x, y, z)) {
+                continue;
+            }
+            last = Some((x, y, z));
+            let id = self.level.overworld.block(x, y, z) >> 4;
+            if super::light_data::visually_opaque(id) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// `EntityLivingBase.onEntityUpdate`'s air supply: it runs out under water (unless
     /// damage is disabled) and every 20 ticks without air drown for 2; it refills at
     /// once out of water.
@@ -332,6 +364,11 @@ impl Game {
             self.any_block_in(&bb, 10..=11)
         };
         self.player_fire_update(i, in_lava);
+        // EntityLivingBase.onEntityUpdate: suffocation.
+        // TODO(M5): damage outside the world border.
+        if self.players[i].health() > 0.0 && self.inside_opaque_block(i) {
+            self.attack_player(i, super::damage::DamageSource::InWall, SUFFOCATION_DAMAGE);
+        }
         self.air_tick(i);
         self.player_extinguish_if_wet(i);
         let p = &mut self.players[i];

@@ -30,6 +30,9 @@ pub enum DamageSource {
     Wither,
     /// Touching a cactus (`DamageSource.cactus`).
     Cactus,
+    /// Suffocating inside a block (`DamageSource.inWall`: bypasses armor, no
+    /// exhaustion).
+    InWall,
 }
 
 impl DamageSource {
@@ -44,6 +47,7 @@ impl DamageSource {
             Self::Magic => "magic",
             Self::Wither => "wither",
             Self::Cactus => "cactus",
+            Self::InWall => "inWall",
         }
     }
 
@@ -51,7 +55,7 @@ impl DamageSource {
     pub fn unblockable(self) -> bool {
         matches!(
             self,
-            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither
+            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither | Self::InWall
         )
     }
 
@@ -68,7 +72,9 @@ impl DamageSource {
     /// Exhaustion added to the victim (`getHungerDamage`).
     fn hunger_damage(self) -> f32 {
         match self {
-            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither => 0.0,
+            Self::Fall | Self::Drown | Self::OnFire | Self::Magic | Self::Wither | Self::InWall => {
+                0.0
+            }
             Self::InFire | Self::Lava | Self::Cactus => DEFAULT_HUNGER_DAMAGE,
         }
     }

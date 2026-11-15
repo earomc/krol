@@ -1,0 +1,32 @@
+description = "Suffocation: a survival player joining with their head inside stone takes 1 damage every 10 ticks until they die (\"suffocated in a wall\"), armor and hunger untouched"
+subsystem = "play"
+
+# Notch (survival, hungry from fixture data: food 10, no saturation, so no natural
+# regeneration) joins at (-473.5, 4, -440.5) with the stone at his eyes set before he
+# joins, so every hit happens at a fixed tick after the join.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_hungry.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -474 5 -441 stone"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 13
+
+[observe]
+log = true
+blocks = [[-474, 5, -441]]
