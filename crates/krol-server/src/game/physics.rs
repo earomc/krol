@@ -12,6 +12,7 @@
 use krol_java::math::floor_f64;
 
 use super::blocks::{self, SoundType};
+use super::shapes;
 use super::world::World;
 
 /// An axis-aligned bounding box.
@@ -102,100 +103,13 @@ impl Aabb {
     }
 }
 
-/// Blocks without a collision box (`getCollisionBoundingBox` returns null, or an empty
-/// `addCollisionBoxesToList`).
-fn passable(id: u16) -> bool {
-    matches!(
-        id,
-        0 | 6 | 8..=11 | 27 | 28 | 30..=32 | 36..=40 | 50 | 51 | 55 | 59 | 63 | 66 | 68..=70
-            | 72 | 75..=77 | 83 | 90 | 104..=106 | 115 | 119 | 131 | 132 | 141..=143 | 147
-            | 148 | 157 | 175..=177
-    )
-}
-
-/// Adds the collision boxes of the block `state` at `pos` that intersect `mask`
-/// (`Block.addCollisionBoxesToList`).
-fn add_block_boxes(state: u16, pos: (i32, i32, i32), mask: &Aabb, out: &mut Vec<Aabb>) {
-    let (id, meta) = (state >> 4, (state & 15) as u8);
-    if passable(id) {
-        return;
-    }
-    let (x, y, z) = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
-    let mut push = |min: [f64; 3], max: [f64; 3]| {
-        let b = Aabb::new(
-            [x + min[0], y + min[1], z + min[2]],
-            [x + max[0], y + max[1], z + max[2]],
-        );
-        if mask.intersects(&b) {
-            out.push(b);
-        }
-    };
-    let h = |top: f64| ([0.0, 0.0, 0.0], [1.0, top, 1.0]);
-    let (min, max) = match id {
-        // Slabs: top or bottom half.
-        44 | 126 | 182 => {
-            if meta & 8 != 0 {
-                ([0.0, 0.5, 0.0], [1.0, 1.0, 1.0])
-            } else {
-                h(0.5)
-            }
-        }
-        // Snow layers: one layer lower than they look.
-        78 => h(f64::from(f32::from(meta & 7) * 0.125)),
-        // Soul sand.
-        88 => h(1.0 - 0.125),
-        // Cactus: computed in float from the block position (vanilla quirk: loses
-        // precision far from the origin).
-        81 => {
-            let f = 0.0625f32;
-            let b = Aabb::new(
-                [f64::from(pos.0 as f32 + f), y, f64::from(pos.2 as f32 + f)],
-                [
-                    f64::from((pos.0 + 1) as f32 - f),
-                    f64::from((pos.1 + 1) as f32 - f),
-                    f64::from((pos.2 + 1) as f32 - f),
-                ],
-            );
-            if mask.intersects(&b) {
-                out.push(b);
-            }
-            return;
-        }
-        171 => h(0.0625),
-        // Repeaters and comparators (BlockRedstoneDiode bounds).
-        93 | 94 | 149 | 150 => h(0.125),
-        // TODO(M5): double chests extend to their neighbor.
-        54 | 130 | 146 => ([0.0625, 0.0, 0.0625], [0.9375, 0.875, 0.9375]),
-        26 => h(0.5625),
-        116 => h(0.75),
-        151 | 178 => h(0.375),
-        111 => h(0.015625),
-        // TODO(M5): the eye adds a box on top.
-        120 => h(0.8125),
-        // TODO(M5): fences, walls and gates connect to neighbors (1.5 high); modeled as
-        // their post only.
-        85 | 113 | 188..=192 | 139 => {
-            let w = if id == 139 { 0.25 } else { 0.375 };
-            ([w, 0.0, w], [1.0 - w, 1.5, 1.0 - w])
-        }
-        107 | 183..=187 => {
-            if meta & 4 != 0 {
-                return; // open
-            }
-            ([0.0, 0.0, 0.375], [1.0, 1.5, 0.625])
-        }
-        // TODO(M5): stairs are a slab plus one or two quarter blocks; modeled as full.
-        _ => h(1.0),
-    };
-    push(min, max);
-}
-
 /// The collision boxes of one block (`getCollisionBoundingBox` / `addCollisionBoxesToList`
 /// with no mask).
 pub fn block_boxes(state: u16, pos: (i32, i32, i32)) -> Vec<Aabb> {
     let everything = Aabb::new([-3.0e7, -1.0e4, -3.0e7], [3.0e7, 1.0e4, 3.0e7]);
     let mut out = Vec::new();
-    add_block_boxes(state, pos, &everything, &mut out);
+    // Without a world: no neighbors (fences stand alone, doors read only themselves).
+    shapes::add_block_boxes(state, pos, &everything, &mut out, &mut |_| 0);
     out
 }
 
@@ -213,7 +127,8 @@ pub fn colliding_boxes(world: &mut World, bb: &Aabb) -> Vec<Aabb> {
             }
             for y in y0 - 1..y1 {
                 let state = world.block(x, y, z);
-                add_block_boxes(state, (x, y, z), bb, &mut out);
+                let mut neighbors = |p: (i32, i32, i32)| world.block(p.0, p.1, p.2);
+                shapes::add_block_boxes(state, (x, y, z), bb, &mut out, &mut neighbors);
             }
         }
     }

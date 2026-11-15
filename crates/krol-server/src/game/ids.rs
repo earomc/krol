@@ -41,6 +41,8 @@ pub mod block {
     pub const PISTON: u16 = 33;
     /// `piston_head`.
     pub const PISTON_HEAD: u16 = 34;
+    /// `barrier`.
+    pub const BARRIER: u16 = 166;
     /// `piston_extension` (a block being moved by a piston).
     pub const PISTON_EXTENSION: u16 = 36;
     /// `sand`.

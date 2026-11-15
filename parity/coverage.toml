@@ -437,3 +437,8 @@ scenarios = ["play/cobwebs"]
 id = "blocks.reactions"
 description = "Small block reactions: farmland trampled on landing (BlockFarmland.onFallenUpon with the faller's random), redstone ore lighting up on left-click, right-click and walking (onEntityCollidedWithBlock of the block walked on, particle draws on the world random), ice turning into flowing water when harvested above something solid or liquid (BlockIce.harvestBlock), slime slowing walkers"
 scenarios = ["play/block_reactions"]
+
+[[feature]]
+id = "physics.collision_shapes"
+description = "Block collision shapes (addCollisionBoxesToList / getCollisionBoundingBox): stairs with inner and outer corners, fences, walls and panes connecting to their neighbors, doors (halves read each other), trapdoors, fence gates by axis, ladders, cauldrons, hoppers, brewing stands, end portal frames, skulls, cocoa, piston heads, cake, flower pots, dragon eggs. Not yet: anvils and double chests (vanilla uses the bounds a ray trace last left on the block)"
+scenarios = ["play/collision_shapes"]

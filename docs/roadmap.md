@@ -199,7 +199,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | Lightning strikes in thunderstorms (`updateBlocks` → `EntityLightningBolt`) | ❌ | The random draw is modeled; the strike is not |
 | Snowfall and freezing water in cold biomes (`canBlockFreeze`, `canSnowAt` in `updateBlocks`) | ❌ | The per-chunk draws are modeled; placing snow/ice is not |
 | Cave mood sounds (`playMoodSoundAndCheckLight`, ambient countdown) | ✅ | |
-| `World.getCollidingBoundingBoxes`, `isAABBInMaterial`, `handleMaterialAcceleration` | 🟡 | Player and item physics; shapes of neighbor-dependent blocks missing (see block) |
+| `World.getCollidingBoundingBoxes`, `isAABBInMaterial`, `handleMaterialAcceleration` | ✅ | Collision shapes of every block, including neighbor-dependent ones; anvils and double chests use their constructor bounds (vanilla uses whatever a ray trace last left) |
 | `World.rayTraceBlocks` | 🟡 | Buckets; selection boxes of stairs, fences and other shaped blocks missing |
 | Village collection (`VillageCollection`, `villages.dat`) | ❌ | See village |
 | Map data (`MapData`, `data/map_*.dat`, `idcounts.dat`) | ❌ | |
@@ -300,7 +300,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockCrops`, `BlockCarrot`, `BlockPotato`, `BlockStem`, `BlockNetherWart` | ✅ | Growth, bone meal, drops. Stems growing pumpkins/melons ✅ |
 | `BlockFarmland` | ✅ | Moisture, drying, reverting, trampling by players (mobs with mob griefing arrive with mobs) |
 | `BlockReed`, `BlockCactus` | ✅ | Growth, support, cactus damage |
-| `BlockCocoa` | ✅ | Placement, growth, bone meal, drops. Collision box ❌ |
+| `BlockCocoa` | ✅ | Placement, growth, bone meal, drops, collision box |
 | `BlockVine` | ✅ | Growth in all directions, support, shears. Climbing ✅ |
 | `BlockLilyPad` | 🟡 | Placement rule; `ItemLilyPad` on water ❌ |
 | `BlockSnow` (layers), `BlockSnowBlock`, `BlockIce` | ✅ | Melting, placement rules, layer stacking, snowball drops, ice turning into water when broken above something solid or liquid (silk touch ❌, nether vaporizing ❌ with the nether) |
@@ -313,8 +313,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockLadder` | ✅ | Placement, support, climbing |
 | `BlockTorch` | ✅ | |
 | `BlockSlab`, `BlockStoneSlab*`, `BlockWoodSlab`, `BlockHalfStoneSlab*`, `BlockDoubleStoneSlab*` | ✅ | Placement, merging, collision |
-| `BlockStairs` | 🟡 | Placement ✅; connected shapes (collision and selection) ❌ |
-| `BlockFence`, `BlockFenceGate`, `BlockWall`, `BlockPane`, `BlockStainedGlassPane` | 🟡 | Gates open/close ✅; connected collision shapes ❌ |
+| `BlockStairs` | 🟡 | Placement, collision shapes with inner and outer corners ✅; selection boxes for ray traces ❌ |
+| `BlockFence`, `BlockFenceGate`, `BlockWall`, `BlockPane`, `BlockStainedGlassPane` | 🟡 | Gates open/close, connected collision shapes ✅; selection boxes for ray traces ❌ |
 | `BlockDoor` | ✅ | Placement, hinge, open/close, redstone, halves |
 | `BlockTrapDoor` | ✅ | |
 | `BlockCarpet` | ✅ | |

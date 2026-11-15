@@ -48,6 +48,7 @@ mod raytrace;
 mod recipes;
 mod redstone;
 mod scheduler;
+mod shapes;
 mod sign;
 mod special_recipes;
 pub mod stats;
