@@ -8,7 +8,7 @@
 //! fully broken. Other players see the progress as block break animations.
 //!
 //! TODO(M5): efficiency enchantment, haste and mining fatigue, aqua affinity, adventure
-//! mode `CanDestroy` tags, tool durability, block-specific harvest effects.
+//! mode `CanDestroy` tags, block-specific harvest effects.
 
 use krol_protocol::packets::play::ClientboundPlay;
 
