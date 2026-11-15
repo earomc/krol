@@ -193,6 +193,8 @@ pub mod block {
     pub const WOODEN_BUTTON: u16 = 143;
     /// `trapped_chest`.
     pub const TRAPPED_CHEST: u16 = 146;
+    /// `enchanting_table`.
+    pub const ENCHANTING_TABLE: u16 = 116;
     /// `ender_chest`.
     pub const ENDER_CHEST: u16 = 130;
     /// `light_weighted_pressure_plate`.

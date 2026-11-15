@@ -164,7 +164,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x00 Keep Alive · 0x01 Chat · 0x03–0x06 Player/Position/Look · 0x07 Player Digging · 0x08 Block Placement · 0x09 Held Item Change · 0x0A Animation · 0x0B Entity Action · 0x0D Close Window · 0x0E Click Window · 0x0F Confirm Transaction · 0x10 Creative Inventory Action · 0x12 Update Sign · 0x13 Player Abilities · 0x15 Client Settings · 0x16 Client Status | ✅ | |
 | 0x02 Use Entity (attack, interact, interact at) | ❌ | No PvP or entity interaction yet |
 | 0x0C Steer Vehicle | ❌ | No vehicles |
-| 0x11 Enchant Item | ❌ | No enchanting table |
+| 0x11 Enchant Item | ✅ | |
 | 0x14 Tab-Complete | ❌ | |
 | 0x17 Plugin Message | 🟡 | Received; `MC|BEdit`, `MC|BSign`, `MC|TrSel`, `MC|Beacon`, `MC|ItemName`, `MC|AdvCdm`, `MC|AutoCmd`, `MC|PickItem` unhandled |
 | 0x18 Spectate | ❌ | |
@@ -329,7 +329,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockCake` | ✅ | |
 | `BlockBed` | 🟡 | Placement, sleeping (occupied bit written quietly like vanilla), skipping the night, spawn point, halves breaking together, drops from the foot ✅; mobs keeping players awake, nether explosion ❌ |
 | `BlockAnvil` | 🟡 | Placement ✅; falling, damage, repair window ❌ |
-| `BlockEnchantmentTable` | ❌ | |
+| `BlockEnchantmentTable` | ✅ | Opens the window (custom names from the tile entity) |
 | `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped, hoppers, comparators ✅ |
 | `BlockCauldron` | ❌ | Filling, rain, armor washing, comparator output |
 | `BlockBeacon` | ❌ | |
@@ -415,7 +415,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ContainerDispenser` | ✅ | |
 | `ContainerHopper` | ✅ | |
 | `InventoryEnderChest` | ✅ | `EnderItems` in player data |
-| `ContainerEnchantment` | ❌ | |
+| `ContainerEnchantment` | ✅ | Offers from `XpSeed` and bookshelves, hints, slot rules, shift-click, paying levels and lapis, books; all seven properties every tick like vanilla |
 | `ContainerBrewingStand` | ✅ | Slot rules, shift-click, brew time property; the potion achievement ❌ |
 | `ContainerRepair` (anvil, renaming via `MC|ItemName`) | ❌ | |
 | `ContainerBeacon` | ❌ | |
@@ -438,7 +438,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `TileEntityComparator` | ✅ | |
 | `TileEntityPiston` | ✅ | |
 | `TileEntityEnderChest` | ✅ | Ticks with the other tickables; the 20-tick viewer resync (`% 20 * 4` quirk) |
-| `TileEntityEnchantmentTable` | ❌ | |
+| `TileEntityEnchantmentTable` | 🟡 | Created and stored; its book animation tick (no observable effect) is not run |
 | `TileEntityBrewingStand` | ✅ | Brewing with vanilla's list-identity rules, the unsaved ingredient (a reload restarts the brew) |
 | `TileEntityBeacon` | ❌ | |
 | `TileEntityMobSpawner`, `MobSpawnerBaseLogic` | ❌ | |
@@ -553,7 +553,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting | ❌ | Needs attacking and mobs |
 | Power, Punch, Flame, Infinity | ❌ | Needs bows |
 | Luck of the Sea, Lure | ❌ | Needs fishing |
-| `EnchantmentHelper` (enchanting table selection, `/enchant`) | ❌ | |
+| `EnchantmentHelper` (enchanting table selection, `/enchant`) | 🟡 | Table selection (`calcItemStackEnchantability`, `buildEnchantmentList`, `mapEnchantmentData` in Java `HashMap` order) ✅; `/enchant`, `addRandomEnchantment` ❌ |
 
 ## net.minecraft.dispenser
 

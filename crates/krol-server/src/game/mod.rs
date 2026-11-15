@@ -20,6 +20,7 @@ mod damage;
 mod death;
 mod digging;
 mod dispenser;
+mod enchanting;
 mod ender_chest;
 mod explosion;
 mod falling_block;
@@ -2171,6 +2172,10 @@ impl Game {
             // Answered as GameEvent::KeepAlive, stamped on the network side.
             ServerboundPlay::KeepAlive { .. } => {}
             ServerboundPlay::ClientStatus { action } => self.client_status(i, action),
+            ServerboundPlay::EnchantItem {
+                window,
+                enchantment,
+            } => self.enchant_item(i, window, enchantment),
             ServerboundPlay::ClickWindow {
                 window,
                 slot,

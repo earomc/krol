@@ -477,9 +477,22 @@ impl World {
             block::DISPENSER => "Trap",
             block::DROPPER => "Dropper",
             block::ENDER_CHEST => "EnderChest",
+            block::ENCHANTING_TABLE => "EnchantTable",
             _ => return,
         };
         if self.tile_entity_index(pos).is_some() {
+            return;
+        }
+        if id == "EnchantTable" {
+            // TileEntityEnchantmentTable without a custom name writes only the basics.
+            let mut c = Compound::new();
+            c.insert("id", Tag::String(id.into()));
+            c.insert("x", Tag::Int(pos.0));
+            c.insert("y", Tag::Int(pos.1));
+            c.insert("z", Tag::Int(pos.2));
+            let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
+            let _ = list.push(Tag::Compound(c));
+            sort_tile_entities(list);
             return;
         }
         if id == "EnderChest" {

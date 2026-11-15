@@ -29,6 +29,7 @@ pub enum Layout {
     Dispenser,
     /// A brewing stand: three bottles, the ingredient, main, hotbar.
     Brewing,
+    Enchanting,
 }
 
 impl Layout {
@@ -41,6 +42,7 @@ impl Layout {
             Self::Hopper => super::hopper::HOPPER_SLOTS + 36,
             Self::Dispenser => super::dispenser::DISPENSER_SLOTS + 36,
             Self::Brewing => super::brewing::SLOTS + 36,
+            Self::Enchanting => super::enchanting::TABLE_SLOTS + 36,
         }
     }
 
@@ -48,7 +50,12 @@ impl Layout {
     fn has_result(self) -> bool {
         !matches!(
             self,
-            Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser | Self::Brewing
+            Self::Chest(_)
+                | Self::Furnace
+                | Self::Hopper
+                | Self::Dispenser
+                | Self::Brewing
+                | Self::Enchanting
         )
     }
 
@@ -57,6 +64,8 @@ impl Layout {
         match self {
             Self::Player => (1..5, 2),
             Self::Workbench => (1..10, 3),
+            // Not a crafting grid, but dropped on close the same way.
+            Self::Enchanting => (0..super::enchanting::TABLE_SLOTS, 0),
             Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser | Self::Brewing => {
                 (0..0, 0)
             }
@@ -73,6 +82,7 @@ impl Layout {
             Self::Hopper => super::hopper::HOPPER_SLOTS,
             Self::Dispenser => super::dispenser::DISPENSER_SLOTS,
             Self::Brewing => super::brewing::SLOTS,
+            Self::Enchanting => super::enchanting::TABLE_SLOTS,
         }
     }
 
@@ -95,6 +105,7 @@ impl Layout {
             Self::Hopper => k >= super::hopper::HOPPER_SLOTS,
             Self::Dispenser => k >= super::dispenser::DISPENSER_SLOTS,
             Self::Brewing => k >= super::brewing::SLOTS,
+            Self::Enchanting => k >= super::enchanting::TABLE_SLOTS,
         }
     }
 
@@ -110,6 +121,9 @@ impl Layout {
                 3 => super::brewing::is_ingredient(stack),
                 _ => true,
             };
+        }
+        if self == Self::Enchanting && k == super::enchanting::LAPIS_SLOT {
+            return super::enchanting::is_lapis(stack);
         }
         if self == Self::Furnace {
             return match k {
@@ -134,6 +148,7 @@ impl Layout {
     fn limit(self, k: usize, stack: &ItemStack) -> i8 {
         if (self == Self::Player && (5..=8).contains(&k))
             || (self == Self::Brewing && k < 3)
+            || (self == Self::Enchanting && k == 0)
             || (self == Self::Furnace && k == super::furnace::FUEL && stack.id == item::BUCKET)
         {
             1
@@ -204,6 +219,27 @@ impl Layout {
                 31..=39 => merge(slots, &mut stack, 4, 31, false),
                 _ => merge(slots, &mut stack, 4, 40, false),
             },
+            // ContainerEnchantment.transferStackInSlot.
+            Self::Enchanting => match index {
+                0 | 1 => merge(slots, &mut stack, 2, 38, true),
+                _ if super::enchanting::is_lapis(&stack) => merge(slots, &mut stack, 1, 2, true),
+                _ if slots[0].is_some() => false,
+                _ => {
+                    // One item goes in; a single stack with a tag keeps it.
+                    if stack.nbt.is_some() && stack.count == 1 {
+                        slots[0] = Some(stack.clone());
+                        stack.count = 0;
+                    } else {
+                        slots[0] = Some(ItemStack {
+                            count: 1,
+                            nbt: None,
+                            ..stack.clone()
+                        });
+                        stack.count -= 1;
+                    }
+                    true
+                }
+            },
             Self::Chest(rows) => {
                 let own = usize::from(rows) * 9;
                 if index < own {
@@ -267,6 +303,8 @@ pub struct WindowState {
     window_id: i32,
     /// The click put a stack into a furnace's input slot (`putStack` on slot 0).
     put_input: bool,
+    /// The open enchanting table's seed and offers.
+    pub offers: super::enchanting::Offers,
 }
 
 impl WindowState {
@@ -274,6 +312,12 @@ impl WindowState {
     pub fn next_window_id(&mut self) -> i8 {
         self.window_id = self.window_id % 100 + 1;
         self.window_id as i8
+    }
+
+    /// The window waits for the client to confirm a rejected click
+    /// (`Container.getCanCraft` is false).
+    pub fn is_locked(&self) -> bool {
+        self.locked
     }
 }
 
@@ -938,7 +982,20 @@ impl Game {
             self.resend_window(i);
             return;
         }
+        let table = |g: &Self| {
+            g.players[i]
+                .window
+                .open
+                .as_ref()
+                .filter(|o| o.layout == Layout::Enchanting)
+                .map(|o| o.slots.clone())
+        };
+        let table_before = table(self);
         let result = self.slot_click(i, slot, button, mode);
+        // The table's markDirty runs inside the click.
+        if table_before.is_some() && table(self) != table_before {
+            self.enchanting_slots_changed(i);
+        }
         if item == result {
             self.players[i].send(ClientboundPlay::ConfirmTransaction {
                 window,
@@ -956,6 +1013,7 @@ impl Game {
             // Window properties are still sent.
             self.send_furnace_fields(i);
             self.send_brewing_fields(i);
+            self.send_enchanting_fields(i);
         } else {
             let p = &mut self.players[i];
             p.window.pending = Some((window, action));
@@ -1011,6 +1069,7 @@ impl Game {
         }
         self.send_furnace_fields(i);
         self.send_brewing_fields(i);
+        self.send_enchanting_fields(i);
         Some(())
     }
 
@@ -1155,6 +1214,10 @@ impl Game {
                 w.block(pos.0, pos.1, pos.2) >> 4 == block::HOPPER
                     && w.tile_entity(pos).is_some()
                     && near(pos)
+            }
+            // ContainerEnchantment.canInteractWith.
+            Layout::Enchanting => {
+                w.block(pos.0, pos.1, pos.2) >> 4 == block::ENCHANTING_TABLE && near(pos)
             }
             Layout::Player => true,
         };

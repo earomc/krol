@@ -1,0 +1,94 @@
+description = "Enchanting table: the window and its seven properties, offers for a book and a diamond sword with four bookshelves (computed from the fresh player's XpSeed 0), lapis rejected in the item slot, the sword enchanted with the third offer (3 levels, 3 lapis), items taken back out (the bot cannot predict the enchanted sword's tag, so that click is rejected and confirmed)"
+subsystem = "play"
+
+# jeb_ is made creative to get the items, then survival (lapis and levels count) with
+# 30 levels. The table and the bookshelves (two blocks out, behind air) are set before
+# he joins. Paying draws a new XpSeed from the player's unseeded random, so the seed in
+# the player data and the window property carrying it (property 3) after the enchant
+# are not compared.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -433 enchanting_table"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -433 bookshelf"
+
+[[steps]]
+action = "console"
+command = "setblock -472 5 -433 bookshelf"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -431 bookshelf"
+
+[[steps]]
+action = "console"
+command = "setblock -470 5 -431 bookshelf"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 12
+chat = [
+    "@2500 !creative 36 276 1 0",
+    "@2700 !creative 37 351 10 4",
+    "@2900 !creative 38 340 1 0",
+    "@4500 !place -470 4 -433 1",
+    "@5000 !click 1 31 0 1 1 340 1 0",
+    "@5500 !click 1 30 0 2 1 351 10 4",
+    "@6000 !click 1 0 0 3 1 340 1 0",
+    "@6500 !click 1 29 0 4 1 276 1 0",
+    "@7200 !enchant 1 2",
+    "@8000 !click 1 0 0 5 1",
+    "@8300 !confirm 1 5 0",
+    "@8600 !click 1 1 0 6 1 351 7 4",
+    "@9000 !close 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 2000
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "xp 30L jeb_"
+wait_ms = 9000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+# An enchanting table resends all seven properties every tick it is open.
+dedupe_runs = ["0x31"]
+# The four property-3 packets after the enchant carry the new random seed (indices
+# after dedupe_runs).
+ignore = [
+    "player.packets[114]",
+    "player.packets[122]",
+    "player.packets[134]",
+    "player.packets[142]",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
