@@ -114,6 +114,9 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
         ServerboundPlay::HeldItemChange { slot } => {
             w.varint(0x09).i16(*slot);
         }
+        ServerboundPlay::UseEntity { target, action, .. } => {
+            w.varint(0x02).i32(*target).i8(*action as i8);
+        }
         ServerboundPlay::Animation => {
             w.varint(0x0a).i32(own_entity).i8(1);
         }

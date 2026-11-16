@@ -51,7 +51,7 @@ pub struct PlayObservation {
 /// `!place <x> <y> <z> <face> [cx cy cz]` (use the held item, cursor 8/8/8 unless
 /// given in 1/16; sends the swing first),
 /// `!use` (use the held item, face 255), `!hold <slot>` (select hotbar slot),
-/// `!swing` (arm animation),
+/// `!swing` (arm animation), `!attack <entity id>` (swing, then attack),
 /// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0),
 /// `!click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]`,
 /// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`, `!enchant <window>
@@ -344,6 +344,15 @@ fn action_or_chat(
             pitch: parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0.0),
             on_ground: true,
         }],
+        // The swing comes first, like a client's left click.
+        Some("attack") => vec![
+            ServerboundPlay::Animation,
+            ServerboundPlay::UseEntity {
+                target: num(1),
+                action: 1,
+                target_pos: None,
+            },
+        ],
         Some("hold") => vec![ServerboundPlay::HeldItemChange {
             slot: num(1) as i16,
         }],
