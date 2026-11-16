@@ -34,11 +34,7 @@ impl Game {
             return Ok(self.players[i].profile.name.clone());
         }
         match self.get_entity(sender, text, false) {
-            Ok(Target::Player(i)) => {
-                Ok(crate::status::java_uuid_string(self.players[i].profile.id))
-            }
-            // TODO(M5): entity UUIDs.
-            Ok(Target::Entity(id)) => Ok(format!("krol-entity-{id}")),
+            Ok(target) => Ok(crate::status::java_uuid_string(self.target_uuid(target))),
             Err(e) if selector::is_selector(text) => Err(e),
             Err(_) => Ok(text.to_owned()),
         }
@@ -782,12 +778,7 @@ impl Game {
                     vec![self.get_entity(sender, arg, false)?]
                 };
                 for target in targets {
-                    let uuid = match target {
-                        Target::Player(i) => {
-                            crate::status::java_uuid_string(self.players[i].profile.id)
-                        }
-                        Target::Entity(id) => format!("krol-entity-{id}"),
-                    };
+                    let uuid = crate::status::java_uuid_string(self.target_uuid(target));
                     names.push(self.holder_name(sender, &uuid)?);
                 }
             } else {

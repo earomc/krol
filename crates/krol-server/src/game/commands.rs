@@ -666,7 +666,9 @@ impl Game {
     /// the `EntityLivingBase` class filter (players are the only living entities krol
     /// has).
     fn get_entity(&self, sender: Sender, text: &str, living: bool) -> Result<Target, CommandError> {
-        let matched = self.match_entities(sender, text, false);
+        // Vanilla quirk: the class filter applies while matching, so a selector that
+        // only finds other entities falls through to the UUID parse ("invalid format").
+        let matched = self.match_entities(sender, text, living);
         let found = match matched[..] {
             [t] => Some(t),
             _ => None,
@@ -678,11 +680,7 @@ impl Game {
                 let Some(uuid) = selector::java_uuid_from_string(text) else {
                     return Err(err("commands.generic.entity.invalidUuid", vec![]));
                 };
-                // TODO(M5): other entities have no UUIDs in krol yet.
-                self.players
-                    .iter()
-                    .position(|p| p.profile.id == uuid)
-                    .map(Target::Player)
+                self.entity_by_uuid(uuid)
             }
         };
         match found {
@@ -723,8 +721,6 @@ impl Game {
     }
 
     /// `CommandBase.join` of the targets' display names: "a, b and c".
-    ///
-    /// TODO(M5): other entities' display names carry their UUID in a hover event.
     fn join_names(&self, targets: &[Target]) -> Component {
         let mut c = Component::text("");
         for (k, target) in targets.iter().enumerate() {
@@ -737,7 +733,7 @@ impl Game {
             }
             c.extra.push(match *target {
                 Target::Player(i) => self.display_name(&self.players[i].profile),
-                Target::Entity(id) => Component::text(self.entity_name(id)),
+                Target::Entity(id) => self.entity_display_name(id),
             });
         }
         c
@@ -791,11 +787,7 @@ impl Game {
             let targets = self.match_entities(sender, args[index], false);
             for target in targets {
                 let mut expanded: Vec<String> = args.iter().map(|a| (*a).to_owned()).collect();
-                expanded[index] = match target {
-                    Target::Player(i) => java_uuid_string(self.players[i].profile.id),
-                    // TODO(M5): entity UUIDs; until then no lookup finds the entity.
-                    Target::Entity(id) => format!("krol-entity-{id}"),
-                };
+                expanded[index] = java_uuid_string(self.target_uuid(target));
                 let expanded: Vec<&str> = expanded.iter().map(String::as_str).collect();
                 self.try_execute(sender, name, &expanded, raw);
             }
@@ -1209,34 +1201,26 @@ impl Game {
         }
     }
 
-    /// [`Self::get_entity`] for commands that krol only supports on players.
-    ///
-    /// TODO(M5): the command on other entities.
-    fn get_entity_player(
-        &self,
-        sender: Sender,
-        text: &str,
-        living: bool,
-        command: &str,
-    ) -> Result<usize, CommandError> {
-        match self.get_entity(sender, text, living)? {
-            Target::Player(i) => Ok(i),
-            Target::Entity(_) => {
-                warn!("krol: /{command} on entities other than players is not implemented yet");
-                Err(err("commands.generic.entity.notFound", vec![]))
-            }
-        }
-    }
-
     /// `/kill [player|entity]` (`CommandKill`): `onKillCommand`, out-of-world damage of
     /// `Float.MAX_VALUE`.
     fn cmd_kill(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
-        let i = match args.first() {
-            Some(target) => self.get_entity_player(sender, target, false, "kill")?,
-            None => self.require_player(sender, None)?,
+        let target = match args.first() {
+            Some(target) => self.get_entity(sender, target, false)?,
+            None => Target::Player(self.require_player(sender, None)?),
         };
-        let name = Arg::Component(self.display_name(&self.players[i].profile));
-        self.attack_player(i, super::damage::DamageSource::OutOfWorld, f32::MAX);
+        let name = match target {
+            Target::Player(i) => {
+                let name = Arg::Component(self.display_name(&self.players[i].profile));
+                self.attack_player(i, super::damage::DamageSource::OutOfWorld, f32::MAX);
+                name
+            }
+            Target::Entity(id) => {
+                // Entity.onKillCommand: setDead.
+                let name = Arg::Component(self.entity_display_name(id));
+                self.set_entity_dead(id);
+                name
+            }
+        };
         self.notify(
             sender,
             "kill",
@@ -1494,42 +1478,104 @@ impl Game {
         Ok(())
     }
 
+    /// `/tp [target] <destination>` and `/tp [target] <x> <y> <z> [<yaw> <pitch>]`
+    /// (`CommandTeleport`). With 2, 4 or 6 arguments the first names the entity to move
+    /// (`getEntity`), otherwise the sender moves.
     fn cmd_tp(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
         if args.is_empty() {
             return Err(usage("tp"));
         }
-        // Vanilla resolves the target with getEntity: a player name, else a UUID.
-        let target = args[0];
-        let i = self.get_entity_player(sender, target, false, "tp")?;
-        if args.len() != 4 {
-            // TODO: /tp <player>, /tp <a> <b> and rotation arguments.
-            return self.not_implemented(sender, "tp (this form)");
+        let (target, first) = if matches!(args.len(), 2 | 4 | 6) {
+            (self.get_entity(sender, args[0], false)?, 1)
+        } else {
+            (Target::Player(self.require_player(sender, None)?), 0)
+        };
+        if args.len() <= 2 {
+            let destination = self.get_entity(sender, args[args.len() - 1], false)?;
+            let (pos, rot) = self.target_location(destination);
+            match target {
+                Target::Player(i) => {
+                    Self::set_player_location(&mut self.players[i], pos, rot);
+                }
+                Target::Entity(id) => self.set_location_and_angles(id, pos, rot),
+            }
+            let names = vec![
+                s(self.target_name(target)),
+                s(self.target_name(destination)),
+            ];
+            self.notify(sender, "tp", false, "commands.tp.success", names);
+            return Ok(());
         }
-        let base = self.players[i].pos;
-        let x = parse_coordinate(base.0, args[1], true)?;
-        let y = parse_coordinate(base.1, args[2], false)?;
-        let z = parse_coordinate(base.2, args[3], true)?;
-        let name_t = self.players[i].profile.name.clone();
-        let player = &mut self.players[i];
-        player.movement.has_moved = false;
-        player.movement.last_pos = (x, y, z);
-        player.pos = (x, y, z);
-        // Rotation unchanged: sent as relative yaw/pitch (flags 0x18).
-        player.send(ClientboundPlay::PositionLook {
-            x,
-            y,
-            z,
-            yaw: 0.0,
-            pitch: 0.0,
-            flags: 0x18,
-        });
+        if args.len() < first + 3 {
+            return Err(usage("tp"));
+        }
+        let (pos, rot) = self.target_location(target);
+        let x = parse_coordinate_arg(pos.0, args[first], Some(COORD_LIMIT), true)?;
+        let y = parse_coordinate_arg(pos.1, args[first + 1], None, false)?;
+        let z = parse_coordinate_arg(pos.2, args[first + 2], Some(COORD_LIMIT), true)?;
+        let yaw_arg = args.get(first + 3).copied().unwrap_or("~");
+        let pitch_arg = args.get(first + 4).copied().unwrap_or("~");
+        let yaw = parse_coordinate_arg(f64::from(rot.0), yaw_arg, Some(COORD_LIMIT), false)?;
+        let pitch = parse_coordinate_arg(f64::from(rot.1), pitch_arg, Some(COORD_LIMIT), false)?;
+        use krol_java::math::{wrap_degrees_f32, wrap_degrees_f64};
+        match target {
+            Target::Player(i) => {
+                // Relative arguments become relative flags of the position packet.
+                let mut flags = 0;
+                for (arg, flag) in [
+                    (&x, TELEPORT_X),
+                    (&y, TELEPORT_Y),
+                    (&z, TELEPORT_Z),
+                    (&pitch, TELEPORT_PITCH),
+                    (&yaw, TELEPORT_YAW),
+                ] {
+                    if arg.relative {
+                        flags |= flag;
+                    }
+                }
+                let mut yaw_value = yaw.amount as f32;
+                if !yaw.relative {
+                    yaw_value = wrap_degrees_f32(yaw_value);
+                }
+                let mut pitch_value = pitch.amount as f32;
+                if !pitch.relative {
+                    pitch_value = wrap_degrees_f32(pitch_value);
+                }
+                if !(-90.0..=90.0).contains(&pitch_value) {
+                    pitch_value = wrap_degrees_f32(180.0 - pitch_value);
+                    yaw_value = wrap_degrees_f32(yaw_value + 180.0);
+                }
+                Self::set_player_location_relative(
+                    &mut self.players[i],
+                    (x.amount, y.amount, z.amount),
+                    (yaw_value, pitch_value),
+                    flags,
+                );
+                // TODO(M5): setRotationYawHead(yaw) (krol keeps no head yaw for
+                // players yet).
+            }
+            Target::Entity(id) => {
+                let mut yaw_value = wrap_degrees_f64(yaw.value) as f32;
+                let mut pitch_value = wrap_degrees_f64(pitch.value) as f32;
+                if !(-90.0..=90.0).contains(&pitch_value) {
+                    pitch_value = wrap_degrees_f32(180.0 - pitch_value);
+                    yaw_value = wrap_degrees_f32(yaw_value + 180.0);
+                }
+                self.set_location_and_angles(
+                    id,
+                    (x.value, y.value, z.value),
+                    (yaw_value, pitch_value),
+                );
+            }
+        }
         let f = krol_java::fmt::java_double;
+        let name = self.target_name(target);
         self.notify(
             sender,
             "tp",
             false,
             "commands.tp.success.coordinates",
-            vec![s(name_t), s(f(x)), s(f(y)), s(f(z))],
+            vec![s(name), s(f(x.value)), s(f(y.value)), s(f(z.value))],
         );
         Ok(())
     }
@@ -1693,7 +1739,11 @@ impl Game {
         if args.len() < 2 {
             return Err(usage("effect"));
         }
-        let target = self.get_entity_player(sender, args[0], true, "effect")?;
+        // Players are the only living entities krol has, so the living filter of
+        // getEntity leaves only them.
+        let Target::Player(target) = self.get_entity(sender, args[0], true)? else {
+            return Err(err("commands.generic.entity.notFound", vec![]));
+        };
         let name = self.players[target].profile.name.clone();
         if args[1] == "clear" {
             if self.players[target].effects.is_empty() {
@@ -2175,6 +2225,81 @@ fn parse_coordinate(base: f64, input: &str, center: bool) -> Result<f64, Command
     }
     Ok(if relative { base + value } else { value })
 }
+
+/// `CommandBase.CoordinateArg`: the resulting coordinate, the number typed (the
+/// offset when relative), and whether it was relative (`~`).
+struct CoordinateArg {
+    value: f64,
+    amount: f64,
+    relative: bool,
+}
+
+/// Vanilla `CommandBase.parseCoordinate(base, input, min, max, center)`; `bounds` of
+/// `None` stands for vanilla's `0, 0` (unbounded). The bounds apply to the typed number.
+fn parse_coordinate_arg(
+    base: f64,
+    input: &str,
+    bounds: Option<(i32, i32)>,
+    center: bool,
+) -> Result<CoordinateArg, CommandError> {
+    let relative = input.starts_with('~');
+    if relative && base.is_nan() {
+        return Err(err("commands.generic.num.invalid", vec![s(base)]));
+    }
+    let mut amount = 0.0;
+    if !relative || input.len() > 1 {
+        let rest = if relative { &input[1..] } else { input };
+        amount += parse_double(rest)?;
+        if !rest.contains('.') && !relative && center {
+            amount += 0.5;
+        }
+    }
+    if let Some((min, max)) = bounds {
+        let f = krol_java::fmt::java_double;
+        if amount < f64::from(min) {
+            return Err(err(
+                "commands.generic.double.tooSmall",
+                vec![s(f(amount)), s(min)],
+            ));
+        }
+        if amount > f64::from(max) {
+            return Err(err(
+                "commands.generic.double.tooBig",
+                vec![s(f(amount)), s(max)],
+            ));
+        }
+    }
+    Ok(CoordinateArg {
+        value: amount + if relative { base } else { 0.0 },
+        amount,
+        relative,
+    })
+}
+
+/// Vanilla `CommandBase.parseDouble(text)`: Java's `Double.parseDouble` (surrounding
+/// whitespace and a trailing `d`/`f` type suffix allowed), finite values only.
+///
+/// TODO(M3): Java's hexadecimal floating-point literals.
+fn parse_double(text: &str) -> Result<f64, CommandError> {
+    let t = text.trim_matches(|c: char| c <= ' ');
+    let t = t
+        .strip_suffix(['d', 'D', 'f', 'F'])
+        .filter(|r| r.ends_with(|c: char| c.is_ascii_digit() || c == '.'))
+        .unwrap_or(t);
+    t.parse::<f64>()
+        .ok()
+        .filter(|v| {
+            v.is_finite() && !t.contains(|c: char| c.is_ascii_alphabetic() && c != 'e' && c != 'E')
+        })
+        .ok_or_else(|| err("commands.generic.num.invalid", vec![s(text)]))
+}
+
+/// `S08PacketPlayerPosLook.EnumFlags` bits.
+const TELEPORT_X: u8 = 0x01;
+const TELEPORT_Y: u8 = 0x02;
+const TELEPORT_Z: u8 = 0x04;
+const TELEPORT_YAW: u8 = 0x08;
+const TELEPORT_PITCH: u8 = 0x10;
 
 /// `/effect` without a duration: 30 seconds.
 const DEFAULT_EFFECT_SECONDS: i32 = 30;

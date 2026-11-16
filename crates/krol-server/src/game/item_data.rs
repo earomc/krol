@@ -62,6 +62,41 @@ fn names() -> &'static HashMap<(i16, i16), &'static str> {
     })
 }
 
+/// The names of dropped items by `(id, damage)`, extracted by
+/// `tools/datagen/ItemEntityNameDump.java` into `data/item_entity_names.txt` (same
+/// layout as the display names).
+fn entity_names() -> &'static HashMap<(i16, i16), &'static str> {
+    static NAMES: OnceLock<HashMap<(i16, i16), &'static str>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        include_str!("../../data/item_entity_names.txt")
+            .lines()
+            .filter_map(|line| {
+                let mut f = line.splitn(3, '\t');
+                let id = f.next()?.parse().ok()?;
+                let damage = f.next()?.parse().ok()?;
+                Some(((id, damage), f.next()?))
+            })
+            .collect()
+    })
+}
+
+/// `EntityItem.getName` without a custom entity name: the server's translation of
+/// `item.` and the stack's unlocalized name, which en_US never has, so the key itself.
+///
+/// Vanilla quirk: dropped diamonds are called `item.item.diamond`.
+pub fn item_entity_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
+    let damage = if has_subtypes(stack.id) {
+        stack.damage
+    } else {
+        0
+    };
+    let names = entity_names();
+    names
+        .get(&(stack.id, damage))
+        .or_else(|| names.get(&(stack.id, 0)))
+        .map_or_else(String::new, |n| (*n).to_owned())
+}
+
 /// The custom name of a stack (`display.Name`), if it has one (`hasDisplayName`).
 pub fn custom_name(stack: &krol_protocol::packets::play::ItemStack) -> Option<&str> {
     let display = stack.nbt.as_ref()?.get_compound("display")?;

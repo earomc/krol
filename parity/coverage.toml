@@ -455,8 +455,13 @@ scenarios = ["play/beds", "play/beds_broken"]
 
 [[feature]]
 id = "commands.clear_kill_spawnpoint"
-description = "/clear (matching by item resource location and data, maxCount counting and limits, main inventory then armor then cursor, failure), /spawnpoint (feet or coordinates, forced spawn points used on respawn), /kill (out-of-world damage: harms creative players, bypasses respawn protection; getEntity errors). Not yet: data tags, entity selectors"
-scenarios = ["commands/clear_kill_spawnpoint"]
+description = "/clear (matching by item resource location and data, maxCount counting and limits, main inventory then armor then cursor, failure), /spawnpoint (feet or coordinates, forced spawn points used on respawn), /kill (out-of-world damage: harms creative players, bypasses respawn protection; getEntity errors; other entities set dead). Not yet: data tags"
+scenarios = ["commands/clear_kill_spawnpoint", "commands/entity_targets"]
+
+[[feature]]
+id = "commands.entity_targets"
+description = "Commands on non-player entities: dropped items' names, /tp in every form (entities and players, relative flags, rotation wrapping and flipping), /effect on a non-living entity (invalid UUID quirk), /kill, score_ filters on entities (scores under their UUID, removed with the dead entity), per-entity command runs by UUID"
+scenarios = ["commands/entity_targets"]
 
 [[feature]]
 id = "item.potions"

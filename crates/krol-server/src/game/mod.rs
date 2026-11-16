@@ -353,6 +353,8 @@ struct Game {
     /// Stands in for the per-entity randoms of items and orbs (`Entity.rand`, unseeded
     /// in vanilla and never pinned).
     entity_rand: krol_java::JavaRandom,
+    /// The UUIDs of the non-player entities (`entityUniqueID`), by entity id.
+    entity_uuids: std::collections::HashMap<i32, u128>,
     /// `save-on` / `save-off`.
     saving_enabled: bool,
     /// The world's unseeded `Random` (weather durations).
@@ -419,6 +421,7 @@ pub fn start(
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_nanos() as i64),
         ),
+        entity_uuids: std::collections::HashMap::new(),
         entity_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -2164,17 +2167,47 @@ impl Game {
 
     /// Vanilla `setPlayerLocation`: teleport and wait for the client to confirm.
     fn set_player_location(player: &mut Player, pos: (f64, f64, f64), rot: (f32, f32)) {
+        Self::set_player_location_relative(player, pos, rot, 0);
+    }
+
+    /// Vanilla `setPlayerLocation` with relative flags (`S08PacketPlayerPosLook.
+    /// EnumFlags` bits): flagged values are offsets from the current position and
+    /// rotation, and the packet carries them as given.
+    fn set_player_location_relative(
+        player: &mut Player,
+        pos: (f64, f64, f64),
+        rot: (f32, f32),
+        flags: u8,
+    ) {
+        let mut target = pos;
+        if flags & 0x01 != 0 {
+            target.0 += player.pos.0;
+        }
+        if flags & 0x02 != 0 {
+            target.1 += player.pos.1;
+        }
+        if flags & 0x04 != 0 {
+            target.2 += player.pos.2;
+        }
+        let mut rotation = rot;
+        if flags & 0x08 != 0 {
+            rotation.0 += player.rotation.0;
+        }
+        if flags & 0x10 != 0 {
+            rotation.1 += player.rotation.1;
+        }
         player.movement.has_moved = false;
-        player.movement.last_pos = pos;
-        player.pos = pos;
-        player.rotation = rot;
+        player.movement.last_pos = target;
+        player.pos = target;
+        // setPositionAndRotation -> setRotation keeps the angles modulo 360.
+        player.rotation = (rotation.0 % 360.0, rotation.1 % 360.0);
         player.send(ClientboundPlay::PositionLook {
             x: pos.0,
             y: pos.1,
             z: pos.2,
             yaw: rot.0,
             pitch: rot.1,
-            flags: 0,
+            flags: flags as i8,
         });
     }
 

@@ -2,9 +2,7 @@
 //! `PlayerSelector`) and the target lookups built on them (`CommandBase.getPlayer`,
 //! `getEntity`), plus Java's lenient `UUID.fromString`.
 //!
-//! TODO(M5): the names of dropped items (vanilla
-//! translates `item.<unlocalized name>`), entities in other dimensions, and entity
-//! UUIDs (non-player entities cannot be named by UUID yet).
+//! TODO(M5): entities in other dimensions, custom entity names (`CustomName`).
 
 use std::collections::HashMap;
 
@@ -303,6 +301,103 @@ impl Game {
             .unwrap_or_default()
     }
 
+    /// The UUID of a target (`Entity.getUniqueID`).
+    pub(super) fn target_uuid(&self, target: Target) -> u128 {
+        match target {
+            Target::Player(i) => self.players[i].profile.id,
+            Target::Entity(id) => self.entity_uuids.get(&id).copied().unwrap_or_default(),
+        }
+    }
+
+    /// `MinecraftServer.getEntityFromUuid`, then `getPlayerByUUID`.
+    pub(super) fn entity_by_uuid(&self, uuid: u128) -> Option<Target> {
+        self.selector_candidates()
+            .into_iter()
+            .map(|c| c.target)
+            .find(|&t| self.target_uuid(t) == uuid)
+    }
+
+    /// `Entity.getDisplayName` of a non-player entity: its name with a `show_entity`
+    /// hover (UUID, type and name as NBT text) and its UUID as the insertion.
+    pub(super) fn entity_display_name(&self, id: i32) -> crate::chat::Component {
+        use krol_nbt::{Compound, Tag};
+        let Some(c) = self
+            .selector_candidates()
+            .into_iter()
+            .find(|c| c.target == Target::Entity(id))
+        else {
+            return crate::chat::Component::text("");
+        };
+        let name = c.name.unwrap_or_default();
+        let uuid = crate::status::java_uuid_string(self.target_uuid(c.target));
+        let mut hover = Compound::new();
+        hover.insert("id", Tag::String(uuid.clone()));
+        hover.insert("type", Tag::String(c.type_name.to_owned()));
+        hover.insert("name", Tag::String(name.clone()));
+        let hover = krol_nbt::text::to_java_string(&Tag::Compound(hover));
+        let mut text = crate::chat::Component::text(name);
+        text.style.hover = Some((
+            "show_entity".into(),
+            Box::new(crate::chat::Component::text(hover)),
+        ));
+        text.style.insertion = Some(uuid);
+        text
+    }
+
+    /// A target's position and rotation (yaw, pitch).
+    pub(super) fn target_location(&self, target: Target) -> ((f64, f64, f64), (f32, f32)) {
+        match target {
+            Target::Player(i) => (self.players[i].pos, self.players[i].rotation),
+            Target::Entity(_) => self
+                .selector_candidates()
+                .into_iter()
+                .find(|c| c.target == target)
+                .map_or(((0.0, 0.0, 0.0), (0.0, 0.0)), |c| (c.pos, c.rotation)),
+        }
+    }
+
+    /// `Entity.getName` of a target.
+    pub(super) fn target_name(&self, target: Target) -> String {
+        match target {
+            Target::Player(i) => self.players[i].profile.name.clone(),
+            Target::Entity(id) => self.entity_name(id),
+        }
+    }
+
+    /// `Entity.setLocationAndAngles` of a non-player entity. Only items keep a
+    /// rotation krol tracks (their yaw, shown when they spawn for a player).
+    pub(super) fn set_location_and_angles(
+        &mut self,
+        id: i32,
+        pos: (f64, f64, f64),
+        rotation: (f32, f32),
+    ) {
+        if let Some(it) = self.items.get_mut(&id) {
+            it.body.pos = pos;
+            it.yaw = rotation.0;
+        } else if let Some(o) = self.orbs.get_mut(&id) {
+            o.body.pos = pos;
+        } else if let Some(f) = self.falling.get_mut(&id) {
+            f.body.pos = pos;
+        } else if let Some(t) = self.tnt.get_mut(&id) {
+            t.body.pos = pos;
+        }
+    }
+
+    /// `Entity.setDead` of a non-player entity: it leaves the world at its next turn in
+    /// the entity loop.
+    pub(super) fn set_entity_dead(&mut self, id: i32) {
+        if let Some(it) = self.items.get_mut(&id) {
+            it.dead = true;
+        } else if let Some(o) = self.orbs.get_mut(&id) {
+            o.dead = true;
+        } else if let Some(f) = self.falling.get_mut(&id) {
+            f.dead = true;
+        } else if let Some(t) = self.tnt.get_mut(&id) {
+            t.dead = true;
+        }
+    }
+
     /// Every entity in `loadedEntityList` order (entity ids, like the update loop).
     fn selector_candidates(&self) -> Vec<Candidate> {
         let mut all = Vec::new();
@@ -326,7 +421,7 @@ impl Game {
                 size: (it.body.width, it.body.height),
                 alive: !it.dead,
                 type_name: "Item",
-                name: None,
+                name: Some(super::item_data::item_entity_name(&it.stack)),
                 rotation: (it.yaw, 0.0),
                 entity_id: id,
             });
@@ -586,11 +681,12 @@ impl Game {
             if self.scoreboard.objectives.get(objective).is_none() {
                 return false;
             }
-            // TODO(M5): other entities hold scores under their UUID.
-            let Some(name) = c.name.as_deref().filter(|_| player.is_some()) else {
-                return false;
+            // Players hold scores under their name, other entities under their UUID.
+            let name = match c.target {
+                Target::Player(_) => c.name.clone().unwrap_or_default(),
+                Target::Entity(_) => crate::status::java_uuid_string(self.target_uuid(c.target)),
             };
-            let Some(score) = self.scoreboard.score(name, objective) else {
+            let Some(score) = self.scoreboard.score(&name, objective) else {
                 return false;
             };
             if (min && score.points < bound) || (!min && score.points > bound) {

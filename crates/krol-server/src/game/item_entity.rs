@@ -43,6 +43,12 @@ pub const DESPAWN_AGE: i32 = 6000;
 /// How long before despawning anyone may pick up an owned item.
 const OWNER_EXPIRY: i32 = 200;
 
+/// `getRandomUuid`: the version bits are cleared and set to 4...
+const UUID_VERSION_CLEAR: i64 = -61441;
+const UUID_VERSION_4: i64 = 16384;
+/// ...and the variant bits cleared (then the top bit set).
+const UUID_VARIANT_CLEAR: i64 = 0x3FFF_FFFF_FFFF_FFFF;
+
 /// The health items and experience orbs start with.
 pub const ENTITY_HEALTH: i32 = 5;
 
@@ -197,9 +203,18 @@ fn pick_drop(rand: &mut krol_java::JavaRandom, plan: &DropPlan) -> Option<ItemSt
 
 impl Game {
     /// Allocates an entity id (vanilla `Entity.nextEntityID`).
+    ///
+    /// The entity also gets its UUID (`MathHelper.getRandomUuid` on the entity's own
+    /// unseeded random, in the `Entity` constructor).
     pub(super) fn next_entity_id(&mut self) -> i32 {
         let id = self.next_entity_id;
         self.next_entity_id += 1;
+        let r = &mut self.entity_rand;
+        // Version 4, IETF variant.
+        let most = (r.next_long() & UUID_VERSION_CLEAR) | UUID_VERSION_4;
+        let least = (r.next_long() & UUID_VARIANT_CLEAR) | i64::MIN;
+        self.entity_uuids
+            .insert(id, (most as u64 as u128) << 64 | least as u64 as u128);
         id
     }
 

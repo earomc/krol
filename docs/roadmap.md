@@ -22,9 +22,9 @@ Status as of 2026-11-16 (commit after `server: scoreboard, /scoreboard and /trig
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **Non-player command targets**: entity UUIDs (from the entity's own random), `/kill`,
-   `/tp` and `/effect` on entities, dropped items' names for selectors (needs the
-   unlocalized-name table), scores of non-player holders.
+1. **Entities in chunks**: load items, XP orbs, falling blocks and primed TNT from a
+   chunk's `Entities` (with their UUIDs) and save them back; today krol keeps the list it
+   read untouched and never saves the entities it spawned.
 2. **Dead body vs. experience pickup order** (see Death below), the statistic
    scores' exact timing (see scoreboard), and parity coverage for critical hits, sprint
    knockback, fire aspect, thorns and the assisted/finished fall messages.
@@ -483,7 +483,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityList` (ids, names, NBT creation, spawn eggs) | ❌ | |
 | `SharedMonsterAttributes`, `ai.attributes` | ✅ | Players |
 | `EntityBodyHelper`, look/move/jump helpers | ❌ | |
-| Entities in chunk NBT (`Entities`): loading and saving | 🟡 | Items, XP orbs, falling blocks; unknown kinds are kept in chunk data ✅ |
+| Entities in chunk NBT (`Entities`): loading and saving | ❌ | The list read from disk is written back unchanged; entities krol spawns are not saved and saved ones are not loaded |
 
 ### entity.player
 
@@ -596,13 +596,13 @@ krol notice.
 | `effect` · `enchant` | ✅ | |
 | `give` | ✅ | Leftovers dropped with their owner; command result stats ❌ |
 | `setblock` | ✅ | Metadata normalized like `getStateFromMeta` (`data/block_meta.txt`); data tags for the tile entities krol creates (skulls, banners, beacons, spawners, command blocks, flower pots and daylight sensors ❌) |
-| `tp` | 🟡 | Coordinates and players ✅; some forms (entity targets, rotation) ❌ |
-| `kill` · `spawnpoint` | ✅ | Players as targets (other entities ❌) |
+| `tp` | ✅ | Every form, on players (relative flags) and other entities; the head yaw of players is not set |
+| `kill` · `spawnpoint` | ✅ | |
 | `clear` | ✅ | |
 | `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
 | `scoreboard` · `trigger` | ✅ | `players set` data tags for other entities than players ❌ |
 | `publish` | ➖ | LAN only |
-| `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | 🟡 | All arguments; one command run per target; UUIDs as names; selectors in `/say`, `/me`, `/tell`. `score_` and `team` for players; dropped items' names and other entities' UUIDs ❌; `@r` shuffles with its own unseeded random like vanilla |
+| `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | 🟡 | All arguments; one command run per target; UUIDs as names (entity UUIDs from their own unseeded random); selectors in `/say`, `/me`, `/tell`; `score_` for every entity, `team` for players; dropped items' names (`item.<unlocalized name>`, `data/item_entity_names.txt`); custom entity names ❌; `@r` shuffles with its own unseeded random like vanilla |
 | `CommandResultStats` (`/stats` triggers) | ❌ | |
 | Command blocks (`CommandBlockLogic`) and minecart command blocks | ❌ | |
 | Operator notifications, `logAdminCommands`, `sendCommandFeedback` | ✅ | |
@@ -615,6 +615,7 @@ krol notice.
 | Kill criteria (`playerKillCount`, `totalKillCount`, `teamkill.*`, `killedByTeam.*`) | ✅ | Player kills (mob kills arrive with mobs) |
 | Teams (prefix/suffix in display names, colors, name tag and death message visibility, packets) | ✅ | Friendly fire ✅; seeing invisible teammates affects nothing yet (no invisibility) |
 | Display slots (sidebar, list, below name, team sidebars) | ✅ | |
+| Non-player holders (scores and teams under the entity's UUID, dropped when a dead entity leaves the world) | ✅ | |
 | `data/scoreboard.dat` | ✅ | |
 
 ## net.minecraft.stats

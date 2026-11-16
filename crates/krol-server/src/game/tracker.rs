@@ -358,7 +358,16 @@ impl Game {
 
     /// Stops tracking a non-player entity; its viewers destroy it on their next update
     /// (`EntityPlayerMP.removeEntity` queues it in `destroyedItemsNetCache`).
+    ///
+    /// Only dead non-player entities are untracked, so this is also where they leave
+    /// the scoreboard (`WorldManager.onEntityRemoved` -> `Scoreboard.func_181140_a`):
+    /// their scores and team membership, held under their UUID, go.
     pub(super) fn untrack_entity(&mut self, entity_id: i32) {
+        if let Some(uuid) = self.entity_uuids.remove(&entity_id) {
+            let holder = crate::status::java_uuid_string(uuid);
+            self.sb_reset(&holder, None);
+            self.sb_leave_teams(&holder);
+        }
         if let Some(entry) = self.tracker.remove(&entity_id) {
             for p in &mut self.players {
                 if entry.tracking.contains(&p.entity_id) {

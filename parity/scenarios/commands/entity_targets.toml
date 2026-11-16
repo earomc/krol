@@ -1,0 +1,105 @@
+description = "Commands on non-player entities: dropped items' names (item.<unlocalized name>), /tp of an item to coordinates, relative and to a player, /tp of a player with relative and absolute rotation, /effect on an item (not living), /kill on items, the score_ filter on an item (scores held under its UUID), and the per-entity command runs of @e selectors (by entity UUID)"
+subsystem = "commands"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and stands still. Two
+# blocks 5.5 and 7.5 blocks east are broken by /setblock ... destroy under krolpin, so
+# the drops' offsets and motion are pinned. The entities' UUIDs come from their own
+# unseeded randoms; the harness compares them as <uuid-N> in order of appearance.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -435 planks 2"
+
+[[steps]]
+action = "console"
+command = "setblock -464 4 -435 wool 14"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "krolpin 11 -- setblock -466 4 -435 air 0 destroy"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "krolpin 12 -- setblock -464 4 -435 air 0 destroy"
+wait_ms = 2500
+
+# The item nearest to the console (at the origin) is the wool.
+[[steps]]
+action = "console"
+command = "tp @e[type=Item,c=1] -460 4 -436"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "tp @e[type=Item] -462 ~1 -437"
+wait_ms = 1500
+
+[[steps]]
+action = "console"
+command = "effect @e[type=Item,c=1] speed"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "tp jeb_ ~ ~ ~ ~90 ~"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "tp jeb_ -471.5 4 -434.5 -200 100"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "tp jeb_ ~ ~ ~ 0 0"
+wait_ms = 1000
+
+# Other entities hold scores under their UUID (remapped to <uuid-N> by the harness);
+# only the scored item is killed, and its scores go with it.
+[[steps]]
+action = "console"
+command = "scoreboard objectives add obj dummy"
+
+[[steps]]
+action = "console"
+command = "scoreboard players set @e[type=Item,c=1] obj 3"
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item,score_obj_min=3]"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
