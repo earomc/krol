@@ -30,12 +30,7 @@ const SIGN_ROTATIONS: f32 = 16.0;
 /// The four lines of a sign tile entity as chat JSON (`TileEntitySign.readFromNBT`
 /// then the serializer): text that is not chat JSON becomes literal text.
 pub fn sign_lines(te: &Compound) -> [String; 4] {
-    let line = |k: usize| {
-        let raw = te.get_str(&format!("Text{k}"));
-        Component::parse_json(raw)
-            .unwrap_or_else(|_| Component::text(raw))
-            .to_json_string()
-    };
+    let line = |k: usize| super::tile_data::sign_line_json(te.get_str(&format!("Text{k}")));
     [line(1), line(2), line(3), line(4)]
 }
 

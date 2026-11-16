@@ -11,6 +11,7 @@ use tracing::{info, warn};
 
 use super::Game;
 use super::ids::block;
+use super::selector::{self, Target};
 use crate::chat::{Arg, Component};
 use crate::status::java_uuid_string;
 use crate::userlist::{BanInfo, IpBan, OpEntry, PlayerBan, WhitelistEntry};
@@ -374,6 +375,9 @@ pub enum CommandError {
     Usage(&'static str),
     /// A translated error.
     Translated(&'static str, Vec<Arg>),
+    /// An unexpected exception in vanilla (reported as `commands.generic.exception` and
+    /// logged).
+    Exception,
 }
 
 type CommandResult = Result<(), CommandError>;
@@ -389,6 +393,60 @@ fn item_by_text(text: &str) -> Result<i16, CommandError> {
     };
     krol_world::items::id_for_name(&location)
         .ok_or_else(|| err("commands.give.item.notFound", vec![s(location)]))
+}
+
+/// `ICommand.isUsernameIndex`: which argument names a player (and may be a selector
+/// for several), for the commands that have one.
+fn username_index(name: &str, args: &[&str]) -> Option<usize> {
+    let index = match name {
+        "clear" | "effect" | "enchant" | "entitydata" | "execute" | "give" | "kill"
+        | "spawnpoint" | "title" | "tell" | "tellraw" | "tp" | "testfor" => 0,
+        "gamemode" | "playsound" | "xp" => 1,
+        "achievement" => 2,
+        "replaceitem" | "stats" if args.first() == Some(&"entity") => 1,
+        // CommandScoreboard: `players <action> <player>` and friends.
+        "scoreboard" => return scoreboard_username_index(args),
+        _ => return None,
+    };
+    (index < args.len()).then_some(index)
+}
+
+/// `CommandScoreboard.isUsernameIndex`.
+fn scoreboard_username_index(args: &[&str]) -> Option<usize> {
+    let first = args.first()?;
+    let index = if !first.eq_ignore_ascii_case("players") {
+        if first.eq_ignore_ascii_case("teams") {
+            2
+        } else {
+            return None;
+        }
+    } else if args.len() > 1 && args[1].eq_ignore_ascii_case("operation") {
+        // Vanilla checks index 2 and 5; the first one found wins.
+        return [2, 5]
+            .into_iter()
+            .find(|&k| k < args.len() && selector::matches_multiple(args[k]));
+    } else {
+        2
+    };
+    (index < args.len()).then_some(index)
+}
+
+/// The first main inventory slot of the player window (armor comes before it).
+const MAIN_INVENTORY_FIRST: usize = 9;
+
+/// Parses a data tag from the remaining arguments (joined with spaces), logging the
+/// parser's warnings like vanilla; syntax errors become `error_key`.
+fn data_tag(args: &[&str], error_key: &'static str) -> Result<krol_nbt::Compound, CommandError> {
+    let mut warnings = Vec::new();
+    let parsed =
+        krol_nbt::text::parse_data_tag(&args.join(" "), &mut |w| warnings.push(w.to_owned()));
+    for w in warnings {
+        warn!("{w}");
+    }
+    parsed.map_err(|e| match e {
+        krol_nbt::text::ParseError::Syntax(message) => err(error_key, vec![s(message)]),
+        krol_nbt::text::ParseError::Internal => CommandError::Exception,
+    })
 }
 
 /// The most items `/give` hands out at once.
@@ -482,7 +540,7 @@ fn is_ipv4(s: &str) -> bool {
 impl Game {
     /// Sends `message` to the sender: logged for the console, a system message for
     /// players.
-    fn reply(&self, sender: Sender, message: &Component) {
+    pub(super) fn reply(&self, sender: Sender, message: &Component) {
         match sender {
             Sender::Console => info!("{}", message.unformatted()),
             Sender::Player(i) => self.players[i].send(ClientboundPlay::Chat {
@@ -506,7 +564,7 @@ impl Game {
         }
     }
 
-    fn op_level(&self, i: usize) -> Option<i32> {
+    pub(super) fn op_level(&self, i: usize) -> Option<i32> {
         let key = java_uuid_string(self.players[i].profile.id);
         let mut lists = self.shared.user_lists.lock().ok()?;
         lists.ops.get(&key).map(|op| op.level)
@@ -570,6 +628,102 @@ impl Game {
             .ok_or_else(|| err("commands.generic.player.notFound", vec![]))
     }
 
+    /// Vanilla `CommandBase.getPlayer`: exactly one player matched by a selector, else
+    /// the player with this UUID, else by name.
+    fn get_player(&self, sender: Sender, text: &str) -> Result<usize, CommandError> {
+        if let [Target::Player(i)] = self.match_entities(sender, text, true)[..] {
+            return Ok(i);
+        }
+        if let Some(uuid) = selector::java_uuid_from_string(text)
+            && let Some(i) = self.players.iter().position(|p| p.profile.id == uuid)
+        {
+            return Ok(i);
+        }
+        self.find_player(text)
+    }
+
+    /// Vanilla `CommandBase.getEntity`: exactly one entity matched by a selector, else a
+    /// player by name, else the entity or player with this UUID. `living` stands for
+    /// the `EntityLivingBase` class filter (players are the only living entities krol
+    /// has).
+    fn get_entity(&self, sender: Sender, text: &str, living: bool) -> Result<Target, CommandError> {
+        let matched = self.match_entities(sender, text, false);
+        let found = match matched[..] {
+            [t] => Some(t),
+            _ => None,
+        };
+        let found = found.or_else(|| self.find_player(text).ok().map(Target::Player));
+        let found = match found {
+            Some(t) => Some(t),
+            None => {
+                let Some(uuid) = selector::java_uuid_from_string(text) else {
+                    return Err(err("commands.generic.entity.invalidUuid", vec![]));
+                };
+                // TODO(M5): other entities have no UUIDs in krol yet.
+                self.players
+                    .iter()
+                    .position(|p| p.profile.id == uuid)
+                    .map(Target::Player)
+            }
+        };
+        match found {
+            Some(Target::Entity(_)) if living => {
+                Err(err("commands.generic.entity.notFound", vec![]))
+            }
+            Some(t) => Ok(t),
+            None => Err(err("commands.generic.entity.notFound", vec![])),
+        }
+    }
+
+    /// Vanilla `getChatComponentFromNthArg`: the words as text siblings with spaces
+    /// between; with `selectors`, a selector word becomes the matched entities' names
+    /// (`CommandBase.join`), and a selector matching nothing fails.
+    fn words_component(
+        &self,
+        sender: Sender,
+        words: &[&str],
+        selectors: bool,
+    ) -> Result<Component, CommandError> {
+        let mut c = Component::text("");
+        for (k, word) in words.iter().enumerate() {
+            if k > 0 {
+                c.extra.push(Component::text(" "));
+            }
+            let mut part = Component::text(*word);
+            if selectors {
+                let matched = self.match_entities(sender, word, false);
+                if !matched.is_empty() {
+                    part = self.join_names(&matched);
+                } else if selector::is_selector(word) {
+                    return Err(err("commands.generic.player.notFound", vec![]));
+                }
+            }
+            c.extra.push(part);
+        }
+        Ok(c)
+    }
+
+    /// `CommandBase.join` of the targets' display names: "a, b and c".
+    ///
+    /// TODO(M5): other entities' display names carry their UUID in a hover event.
+    fn join_names(&self, targets: &[Target]) -> Component {
+        let mut c = Component::text("");
+        for (k, target) in targets.iter().enumerate() {
+            if k > 0 {
+                c.extra.push(Component::text(if k == targets.len() - 1 {
+                    " and "
+                } else {
+                    ", "
+                }));
+            }
+            c.extra.push(match *target {
+                Target::Player(i) => Self::display_name(&self.players[i].profile),
+                Target::Entity(id) => Component::text(self.entity_name(id)),
+            });
+        }
+        c
+    }
+
     /// Vanilla `PlayerProfileCache.getGameProfileForUsername`.
     ///
     /// Known deviation: for names not in the cache vanilla asks Mojang's profile API
@@ -610,8 +764,36 @@ impl Game {
             self.reply_error(sender, &err("commands.generic.permission", vec![]));
             return;
         }
-        if let Err(e) = self.run_command(sender, name, &args) {
-            self.reply_error(sender, &e);
+        // A selector for several entities runs the command once per entity, with the
+        // entity's UUID in its place.
+        if let Some(index) = username_index(name, &args)
+            && selector::matches_multiple(args[index])
+        {
+            let targets = self.match_entities(sender, args[index], false);
+            for target in targets {
+                let mut expanded: Vec<String> = args.iter().map(|a| (*a).to_owned()).collect();
+                expanded[index] = match target {
+                    Target::Player(i) => java_uuid_string(self.players[i].profile.id),
+                    // TODO(M5): entity UUIDs; until then no lookup finds the entity.
+                    Target::Entity(id) => format!("krol-entity-{id}"),
+                };
+                let expanded: Vec<&str> = expanded.iter().map(String::as_str).collect();
+                self.try_execute(sender, name, &expanded, raw);
+            }
+            return;
+        }
+        self.try_execute(sender, name, &args, raw);
+    }
+
+    /// Vanilla `CommandHandler.tryExecute`: runs the command and reports its failure.
+    fn try_execute(&mut self, sender: Sender, name: &str, args: &[&str], raw: &str) {
+        match self.run_command(sender, name, args) {
+            Ok(()) => {}
+            Err(CommandError::Exception) => {
+                self.reply_error(sender, &CommandError::Exception);
+                warn!("Couldn't process command: '{raw}'");
+            }
+            Err(e) => self.reply_error(sender, &e),
         }
     }
 
@@ -622,13 +804,14 @@ impl Game {
                 vec![Arg::Component(t(key, vec![]))],
             ),
             CommandError::Translated(key, args) => t(key, args.clone()),
+            CommandError::Exception => t("commands.generic.exception", vec![]),
         };
         self.reply(sender, &message.color("red"));
     }
 
     fn require_player(&self, sender: Sender, arg: Option<&&str>) -> Result<usize, CommandError> {
         match (arg, sender) {
-            (Some(p), _) => self.find_player(p),
+            (Some(p), _) => self.get_player(sender, p),
             (None, Sender::Player(i)) => Ok(i),
             (None, Sender::Console) => Err(err("commands.generic.player.unspecified", vec![])),
         }
@@ -677,11 +860,14 @@ impl Game {
                 } else {
                     "chat.type.emote"
                 };
+                // /say resolves selectors always, /me only for senders other than players.
+                let selectors = name == "say" || !matches!(sender, Sender::Player(_));
+                let words = self.words_component(sender, args, selectors)?;
                 let msg = t(
                     key,
                     vec![
                         Arg::Component(self.sender_component(sender)),
-                        Arg::Component(Component::from_words(args)),
+                        Arg::Component(words),
                     ],
                 );
                 self.broadcast_chat(&msg, None);
@@ -691,11 +877,12 @@ impl Game {
                 if args.len() < 2 {
                     return Err(usage(name));
                 }
-                let target = self.find_player(args[0])?;
+                let target = self.get_player(sender, args[0])?;
                 if Sender::Player(target) == sender {
                     return Err(err("commands.message.sameTarget", vec![]));
                 }
-                let text = Component::from_words(&args[1..]);
+                let selectors = !matches!(sender, Sender::Player(_));
+                let text = self.words_component(sender, &args[1..], selectors)?;
                 let incoming = t(
                     "commands.message.display.incoming",
                     vec![
@@ -996,23 +1183,30 @@ impl Game {
         }
     }
 
-    /// Vanilla `CommandBase.getEntity` for the entities krol has as command targets:
-    /// a player by name, else (for a well-formed UUID) not found.
-    fn find_entity(&self, target: &str) -> Result<usize, CommandError> {
-        self.find_player(target).map_err(|_| {
-            if parse_uuid_like_java(target) {
-                err("commands.generic.entity.notFound", vec![s(target)])
-            } else {
-                err("commands.generic.entity.invalidUuid", vec![])
+    /// [`Self::get_entity`] for commands that krol only supports on players.
+    ///
+    /// TODO(M5): the command on other entities.
+    fn get_entity_player(
+        &self,
+        sender: Sender,
+        text: &str,
+        living: bool,
+        command: &str,
+    ) -> Result<usize, CommandError> {
+        match self.get_entity(sender, text, living)? {
+            Target::Player(i) => Ok(i),
+            Target::Entity(_) => {
+                warn!("krol: /{command} on entities other than players is not implemented yet");
+                Err(err("commands.generic.entity.notFound", vec![]))
             }
-        })
+        }
     }
 
     /// `/kill [player|entity]` (`CommandKill`): `onKillCommand`, out-of-world damage of
     /// `Float.MAX_VALUE`.
     fn cmd_kill(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
         let i = match args.first() {
-            Some(target) => self.find_entity(target)?,
+            Some(target) => self.get_entity_player(sender, target, false, "kill")?,
             None => self.require_player(sender, None)?,
         };
         let name = Arg::Component(Self::display_name(&self.players[i].profile));
@@ -1044,20 +1238,32 @@ impl Game {
             Some(a) => parse_int(a, -1, i32::MAX)?,
             None => -1,
         };
-        if args.len() >= 5 {
-            return self.not_implemented(sender, "clear (data tag)");
-        }
-        let matches = |stack: &krol_protocol::packets::play::ItemStack| {
-            item.is_none_or(|id| stack.id == id) && (data <= -1 || i32::from(stack.damage) == data)
+        let tag = if args.len() >= 5 {
+            Some(krol_nbt::Tag::Compound(data_tag(
+                &args[4..],
+                "commands.clear.tagError",
+            )?))
+        } else {
+            None
+        };
+        // Main inventory slots match lists partially, armor and the cursor exactly.
+        let matches = |stack: &krol_protocol::packets::play::ItemStack, partial: bool| {
+            item.is_none_or(|id| stack.id == id)
+                && (data <= -1 || i32::from(stack.damage) == data)
+                && tag.as_ref().is_none_or(|t| {
+                    let target = stack.nbt.clone().map(krol_nbt::Tag::Compound);
+                    krol_nbt::matches_pattern(t, target.as_ref(), partial)
+                })
         };
         // mainInventory (0-8 hotbar, 9-35 main), then armorInventory (boots first).
         let slots: Vec<usize> = (36..45).chain(9..36).chain([8, 7, 6, 5]).collect();
         let mut removed = 0;
         let p = &mut self.players[i];
         let take = |slot: &mut Option<krol_protocol::packets::play::ItemStack>,
-                    removed: &mut i32|
+                    removed: &mut i32,
+                    partial: bool|
          -> bool {
-            let Some(stack) = slot.as_mut().filter(|s| matches(s)) else {
+            let Some(stack) = slot.as_mut().filter(|s| matches(s, partial)) else {
                 return false;
             };
             let count = i32::from(stack.count);
@@ -1080,13 +1286,17 @@ impl Game {
         };
         let mut done = false;
         for slot in slots {
-            if take(&mut p.inventory[slot], &mut removed) {
+            if take(
+                &mut p.inventory[slot],
+                &mut removed,
+                slot >= MAIN_INVENTORY_FIRST,
+            ) {
                 done = true;
                 break;
             }
         }
         if !done {
-            take(&mut p.window.cursor, &mut removed);
+            take(&mut p.window.cursor, &mut removed, false);
         }
         self.detect_inventory_changes(i);
         let p = &self.players[i];
@@ -1264,16 +1474,7 @@ impl Game {
         }
         // Vanilla resolves the target with getEntity: a player name, else a UUID.
         let target = args[0];
-        let i = match self.find_player(target) {
-            Ok(i) => i,
-            Err(_) => {
-                return Err(if parse_uuid_like_java(target) {
-                    err("commands.generic.entity.notFound", vec![s(target)])
-                } else {
-                    err("commands.generic.entity.invalidUuid", vec![])
-                });
-            }
-        };
+        let i = self.get_entity_player(sender, target, false, "tp")?;
         if args.len() != 4 {
             // TODO: /tp <player>, /tp <a> <b> and rotation arguments.
             return self.not_implemented(sender, "tp (this form)");
@@ -1342,7 +1543,7 @@ impl Game {
         if args.len() < 2 {
             return Err(usage("enchant"));
         }
-        let target = self.find_player(args[0])?;
+        let target = self.get_player(sender, args[0])?;
         let id = match parse_int(args[1], 0, i32::MAX) {
             Ok(id) => id,
             Err(e) => match ench::by_name(args[1]) {
@@ -1395,7 +1596,7 @@ impl Game {
         if args.len() < 2 {
             return Err(usage("give"));
         }
-        let target = self.find_player(args[0])?;
+        let target = self.get_player(sender, args[0])?;
         let id = item_by_text(args[1])?;
         let amount = match args.get(2) {
             Some(a) => parse_int(a, 1, i32::from(MAX_GIVE))?,
@@ -1413,25 +1614,14 @@ impl Game {
             nbt: None,
         };
         if args.len() >= 5 {
-            let text = args[4..].join(" ");
-            let mut warnings = Vec::new();
-            let parsed =
-                krol_nbt::text::parse_data_tag(&text, &mut |w| warnings.push(w.to_owned()));
-            for w in warnings {
-                warn!("{w}");
-            }
-            match parsed {
-                Ok(tag) => stack.nbt = Some(tag),
-                Err(krol_nbt::text::ParseError::Syntax(message)) => {
-                    return Err(err("commands.give.tagError", vec![s(message)]));
-                }
-                Err(krol_nbt::text::ParseError::Internal) => {
-                    return Err(err("commands.generic.exception", vec![]));
-                }
-            }
+            stack.nbt = Some(data_tag(&args[4..], "commands.give.tagError")?);
         }
-        let added =
-            super::item_entity::add_to_inventory(&mut self.players[target].inventory, &mut stack);
+        let p = &mut self.players[target];
+        let added = super::item_entity::add_to_inventory(
+            &mut p.inventory,
+            &mut stack,
+            p.gamemode == super::player::Player::CREATIVE,
+        );
         if added {
             let p = &mut self.players[target];
             let r = &mut p.rand;
@@ -1440,7 +1630,7 @@ impl Game {
             self.play_sound_near_except(None, "random.pop", pos, POP_VOLUME, pitch);
             self.detect_inventory_changes(target);
         }
-        // TODO(M5): command result stats (AFFECTED_ITEMS) and the dropped item's owner.
+        // TODO(M5): command result stats (AFFECTED_ITEMS, needs /stats).
         if added && stack.count <= 0 {
             // Vanilla shows a fake item that cannot be picked up and vanishes next tick.
             stack.count = 1;
@@ -1451,8 +1641,10 @@ impl Game {
             }
         } else {
             let item = self.toss(target, stack.clone(), false);
+            let owner = self.players[target].profile.name.clone();
             if let Some(it) = self.items.get_mut(&item) {
                 it.pickup_delay = 0;
+                it.owner = Some(owner);
             }
         }
         let name = self.players[target].profile.name.clone();
@@ -1475,7 +1667,7 @@ impl Game {
         if args.len() < 2 {
             return Err(usage("effect"));
         }
-        let target = self.find_player(args[0])?;
+        let target = self.get_entity_player(sender, args[0], true, "effect")?;
         let name = self.players[target].profile.name.clone();
         if args[1] == "clear" {
             if self.players[target].effects.is_empty() {
@@ -1568,9 +1760,11 @@ impl Game {
         if !loaded {
             return Err(err("commands.setblock.outOfWorld", vec![]));
         }
-        if args.len() >= 7 && super::world::has_tile_entity(id) {
-            return self.not_implemented(sender, "setblock (data tag)");
-        }
+        let tag = if args.len() >= 7 && super::world::has_tile_entity(id) {
+            Some(data_tag(&args[6..], "commands.setblock.tagError")?)
+        } else {
+            None
+        };
         if args.len() >= 6 {
             if args[5] == "destroy" {
                 let old = self.level.overworld.block(pos.0, pos.1, pos.2);
@@ -1603,11 +1797,23 @@ impl Game {
             };
             self.set_block_flags(pos, 0, flags);
         }
-        let state = id << 4 | meta as u16;
+        // Block.getStateFromMeta, which throws for some metadata.
+        let Some(meta) = super::world::normalize_meta(id, meta as u8) else {
+            return Err(CommandError::Exception);
+        };
+        let state = id << 4 | u16::from(meta);
         if self.level.overworld.block(pos.0, pos.1, pos.2) == state {
             return Err(err("commands.setblock.noChange", vec![]));
         }
         self.set_block_flags(pos, state, super::block_update::flags::SEND);
+        if let Some(tag) = tag
+            && let Some(fresh) = self.level.overworld.tile_entity(pos).cloned()
+        {
+            // TileEntityFurnace.readFromNBT derives the current fuel's burn time anew.
+            self.furnace_burn.remove(&pos);
+            let te = super::tile_data::read_tile_entity(&fresh, &tag);
+            self.level.overworld.set_tile_entity(pos, te);
+        }
         self.notify_neighbors(pos, id);
         self.notify(
             sender,
@@ -1990,15 +2196,6 @@ fn block_by_text(text: &str) -> Result<u16, CommandError> {
             vec![s(format!("{domain}:{path}"))],
         )
     })
-}
-
-/// Whether `s` would parse with Java's `UUID.fromString`.
-fn parse_uuid_like_java(s: &str) -> bool {
-    let parts: Vec<&str> = s.split('-').collect();
-    parts.len() == 5
-        && parts
-            .iter()
-            .all(|p| !p.is_empty() && p.len() <= 16 && p.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 #[cfg(test)]

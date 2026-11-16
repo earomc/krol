@@ -40,6 +40,32 @@ fn sort_tile_entities(list: &mut List) {
     *list = sorted;
 }
 
+/// The metadata vanilla stores for `meta` of block `id` (`getMetaFromState` of
+/// `getStateFromMeta`, extracted by `tools/datagen/BlockMetaDump.java` into
+/// `data/block_meta.txt`), or `None` where `getStateFromMeta` throws.
+pub fn normalize_meta(id: u16, meta: u8) -> Option<u8> {
+    use std::sync::OnceLock;
+    static TABLE: OnceLock<std::collections::HashMap<u16, [Option<u8>; 16]>> = OnceLock::new();
+    let table = TABLE.get_or_init(|| {
+        include_str!("../../data/block_meta.txt")
+            .lines()
+            .filter_map(|line| {
+                let mut f = line.split_whitespace();
+                let id = f.next()?.parse().ok()?;
+                let mut metas = [None; 16];
+                for m in &mut metas {
+                    *m = f.next()?.parse().ok();
+                }
+                Some((id, metas))
+            })
+            .collect()
+    });
+    match table.get(&id) {
+        Some(metas) => metas[usize::from(meta & 15)],
+        None => Some(meta),
+    }
+}
+
 /// Blocks with a tile entity (`ITileEntityProvider`).
 pub fn has_tile_entity(id: u16) -> bool {
     matches!(

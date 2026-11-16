@@ -788,9 +788,12 @@ impl Game {
                     Some(h) if !(in_player_inv && layout.accepts(k, &h)) => {
                         if empty.is_some() {
                             let mut h = h;
-                            super::item_entity::add_to_inventory_mapped(&mut flat, &mut h, |m| {
-                                layout.player_slot(m)
-                            });
+                            super::item_entity::add_to_inventory_mapped(
+                                &mut flat,
+                                &mut h,
+                                creative,
+                                |m| layout.player_slot(m),
+                            );
                             flat[k] = None;
                         }
                     }
@@ -957,7 +960,12 @@ impl Game {
         }
         self.scatter(i, flat);
         for mut c in extra {
-            if !super::item_entity::add_to_inventory(&mut self.players[i].inventory, &mut c) {
+            let creative = self.players[i].is_creative();
+            if !super::item_entity::add_to_inventory(
+                &mut self.players[i].inventory,
+                &mut c,
+                creative,
+            ) {
                 self.drop_from_window(i, c);
             }
         }

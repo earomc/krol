@@ -158,6 +158,14 @@ pub struct Player {
 }
 
 impl Player {
+    /// The creative game mode's id.
+    pub const CREATIVE: i32 = 1;
+
+    /// `capabilities.isCreativeMode`.
+    pub fn is_creative(&self) -> bool {
+        self.gamemode == Self::CREATIVE
+    }
+
     /// Current health (`getHealth`, stored as `HealF`).
     pub fn health(&self) -> f32 {
         self.data.get_f32("HealF")

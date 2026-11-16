@@ -324,7 +324,11 @@ impl Game {
             p.inventory[slot] = Some(left);
             // Vanilla quirk: with no room the bottle is simply lost.
             let mut b = bottle();
-            super::item_entity::add_to_inventory(&mut p.inventory, &mut b);
+            super::item_entity::add_to_inventory(
+                &mut p.inventory,
+                &mut b,
+                p.gamemode == super::player::Player::CREATIVE,
+            );
         }
     }
 

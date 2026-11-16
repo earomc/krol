@@ -1,0 +1,78 @@
+description = "/clear with data tags: a partial list match (one of two enchantments), {} matching only tagged items, a custom name, an empty pattern list matching only empty lists, counting (maxCount 0) and removing, a tag syntax error; items handed out with /give data tags"
+subsystem = "commands"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 12
+chat = []
+
+[[steps]]
+action = "wait"
+ms = 2000
+
+[[steps]]
+action = "console"
+command = 'give jeb_ diamond_sword 1 0 {display:{Name:"A"},ench:[{id:16s,lvl:1s},{id:34s,lvl:3s}]}'
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = 'give jeb_ diamond_sword 1 0 {display:{Name:"B"},ench:[]}'
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 5 0 {}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "clear jeb_ diamond_sword -1 0 {ench:[{id:34s}]}"
+
+[[steps]]
+action = "console"
+command = "clear jeb_ diamond_sword -1 0 {}"
+
+[[steps]]
+action = "console"
+command = "clear jeb_ diamond_sword -1 0 {ench:[]}"
+
+[[steps]]
+action = "console"
+command = "clear jeb_ diamond_sword -1 0 {ench:[{id:20s}]}"
+
+[[steps]]
+action = "console"
+command = "clear jeb_ stone 0 -1 {}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = 'clear jeb_ diamond_sword -1 -1 {display:{Name:"A"}}'
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "clear jeb_ stone -1 -1 foo"
+
+[[steps]]
+action = "console"
+command = "clear jeb_ diamond_sword -1 -1 {ench:[{lvl:1s}]}"
+
+[observe]
+log = true
+files = ["world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat"]
+ignore = ["file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer"]

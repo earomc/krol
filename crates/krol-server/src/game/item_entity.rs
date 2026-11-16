@@ -28,12 +28,20 @@ pub struct ItemEntity {
     pub dead: bool,
     /// `health` (5): damage destroys the item at 0.
     pub health: i32,
+    /// `owner`: the only player who can pick the item up until 200 ticks before it
+    /// despawns (`/give` leftovers).
+    pub owner: Option<String>,
     /// The chunk the entity was last added to.
     pub chunk: (i32, i32),
     /// Metadata indices changed since the tracker last sent them (all of them on
     /// creation).
     pub dirty_metadata: std::collections::BTreeSet<u8>,
 }
+
+/// The age at which an item despawns.
+pub const DESPAWN_AGE: i32 = 6000;
+/// How long before despawning anyone may pick up an owned item.
+const OWNER_EXPIRY: i32 = 200;
 
 /// The health items and experience orbs start with.
 pub const ENTITY_HEALTH: i32 = 5;
@@ -284,6 +292,7 @@ impl Game {
             ticks: 0,
             dead: false,
             health: ENTITY_HEALTH,
+            owner: None,
             chunk: (
                 krol_java::math::floor_f64(pos.0) >> 4,
                 krol_java::math::floor_f64(pos.2) >> 4,
@@ -374,7 +383,7 @@ impl Game {
         if it.age != -32768 {
             it.age += 1;
         }
-        if it.age >= 6000 {
+        if it.age >= DESPAWN_AGE {
             it.dead = true;
         }
         it.chunk = (
@@ -600,12 +609,21 @@ impl Game {
             let Some(it) = self.items.get(&id) else {
                 continue;
             };
-            if it.pickup_delay != 0 {
+            // Only the owner, until the item is about to despawn.
+            let owner_ok = it.owner.as_ref().is_none_or(|o| {
+                DESPAWN_AGE - it.age <= OWNER_EXPIRY || *o == self.players[i].profile.name
+            });
+            if it.pickup_delay != 0 || !owner_ok {
                 continue;
             }
             let mut stack = it.stack.clone();
-            let before = stack.count;
-            if !add_to_inventory(&mut self.players[i].inventory, &mut stack) {
+            let creative = self.players[i].is_creative();
+            if !add_to_inventory(&mut self.players[i].inventory, &mut stack, creative) {
+                // Vanilla quirk: what fit is still taken from the item's stack, in place,
+                // so the metadata is not resent.
+                if let Some(it) = self.items.get_mut(&id) {
+                    it.stack.count = stack.count;
+                }
                 continue;
             }
             // TODO(M5): pickup achievements (mineWood, killCow, diamonds, blazeRod).
@@ -621,14 +639,9 @@ impl Game {
                     collector,
                 },
             );
-            let _ = before;
+            // A successful add always takes the whole stack.
             if let Some(it) = self.items.get_mut(&id) {
-                if stack.count <= 0 {
-                    it.dead = true;
-                } else {
-                    it.stack = stack;
-                    it.dirty_metadata.insert(10);
-                }
+                it.dead = true;
             }
         }
     }
@@ -636,33 +649,49 @@ impl Game {
 
 /// Vanilla `InventoryPlayer.addItemStackToInventory` on the player window: damaged items
 /// go to the first empty slot; others fill matching stacks first, then empty slots.
-/// Main inventory slots are scanned hotbar first. Returns whether anything was added
-/// (`stack.count` is reduced by what fit).
-pub fn add_to_inventory(window: &mut [Option<ItemStack>], stack: &mut ItemStack) -> bool {
+/// Main inventory slots are scanned hotbar first. `stack.count` is reduced by what fit;
+/// returns whether all of it did.
+///
+/// Vanilla quirk: for a `creative` player whatever does not fit is destroyed (the count
+/// drops to 0) and the add counts as successful.
+pub fn add_to_inventory(
+    window: &mut [Option<ItemStack>],
+    stack: &mut ItemStack,
+    creative: bool,
+) -> bool {
     // mainInventory index i: hotbar 0..9 is window slot 36 + i, the rest is i.
-    add_to_inventory_mapped(window, stack, |i| if i < 9 { 36 + i } else { i })
+    add_to_inventory_mapped(window, stack, creative, |i| if i < 9 { 36 + i } else { i })
 }
 
 /// [`add_to_inventory`] on any window, given where main inventory index `i` is.
 pub fn add_to_inventory_mapped(
     window: &mut [Option<ItemStack>],
     stack: &mut ItemStack,
+    creative: bool,
     slot: impl Fn(usize) -> usize,
 ) -> bool {
-    let max = max_stack(stack.id);
-    let damaged = max == 1 && stack.damage > 0;
-    if stack.count <= 0 {
+    if stack.count == 0 {
         return false;
     }
+    let unbreakable = stack
+        .nbt
+        .as_ref()
+        .is_some_and(|n| n.get_bool("Unbreakable"));
+    // ItemStack.isItemDamaged.
+    let damaged = super::item_data::max_damage(stack.id) > 0 && !unbreakable && stack.damage > 0;
     if damaged {
         if let Some(i) = (0..36).find(|&i| window[slot(i)].is_none()) {
             window[slot(i)] = Some(stack.clone());
             stack.count = 0;
             return true;
         }
+        if creative {
+            stack.count = 0;
+            return true;
+        }
         return false;
     }
-    let start = stack.count;
+    let max = max_stack(stack.id);
     while stack.count > 0 {
         let matching = (0..36).find(|&i| {
             window[slot(i)].as_ref().is_some_and(|s| {
@@ -689,7 +718,17 @@ pub fn add_to_inventory_mapped(
         existing.count += moved;
         stack.count -= moved;
     }
-    stack.count < start
+    if stack.count <= 0 {
+        return true;
+    }
+    // Vanilla quirk: the loop ends on an attempt that stored nothing, and the result
+    // compares against the count before that attempt, so a stack that only partly fit
+    // reports failure (creative players lose the rest and report success).
+    if creative {
+        stack.count = 0;
+        return true;
+    }
+    false
 }
 
 /// The armor items (helmets to boots, leather to gold): unbreaking helps them less.
@@ -722,7 +761,7 @@ mod tests {
         let mut window = vec![None; 45];
         window[40] = Some(item(3, 63));
         let mut s = item(3, 3);
-        assert!(add_to_inventory(&mut window, &mut s));
+        assert!(add_to_inventory(&mut window, &mut s, false));
         assert_eq!(window[40].as_ref().unwrap().count, 64);
         // The rest goes to the first empty hotbar slot.
         assert_eq!(window[36].as_ref().unwrap().count, 2);

@@ -1,0 +1,150 @@
+description = "Entity selectors: @a running a command once per player, @p from the console (nearest to the origin, ties in join order) and from a player (himself), c=-1, name and !name, lm, m with c, r around the console origin, r and coordinates, rx, team= (nobody is on a team), score_ (no objectives), @r with a name, an unknown entity type, a selector matching nobody (in /say and as a target), UUIDs as player names, /say and /tell with selectors in the text, a non-operator whose selectors are plain text"
+subsystem = "commands"
+
+# jeb_ and Dinnerbone spawn at the same spot (adventure mode, no spawn fuzz), so the
+# console's @p ties and the join order decides.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+chat = [
+    "@11000 /give @p bread",
+    "@11500 /tell @a[name=Dinnerbone] secret",
+    "@12000 /xp 1L @r[name=!jeb_]",
+]
+
+[[steps]]
+id = "other"
+action = "play"
+background = true
+protocol = 47
+name = "Dinnerbone"
+seconds = 15
+chat = [
+    "@9000 /me waves at @a",
+    "@11200 /tell @p hi",
+]
+
+[[steps]]
+action = "console"
+command = "op jeb_"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give @a stone"
+wait_ms = 400
+
+[[steps]]
+action = "console"
+command = "give @p dirt"
+wait_ms = 400
+
+[[steps]]
+action = "console"
+command = "give @p[c=-1] cobblestone"
+wait_ms = 400
+
+[[steps]]
+action = "console"
+command = "xp 5L @a[name=Dinnerbone]"
+
+[[steps]]
+action = "console"
+command = "xp 3L @a[name=!Dinnerbone]"
+
+[[steps]]
+action = "console"
+command = "xp 1L @a[lm=4]"
+
+[[steps]]
+action = "console"
+command = "gamemode 1 @a[m=2,c=1]"
+
+[[steps]]
+action = "console"
+command = "say Hello @a and @p"
+
+[[steps]]
+action = "console"
+command = "say @e[type=Foo]"
+
+[[steps]]
+action = "console"
+command = "say nobody: @a[r=10]"
+
+[[steps]]
+action = "console"
+command = "tell @a[r=1000] far"
+
+[[steps]]
+action = "console"
+command = "tell @a[r=10] near"
+
+[[steps]]
+action = "console"
+command = "give @r[name=jeb_] apple"
+wait_ms = 400
+
+[[steps]]
+action = "console"
+command = "effect @p[x=-471,y=4,z=-434,r=2,c=2] 1 10"
+
+[[steps]]
+action = "console"
+command = "xp 1L @a[rx=10]"
+
+[[steps]]
+action = "console"
+command = "clear @a[team=] stone"
+
+[[steps]]
+action = "console"
+command = "clear @a[team=!] dirt"
+
+[[steps]]
+action = "console"
+command = "enchant @a[score_x=1] 16"
+
+[[steps]]
+action = "console"
+command = "give 00000000-0000-0000-0000-000000000000 stone"
+
+[[steps]]
+action = "console"
+command = "give a762f560-4fce-3236-812a-b80efff0b62b gold_ingot"
+wait_ms = 400
+
+[[steps]]
+action = "console"
+command = "give @e[type=Player,c=1] iron_ingot"
+wait_ms = 400
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat.foodTickTimer",
+]
+
+# What is left of the speed effect depends on how long the sessions run after the
+# console command (vanilla logs in more slowly).
+[observe.tolerance]
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.ActiveEffects" = 10
+"file:world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat.ActiveEffects" = 10

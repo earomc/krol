@@ -1,0 +1,108 @@
+description = "/give leftovers: in survival, a give that only partly fits (10 of 64) and one that does not fit at all drop the rest at the player with no pickup delay, owned by him; another player standing on them cannot pick them up, the owner can once /clear makes room; in creative what does not fit vanishes (addItemStackToInventory reports success) and the fake item shows"
+subsystem = "commands"
+
+# jeb_ (made creative) fills his inventory (stone, 10 short of full). The dropped stacks are
+# thrown with motion from the player's unseeded random, so where they land differs, but
+# both players stand within pickup range of them.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 20
+chat = [
+    "@2500 !creative 9 1 64 0",
+    "@2620 !creative 10 1 64 0",
+    "@2740 !creative 11 1 64 0",
+    "@2860 !creative 12 1 64 0",
+    "@2980 !creative 13 1 64 0",
+    "@3100 !creative 14 1 64 0",
+    "@3220 !creative 15 1 64 0",
+    "@3340 !creative 16 1 64 0",
+    "@3460 !creative 17 1 64 0",
+    "@3580 !creative 18 1 64 0",
+    "@3700 !creative 19 1 64 0",
+    "@3820 !creative 20 1 64 0",
+    "@3940 !creative 21 1 64 0",
+    "@4060 !creative 22 1 64 0",
+    "@4180 !creative 23 1 64 0",
+    "@4300 !creative 24 1 64 0",
+    "@4420 !creative 25 1 64 0",
+    "@4540 !creative 26 1 64 0",
+    "@4660 !creative 27 1 64 0",
+    "@4780 !creative 28 1 64 0",
+    "@4900 !creative 29 1 64 0",
+    "@5020 !creative 30 1 64 0",
+    "@5140 !creative 31 1 64 0",
+    "@5260 !creative 32 1 64 0",
+    "@5380 !creative 33 1 64 0",
+    "@5500 !creative 34 1 64 0",
+    "@5620 !creative 35 1 64 0",
+    "@5740 !creative 36 1 64 0",
+    "@5860 !creative 37 1 64 0",
+    "@5980 !creative 38 1 64 0",
+    "@6100 !creative 39 1 64 0",
+    "@6220 !creative 40 1 64 0",
+    "@6340 !creative 41 1 64 0",
+    "@6460 !creative 42 1 64 0",
+    "@6580 !creative 43 1 64 0",
+    "@6700 !creative 44 1 54 0",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+
+[[steps]]
+id = "other"
+action = "play"
+background = true
+protocol = 47
+name = "Dinnerbone"
+seconds = 17
+chat = []
+
+[[steps]]
+action = "wait"
+ms = 7000
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 64"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "give jeb_ dirt 5"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ dirt 3"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "clear jeb_ stone 0 128"
+wait_ms = 2500
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+]
+ignore = ["file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer"]

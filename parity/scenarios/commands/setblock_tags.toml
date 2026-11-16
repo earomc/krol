@@ -1,0 +1,94 @@
+description = "/setblock data tags: a chest (valid slots only, custom name, unknown keys dropped), a sign with chat JSON, a literal word, text that is not JSON and an array, a furnace with burn time and fuel, a note block clamped to 24, a hopper, an enchanting table with an empty name, a tag on a block without a tile entity (ignored), a tag syntax error, and replacing a tile entity block with a tagged one, metadata vanilla cannot read (hopper 1) and a sign tag missing lines (both an unknown error, the sign placed with the lines read so far)"
+subsystem = "commands"
+
+# jeb_ stands nearby and sees the sign's update packet. The furnace burns its 100 ticks
+# (lit, then out again) without anything to smelt.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+chat = []
+
+[[steps]]
+action = "wait"
+ms = 2000
+
+[[steps]]
+action = "console"
+command = 'setblock -470 4 -433 chest 0 replace {Items:[{Slot:0b,id:"minecraft:diamond",Count:3b},{Slot:40b,id:"minecraft:stone",Count:1b},{Slot:2b,id:"minecraft:nothing",Count:1b}],CustomName:"Loot",Junk:5}'
+
+[[steps]]
+action = "console"
+command = 'setblock -468 4 -433 standing_sign 0 replace {Text1:"{\"text\":\"Hi\",\"color\":\"red\"}",Text2:"plain",Text3:"not json at all",Text4:"[\"a\",{\"text\":\"b\",\"bold\":true}]"}'
+
+[[steps]]
+action = "console"
+command = 'setblock -466 4 -433 furnace 2 replace {BurnTime:100,CookTime:5s,Items:[{Slot:1b,id:"minecraft:coal",Count:4b}]}'
+
+[[steps]]
+action = "console"
+command = "setblock -464 4 -433 noteblock 0 replace {note:30b}"
+
+[[steps]]
+action = "console"
+command = 'setblock -462 4 -433 hopper 0 replace {TransferCooldown:5,Items:[{Slot:4b,id:"minecraft:dirt",Count:1b}],Lock:"key"}'
+
+[[steps]]
+action = "console"
+command = "setblock -460 4 -433 stone 0 replace foo"
+
+[[steps]]
+action = "console"
+command = "setblock -458 4 -433 chest 0 replace {a:1"
+
+[[steps]]
+action = "console"
+command = 'setblock -458 4 -433 enchanting_table 0 replace {CustomName:""}'
+
+[[steps]]
+action = "console"
+command = "setblock -456 4 -433 chest"
+
+[[steps]]
+action = "console"
+command = 'setblock -456 4 -433 trapped_chest 0 replace {Items:[{Slot:26b,id:"minecraft:apple",Count:2b}]}'
+
+[[steps]]
+action = "console"
+command = "setblock -454 4 -433 hopper 1"
+
+[[steps]]
+action = "console"
+command = 'setblock -452 4 -433 standing_sign 4 replace {Text1:"\"one\"",Text2:"\"two\""}'
+
+[[steps]]
+action = "wait"
+ms = 7000
+
+[observe]
+log = true
+blocks = [[-466, 4, -433], [-460, 4, -433], [-456, 4, -433], [-454, 4, -433], [-452, 4, -433]]
+tile_entities = [
+    [-470, 4, -433],
+    [-468, 4, -433],
+    [-466, 4, -433],
+    [-464, 4, -433],
+    [-462, 4, -433],
+    [-458, 4, -433],
+    [-456, 4, -433],
+    [-452, 4, -433],
+]
+files = ["world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat"]
+ignore = ["file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer"]

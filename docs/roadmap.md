@@ -179,6 +179,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | `JsonToNBT` (NBT in commands: `/give`, `/summon`, `/setblock` data tags, `/entitydata`, ...) | ✅ | `krol_nbt::text::parse_data_tag`, with its quirks; used by `/give` |
 | `NBTBase.toString` (item hover text) | ✅ | `krol_nbt::text::to_java_string` |
 | `NBTUtil` (game profiles in skulls) | ❌ | |
+| `NBTUtil.func_181123_a` (partial NBT matching for `/clear`, `/testfor`) | ✅ | `krol_nbt::matches_pattern` |
 
 ## net.minecraft.world
 
@@ -578,14 +579,14 @@ krol notice.
 | `save-all` · `save-on` · `save-off` | ✅ | |
 | `op` · `deop` · `ban` · `pardon` · `ban-ip` · `pardon-ip` · `banlist` · `whitelist` | ✅ | |
 | `effect` · `enchant` | ✅ | |
-| `give` | ✅ | Players as targets (selectors ❌); command result stats and the dropped item's owner ❌ |
-| `setblock` | 🟡 | Data tags ❌ |
+| `give` | ✅ | Leftovers dropped with their owner; command result stats ❌ |
+| `setblock` | ✅ | Metadata normalized like `getStateFromMeta` (`data/block_meta.txt`); data tags for the tile entities krol creates (skulls, banners, beacons, spawners, command blocks, flower pots and daylight sensors ❌) |
 | `tp` | 🟡 | Coordinates and players ✅; some forms (entity targets, rotation) ❌ |
-| `kill` · `spawnpoint` | ✅ | Players as targets (selectors ❌) |
-| `clear` | 🟡 | Data tags ❌ |
+| `kill` · `spawnpoint` | ✅ | Players as targets (other entities ❌) |
+| `clear` | ✅ | |
 | `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | |
 | `publish` | ➖ | LAN only |
-| `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | ❌ | Plain player names only |
+| `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | 🟡 | All arguments; one command run per target; UUIDs as names; selectors in `/say`, `/me`, `/tell`. No scoreboard yet (`score_` never matches, nobody is on a team); dropped items' names and other entities' UUIDs ❌; `@r` shuffles with its own unseeded random like vanilla |
 | `CommandResultStats` (`/stats` triggers) | ❌ | |
 | Command blocks (`CommandBlockLogic`) and minecart command blocks | ❌ | |
 | Operator notifications, `logAdminCommands`, `sendCommandFeedback` | ✅ | |

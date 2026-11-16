@@ -123,7 +123,11 @@ impl Game {
             s.count -= 1;
         }
         let mut new = bucket(filled);
-        if !super::item_entity::add_to_inventory(&mut p.inventory, &mut new) {
+        if !super::item_entity::add_to_inventory(
+            &mut p.inventory,
+            &mut new,
+            p.gamemode == super::player::Player::CREATIVE,
+        ) {
             self.toss(i, bucket(filled), false);
         }
         UseResult::Resized
@@ -158,7 +162,11 @@ impl Game {
             s.count -= 1;
         }
         let mut new = water();
-        if !super::item_entity::add_to_inventory(&mut p.inventory, &mut new) {
+        if !super::item_entity::add_to_inventory(
+            &mut p.inventory,
+            &mut new,
+            p.gamemode == super::player::Player::CREATIVE,
+        ) {
             self.toss(i, water(), false);
         }
         UseResult::Resized

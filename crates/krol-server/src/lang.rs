@@ -27,6 +27,10 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "commands.clear.success" => "Cleared the inventory of %s, removing %d items",
         "commands.clear.testing" => "%s has %d items that match the criteria",
         "commands.clear.failure" => "Could not clear the inventory of %s, no items to remove",
+        "commands.clear.tagError" => "Data tag parsing failed: %s",
+        "commands.generic.exception" => {
+            "An unknown error occurred while attempting to perform this command"
+        }
         "commands.spawnpoint.success" => "Set %s's spawn point to (%d, %d, %d)",
         "commands.give.item.notFound" => "There is no such item with name %d",
         "commands.give.success" => "Given %s * %d to %s",
@@ -73,7 +77,8 @@ pub fn en_us(key: &str) -> Option<&'static str> {
             "You must specify which player you wish to perform this action on."
         }
         "commands.generic.entity.invalidUuid" => "The entity UUID provided is in an invalid format",
-        "commands.generic.entity.notFound" => "Entity '%s' cannot be found",
+        "commands.generic.entity.notFound" => "That entity cannot be found",
+        "commands.generic.entity.invalidType" => "Entity type '%s' is invalid",
         // Command results.
         "commands.help.header" => "--- Showing help page %s of %s (/help <page>) ---",
         "commands.help.footer" => {
@@ -180,6 +185,7 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         }
         "commands.effect.notFound" => "There is no such mob effect with ID %d",
         "commands.setblock.noChange" => "The block couldn't be placed",
+        "commands.setblock.tagError" => "Data tag parsing failed: %s",
         "commands.setblock.outOfWorld" => "Cannot place block outside of the world",
         "commands.give.block.notFound" => "There is no such block with name %s",
         _ => return crate::game::commands::usage_text(key),
