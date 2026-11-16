@@ -625,10 +625,8 @@ impl Game {
             }
             let (pos, conn) = (p.pos, p.conn_id);
             self.play_sound_near_except(Some(conn), "random.break", pos, BREAK_VOLUME, pitch);
-            let p = &mut self.players[i];
             if let Some(name) = krol_world::items::name_for_id(stack.id) {
-                p.stats
-                    .add(&format!("stat.breakItem.{}", name.replace(':', ".")), 1);
+                self.add_stat(i, &format!("stat.breakItem.{}", name.replace(':', ".")), 1);
             }
             stack.count = (stack.count - 1).max(0);
             stack.damage = 0;

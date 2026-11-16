@@ -1,0 +1,79 @@
+description = "Firework and banner recipes in the 2x2 grid: a firework star (gunpowder, red dye, gold nugget: star shape), a rocket from gunpowder, paper and the star, a curly border on a white banner from a vine (no dye: black), and the pattern copied onto a plain white banner, which keeps the original in the grid"
+subsystem = "play"
+
+# jeb_ joins at the spawn in adventure mode and is made creative from the console. The
+# crafted stars, rockets and banners carry NBT the bot does not predict, so those clicks
+# are rejected and confirmed (the items still move).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 17
+chat = [
+    "@2500 !creative 9 289 2 0",
+    "@2700 !creative 10 351 1 1",
+    "@2900 !creative 11 371 1 0",
+    "@3100 !creative 12 339 1 0",
+    "@3300 !creative 13 425 2 15",
+    "@3500 !creative 14 106 1 0",
+    "@3800 !click 0 9 0 1 0 289 2 0",
+    "@4100 !click 0 1 1 2 0",
+    "@4400 !click 0 9 0 3 0",
+    "@4700 !click 0 10 0 4 0 351 1 1",
+    "@5000 !click 0 2 0 5 0",
+    "@5300 !click 0 11 0 6 0 371 1 0",
+    "@5600 !click 0 3 0 7 0",
+    "@5900 !click 0 0 0 8 0 402 1 0",
+    "@6200 !confirm 0 8 0",
+    "@6500 !click 0 15 0 9 0",
+    "@6800 !click 0 9 0 10 0 289 1 0",
+    "@7100 !click 0 1 0 11 0",
+    "@7400 !click 0 12 0 12 0 339 1 0",
+    "@7700 !click 0 2 0 13 0",
+    "@8000 !click 0 15 0 14 0 402 1 0",
+    "@8300 !confirm 0 14 0",
+    "@8600 !click 0 3 0 15 0",
+    "@8900 !click 0 0 0 16 0 401 1 0",
+    "@9200 !confirm 0 16 0",
+    "@9500 !click 0 16 0 17 0",
+    "@9800 !click 0 13 0 18 0 425 2 15",
+    "@10100 !click 0 1 1 19 0",
+    "@10400 !click 0 13 0 20 0",
+    "@10700 !click 0 14 0 21 0 106 1 0",
+    "@11000 !click 0 2 0 22 0",
+    "@11300 !click 0 0 0 23 0 425 1 15",
+    "@11600 !confirm 0 23 0",
+    "@11900 !click 0 17 0 24 0",
+    "@12200 !click 0 17 0 25 0 425 1 15",
+    "@12500 !confirm 0 25 0",
+    "@12800 !click 0 1 0 26 0",
+    "@13100 !click 0 13 0 27 0 425 1 15",
+    "@13400 !click 0 2 0 28 0",
+    "@13700 !click 0 0 0 29 0 425 1 15",
+    "@14000 !confirm 0 29 0",
+    "@14300 !click 0 18 0 30 0",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 1 jeb_"
+wait_ms = 16100
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]

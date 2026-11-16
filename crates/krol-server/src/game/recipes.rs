@@ -165,7 +165,7 @@ fn find(
     for recipe in &recipes().crafting {
         if let Recipe::Special(s) = recipe {
             if s.matches(grid, size, map_scale) {
-                return Some((recipe, s.result(grid)));
+                return Some((recipe, s.result(grid, size)));
             }
             continue;
         }
@@ -240,6 +240,18 @@ pub fn smelting_xp(output: &ItemStack) -> f32 {
         .iter()
         .find(|r| r.output.0 == output.id && (r.output.2 == ANY || r.output.2 == output.damage))
         .map_or(0.0, |r| r.xp)
+}
+
+/// Whether crafting the item counts a `stat.craftItem` statistic (`StatList.
+/// initCraftableStats`): only items some fixed recipe or smelting gives. Vanilla quirk:
+/// what only the special recipes make (firework stars and rockets, filled maps,
+/// written book copies) is never counted.
+pub fn has_craft_stat(item: i16) -> bool {
+    let r = recipes();
+    r.crafting.iter().any(|recipe| match recipe {
+        Recipe::Shaped { output, .. } | Recipe::Shapeless { output, .. } => output.0 == item,
+        Recipe::Special(_) => false,
+    }) || r.smelting.iter().any(|s| s.output.0 == item)
 }
 
 /// The smelting recipe for an input (`FurnaceRecipes.getSmeltingResult`).

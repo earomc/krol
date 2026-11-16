@@ -22,7 +22,7 @@ Status as of 2026-11-16 (commit `server: entities saved with their chunk`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **The remaining M4 items**: firework and banner recipes, maps, the other containers
+1. **The remaining M4 items**: maps, the other containers
    and item-placed blocks, special block drops (see the tables below).
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
@@ -411,8 +411,9 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `CraftingManager`: shaped and shapeless recipes, order | ✅ | Extracted from vanilla (`RecipeDump.java`) |
 | `FurnaceRecipes`: smelting results and experience | ✅ | |
 | `RecipeRepairItem`, `RecipesArmorDyes`, `RecipeBookCloning`, `RecipesMapCloning`, `RecipesMapExtending` | ✅ | |
-| `RecipeFireworks` | ❌ | |
-| `RecipesBanners` (patterns, duplication) | ❌ | |
+| `RecipeFireworks` | ✅ | Rockets (no tag without stars), stars, fading (the detached-tag quirk) |
+| `RecipesBanners` (patterns, duplication) | ✅ | Layered patterns only on a 3x3 grid; item patterns anywhere (black without dye) |
+| `StatList.initCraftableStats` | ✅ | Only items some fixed recipe or smelting makes count `stat.craftItem` (not firework stars, rockets, filled maps, book copies) |
 
 ## net.minecraft.inventory
 

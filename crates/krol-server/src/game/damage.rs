@@ -438,10 +438,8 @@ impl Game {
             let health = p.health();
             p.set_health(health - damage);
             self.track_damage(i, source, damage);
-            let p = &mut self.players[i];
             if damage < 3.402_823_5e37 {
-                p.stats
-                    .add("stat.damageTaken", (damage * 10.0).round() as i32);
+                self.add_stat(i, "stat.damageTaken", (damage * 10.0).round() as i32);
             }
         }
     }

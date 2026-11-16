@@ -931,6 +931,7 @@ impl Game {
                 .map_or(0, |s| s.count);
             let amount = i32::from(b.count - left);
             if amount > 0
+                && super::recipes::has_craft_stat(b.id)
                 && let Some(name) = krol_world::items::name_for_id(b.id)
             {
                 self.add_stat(

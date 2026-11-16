@@ -375,9 +375,11 @@ impl Game {
         }
         let taken = std::mem::take(&mut o.taken);
         if let Some(name) = krol_world::items::name_for_id(output.id) {
-            self.players[i]
-                .stats
-                .add(&format!("stat.craftItem.{}", name.replace(':', ".")), taken);
+            self.add_stat(
+                i,
+                &format!("stat.craftItem.{}", name.replace(':', ".")),
+                taken,
+            );
         }
         self.furnace_xp(i, output, taken);
     }

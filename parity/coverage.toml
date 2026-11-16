@@ -255,8 +255,8 @@ scenarios = ["play/xp_orbs"]
 
 [[feature]]
 id = "play.special_recipes"
-description = "Special crafting recipes: item repair, leather armor dyes, book cloning, map cloning and extending (unit tests); per-recipe remaining items. Not yet: fireworks, banner patterns"
-scenarios = ["play/special_recipes"]
+description = "Special crafting recipes: item repair, leather armor dyes, book cloning, map cloning and extending (unit tests); per-recipe remaining items; firework stars and rockets, banner patterns and their duplication (the original stays), craft statistics only for items a fixed recipe makes"
+scenarios = ["play/special_recipes", "play/firework_banner_recipes"]
 
 [[feature]]
 id = "blocks.updates"

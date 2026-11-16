@@ -309,9 +309,7 @@ impl Game {
                 p.inventory[slot] = None;
             }
         }
-        self.players[i]
-            .stats
-            .add("stat.damageDealt", (damage * 10.0).round() as i32);
+        self.add_stat(i, "stat.damageDealt", (damage * 10.0).round() as i32);
         if fire_aspect > 0 {
             self.ignite_player(t, fire_aspect * 4);
         }
