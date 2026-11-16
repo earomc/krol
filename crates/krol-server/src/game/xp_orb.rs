@@ -1,18 +1,21 @@
 //! Experience orbs (vanilla: `EntityXPOrb`, `Block.dropXpOnBlockBreak`,
 //! `SlotFurnaceOutput.onCrafting`).
 //!
-//! TODO(M5): orbs in lava (fizz), pushOutOfBlocks, water flow, damage, saving orbs with
-//! their chunk; experience from mobs, breeding, trading, fishing and the player's own
+//! TODO(M5): orbs in lava (fizz), pushOutOfBlocks, water flow, damage; experience from mobs, breeding, trading, fishing and the player's own
 //! death.
 
 use krol_java::math::floor_f64;
-use krol_protocol::packets::play::{ClientboundPlay, ItemStack, Metadata, MetadataValue};
+use krol_nbt::{Compound, Tag};
+use krol_protocol::packets::play::{ClientboundPlay, ItemStack, Metadata};
 
 use super::Game;
 use super::physics::{self, Body};
+use super::saved_entities::EntityBase;
 
 /// Orbs are 0.5 x 0.5 on the server (`setSize` in the constructor).
 const SIZE: f32 = 0.5;
+/// Orbs created from saved data are 0.25 x 0.25 (the world-only constructor's size).
+pub const LOADED_SIZE: f32 = 0.25;
 /// Orbs fly to the closest player within this distance.
 const ATTRACT_RANGE: f64 = 8.0;
 /// Gravity per tick.
@@ -39,6 +42,8 @@ pub fn xp_split(amount: i32) -> i32 {
 pub struct XpOrb {
     /// Physics state.
     pub body: Body,
+    /// The base entity state.
+    pub base: EntityBase,
     /// Experience it gives (`xpValue`).
     pub value: i32,
     /// Ticks lived (`xpOrbAge`).
@@ -61,16 +66,33 @@ pub struct XpOrb {
 
 impl XpOrb {
     /// Vanilla's metadata for an orb (the base entity values).
-    pub fn metadata() -> Vec<Metadata> {
-        use MetadataValue::{Byte, Short, String};
-        let md = |index, value| Metadata { index, value };
-        vec![
-            md(0, Byte(0)),
-            md(1, Short(300)),
-            md(2, String(std::string::String::new())),
-            md(3, Byte(0)),
-            md(4, Byte(0)),
-        ]
+    pub fn metadata(&self) -> Vec<Metadata> {
+        self.base.metadata()
+    }
+
+    /// `EntityXPOrb.readEntityFromNBT` for an orb loaded with its chunk.
+    pub fn load(body: Body, base: EntityBase, c: &Compound) -> Self {
+        let p = body.pos;
+        Self {
+            body,
+            base,
+            value: i32::from(c.get_i16("Value")),
+            age: i32::from(c.get_i16("Age")),
+            color: 0,
+            target_color: 0,
+            target: None,
+            pickup_delay: 0,
+            dead: false,
+            health: i32::from(c.get_i16("Health") as u8),
+            chunk: (floor_f64(p.0) >> 4, floor_f64(p.2) >> 4),
+        }
+    }
+
+    /// `EntityXPOrb.writeEntityToNBT`.
+    pub fn write(&self, c: &mut Compound) {
+        c.insert("Health", Tag::Short(i16::from(self.health as i8)));
+        c.insert("Age", Tag::Short(self.age as i16));
+        c.insert("Value", Tag::Short(self.value as i16));
     }
 }
 
@@ -80,7 +102,7 @@ impl Game {
     pub(super) fn spawn_orb(&mut self, pos: (f64, f64, f64), value: i32) {
         let entity_id = self.next_entity_id();
         let r = &mut self.math_random;
-        let _yaw = r.next_double();
+        let yaw = (r.next_double() * 360.0) as f32;
         let mut horizontal =
             || f64::from((r.next_double() * f64::from(0.2f32) - f64::from(0.1f32)) as f32 * 2.0);
         let mx = horizontal();
@@ -98,6 +120,7 @@ impl Game {
             entity_id,
             XpOrb {
                 body,
+                base: EntityBase::facing(yaw),
                 value,
                 age: 0,
                 color: 0,
@@ -109,7 +132,7 @@ impl Game {
                 chunk: (floor_f64(pos.0) >> 4, floor_f64(pos.2) >> 4),
             },
         );
-        self.track_entity(entity_id);
+        self.spawn_entity_in_world(entity_id);
     }
 
     /// Splits `amount` into orbs at `pos` (`dropXpOnBlockBreak`, death drops).
@@ -125,9 +148,11 @@ impl Game {
     pub(super) fn update_orb(&mut self, id: i32) {
         if self.orbs.get(&id).is_some_and(|o| !o.dead) {
             self.tick_orb(id);
+            self.relocate_entity(id);
         }
         if self.orbs.get(&id).is_some_and(|o| o.dead) {
             self.orbs.remove(&id);
+            self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
         }
     }
@@ -197,7 +222,11 @@ impl Game {
             }
         }
         let m = orb.body.motion;
-        physics::move_entity_quiet(&mut self.level.overworld, &mut orb.body, m.0, m.1, m.2);
+        let moved =
+            physics::move_entity_quiet(&mut self.level.overworld, &mut orb.body, m.0, m.1, m.2);
+        orb.base
+            .update_fall_state(orb.body.on_ground, moved.moved_y);
+        orb.base.moved();
         // doBlockCollisions, with the orb in the world.
         let bb = orb.body.bb();
         self.orbs.insert(id, orb);
@@ -260,8 +289,7 @@ impl Game {
         }
     }
 
-    /// `Block.dropXpOnBlockBreak` after a survival harvest of an ore that dropped its
-    /// item rather than itself.
+    /// `Block.dropXpOnBlockBreak` for an ore that dropped its item rather than itself.
     pub(super) fn drop_block_xp(&mut self, pos: (i32, i32, i32), block: u16) {
         use super::ids::block as b;
         use krol_java::math::random_i32_in_range as range;

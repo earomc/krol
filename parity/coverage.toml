@@ -269,6 +269,11 @@ description = "Falling sand, gravel and anvils: scheduled checks on placement an
 scenarios = ["play/falling_blocks", "play/falling_anvils"]
 
 [[feature]]
+id = "entities.chunk_nbt"
+description = "Entities saved with their chunk: items and experience orbs written per section (base entity fields, item and orb fields), chunks with entities saved by needsSaving's rule, loaded back after a restart with their UUIDs (entity ids before the first player), tracked for a joining player and saved again; ores broken by /setblock destroy drop experience. Unit tests: falling blocks and primed TNT fields, legacy minecart ids, UUID strings"
+scenarios = ["play/chunk_entities"]
+
+[[feature]]
 id = "redstone.basics"
 description = "Redstone power queries (strong/weak, normal cubes relaying), redstone wire (power levels, connections, update order via HashSet<BlockPos> order), redstone torches (delay, burnout), lamps; levers, buttons and redstone blocks as sources. Not yet: repeaters, comparators, pistons, power-driven doors and the other consumers"
 scenarios = ["play/redstone_basics"]

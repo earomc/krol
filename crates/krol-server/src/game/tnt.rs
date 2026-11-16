@@ -6,16 +6,17 @@
 //! saving primed TNT with its chunk.
 
 use krol_java::math::floor_f64;
-use krol_protocol::packets::play::{Metadata, MetadataValue};
+use krol_protocol::packets::play::Metadata;
 
 use super::Game;
 use super::physics::{self, Body};
+use super::saved_entities::EntityBase;
 
 /// `tnt`; metadata bit 1 is `explode` (breaking it primes it).
 pub const TNT: u16 = 46;
 const EXPLODE_BIT: u16 = 1;
 /// Entity size (`setSize(0.98F, 0.98F)`).
-const SIZE: f32 = 0.98;
+pub const SIZE: f32 = 0.98;
 /// The fuse of TNT primed by a player, redstone or fire (`fuse = 80`).
 pub const FUSE: i32 = 80;
 /// Upward speed when primed (`motionY = 0.2F`).
@@ -36,6 +37,8 @@ const PRIMED_SOUND: &str = "game.tnt.primed";
 pub struct PrimedTnt {
     /// Physics state.
     pub body: Body,
+    /// The base entity state.
+    pub base: EntityBase,
     /// Ticks until it explodes (`fuse`).
     pub fuse: i32,
     /// The player who lit it, by entity id (`tntPlacedBy`).
@@ -48,16 +51,26 @@ pub struct PrimedTnt {
 
 impl PrimedTnt {
     /// Vanilla's metadata for primed TNT (the base entity values).
-    pub fn metadata() -> Vec<Metadata> {
-        use MetadataValue::{Byte, Short, String};
-        let md = |index, value| Metadata { index, value };
-        vec![
-            md(0, Byte(0)),
-            md(1, Short(300)),
-            md(2, String(std::string::String::new())),
-            md(3, Byte(0)),
-            md(4, Byte(0)),
-        ]
+    pub fn metadata(&self) -> Vec<Metadata> {
+        self.base.metadata()
+    }
+
+    /// `EntityTNTPrimed.readEntityFromNBT` for TNT loaded with its chunk (nobody lit it).
+    pub fn load(body: Body, base: EntityBase, c: &krol_nbt::Compound) -> Self {
+        let p = body.pos;
+        Self {
+            body,
+            base,
+            fuse: i32::from(c.get_i8("Fuse")),
+            placed_by: None,
+            dead: false,
+            chunk: (floor_f64(p.0) >> 4, floor_f64(p.2) >> 4),
+        }
+    }
+
+    /// `EntityTNTPrimed.writeEntityToNBT`.
+    pub fn write(&self, c: &mut krol_nbt::Compound) {
+        c.insert("Fuse", krol_nbt::Tag::Byte(self.fuse as i8));
     }
 }
 
@@ -92,13 +105,14 @@ impl Game {
             entity_id,
             PrimedTnt {
                 body,
+                base: EntityBase::default(),
                 fuse,
                 placed_by,
                 dead: false,
                 chunk: (floor_f64(at.0) >> 4, floor_f64(at.2) >> 4),
             },
         );
-        self.track_entity(entity_id);
+        self.spawn_entity_in_world(entity_id);
         entity_id
     }
 
@@ -153,9 +167,11 @@ impl Game {
     pub(super) fn update_tnt(&mut self, id: i32) {
         if self.tnt.get(&id).is_some_and(|t| !t.dead) {
             self.tick_tnt(id);
+            self.relocate_entity(id);
         }
         if self.tnt.get(&id).is_some_and(|t| t.dead) {
             self.tnt.remove(&id);
+            self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
         }
     }
@@ -167,7 +183,10 @@ impl Game {
         };
         t.body.motion.1 -= f64::from(GRAVITY);
         let m = t.body.motion;
-        physics::move_entity_quiet(&mut self.level.overworld, &mut t.body, m.0, m.1, m.2);
+        let moved =
+            physics::move_entity_quiet(&mut self.level.overworld, &mut t.body, m.0, m.1, m.2);
+        t.base.update_fall_state(t.body.on_ground, moved.moved_y);
+        t.base.moved();
         let bb = t.body.bb();
         self.tnt.insert(id, t);
         let touched = self.block_collisions(&bb);
@@ -203,6 +222,9 @@ impl Game {
             .contract([0.001, 0.001, 0.001]);
         let (water, push) = super::liquids::water_movement(&mut self.level.overworld, &bb, true);
         t.body.in_water = water;
+        if water {
+            t.base.wet();
+        }
         t.body.motion.0 += push.0;
         t.body.motion.1 += push.1;
         t.body.motion.2 += push.2;

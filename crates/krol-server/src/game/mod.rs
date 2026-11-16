@@ -55,6 +55,7 @@ mod random_ticks;
 mod raytrace;
 mod recipes;
 mod redstone;
+mod saved_entities;
 mod scheduler;
 mod scoreboard;
 mod selector;
@@ -355,6 +356,8 @@ struct Game {
     entity_rand: krol_java::JavaRandom,
     /// The UUIDs of the non-player entities (`entityUniqueID`), by entity id.
     entity_uuids: std::collections::HashMap<i32, u128>,
+    /// The entities of each chunk section, and saved entities krol only keeps.
+    chunk_entities: saved_entities::ChunkEntities,
     /// `save-on` / `save-off`.
     saving_enabled: bool,
     /// The world's unseeded `Random` (weather durations).
@@ -422,6 +425,7 @@ pub fn start(
                 .map_or(0, |d| d.as_nanos() as i64),
         ),
         entity_uuids: std::collections::HashMap::new(),
+        chunk_entities: Default::default(),
         entity_rand: krol_java::JavaRandom::new(
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -459,6 +463,8 @@ pub fn start(
             game.thunder = (1.0, 1.0);
         }
     }
+    // The spawn area loaded before the server started brings its saved entities.
+    game.load_chunk_entities();
     let thread = std::thread::Builder::new()
         .name("Server thread".into())
         .spawn(move || {
@@ -554,7 +560,7 @@ impl Game {
             for p in &mut self.players {
                 p.save(&dir);
             }
-            self.level.save_quietly();
+            self.save_level(false);
             self.scoreboard.save(&self.level.dir);
         }
         let radius = self.config.view_distance;
@@ -566,6 +572,7 @@ impl Game {
         // entity id order; dead items are removed when the loop reaches them.
         // Entities spawned during the loop are appended to the list it walks
         // (`loadedEntityList`), so they get their first update at its end, this tick.
+        self.load_chunk_entities();
         let mut order: Vec<i32> = self.players.iter().map(|p| p.entity_id).collect();
         order.extend(self.items.keys().copied());
         order.extend(self.orbs.keys().copied());
@@ -1060,6 +1067,7 @@ impl Game {
             }
         }
         // createPlayerForUser builds the player entity right away, taking its id.
+        self.load_chunk_entities();
         join.entity_id = self.next_entity_id;
         self.next_entity_id += 1;
         if online {
@@ -1473,6 +1481,7 @@ impl Game {
         for packet in self.chunk_descriptions(&batch) {
             self.players[i].send(packet);
         }
+        self.load_chunk_entities();
         self.chunks_sent(i, &batch);
     }
 
@@ -2439,7 +2448,7 @@ impl Game {
         }
         self.players.clear();
         info!("Saving worlds");
-        self.level.save_all();
+        self.save_level(true);
         self.scoreboard.save(&self.level.dir);
     }
 }

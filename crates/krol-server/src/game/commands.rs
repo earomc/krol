@@ -1106,7 +1106,7 @@ impl Game {
                 for p in &mut self.players {
                     p.save(&dir);
                 }
-                self.level.save_quietly();
+                self.save_level(false);
                 self.scoreboard.save(&self.level.dir);
                 self.notify(sender, name, false, "commands.save.success", vec![]);
                 Ok(())

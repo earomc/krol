@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-16 (commit after `server: scoreboard, /scoreboard and /trigger`).
+Status as of 2026-11-16 (commit `server: entities saved with their chunk`).
 
 **Legend**
 
@@ -22,13 +22,10 @@ Status as of 2026-11-16 (commit after `server: scoreboard, /scoreboard and /trig
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **Entities in chunks**: load items, XP orbs, falling blocks and primed TNT from a
-   chunk's `Entities` (with their UUIDs) and save them back; today krol keeps the list it
-   read untouched and never saves the entities it spawned.
-2. **Dead body vs. experience pickup order** (see Death below), the statistic
+1. **Dead body vs. experience pickup order** (see Death below), the statistic
    scores' exact timing (see scoreboard), and parity coverage for critical hits, sprint
    knockback, fire aspect, thorns and the assisted/finished fall messages.
-3. **The remaining M4 items**: firework and banner recipes, maps, the other containers
+2. **The remaining M4 items**: firework and banner recipes, maps, the other containers
    and item-placed blocks, special block drops (see the tables below).
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
@@ -483,7 +480,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityList` (ids, names, NBT creation, spawn eggs) | ❌ | |
 | `SharedMonsterAttributes`, `ai.attributes` | ✅ | Players |
 | `EntityBodyHelper`, look/move/jump helpers | ❌ | |
-| Entities in chunk NBT (`Entities`): loading and saving | ❌ | The list read from disk is written back unchanged; entities krol spawns are not saved and saved ones are not loaded |
+| Entities in chunk NBT (`Entities`): loading and saving | 🟡 | Items, XP orbs, falling blocks and primed TNT are loaded (UUIDs, base entity fields, legacy minecart ids, unknown ids skipped with vanilla's warning) and saved per chunk section in vanilla's order, with `needsSaving`'s entity rule. Other kinds keep their saved NBT and are written back unchanged (not ticked or tracked); their `Riding` mounts only take entity ids. Update order follows entity ids, which matches section order for vanilla-written chunks. The "Wrong location!" warning is not logged |
 
 ### entity.player
 
@@ -511,10 +508,10 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Class | Status | Notes |
 |---|---|---|
-| `EntityItem` | ✅ | Physics, merging, pickup, despawn, water. Burning in lava/fire ❌ |
-| `EntityXPOrb` | ✅ | Lava ❌ |
-| `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random); dragon eggs, piston extensions, `TileEntityData` ❌ |
-| `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50). Saving with the chunk ❌ |
+| `EntityItem` | ✅ | Physics, merging, pickup, despawn, water, thrower, saving with the chunk. Burning in lava/fire (the saved `Fire` counter) ❌ |
+| `EntityXPOrb` | ✅ | Saving with the chunk (loaded orbs are 0.25 wide, a vanilla quirk). Lava, water flow ❌ |
+| `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random), saving with the chunk (`TileEntityData` kept); dragon eggs, piston extensions, placing `TileEntityData` ❌ |
+| `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
 | `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | ❌ | |
 | `EntityBoat` | ❌ | |
 | `EntityItemFrame`, `EntityPainting`, `EntityLeashKnot` | ❌ | |
@@ -679,6 +676,7 @@ example plugin, `docs/bukkit-to-rust.md`.
 | Feature | Status | Notes |
 |---|---|---|
 | `parity run`, `record`, `diff`, `coverage`, `report.json` | ✅ | |
+| Scenario `restart` step, saved chunk entities observation | ✅ | |
 | `--protocol 5` replays | ✅ | |
 | Vanilla agent: pinning the world random and random tick LCG, timed random tick windows (`krolpin`) | ✅ | |
 | Pinning entity randoms and the clock | ❌ | |

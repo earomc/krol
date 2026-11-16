@@ -374,7 +374,8 @@ impl Game {
     ) {
         if let Some(it) = self.items.get_mut(&id) {
             it.body.pos = pos;
-            it.yaw = rotation.0;
+            it.base.yaw = rotation.0;
+            it.base.pitch = rotation.1;
         } else if let Some(o) = self.orbs.get_mut(&id) {
             o.body.pos = pos;
         } else if let Some(f) = self.falling.get_mut(&id) {
@@ -422,7 +423,7 @@ impl Game {
                 alive: !it.dead,
                 type_name: "Item",
                 name: Some(super::item_data::item_entity_name(&it.stack)),
-                rotation: (it.yaw, 0.0),
+                rotation: (it.base.yaw, it.base.pitch),
                 entity_id: id,
             });
         }

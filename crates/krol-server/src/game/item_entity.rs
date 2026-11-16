@@ -2,20 +2,23 @@
 //! `Block.spawnAsEntity`, `InventoryPlayer.addItemStackToInventory`).
 //!
 //! TODO(M5): items in lava, being pushed out of solid blocks, despawn and
-//! merge rules for items with NBT, saving items with their chunk, thrown items.
+//! merge rules for items with NBT, thrown items.
 
+use krol_nbt::{Compound, Tag};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack, Metadata, MetadataValue};
 
 use super::Game;
 use super::physics::{self, Aabb, Body};
+use super::saved_entities::EntityBase;
 
 /// A dropped item stack in the world.
 #[derive(Debug, Clone)]
 pub struct ItemEntity {
     /// Physics state (0.25 x 0.25 box).
     pub body: Body,
-    /// Yaw (random on creation, only shown in the spawn packet).
-    pub yaw: f32,
+    /// The base entity state (the yaw is random on creation and only shown in the
+    /// spawn packet).
+    pub base: EntityBase,
     /// The stack.
     pub stack: ItemStack,
     /// Ticks lived (`age`; despawns at 6000).
@@ -31,12 +34,21 @@ pub struct ItemEntity {
     /// `owner`: the only player who can pick the item up until 200 ticks before it
     /// despawns (`/give` leftovers).
     pub owner: Option<String>,
+    /// `thrower`: the player who tossed the item.
+    pub thrower: Option<String>,
     /// The chunk the entity was last added to.
     pub chunk: (i32, i32),
     /// Metadata indices changed since the tracker last sent them (all of them on
     /// creation).
     pub dirty_metadata: std::collections::BTreeSet<u8>,
 }
+
+/// Item entities are 0.25 blocks wide and high (`setSize`).
+pub const SIZE: f32 = 0.25;
+/// Metadata indices an item entity sends on creation.
+const ALL_METADATA: [u8; 6] = [0, 1, 2, 3, 4, ITEM_METADATA];
+/// The metadata index of the item stack.
+const ITEM_METADATA: u8 = 10;
 
 /// The age at which an item despawns.
 pub const DESPAWN_AGE: i32 = 6000;
@@ -55,16 +67,58 @@ pub const ENTITY_HEALTH: i32 = 5;
 impl ItemEntity {
     /// Vanilla's metadata for an item entity.
     pub fn metadata(&self) -> Vec<Metadata> {
-        use MetadataValue::{Byte, Item, Short, String};
-        let md = |index, value| Metadata { index, value };
-        vec![
-            md(0, Byte(0)),
-            md(1, Short(300)),
-            md(2, String(std::string::String::new())),
-            md(3, Byte(0)),
-            md(4, Byte(0)),
-            md(10, Item(Some(self.stack.clone()))),
-        ]
+        let mut md = self.base.metadata();
+        md.push(Metadata {
+            index: ITEM_METADATA,
+            value: MetadataValue::Item(Some(self.stack.clone())),
+        });
+        md
+    }
+
+    /// `EntityItem.readEntityFromNBT` for an item loaded with its chunk. An item whose
+    /// stack cannot be read is dead at once.
+    pub fn load(body: Body, base: EntityBase, c: &Compound, stack: Option<ItemStack>) -> Self {
+        let p = body.pos;
+        let text = |key: &str| c.contains_key(key).then(|| c.get_str(key).to_owned());
+        Self {
+            body,
+            base,
+            dead: stack.is_none(),
+            stack: stack.unwrap_or(ItemStack {
+                id: 0,
+                count: 0,
+                damage: 0,
+                nbt: None,
+            }),
+            age: i32::from(c.get_i16("Age")),
+            // A missing delay leaves the constructor's 0.
+            pickup_delay: i32::from(c.get_i16("PickupDelay")),
+            ticks: 0,
+            health: i32::from(c.get_i16("Health") as u8),
+            owner: text("Owner"),
+            thrower: text("Thrower"),
+            chunk: (
+                krol_java::math::floor_f64(p.0) >> 4,
+                krol_java::math::floor_f64(p.2) >> 4,
+            ),
+            dirty_metadata: ALL_METADATA.into_iter().collect(),
+        }
+    }
+
+    /// `EntityItem.writeEntityToNBT`.
+    pub fn write(&self, c: &mut Compound) {
+        c.insert("Health", Tag::Short(i16::from(self.health as i8)));
+        c.insert("Age", Tag::Short(self.age as i16));
+        c.insert("PickupDelay", Tag::Short(self.pickup_delay as i16));
+        if let Some(thrower) = &self.thrower {
+            c.insert("Thrower", Tag::String(thrower.clone()));
+        }
+        if let Some(owner) = &self.owner {
+            c.insert("Owner", Tag::String(owner.clone()));
+        }
+        if let Some(item) = super::player::item_to_nbt(&self.stack) {
+            c.insert("Item", Tag::Compound(item));
+        }
     }
 }
 
@@ -207,6 +261,15 @@ impl Game {
     /// The entity also gets its UUID (`MathHelper.getRandomUuid` on the entity's own
     /// unseeded random, in the `Entity` constructor).
     pub(super) fn next_entity_id(&mut self) -> i32 {
+        // Entities saved in chunks loaded since are created first.
+        if self.level.overworld.has_loaded_entities() {
+            self.load_chunk_entities();
+        }
+        self.alloc_entity_id()
+    }
+
+    /// Allocates an entity id and its UUID without creating saved entities first.
+    pub(super) fn alloc_entity_id(&mut self) -> i32 {
         let id = self.next_entity_id;
         self.next_entity_id += 1;
         let r = &mut self.entity_rand;
@@ -251,6 +314,10 @@ impl Game {
                 self.spawn_as_entity(pos, stack);
             }
         }
+        // BlockOre / BlockRedstoneOre.dropBlockAsItemWithChance: ores that drop an item
+        // rather than themselves also drop experience, whatever broke them.
+        // TODO(M5): not with silk touch (the ore drops itself).
+        self.drop_block_xp(pos, state >> 4);
     }
 
     /// `Block.spawnAsEntity`: one stack at a random spot in the block, unless the
@@ -294,13 +361,13 @@ impl Game {
         let mx = f64::from((r.next_double() * f64::from(0.2f32) - f64::from(0.1f32)) as f32);
         let mz = f64::from((r.next_double() * f64::from(0.2f32) - f64::from(0.1f32)) as f32);
         let mut body = Body::player(pos, false);
-        body.width = 0.25;
-        body.height = 0.25;
+        body.width = SIZE;
+        body.height = SIZE;
         body.step_height = 0.0;
         body.motion = motion.unwrap_or((mx, f64::from(0.2f32), mz));
         let item = ItemEntity {
             body,
-            yaw,
+            base: EntityBase::facing(yaw),
             stack,
             age: 0,
             pickup_delay: delay,
@@ -308,14 +375,15 @@ impl Game {
             dead: false,
             health: ENTITY_HEALTH,
             owner: None,
+            thrower: None,
             chunk: (
                 krol_java::math::floor_f64(pos.0) >> 4,
                 krol_java::math::floor_f64(pos.2) >> 4,
             ),
-            dirty_metadata: [0, 1, 2, 3, 4, 10].into_iter().collect(),
+            dirty_metadata: ALL_METADATA.into_iter().collect(),
         };
         self.items.insert(entity_id, item);
-        self.track_entity(entity_id);
+        self.spawn_entity_in_world(entity_id);
         entity_id
     }
 
@@ -323,9 +391,11 @@ impl Game {
     pub(super) fn update_item(&mut self, id: i32) {
         if self.items.get(&id).is_some_and(|it| !it.dead) {
             self.tick_item(id);
+            self.relocate_entity(id);
         }
         if self.items.get(&id).is_some_and(|it| it.dead) {
             self.items.remove(&id);
+            self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
         }
     }
@@ -359,6 +429,9 @@ impl Game {
             self.play_sound_near_except(None, "game.neutral.swim.splash", pos, volume, pitch);
         }
         it.body.in_water = water;
+        if water {
+            it.base.wet();
+        }
         if it.pickup_delay > 0 && it.pickup_delay != 32767 {
             it.pickup_delay -= 1;
         }
@@ -366,7 +439,10 @@ impl Game {
         it.body.motion.1 -= f64::from(0.04f32);
         // TODO(M5): pushOutOfBlocks when stuck inside a solid block.
         let m = it.body.motion;
-        physics::move_entity_quiet(&mut self.level.overworld, &mut it.body, m.0, m.1, m.2);
+        let moved =
+            physics::move_entity_quiet(&mut self.level.overworld, &mut it.body, m.0, m.1, m.2);
+        it.base.update_fall_state(it.body.on_ground, moved.moved_y);
+        it.base.moved();
         // doBlockCollisions, with the item in the world.
         let bb = it.body.bb();
         self.items.insert(id, it);
@@ -589,8 +665,15 @@ impl Game {
         if traced {
             p.stats.add("stat.drop", 1);
         }
-        // TODO(M5): remember the thrower (diamondsToYou achievement).
-        self.spawn_item_moving(pos, stack, 40, Some(motion))
+        // TODO(M5): the diamondsToYou achievement for the thrower.
+        let id = self.spawn_item_moving(pos, stack, 40, Some(motion));
+        if traced {
+            let name = self.players[i].profile.name.clone();
+            if let Some(it) = self.items.get_mut(&id) {
+                it.thrower = Some(name);
+            }
+        }
+        id
     }
 
     /// Items near the player get picked up (`EntityPlayer.onLivingUpdate` collisions,

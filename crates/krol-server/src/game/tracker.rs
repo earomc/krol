@@ -224,8 +224,8 @@ impl Game {
         let it = self.items.get(&entity_id)?;
         Some(View {
             pos: it.body.pos,
-            yaw: it.yaw,
-            pitch: 0.0,
+            yaw: it.base.yaw,
+            pitch: it.base.pitch,
             head: 0.0,
             on_ground: it.body.on_ground,
             motion: it.body.motion,
@@ -459,7 +459,7 @@ impl Game {
             });
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,
-                metadata: super::falling_block::FallingBlock::metadata(),
+                metadata: f.metadata(),
             });
             packets.push(ClientboundPlay::EntityVelocity {
                 entity_id,
@@ -467,7 +467,7 @@ impl Game {
                 y: velocity.1,
                 z: velocity.2,
             });
-        } else if self.tnt.contains_key(&entity_id) {
+        } else if let Some(t) = self.tnt.get(&entity_id) {
             // Data 0: the spawn packet carries no velocity.
             packets.push(ClientboundPlay::SpawnObject {
                 entity_id,
@@ -482,7 +482,7 @@ impl Game {
             });
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,
-                metadata: super::tnt::PrimedTnt::metadata(),
+                metadata: t.metadata(),
             });
             packets.push(ClientboundPlay::EntityVelocity {
                 entity_id,
@@ -500,7 +500,7 @@ impl Game {
             });
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,
-                metadata: super::xp_orb::XpOrb::metadata(),
+                metadata: o.metadata(),
             });
             packets.push(ClientboundPlay::EntityVelocity {
                 entity_id,

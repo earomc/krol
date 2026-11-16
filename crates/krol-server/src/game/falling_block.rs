@@ -1,17 +1,19 @@
 //! Falling sand, gravel and anvils (vanilla: `BlockFalling`, `BlockAnvil`,
 //! `EntityFallingBlock`).
 //!
-//! TODO(M5): dragon eggs; falling blocks on pistons; tile entity data of falling
-//! blocks; saving them with their chunk.
+//! TODO(M5): dragon eggs; falling blocks on pistons; placing the tile entity data of
+//! falling blocks.
 
 use krol_java::math::floor_f64;
-use krol_protocol::packets::play::{ItemStack, Metadata, MetadataValue};
+use krol_nbt::{Compound, Tag, TagType};
+use krol_protocol::packets::play::{ItemStack, Metadata};
 
 use super::Game;
 use super::block_data::{self, Material};
 use super::damage::DamageSource;
 use super::ids::block;
 use super::physics::{self, Body};
+use super::saved_entities::EntityBase;
 
 /// Ticks between a sand or gravel block being disturbed and falling (`tickRate`).
 pub const FALL_DELAY: i32 = 2;
@@ -19,7 +21,7 @@ pub const FALL_DELAY: i32 = 2;
 /// otherwise the block drops straight down (`checkFallable`).
 const LOADED_RADIUS: i32 = 32;
 /// Entity size (`setSize(0.98F, 0.98F)`).
-const SIZE: f32 = 0.98;
+pub const SIZE: f32 = 0.98;
 /// Gravity and drag per tick.
 const GRAVITY: f32 = 0.04;
 const DRAG: f32 = 0.98;
@@ -88,14 +90,22 @@ pub fn can_fall_into(state: u16) -> bool {
 pub struct FallingBlock {
     /// Physics state.
     pub body: Body,
+    /// The base entity state.
+    pub base: EntityBase,
     /// The block state it carries (`fallTile`).
     pub state: u16,
     /// Ticks fallen (`fallTime`).
     fall_time: i32,
-    /// Distance fallen since it last touched the ground (`fallDistance`).
-    fall_distance: f32,
+    /// Drops as an item when it cannot land (`shouldDropItem`).
+    drop_item: bool,
     /// Hurts entities it lands on (`hurtEntities`, set for anvils).
     hurt_entities: bool,
+    /// Damage per block fallen beyond the first (`fallHurtAmount`).
+    fall_hurt_amount: f32,
+    /// The most damage it deals (`fallHurtMax`).
+    fall_hurt_max: i32,
+    /// `tileEntityData` (only kept and saved).
+    tile_entity_data: Option<Compound>,
     /// Broke apart on landing and leaves nothing behind (`canSetAsBlock`, an anvil
     /// damaged beyond its last stage).
     shattered: bool,
@@ -107,16 +117,69 @@ pub struct FallingBlock {
 
 impl FallingBlock {
     /// Vanilla's metadata for a falling block (the base entity values).
-    pub fn metadata() -> Vec<Metadata> {
-        use MetadataValue::{Byte, Short, String};
-        let md = |index, value| Metadata { index, value };
-        vec![
-            md(0, Byte(0)),
-            md(1, Short(300)),
-            md(2, String(std::string::String::new())),
-            md(3, Byte(0)),
-            md(4, Byte(0)),
-        ]
+    pub fn metadata(&self) -> Vec<Metadata> {
+        self.base.metadata()
+    }
+
+    /// `EntityFallingBlock.readEntityFromNBT` for a block loaded with its chunk: the
+    /// block by name (or by its old numeric `TileID` / `Tile`), sand when it is air.
+    pub fn load(body: Body, base: EntityBase, c: &Compound) -> Self {
+        let meta = c.get_i8("Data") as u8;
+        let id = if c.contains_key_of("Block", Some(TagType::String)) {
+            super::scheduler::block_by_name(c.get_str("Block")).unwrap_or(block::AIR)
+        } else if c.contains_key_of("TileID", None) {
+            u16::try_from(c.get_i32("TileID")).unwrap_or(block::AIR)
+        } else {
+            u16::from(c.get_i8("Tile") as u8)
+        };
+        let state = if block_data::material(id) == Material::Air {
+            block::SAND << 4
+        } else {
+            id << 4 | u16::from(super::world::normalize_meta(id, meta).unwrap_or(0))
+        };
+        let explicit_hurt = c.contains_key_of("HurtEntities", None);
+        let p = body.pos;
+        Self {
+            body,
+            base,
+            state,
+            fall_time: i32::from(c.get_i8("Time") as u8),
+            drop_item: !c.contains_key_of("DropItem", None) || c.get_bool("DropItem"),
+            hurt_entities: if explicit_hurt {
+                c.get_bool("HurtEntities")
+            } else {
+                id == block::ANVIL
+            },
+            fall_hurt_amount: if explicit_hurt {
+                c.get_f32("FallHurtAmount")
+            } else {
+                FALL_HURT_AMOUNT
+            },
+            fall_hurt_max: if explicit_hurt {
+                c.get_i32("FallHurtMax")
+            } else {
+                FALL_HURT_MAX
+            },
+            tile_entity_data: c.get_compound("TileEntityData").cloned(),
+            shattered: false,
+            dead: false,
+            chunk: (floor_f64(p.0) >> 4, floor_f64(p.2) >> 4),
+        }
+    }
+
+    /// `EntityFallingBlock.writeEntityToNBT`.
+    pub fn write(&self, c: &mut Compound) {
+        let name = super::scheduler::block_name(self.state >> 4).unwrap_or_default();
+        c.insert("Block", Tag::String(name));
+        c.insert("Data", Tag::Byte((self.state & 15) as i8));
+        c.insert("Time", Tag::Byte(self.fall_time as i8));
+        c.insert("DropItem", Tag::Byte(i8::from(self.drop_item)));
+        c.insert("HurtEntities", Tag::Byte(i8::from(self.hurt_entities)));
+        c.insert("FallHurtAmount", Tag::Float(self.fall_hurt_amount));
+        c.insert("FallHurtMax", Tag::Int(self.fall_hurt_max));
+        if let Some(data) = &self.tile_entity_data {
+            c.insert("TileEntityData", Tag::Compound(data.clone()));
+        }
     }
 
     /// The spawn packet's data: the block state id (`Block.getStateId`).
@@ -167,26 +230,32 @@ impl Game {
             entity_id,
             FallingBlock {
                 body,
+                base: EntityBase::default(),
                 state,
                 fall_time: 0,
-                fall_distance: 0.0,
+                drop_item: true,
                 // BlockAnvil.onStartFalling.
                 hurt_entities: state >> 4 == block::ANVIL,
+                fall_hurt_amount: FALL_HURT_AMOUNT,
+                fall_hurt_max: FALL_HURT_MAX,
+                tile_entity_data: None,
                 shattered: false,
                 dead: false,
                 chunk: (floor_f64(at.0) >> 4, floor_f64(at.2) >> 4),
             },
         );
-        self.track_entity(entity_id);
+        self.spawn_entity_in_world(entity_id);
     }
 
     /// One falling block's turn in the entity loop.
     pub(super) fn update_falling(&mut self, id: i32) {
         if self.falling.get(&id).is_some_and(|f| !f.dead) {
             self.tick_falling(id);
+            self.relocate_entity(id);
         }
         if self.falling.get(&id).is_some_and(|f| f.dead) {
             self.falling.remove(&id);
+            self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
         }
     }
@@ -234,17 +303,14 @@ impl Game {
         let moved =
             physics::move_entity_quiet(&mut self.level.overworld, &mut f.body, m.0, m.1, m.2);
         // updateFallState.
-        if f.body.on_ground {
-            if f.fall_distance > 0.0 {
-                // BlockFarmland.onFallenUpon only passes the fall on for living entities.
-                if moved.below.1 >> 4 != block::FARMLAND {
-                    self.falling_block_fall(id, &mut f);
-                }
-                f.fall_distance = 0.0;
+        if f.body.on_ground && f.base.fall_distance > 0.0 {
+            // BlockFarmland.onFallenUpon only passes the fall on for living entities.
+            if moved.below.1 >> 4 != block::FARMLAND {
+                self.falling_block_fall(id, &mut f);
             }
-        } else if moved.moved_y < 0.0 {
-            f.fall_distance = (f64::from(f.fall_distance) - moved.moved_y) as f32;
         }
+        f.base.update_fall_state(f.body.on_ground, moved.moved_y);
+        f.base.moved();
         // doBlockCollisions, with the falling block in the world.
         let bb = f.body.bb();
         self.falling.insert(id, f);
@@ -288,7 +354,7 @@ impl Game {
             drop = true;
             f.dead = true;
         }
-        let (state, pos) = (f.state, f.body.pos);
+        let (state, pos, drop) = (f.state, f.body.pos, drop && f.drop_item);
         self.falling.insert(id, f);
         if let Some(at) = landed {
             self.set_block_notify(at, state);
@@ -307,7 +373,7 @@ impl Game {
         if !f.hurt_entities {
             return;
         }
-        let blocks = krol_java::math::ceil_f32(f.fall_distance - 1.0);
+        let blocks = krol_java::math::ceil_f32(f.base.fall_distance - 1.0);
         if blocks <= 0 {
             return;
         }
@@ -318,7 +384,7 @@ impl Game {
             DamageSource::FallingBlock
         };
         let damage =
-            krol_java::math::floor_f32(blocks as f32 * FALL_HURT_AMOUNT).min(FALL_HURT_MAX);
+            krol_java::math::floor_f32(blocks as f32 * f.fall_hurt_amount).min(f.fall_hurt_max);
         // The ticking entity is out of `falling`, so it cannot hit itself.
         for (_, target) in self.entities_within(&f.body.bb(), Some(id)) {
             self.attack_target(target, source, damage as f32);

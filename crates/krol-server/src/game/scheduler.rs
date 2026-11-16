@@ -32,14 +32,14 @@ pub struct Scheduler {
 }
 
 /// The registry name of a block id (`minecraft:` + name), as saved in `TileTicks`.
-fn block_name(block: u16) -> Option<String> {
+pub(super) fn block_name(block: u16) -> Option<String> {
     BLOCKS
         .get(usize::from(block))
         .map(|(name, _, _)| format!("minecraft:{name}"))
 }
 
 /// The block id of a registry name (`Block.getBlockFromName`).
-fn block_by_name(name: &str) -> Option<u16> {
+pub(super) fn block_by_name(name: &str) -> Option<u16> {
     let name = name.strip_prefix("minecraft:").unwrap_or(name);
     BLOCKS
         .iter()

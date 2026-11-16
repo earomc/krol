@@ -1,0 +1,68 @@
+description = "Entities saved with their chunk: a diamond ore and a stone block broken by /setblock destroy (pinned randoms) leave a diamond, experience orbs and a cobblestone; the server restarts, loads them back (UUIDs kept), they spawn for a joining player, and the final save writes them again"
+subsystem = "entity"
+
+# Nobody is online while the drops are made, so nothing picks them up and no active chunk
+# draws from World.rand. The blocks are 15 blocks east of jeb_'s spawn (-471.5, 4,
+# -434.5), out of reach of the orbs' 8-block attraction but inside the tracking range,
+# in chunk (-29, -28). `krolpin` pins World.rand (drop rolls, experience amount) and
+# Math.random() (item and orb motion) in the tick of each break.
+#
+# Ages count ticks lived, which depends on how long each server takes to stop and start;
+# resting drops keep a horizontal motion that shrinks every tick (below 1e-20 by the
+# time they are saved), so both get tolerances.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2", view-distance = "3" }
+pin_random = true
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -456 4 -434 diamond_ore"
+
+[[steps]]
+action = "console"
+command = "setblock -454 4 -434 stone"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "krolpin 7 -- setblock -456 4 -434 air 0 destroy"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "krolpin 11 -- setblock -454 4 -434 air 0 destroy"
+wait_ms = 5000
+
+[[steps]]
+action = "restart"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "jeb_"
+seconds = 4
+
+[observe]
+log = true
+entities = [[-29, -28]]
+
+[observe.tolerance]
+"entities.-29,-28[0].Age" = 60
+"entities.-29,-28[1].Age" = 60
+"entities.-29,-28[2].Age" = 60
+"entities.-29,-28[3].Age" = 60
+"entities.-29,-28[4].Age" = 60
+"entities.-29,-28[5].Age" = 60
+"entities.-29,-28[0].Motion" = 0.000001
+"entities.-29,-28[1].Motion" = 0.000001
+"entities.-29,-28[2].Motion" = 0.000001
+"entities.-29,-28[3].Motion" = 0.000001
+"entities.-29,-28[4].Motion" = 0.000001
+"entities.-29,-28[5].Motion" = 0.000001

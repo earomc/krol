@@ -127,6 +127,8 @@ pub struct World {
     /// The world's total time (`getTotalWorldTime`), kept in step by the game so chunk
     /// loading can schedule saved ticks.
     pub total_time: i64,
+    /// Chunks loaded with saved entities the game has not created yet, in load order.
+    loaded_entities: Vec<(i32, i32)>,
     chunks: HashMap<(i32, i32), LoadedChunk>,
     regions: HashMap<(i32, i32), RegionFile>,
 }
@@ -148,6 +150,10 @@ struct LoadedChunk {
     height_minimum: i32,
     /// Blocks that tick randomly per section (`ExtendedBlockStorage.tickRefCount`).
     random_counts: [u16; 16],
+    /// Entities were added since the last save (`hasEntities`).
+    has_entities: bool,
+    /// The total world time it was loaded or last saved at (`lastSaveTime`).
+    last_save_time: i64,
 }
 
 impl World {
@@ -166,6 +172,7 @@ impl World {
             scheduler: Default::default(),
             moving: Vec::new(),
             total_time: 0,
+            loaded_entities: Vec::new(),
         }
     }
 
@@ -293,7 +300,12 @@ impl World {
                         .count() as u16;
                 }
             }
-            // AnvilChunkLoader.loadEntities: saved ticks go back into the scheduler.
+            // AnvilChunkLoader.loadEntities: the game creates the saved entities, and
+            // saved ticks go back into the scheduler.
+            let has_entities = !chunk.entities.is_empty();
+            if has_entities {
+                self.loaded_entities.push((cx, cz));
+            }
             if let Some(ticks) = chunk.tile_ticks.take() {
                 self.scheduler.load(&ticks, self.total_time);
             }
@@ -322,6 +334,8 @@ impl World {
                     gap_pending: false,
                     height_minimum: 0,
                     random_counts,
+                    has_entities,
+                    last_save_time: self.total_time,
                 },
             );
             self.populate_around(cx, cz);
@@ -602,21 +616,51 @@ impl World {
         self.chunks.len()
     }
 
-    /// Writes modified chunks to their region files.
-    pub fn save_chunks(&mut self, world_time: i64) {
+    /// Whether chunks with saved entities were loaded since the last
+    /// [`Self::take_loaded_entities`].
+    pub fn has_loaded_entities(&self) -> bool {
+        !self.loaded_entities.is_empty()
+    }
+
+    /// The saved `Entities` of the chunks loaded since the last call, in load order.
+    pub fn take_loaded_entities(&mut self) -> Vec<((i32, i32), List)> {
+        let keys = std::mem::take(&mut self.loaded_entities);
+        keys.into_iter()
+            .filter_map(|k| {
+                let c = self.chunks.get_mut(&k)?;
+                Some((k, std::mem::take(&mut c.chunk.entities)))
+            })
+            .collect()
+    }
+
+    /// An entity was added to the chunk (`Chunk.addEntity` sets `hasEntities`).
+    pub fn mark_has_entities(&mut self, cx: i32, cz: i32) {
+        if let Some(c) = self.chunks.get_mut(&(cx, cz)) {
+            c.has_entities = true;
+        }
+    }
+
+    /// Writes the chunks vanilla would save in `saveChunks(true)` to their region files:
+    /// modified ones, and those that had entities unless saved this same tick
+    /// (`Chunk.needsSaving(true)`). `entities` holds each chunk's `Entities` list.
+    pub fn save_chunks(&mut self, world_time: i64, mut entities: HashMap<(i32, i32), List>) {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_secs() as u32);
         let dirty: Vec<(i32, i32)> = self
             .chunks
             .iter()
-            .filter(|(_, c)| c.modified)
+            .filter(|(_, c)| c.modified || (c.has_entities && world_time != c.last_save_time))
             .map(|(k, _)| *k)
             .collect();
         for (cx, cz) in dirty {
             let ticks = self.scheduler.chunk_ticks(cx, cz, world_time);
             if let Some(c) = self.chunks.get_mut(&(cx, cz)) {
                 c.chunk.tile_ticks = ticks;
+                // writeChunkToNBT: the flag stays set only if an entity was saved.
+                c.chunk.entities = entities.remove(&(cx, cz)).unwrap_or_default();
+                c.has_entities = !c.chunk.entities.is_empty();
+                c.last_save_time = world_time;
             }
             let root = self.chunks[&(cx, cz)].chunk.to_nbt(world_time);
             if let Some(region) = self.region(cx, cz)
@@ -650,10 +694,12 @@ impl Level {
     /// `level.dat`.
     pub fn load(dir: &Path) -> Option<Self> {
         let data = LevelData::load(dir).ok().flatten()?;
+        let mut overworld = World::new(0, dir.to_path_buf());
+        overworld.total_time = data.time();
         Some(Self {
             dir: dir.to_path_buf(),
             data,
-            overworld: World::new(0, dir.to_path_buf()),
+            overworld,
         })
     }
 
@@ -676,10 +722,11 @@ impl Level {
         }
     }
 
-    /// Saves chunks and `level.dat` without log lines (autosave, `save-all`).
-    pub fn save_quietly(&mut self) {
+    /// Saves chunks (with the given `Entities` lists) and `level.dat` without log lines
+    /// (autosave, `save-all`).
+    pub fn save_quietly(&mut self, entities: HashMap<(i32, i32), List>) {
         let time = self.data.time();
-        self.overworld.save_chunks(time);
+        self.overworld.save_chunks(time, entities);
         if let Err(e) = self.data.save(&self.dir) {
             error!("Failed to save level.dat: {e}");
         }
@@ -687,11 +734,11 @@ impl Level {
 
     /// Saves chunks and `level.dat` like vanilla's `saveAllWorlds`, logging each
     /// dimension (vanilla always has three, even with `allow-nether=false`).
-    pub fn save_all(&mut self) {
+    pub fn save_all(&mut self, entities: HashMap<(i32, i32), List>) {
         let name = self.data.level_name().to_owned();
         let time = self.data.time();
         info!("Saving chunks for level '{name}'/Overworld");
-        self.overworld.save_chunks(time);
+        self.overworld.save_chunks(time, entities);
         if let Err(e) = self.data.save(&self.dir) {
             error!("Failed to save level.dat: {e}");
         }

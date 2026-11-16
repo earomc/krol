@@ -41,7 +41,11 @@ to compare against yet: record with `KROL_VANILLA_JAR`). Work directories and fu
 observations are kept under `target/parity/` for inspection.
 
 Step actions: `status_ping` (`protocol`, `payload`), `raw` (`hex`: first chunk, observe
-until close), `login_start` (`protocol`, `name`). Observation paths listed in
+until close), `login_start` (`protocol`, `name`), `restart` (stop the server, which saves
+everything, and start it again in the same directory; background play steps are collected
+first and the log runs on). `[observe] entities = [[cx, cz]]` compares the chunks' saved
+`Entities` lists after the final stop, with each `UUIDMost`/`UUIDLeast` pair shown as one
+UUID string (so random ones compare as `<uuid-N>`). Observation paths listed in
 `observe.ignore` are excluded — use only for documented, deliberate deviations.
 
 ## Pinning vanilla's randoms
@@ -102,6 +106,10 @@ into server ticks. Rules learned from flaky scenarios:
   Offline players' UUIDs are name-based (version 3) and compared as they are.
 - Relative teleports (`tp ~ ~ ~`) are compared for 1.7 clients by resolving them against
   the previous teleport, which assumes the bot did not move in between.
+- **Space drops by their fall time**: a block dropped from 26 blocks up lands about 2 s
+  later; console drops closer together race one landing against the next spawn.
+- Resting items and orbs keep a horizontal motion that shrinks every tick, and their
+  `Age` counts ticks lived: compare saved entities with tolerances on both.
 - Spawn with `gamemode = "2"` in the properties (switch modes by console later): other
   modes randomize the spawn point with an unpinned random.
 - Vanilla on Windows logs in cp1252; the harness reads non-UTF-8 lines as Latin-1 so

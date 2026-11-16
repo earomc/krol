@@ -503,8 +503,6 @@ impl Game {
                     self.set_block_notify(pos, super::ids::block::FLOWING_WATER << 4);
                 }
             }
-            // TODO(M5): not with silk touch (the ore drops itself).
-            self.drop_block_xp(pos, b);
         }
     }
 
