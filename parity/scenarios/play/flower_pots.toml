@@ -1,0 +1,80 @@
+description = "Flower pots: placed on the ground (ItemReed), a blue orchid potted (stat.flowerPotted, tile entity sent to the client), a full pot refusing a sapling, a birch sapling in a second pot; the first mined in survival drops the plant then the pot, the second pops off when the block below goes and drops the pot then the plant"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and is switched to
+# survival from the console. Flower pots break at once (hardness 0). The drops land at
+# random spots (unseeded randoms), so their positions and motion are not compared; jeb_
+# stays out of their pickup range. Each pot sits well inside its chunk, so its drops
+# stay in that chunk.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 13
+chat = [
+    "@3000 !hold 0",
+    "@3300 !place -469 3 -436 1",
+    "@3700 !place -469 3 -430 1",
+    "@4100 !hold 1",
+    "@4400 !place -469 4 -436 1",
+    "@4800 !hold 2",
+    "@5100 !place -469 4 -436 1",
+    "@5500 !place -469 4 -430 1",
+    "@6500 !dig -469 4 -436 1 0",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ flower_pot 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ red_flower 1 1"
+
+[[steps]]
+action = "console"
+command = "give jeb_ sapling 2 2"
+wait_ms = 8000
+
+[[steps]]
+action = "console"
+command = "setblock -469 3 -430 air"
+wait_ms = 3000
+
+[observe]
+log = true
+blocks = [[-469, 4, -436], [-469, 4, -430], [-469, 5, -436]]
+entities = [[-30, -28], [-30, -27]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "entities.-30,-28[0].Pos", "entities.-30,-28[0].Motion", "entities.-30,-28[0].Rotation",
+    "entities.-30,-28[0].Age", "entities.-30,-28[0].OnGround", "entities.-30,-28[0].FallDistance",
+    "entities.-30,-28[1].Pos", "entities.-30,-28[1].Motion", "entities.-30,-28[1].Rotation",
+    "entities.-30,-28[1].Age", "entities.-30,-28[1].OnGround", "entities.-30,-28[1].FallDistance",
+    "entities.-30,-27[0].Pos", "entities.-30,-27[0].Motion", "entities.-30,-27[0].Rotation",
+    "entities.-30,-27[0].Age", "entities.-30,-27[0].OnGround", "entities.-30,-27[0].FallDistance",
+    "entities.-30,-27[1].Pos", "entities.-30,-27[1].Motion", "entities.-30,-27[1].Rotation",
+    "entities.-30,-27[1].Age", "entities.-30,-27[1].OnGround", "entities.-30,-27[1].FallDistance",
+]

@@ -502,3 +502,8 @@ scenarios = ["play/fall_messages"]
 id = "blocks.banners"
 description = "Banners: standing (rotation) and wall placement from the item with its base color and patterns, the tile entity and its description packet, survival harvest drop (Base and Patterns), the wall banner popping off with its whole tile entity"
 scenarios = ["play/banners"]
+
+[[feature]]
+id = "blocks.flower_pots"
+description = "Flower pots: placement (ItemReed, solid top below), potting a plant (stat.flowerPotted, description packet), a full pot refusing another plant, the plant dropping before the pot when mined and after it when the pot pops off"
+scenarios = ["play/flower_pots"]

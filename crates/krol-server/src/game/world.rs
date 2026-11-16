@@ -505,8 +505,13 @@ impl World {
         if old != new && has_tile_entity(old) && !furnace_swap {
             self.remove_tile_entity(pos);
         }
-        if super::banner::is_banner(new) && old != new && self.tile_entity_index(pos).is_none() {
-            let te = super::banner::new_tile_entity(pos);
+        let fresh = old != new && self.tile_entity_index(pos).is_none();
+        if fresh && (super::banner::is_banner(new) || new == super::flower_pot::FLOWER_POT) {
+            let te = if new == super::flower_pot::FLOWER_POT {
+                super::flower_pot::new_tile_entity(pos)
+            } else {
+                super::banner::new_tile_entity(pos)
+            };
             let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
             let _ = list.push(Tag::Compound(te));
             sort_tile_entities(list);

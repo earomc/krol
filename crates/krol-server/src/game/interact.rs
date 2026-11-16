@@ -184,6 +184,7 @@ impl Game {
                 self.open_enchanting_table(i, pos);
                 true
             }
+            super::flower_pot::FLOWER_POT => self.activate_flower_pot(i, pos),
             block::LEVER => {
                 self.activate_lever(pos);
                 true

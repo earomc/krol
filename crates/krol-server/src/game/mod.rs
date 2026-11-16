@@ -29,6 +29,7 @@ mod explosion;
 mod falling_block;
 mod farming;
 mod fire;
+mod flower_pot;
 mod food;
 mod furnace;
 mod hopper;
@@ -1708,6 +1709,7 @@ impl Game {
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         self.break_effect(i, pos, state);
         self.bed_harvested_creative(pos, state);
+        self.empty_flower_pot(pos);
         // BlockPistonExtension.onBlockHarvested: in creative the base goes first.
         if state >> 4 == ids::block::PISTON_HEAD {
             let base = placement::offset(pos, placement::opposite(pistons::facing(state & 15)));

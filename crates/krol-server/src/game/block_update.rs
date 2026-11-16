@@ -78,8 +78,18 @@ impl Game {
         if old == state {
             return;
         }
+        // BlockFlowerPot.breakBlock needs the plant from the tile entity that goes with
+        // the block.
+        let potted = (old >> 4 == super::flower_pot::FLOWER_POT
+            && state >> 4 != super::flower_pot::FLOWER_POT)
+            .then(|| self.flower_pot_contents(pos))
+            .flatten();
+        let w = &mut self.level.overworld;
         if !w.set_block_unmarked(pos.0, pos.1, pos.2, state) {
             return;
+        }
+        if let Some(plant) = potted {
+            self.spawn_as_entity(pos, plant);
         }
         if old >> 4 != state >> 4 {
             self.block_removed(pos, old);
@@ -303,6 +313,7 @@ impl Game {
                     placement::torch_can_attach(w, pos, face)
                 }
                 block::STANDING_SIGN | block::STANDING_BANNER => super::sign::solid_material(below),
+                super::flower_pot::FLOWER_POT => solid_top(below),
                 block::WALL_SIGN | block::WALL_BANNER => {
                     let n = offset(pos, opposite(meta as u8));
                     super::sign::solid_material(w.block(n.0, n.1, n.2))

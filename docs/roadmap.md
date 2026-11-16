@@ -148,7 +148,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x2D Open Window · 0x2E Close Window · 0x2F Set Slot · 0x30 Window Items · 0x31 Window Property · 0x32 Confirm Transaction | ✅ | For the implemented windows |
 | 0x33 Update Sign · 0x36 Sign Editor Open | ✅ | |
 | 0x34 Maps | ❌ | |
-| 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), banners; mob spawners/skulls/beacons/flower pots missing |
+| 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), banners, flower pots; mob spawners/skulls/beacons missing |
 | 0x37 Statistics | ✅ | |
 | 0x38 Player List Item | 🟡 | Add, game mode, remove, latency (keep-alive round trips, every 600 ticks) ✅; display names ❌ |
 | 0x39 Player Abilities | ✅ | |
@@ -344,7 +344,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped, hoppers, comparators ✅ |
 | `BlockCauldron` | ❌ | Filling, rain, armor washing, comparator output |
 | `BlockBeacon` | ❌ | |
-| `BlockFlowerPot` | ❌ | |
+| `BlockFlowerPot` | ✅ | Placement on a solid top, potting plants (flowers, saplings, mushrooms, cactus, dead bush, fern), support, the plant dropping on any removal (not after a creative harvest) |
 | `BlockJukebox` | ❌ | The click is consumed when holding a record; records ❌ |
 | `BlockSkull` | ❌ | Placement, tile entity, wither summoning |
 | `BlockBanner` | ✅ | Standing and wall banners, support, harvest drop (Base and Patterns, no exhaustion) and other drops (the whole tile entity) |
@@ -375,7 +375,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemStack`: NBT, display names, lore, `onBlockDestroyed` wear | ✅ | |
 | `ItemBlock`, `ItemMultiTexture`, `ItemCloth`, `ItemColored`, `ItemLeaves`, `ItemSlab`, `ItemPiston`, `ItemSnow`, `ItemDoublePlant` | ✅ | |
 | `ItemAnvilBlock` | 🟡 | Placement only |
-| `ItemReed` (sugar cane, cake, repeater, comparator, brewing stand, cauldron, flower pot, skull?) | 🟡 | Sugar cane, cake, repeaters, comparators, brewing stands ✅; cauldron, flower pot ❌ |
+| `ItemReed` (sugar cane, cake, repeater, comparator, brewing stand, cauldron, flower pot, skull?) | 🟡 | Sugar cane, cake, repeaters, comparators, brewing stands, flower pots ✅; cauldron ❌ |
 | `ItemSeeds`, `ItemSeedFood` | ✅ | |
 | `ItemDoor`, `ItemSign`, `ItemRedstone` | ✅ | |
 | `ItemBed` | ✅ | |
@@ -457,7 +457,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `TileEntityMobSpawner`, `MobSpawnerBaseLogic` | ❌ | |
 | `TileEntitySkull` | ❌ | |
 | `TileEntityBanner` | ✅ | Base and patterns, description packet (action 6; not sent to 1.7 clients, which have no banners) |
-| `TileEntityFlowerPot` | ❌ | |
+| `TileEntityFlowerPot` | ✅ | Item and data, description packet (action 5, numeric item id) |
 | `TileEntityDaylightDetector` | ❌ | |
 | `TileEntityCommandBlock` | ❌ | |
 | `TileEntityEndPortal` | ❌ | |
