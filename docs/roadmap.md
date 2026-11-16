@@ -479,7 +479,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Food stats: exhaustion, saturation, natural regeneration, starvation | ✅ | |
 | Experience: levels, orbs, death drops | ✅ | Enchanting cost ❌ |
 | Inventory, held item, armor, creative inventory | ✅ | |
-| Death: messages, drops, keepInventory, respawn | ✅ | The dead body staying tracked for others 🟡 |
+| Death: messages, drops, keepInventory, respawn | ✅ | The body leaves the world 20 ticks after death (`setDead`, removed in the next entity loop). Known deviation: when another player picks up the dropped experience in the same tick, vanilla sends the pickup before the body's Destroy Entities, krol after (not covered by a scenario) |
 | Sneaking, sprinting (metadata, speed boost, hunger) | ✅ | |
 | Suffocation, drowning, burning, fall damage, cactus | ✅ | |
 | Damage outside the world border | ❌ | |

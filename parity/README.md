@@ -71,6 +71,10 @@ into server ticks. Rules learned from flaky scenarios:
   relative to the bot (game mode switches, removing a block it just used) belongs to
   the bot itself, or to console steps *before* the `play` step. Prefer a fixture player
   file (`tools/fixtures/players.py`) over a console `/gamemode` switch.
+- **`wait_ms` waits after a console command**, not before; use a `wait` step to delay
+  one. A `background = true` play step is followed by a 1.5 s pause before the next step.
+  The bot's `@ms` clock starts with its connection, and vanilla logs in more slowly than
+  krol, so leave a second or more between bot actions and console steps they race with.
 - **Turn off random block ticks** (`gamerule randomTickSpeed 0` before the player
   joins) whenever blocks are placed, dug or set: grass dies and spreads at random.
 - **Keep bot actions 200 ms or more apart** when their order matters. Two actions in
@@ -93,7 +97,13 @@ into server ticks. Rules learned from flaky scenarios:
   next movement packet, with the player tracker flushing every 2 ticks), declare them in
   a commented `[observe] unordered = [["entity_metadata", "entity_properties"]]` group:
   directly adjacent packets of those types are compared in a canonical order.
+- Spawn with `gamemode = "2"` in the properties (switch modes by console later): other
+  modes randomize the spawn point with an unpinned random.
+- Vanilla on Windows logs in cp1252; the harness reads non-UTF-8 lines as Latin-1 so
+  `§` in team-colored names compares equal.
 - When a server repeats the same packet a timing-dependent number of times (in vanilla
   too: e.g. position corrections while the bot keeps walking into a wall), list its type
   in a commented `[observe] collapse_repeats` entry: directly repeated identical copies
   count once, so the distinct packets and their order are still compared.
+- `[observe] dedupe_runs` does the same for packets a server resends every tick while
+  something stays open (e.g. the enchanting table's window properties, `"0x31"`).

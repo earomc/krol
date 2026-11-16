@@ -315,6 +315,9 @@ impl Game {
     /// experience drops as orbs (`getExperiencePoints`: 7 per level, at most 100,
     /// none with keepInventory).
     /// The entity is then marked dead (`setDead`); the world's entity loop removes it.
+    ///
+    /// TODO(M5): when another player picks up the dropped orbs right away, vanilla
+    /// sends the pickup before the body's Destroy Entities; krol sends it after.
     fn death_update(&mut self, i: usize) {
         let p = &mut self.players[i];
         let time = p.data.get_i16("DeathTime").wrapping_add(1);
