@@ -331,6 +331,31 @@ impl Game {
         }
     }
 
+    /// `World.removeEntity` of a dead player (`EntityTracker.untrackEntity`): it stops
+    /// seeing everything (players at once, other entities on its next update) and the
+    /// others destroy it.
+    pub(super) fn remove_dead_player(&mut self, i: usize) {
+        let entity_id = self.players[i].entity_id;
+        let seen: Vec<i32> = self
+            .tracker
+            .iter()
+            .filter(|(_, e)| e.tracking.contains(&entity_id))
+            .map(|(id, _)| *id)
+            .collect();
+        for id in seen {
+            if let Some(entry) = self.tracker.get_mut(&id) {
+                entry.tracking.remove(&entity_id);
+            }
+            if self.players.iter().any(|p| p.entity_id == id) {
+                self.players[i].send(ClientboundPlay::DestroyEntities(vec![id]));
+            } else {
+                self.players[i].pending_destroy.push(id);
+            }
+        }
+        self.untrack_player(i);
+        self.players[i].removed = true;
+    }
+
     /// Stops tracking a non-player entity; its viewers destroy it on their next update
     /// (`EntityPlayerMP.removeEntity` queues it in `destroyedItemsNetCache`).
     pub(super) fn untrack_entity(&mut self, entity_id: i32) {
@@ -506,7 +531,7 @@ impl Game {
         let Some(v) = self.view(entity_id) else {
             return;
         };
-        if v.player == Some(viewer) {
+        if v.player == Some(viewer) || self.players[viewer].removed {
             return;
         }
         let Some(entry) = self.tracker.get(&entity_id) else {

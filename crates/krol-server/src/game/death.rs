@@ -76,7 +76,7 @@ impl Game {
     /// `CombatTracker.getDeathMessage` for the damage sources krol has.
     fn death_message(&self, i: usize) -> Component {
         let p = &self.players[i];
-        let name = Arg::Component(Self::display_name(&p.profile));
+        let name = Arg::Component(self.display_name(&p.profile));
         let entries = &p.combat.entries;
         let Some(last) = entries.last() else {
             return Component::translate("death.attack.generic", vec![name]);
@@ -104,7 +104,7 @@ impl Game {
                 match self.players.iter().find(|p| p.entity_id == igniter) {
                     Some(by) => Component::translate(
                         "death.attack.explosion.player",
-                        vec![name, Arg::Component(Self::display_name(&by.profile))],
+                        vec![name, Arg::Component(self.display_name(&by.profile))],
                     ),
                     // TODO(M5): the igniter's entity outlives its connection in vanilla.
                     None => Component::translate("death.attack.explosion", vec![name]),
@@ -120,15 +120,59 @@ impl Game {
         let rules_show = self.level.data.game_rule("showDeathMessages") != Some("false");
         if rules_show {
             let message = self.death_message(i);
-            self.broadcast_chat(&message, None);
+            self.send_death_message(i, &message);
         }
         if self.level.data.game_rule("keepInventory") != Some("true") {
             self.drop_all_items(i);
         }
+        let name = self.players[i].profile.name.clone();
+        self.sb_increment(&name, super::scoreboard::DEATH_COUNT);
+        // TODO(M5): the killer's kill counts (addToPlayerScore).
         let p = &mut self.players[i];
         p.stats.add("stat.deaths", 1);
         p.stats.set("stat.timeSinceDeath", 0);
         self.reset_combat(i);
+    }
+
+    /// The death message by the team's death message visibility: everyone, only
+    /// teammates (`sendMessageToAllTeamMembers`), only the others
+    /// (`sendMessageToTeamOrEvryPlayer`), or nobody.
+    fn send_death_message(&self, i: usize, message: &Component) {
+        let team = self.team_of_player(i).map(str::to_owned);
+        let visibility = team
+            .as_deref()
+            .and_then(|t| self.scoreboard.teams.get(t))
+            .map_or("always", |t| t.death_messages);
+        let chat = || ClientboundPlay::Chat {
+            json: message.to_json_string(),
+            position: 1,
+        };
+        match (visibility, team.as_deref()) {
+            ("hideForOtherTeams", Some(team)) => {
+                let Some(t) = self.scoreboard.teams.get(team) else {
+                    return;
+                };
+                for (member, _) in t.members.iter() {
+                    if let Some(p) = self
+                        .players
+                        .iter()
+                        .find(|p| p.profile.name.eq_ignore_ascii_case(member))
+                        && p.conn_id != self.players[i].conn_id
+                    {
+                        p.send(chat());
+                    }
+                }
+            }
+            ("hideForOwnTeam", Some(team)) => {
+                for (k, p) in self.players.iter().enumerate() {
+                    if self.team_of_player(k) != Some(team) {
+                        p.send(chat());
+                    }
+                }
+            }
+            ("never", _) => {}
+            _ => self.broadcast_chat(message, None),
+        }
     }
 
     /// Vanilla `InventoryPlayer.dropAllItems`: main inventory, then armor, each thrown
@@ -248,6 +292,7 @@ impl Game {
         p.hurt_resistant_time = 0;
         p.respawn_invulnerability = 60;
         p.last_health_sent = None;
+        p.combined_health = super::player::NO_HEALTH_YET;
         p.dirty_metadata = super::tracker::PLAYER_METADATA_INDICES
             .into_iter()
             .collect();
@@ -320,6 +365,8 @@ impl Game {
         for (x, z) in self.players[i].take_new_watches() {
             self.level.overworld.chunk(x, z);
         }
+        self.players[i].removed = false;
+        self.players[i].dead_marked = false;
         self.track_player(i);
         // addSelfToInternalCraftingInventory.
         let p = &self.players[i];

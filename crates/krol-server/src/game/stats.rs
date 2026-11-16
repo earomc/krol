@@ -26,6 +26,8 @@ pub struct StatValue {
 pub struct Stats {
     path: PathBuf,
     data: JavaConcurrentHashMap<StatValue>,
+    /// Increases since [`Stats::take_increases`] (for statistic scoreboard criteria).
+    increases: Vec<(String, i32)>,
 }
 
 impl Stats {
@@ -64,11 +66,16 @@ impl Stats {
                 data.insert(key, stat);
             }
         }
-        Self { path, data }
+        Self {
+            path,
+            data,
+            increases: Vec::new(),
+        }
     }
 
     /// Adds `amount` to a counter (vanilla `addStat` / `triggerAchievement`).
     pub fn add(&mut self, key: &str, amount: i32) {
+        self.increases.push((key.to_owned(), amount));
         match self.data.get_mut(key) {
             Some(s) => s.value = s.value.wrapping_add(amount),
             None => {
@@ -81,6 +88,11 @@ impl Stats {
                 );
             }
         }
+    }
+
+    /// The increases since the last call, in order.
+    pub fn take_increases(&mut self) -> Vec<(String, i32)> {
+        std::mem::take(&mut self.increases)
     }
 
     /// Sets a counter (vanilla `unlockAchievement` with a value, e.g. resetting

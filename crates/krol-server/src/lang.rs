@@ -188,6 +188,141 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "commands.setblock.tagError" => "Data tag parsing failed: %s",
         "commands.setblock.outOfWorld" => "Cannot place block outside of the world",
         "commands.give.block.notFound" => "There is no such block with name %s",
+        // Scoreboard and trigger.
+        "commands.scoreboard.noMultiWildcard" => "Only one user wildcard allowed",
+        "commands.scoreboard.allMatchesFailed" => "All matches failed",
+        "commands.scoreboard.teamNotFound" => "No team was found by the name '%s'",
+        "commands.scoreboard.objectiveNotFound" => "No objective was found by the name '%s'",
+        "commands.scoreboard.objectiveReadOnly" => {
+            "The objective '%s' is read-only and cannot be set"
+        }
+        "commands.scoreboard.objectives.usage" => {
+            "/scoreboard objectives <list|add|remove|setdisplay> ..."
+        }
+        "commands.scoreboard.objectives.setdisplay.usage" => {
+            "/scoreboard objectives setdisplay <slot> [objective]"
+        }
+        "commands.scoreboard.objectives.setdisplay.invalidSlot" => "No such display slot '%s'",
+        "commands.scoreboard.objectives.setdisplay.successCleared" => {
+            "Cleared objective display slot '%s'"
+        }
+        "commands.scoreboard.objectives.setdisplay.successSet" => {
+            "Set the display objective in slot '%s' to '%s'"
+        }
+        "commands.scoreboard.objectives.add.usage" => {
+            "/scoreboard objectives add <name> <criteriaType> [display name ...]"
+        }
+        "commands.scoreboard.objectives.add.wrongType" => "Invalid objective criteria type '%s'",
+        "commands.scoreboard.objectives.add.alreadyExists" => {
+            "An objective with the name '%s' already exists"
+        }
+        "commands.scoreboard.objectives.add.tooLong" => {
+            "The name '%s' is too long for an objective, it can be at most %d characters long"
+        }
+        "commands.scoreboard.objectives.add.displayTooLong" => {
+            "The display name '%s' is too long for an objective, it can be at most %d characters long"
+        }
+        "commands.scoreboard.objectives.add.success" => "Added new objective '%s' successfully",
+        "commands.scoreboard.objectives.remove.usage" => "/scoreboard objectives remove <name>",
+        "commands.scoreboard.objectives.remove.success" => "Removed objective '%s' successfully",
+        "commands.scoreboard.objectives.list.count" => "Showing %d objective(s) on scoreboard:",
+        "commands.scoreboard.objectives.list.entry" => "- %s: displays as '%s' and is type '%s'",
+        "commands.scoreboard.objectives.list.empty" => "There are no objectives on the scoreboard",
+        "commands.scoreboard.players.usage" => {
+            "/scoreboard players <set|add|remove|reset|list|enable|test|operation> ..."
+        }
+        "commands.scoreboard.players.name.tooLong" => {
+            "The name '%s' is too long for a player, it can be at most %d characters long"
+        }
+        "commands.scoreboard.players.set.success" => "Set score of %s for player %s to %d",
+        "commands.scoreboard.players.set.tagMismatch" => "The dataTag does not match for %s",
+        "commands.scoreboard.players.set.tagError" => "Could not parse dataTag, reason: %s",
+        "commands.scoreboard.players.set.usage" => {
+            "/scoreboard players set <player> <objective> <score> [dataTag]"
+        }
+        "commands.scoreboard.players.add.usage" => {
+            "/scoreboard players add <player> <objective> <count> [dataTag]"
+        }
+        "commands.scoreboard.players.remove.usage" => {
+            "/scoreboard players remove <player> <objective> <count> [dataTag]"
+        }
+        "commands.scoreboard.players.reset.usage" => {
+            "/scoreboard players reset <player> [objective]"
+        }
+        "commands.scoreboard.players.reset.success" => "Reset scores of player %s",
+        "commands.scoreboard.players.resetscore.success" => "Reset score %s of player %s",
+        "commands.scoreboard.players.list.usage" => "/scoreboard players list [name]",
+        "commands.scoreboard.players.list.count" => "Showing %d tracked players on the scoreboard:",
+        "commands.scoreboard.players.list.empty" => {
+            "There are no tracked players on the scoreboard"
+        }
+        "commands.scoreboard.players.list.player.count" => {
+            "Showing %d tracked objective(s) for %s:"
+        }
+        "commands.scoreboard.players.list.player.entry" => "- %2$s: %1$d (%3$s)",
+        "commands.scoreboard.players.list.player.empty" => "Player %s has no scores recorded",
+        "commands.scoreboard.players.enable.usage" => {
+            "/scoreboard players enable <player> <trigger>"
+        }
+        "commands.scoreboard.players.enable.success" => "Enabled trigger %s for %s",
+        "commands.scoreboard.players.enable.noTrigger" => "Objective %s is not a trigger",
+        "commands.scoreboard.players.test.usage" => {
+            "/scoreboard players test <player> <objective> <min> <max>"
+        }
+        "commands.scoreboard.players.test.notFound" => "No %s score for %s found",
+        "commands.scoreboard.players.test.failed" => "Score %d is NOT in range %d to %d",
+        "commands.scoreboard.players.test.success" => "Score %d is in range %d to %d",
+        "commands.scoreboard.players.operation.usage" => {
+            "/scoreboard players operation <targetName> <targetObjective> <operation> <selector> <objective>"
+        }
+        "commands.scoreboard.players.operation.notFound" => "No %s score for %s found",
+        "commands.scoreboard.players.operation.invalidOperation" => "Invalid operation %s",
+        "commands.scoreboard.players.operation.success" => "Operation applied successfully",
+        "commands.scoreboard.teams.usage" => {
+            "/scoreboard teams <list|add|remove|empty|join|leave|option> ..."
+        }
+        "commands.scoreboard.teams.add.usage" => "/scoreboard teams add <name> [display name ...]",
+        "commands.scoreboard.teams.add.alreadyExists" => "A team with the name '%s' already exists",
+        "commands.scoreboard.teams.add.tooLong" => {
+            "The name '%s' is too long for a team, it can be at most %d characters long"
+        }
+        "commands.scoreboard.teams.add.displayTooLong" => {
+            "The display name '%s' is too long for a team, it can be at most %d characters long"
+        }
+        "commands.scoreboard.teams.add.success" => "Added new team '%s' successfully",
+        "commands.scoreboard.teams.list.usage" => "/scoreboard teams list [name]",
+        "commands.scoreboard.teams.list.count" => "Showing %d teams on the scoreboard:",
+        "commands.scoreboard.teams.list.entry" => "- %1$s: '%2$s' has %3$d players",
+        "commands.scoreboard.teams.list.empty" => "There are no teams registered on the scoreboard",
+        "commands.scoreboard.teams.list.player.count" => "Showing %d player(s) in team %s:",
+        "commands.scoreboard.teams.list.player.entry" => "- %2$s: %1$d (%3$s)",
+        "commands.scoreboard.teams.list.player.empty" => "Team %s has no players",
+        "commands.scoreboard.teams.empty.usage" => "/scoreboard teams empty <team>",
+        "commands.scoreboard.teams.empty.alreadyEmpty" => {
+            "Team %s is already empty, cannot remove nonexistant players"
+        }
+        "commands.scoreboard.teams.empty.success" => "Removed all %d player(s) from team %s",
+        "commands.scoreboard.teams.remove.usage" => "/scoreboard teams remove <name>",
+        "commands.scoreboard.teams.remove.success" => "Removed team %s",
+        "commands.scoreboard.teams.join.usage" => "/scoreboard teams join <team> [player]",
+        "commands.scoreboard.teams.join.success" => "Added %d player(s) to team %s: %s",
+        "commands.scoreboard.teams.join.failure" => "Could not add %d player(s) to team %s: %s",
+        "commands.scoreboard.teams.leave.usage" => "/scoreboard teams leave [player]",
+        "commands.scoreboard.teams.leave.success" => "Removed %d player(s) from their teams: %s",
+        "commands.scoreboard.teams.leave.failure" => {
+            "Could not remove %d player(s) from their teams: %s"
+        }
+        "commands.scoreboard.teams.leave.noTeam" => "You are not in a team",
+        "commands.scoreboard.teams.option.usage" => {
+            "/scoreboard teams option <team> <friendlyfire|color|seeFriendlyInvisibles|nametagVisibility|deathMessageVisibility> <value>"
+        }
+        "commands.scoreboard.teams.option.noValue" => "Valid values for option %s are: %s",
+        "commands.scoreboard.teams.option.success" => "Set option %s for team %s to %s",
+        "commands.trigger.invalidObjective" => "Invalid trigger name %s",
+        "commands.trigger.invalidMode" => "Invalid trigger mode %s",
+        "commands.trigger.disabled" => "Trigger %s is not enabled",
+        "commands.trigger.invalidPlayer" => "Only players can use the /trigger command",
+        "commands.trigger.success" => "Trigger %s changed with %s %s",
         _ => return crate::game::commands::usage_text(key),
     })
 }

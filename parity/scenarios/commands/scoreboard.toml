@@ -1,0 +1,283 @@
+description = "/scoreboard and /trigger: objectives (add with display names, criteria and name errors, setdisplay, list, remove), scores (set, add with @a, remove, fake holders, read-only health, list, test, operations, reset, the * wildcard), teams (add, color, friendly fire, name tag and death message visibility, option errors, join and leave by name and by a player himself, list, empty, remove), selectors with team= and score_, trigger objectives (enable, use, locked), health scores appearing when health changes, deathCount, team-colored names in chat, a player joining sees the scoreboard, and data/scoreboard.dat"
+subsystem = "commands"
+
+# jeb_ joins first and is made operator; Dinnerbone joins once the scoreboard is set up.
+# Both spawn at the same spot (adventure mode, no spawn fuzz).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 34
+chat = [
+    "@29000 /scoreboard teams join blue",
+    "@30000 hello",
+]
+
+[[steps]]
+action = "console"
+command = "op jeb_"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives list"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add kills dummy Kill Count"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add hp health"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add deaths deathCount"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add bad nope"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add kills dummy"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add abcdefghijklmnopq dummy"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay sidebar kills"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay belowName hp"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay foo"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives list"
+
+[[steps]]
+action = "console"
+command = "scoreboard players set jeb_ kills 5"
+
+[[steps]]
+action = "console"
+command = "scoreboard players set fake kills 3"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams add red Red Team"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red color red"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams add blue"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option blue color aqua"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams join red jeb_ fake"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add trig trigger"
+
+[[steps]]
+action = "console"
+command = "scoreboard players enable Dinnerbone trig"
+
+[[steps]]
+action = "console"
+command = "scoreboard players enable Dinnerbone kills"
+
+[[steps]]
+id = "other"
+action = "play"
+background = true
+protocol = 47
+name = "Dinnerbone"
+seconds = 28
+chat = [
+    "@6000 /trigger trig add 3",
+    "@6500 /trigger trig add 3",
+    "@7000 /trigger nope add 1",
+]
+
+[[steps]]
+action = "wait"
+ms = 1000
+
+[[steps]]
+action = "console"
+command = "scoreboard players add @a kills 2"
+
+[[steps]]
+action = "console"
+command = "scoreboard players remove Dinnerbone kills 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard players set jeb_ hp 3"
+
+[[steps]]
+action = "console"
+command = "scoreboard players list"
+
+[[steps]]
+action = "console"
+command = "scoreboard players list jeb_"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test jeb_ kills 5 10"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test jeb_ kills * 4"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test nobody kills 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard players operation fake kills += jeb_ kills"
+
+[[steps]]
+action = "console"
+command = "scoreboard players operation fake kills >< Dinnerbone kills"
+
+[[steps]]
+action = "console"
+command = "scoreboard players operation fake kills ^^ Dinnerbone kills"
+
+[[steps]]
+action = "console"
+command = "scoreboard players add * kills 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red friendlyfire false"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red nametagVisibility hideForOtherTeams"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red deathMessageVisibility hideForOwnTeam"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red color bold"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red nametagVisibility"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red friendlyfire"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams list"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams list red"
+
+[[steps]]
+action = "console"
+command = "say members: @a[team=red], others: @a[team=!red]"
+
+[[steps]]
+action = "console"
+command = "effect @a[score_kills_min=8] 1 30"
+
+[[steps]]
+action = "console"
+command = "effect @a[score_kills=7,score_kills_min=7] 3 30"
+
+[[steps]]
+action = "console"
+command = "trigger trig add 1"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "effect Dinnerbone 7 1 0"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "scoreboard teams leave fake jeb_"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams leave nobody"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams join red Dinnerbone"
+
+[[steps]]
+action = "console"
+command = "kill Dinnerbone"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "scoreboard players reset fake kills"
+
+[[steps]]
+action = "console"
+command = "scoreboard players reset Dinnerbone"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams empty red"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams empty red"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "scoreboard teams remove red"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives remove hp"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay sidebar"
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[observe]
+log = true
+files = ["world/data/scoreboard.dat"]

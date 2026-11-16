@@ -141,6 +141,13 @@ pub struct Player {
     /// Health, food and "saturation is zero" as last sent (`lastHealth`,
     /// `lastFoodLevel`, `wasHungry`).
     pub last_health_sent: Option<(f32, i32, bool)>,
+    /// The dead player's entity left the world (`setDead` 20 ticks after death): it
+    /// is not tracked and does not track others until it respawns.
+    pub removed: bool,
+    /// `isDead` set by the death animation; removed in the next entity loop.
+    pub dead_marked: bool,
+    /// Health plus absorption as last given to health objectives (`combinedHealth`).
+    pub combined_health: f32,
     /// Window click state (cursor item, drag, pending confirmation).
     pub window: super::container::WindowState,
     /// Recent damage for the death message (`CombatTracker`).
@@ -156,6 +163,9 @@ pub struct Player {
     /// Raw player data, kept to preserve fields krol does not model yet.
     pub data: Compound,
 }
+
+/// `combinedHealth` of a new player entity: no health given to objectives yet.
+pub const NO_HEALTH_YET: f32 = -1.0e8;
 
 impl Player {
     /// The creative game mode's id.
@@ -379,7 +389,7 @@ impl Player {
         self.inventory[36 + self.selected].as_ref()
     }
 
-    fn store_state(&mut self) {
+    pub(super) fn store_state(&mut self) {
         store_inventory(&mut self.data, &self.inventory);
         super::potions::write_effects(&mut self.data, &self.effects);
         super::attributes::write_attributes(&mut self.data, &self.modifiers);

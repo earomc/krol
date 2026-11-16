@@ -144,7 +144,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x38 Player List Item | 🟡 | Add, game mode, remove, latency (keep-alive round trips, every 600 ticks) ✅; display names ❌ |
 | 0x39 Player Abilities | ✅ | |
 | 0x3A Tab-Complete | ❌ | Serverbound tab-complete not handled |
-| 0x3B Scoreboard Objective · 0x3C Update Score · 0x3D Display Scoreboard · 0x3E Teams | ❌ | Scoreboard missing |
+| 0x3B Scoreboard Objective · 0x3C Update Score · 0x3D Display Scoreboard · 0x3E Teams | ✅ | 1.7: no render type, name tag visibility or team color; removing one score removes the name's scores |
 | 0x3F Plugin Message | 🟡 | `MC|Brand` on join; `MC|BOpen`, `MC|TrList` missing |
 | 0x40 Disconnect | ✅ | |
 | 0x41 Server Difficulty | ✅ | |
@@ -205,7 +205,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | `World.rayTraceBlocks` | 🟡 | Buckets; selection boxes of stairs, fences and other shaped blocks missing |
 | Village collection (`VillageCollection`, `villages.dat`) | ❌ | See village |
 | Map data (`MapData`, `data/map_*.dat`, `idcounts.dat`) | ❌ | |
-| Scoreboard data (`data/scoreboard.dat`) | ❌ | |
+| Scoreboard data (`data/scoreboard.dat`) | ✅ | |
 | Structure data (`data/Village.dat`, `Mineshaft.dat`, `Temple.dat`, `Fortress.dat`, `Stronghold.dat`) | ❌ | Arrives with structure generation |
 | `WorldInfo` / `level.dat`: read, write (all fields, game rules, border, weather, time) | ✅ | |
 | `session.lock` | ✅ | |
@@ -584,9 +584,10 @@ krol notice.
 | `tp` | 🟡 | Coordinates and players ✅; some forms (entity targets, rotation) ❌ |
 | `kill` · `spawnpoint` | ✅ | Players as targets (other entities ❌) |
 | `clear` | ✅ | |
-| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | |
+| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
+| `scoreboard` · `trigger` | ✅ | `players set` data tags for other entities than players ❌ |
 | `publish` | ➖ | LAN only |
-| `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | 🟡 | All arguments; one command run per target; UUIDs as names; selectors in `/say`, `/me`, `/tell`. No scoreboard yet (`score_` never matches, nobody is on a team); dropped items' names and other entities' UUIDs ❌; `@r` shuffles with its own unseeded random like vanilla |
+| `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | 🟡 | All arguments; one command run per target; UUIDs as names; selectors in `/say`, `/me`, `/tell`. `score_` and `team` for players; dropped items' names and other entities' UUIDs ❌; `@r` shuffles with its own unseeded random like vanilla |
 | `CommandResultStats` (`/stats` triggers) | ❌ | |
 | Command blocks (`CommandBlockLogic`) and minecart command blocks | ❌ | |
 | Operator notifications, `logAdminCommands`, `sendCommandFeedback` | ✅ | |
@@ -595,10 +596,11 @@ krol notice.
 
 | Feature | Status | Notes |
 |---|---|---|
-| Objectives, criteria (dummy, trigger, health, deathCount, kill counts, stats, teamkill), scores | ❌ | |
-| Teams (prefix/suffix, friendly fire, name tag visibility, colors) | ❌ | |
-| Display slots (sidebar, list, below name, team sidebars) | ❌ | |
-| `data/scoreboard.dat` | ❌ | |
+| Objectives, scores, criteria: dummy, trigger, health, deathCount, statistics and achievements | ✅ | Statistic scores update after the packet or tick step that changed the stat, not at once; a holder's scores keep creation order (vanilla: identity hash order) |
+| Kill criteria (`playerKillCount`, `totalKillCount`, `teamkill.*`, `killedByTeam.*`) | ❌ | Needs killers |
+| Teams (prefix/suffix in display names, colors, name tag and death message visibility, packets) | ✅ | Friendly fire and seeing invisible teammates affect nothing yet (no PvP, no invisibility) |
+| Display slots (sidebar, list, below name, team sidebars) | ✅ | |
+| `data/scoreboard.dat` | ✅ | |
 
 ## net.minecraft.stats
 

@@ -314,8 +314,7 @@ impl Game {
     /// `EntityLivingBase.onDeathUpdate` for a dead player: after 20 updates the
     /// experience drops as orbs (`getExperiencePoints`: 7 per level, at most 100,
     /// none with keepInventory).
-    ///
-    /// TODO(M5): the entity is then removed (`setDead`, untracked for the others).
+    /// The entity is then marked dead (`setDead`); the world's entity loop removes it.
     fn death_update(&mut self, i: usize) {
         let p = &mut self.players[i];
         let time = p.data.get_i16("DeathTime").wrapping_add(1);
@@ -346,6 +345,7 @@ impl Game {
             p.rand.next_float();
             p.rand.next_float();
         }
+        self.players[i].dead_marked = true;
     }
 
     fn living_move(&mut self, i: usize) {
@@ -786,6 +786,8 @@ impl Game {
                 saturation: now.2,
             });
         }
+        self.sb_update_health(i);
+        let p = &mut self.players[i];
         if std::mem::take(&mut p.xp_dirty) {
             let d = &p.data;
             p.send(ClientboundPlay::SetExperience {

@@ -55,6 +55,7 @@ mod raytrace;
 mod recipes;
 mod redstone;
 mod scheduler;
+mod scoreboard;
 mod selector;
 mod shapes;
 mod sign;
@@ -328,6 +329,8 @@ struct Game {
     orbs: std::collections::BTreeMap<i32, xp_orb::XpOrb>,
     /// Dropped items by entity id.
     items: std::collections::BTreeMap<i32, item_entity::ItemEntity>,
+    /// The world's scoreboard (`data/scoreboard.dat`).
+    scoreboard: scoreboard::Scoreboard,
     /// Chests that are open or closing.
     chests: Vec<chest::ChestRuntime>,
     /// Signs that can be edited, and by whom (`TileEntitySign.isEditable` and
@@ -374,6 +377,7 @@ pub fn start(
         .insert("Difficulty", krol_nbt::Tag::Byte(config.difficulty as i8));
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let (stopped_tx, stopped_rx) = tokio::sync::oneshot::channel();
+    let scoreboard = scoreboard::Scoreboard::load(&level.dir);
     let game = Game {
         level,
         config,
@@ -388,6 +392,7 @@ pub fn start(
         delayed_joins: Vec::new(),
         tracker: Default::default(),
         items: Default::default(),
+        scoreboard,
         orbs: Default::default(),
         falling: Default::default(),
         tnt: Default::default(),
@@ -546,9 +551,11 @@ impl Game {
                 p.save(&dir);
             }
             self.level.save_quietly();
+            self.scoreboard.save(&self.level.dir);
         }
         let radius = self.config.view_distance;
         self.tick_active_chunks(radius);
+        self.sb_apply_all_stats();
         self.flush_block_changes();
         self.send_block_events();
         // World.updateEntities: entities update in the order they were added, which is
@@ -602,6 +609,15 @@ impl Game {
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
                 continue;
             };
+            if self.players[i].removed {
+                continue;
+            }
+            // A dead player marked dead leaves the world on its turn here.
+            if self.players[i].dead_marked {
+                self.players[i].dead_marked = false;
+                self.remove_dead_player(i);
+                continue;
+            }
             // Vanilla accepts logins in the network phase at the end of a tick, so a new
             // player's first update happens on the following tick (after its packets).
             if self.players[i].joined_tick != self.tick_count {
@@ -683,10 +699,12 @@ impl Game {
             }
             if let Some(command) = then {
                 self.execute_command(commands::Sender::Console, &command);
+                self.sb_apply_all_stats();
             }
             return;
         }
         self.execute_command(commands::Sender::Console, line);
+        self.sb_apply_all_stats();
     }
 
     /// Vanilla `World.updateWeather` + `WorldServer.updateWeather` (overworld).
@@ -844,6 +862,7 @@ impl Game {
             GameEvent::Packet { conn_id, packet } => {
                 if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
                     self.handle_packet(i, packet);
+                    self.sb_apply_all_stats();
                 }
             }
             // processKeepAlive: the answer to the last keep-alive updates the ping.
@@ -905,8 +924,12 @@ impl Game {
         self.broadcast(message, except, false);
     }
 
-    fn display_name(profile: &GameProfile) -> Component {
-        Component::player_name(&profile.name, &java_uuid_string(profile.id))
+    /// `EntityPlayer.getDisplayName`: the name with its team's prefix and suffix,
+    /// insertion, `/msg` suggestion and a `show_entity` hover.
+    fn display_name(&self, profile: &GameProfile) -> Component {
+        let mut c = Component::player_name(&profile.name, &java_uuid_string(profile.id));
+        c.content = crate::chat::Content::Text(self.team_formatted_name(&profile.name));
+        c
     }
 
     /// Spawn position for a new player (vanilla: `EntityPlayerMP` constructor).
@@ -1222,6 +1245,9 @@ impl Game {
                     ^ i64::from(entity_id),
             ),
             last_health_sent: None,
+            combined_health: player::NO_HEALTH_YET,
+            removed: false,
+            dead_marked: false,
             dig: digging::DigState::new(),
             pending_destroy: Vec::new(),
             combat: Default::default(),
@@ -1255,17 +1281,23 @@ impl Game {
         });
         player.send(ClientboundPlay::Statistics(Vec::new()));
 
+        // sendScoreboard, then the join message.
+        self.players.push(player);
+        let new_index = self.players.len() - 1;
+        self.sb_send_to_player(new_index);
         let joined = Component::translate(
             "multiplayer.player.joined",
-            vec![Arg::Component(Self::display_name(&player.profile))],
+            vec![Arg::Component(
+                self.display_name(&self.players[new_index].profile),
+            )],
         )
         .color("yellow");
-        self.broadcast_chat(&joined, None);
+        // The new player is not in the player list yet (playerLoggedIn comes next).
+        let except_new = self.players[new_index].conn_id;
+        self.broadcast_chat(&joined, Some(except_new));
 
         // playerLoggedIn: announce the new player to everyone (including itself), then
         // tell the new player about everyone.
-        self.players.push(player);
-        let new_index = self.players.len() - 1;
         let add_new =
             ClientboundPlay::PlayerListItem(PlayerListAction::Add(vec![player_list_entry(
                 &self.players[new_index],
@@ -2265,7 +2297,7 @@ impl Game {
             let msg = Component::translate(
                 "chat.type.text",
                 vec![
-                    Arg::Component(Self::display_name(&player.profile)),
+                    Arg::Component(self.display_name(&player.profile)),
                     Arg::Str(message),
                 ],
             );
@@ -2333,7 +2365,7 @@ impl Game {
         info!("{name} lost connection: {}", reason.java_to_string());
         let left = Component::translate(
             "multiplayer.player.left",
-            vec![Arg::Component(Self::display_name(&self.players[i].profile))],
+            vec![Arg::Component(self.display_name(&self.players[i].profile))],
         )
         .color("yellow");
         let conn_id = self.players[i].conn_id;
@@ -2368,6 +2400,7 @@ impl Game {
         self.players.clear();
         info!("Saving worlds");
         self.level.save_all();
+        self.scoreboard.save(&self.level.dir);
     }
 }
 

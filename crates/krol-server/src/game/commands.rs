@@ -9,6 +9,8 @@ use krol_nbt::Tag;
 use krol_protocol::packets::play::ClientboundPlay;
 use tracing::{info, warn};
 
+mod scoreboard;
+
 use super::Game;
 use super::ids::block;
 use super::selector::{self, Target};
@@ -373,6 +375,8 @@ pub enum Sender {
 pub enum CommandError {
     /// `WrongUsageException` with a usage key.
     Usage(&'static str),
+    /// `WrongUsageException` with a message key and arguments.
+    UsageWith(&'static str, Vec<Arg>),
     /// A translated error.
     Translated(&'static str, Vec<Arg>),
     /// An unexpected exception in vanilla (reported as `commands.generic.exception` and
@@ -409,6 +413,21 @@ fn username_index(name: &str, args: &[&str]) -> Option<usize> {
         _ => return None,
     };
     (index < args.len()).then_some(index)
+}
+
+/// `CommandScoreboard.isUsernameIndex` for one position.
+fn scoreboard_is_username_index(args: &[&str], k: usize) -> bool {
+    let Some(first) = args.first() else {
+        return false;
+    };
+    if !first.eq_ignore_ascii_case("players") {
+        return first.eq_ignore_ascii_case("teams") && k == 2;
+    }
+    if args.len() > 1 && args[1].eq_ignore_ascii_case("operation") {
+        k == 2 || k == 5
+    } else {
+        k == 2
+    }
 }
 
 /// `CommandScoreboard.isUsernameIndex`.
@@ -560,7 +579,7 @@ impl Game {
     fn sender_component(&self, sender: Sender) -> Component {
         match sender {
             Sender::Console => Component::text("Server"),
-            Sender::Player(i) => Self::display_name(&self.players[i].profile),
+            Sender::Player(i) => self.display_name(&self.players[i].profile),
         }
     }
 
@@ -717,7 +736,7 @@ impl Game {
                 }));
             }
             c.extra.push(match *target {
-                Target::Player(i) => Self::display_name(&self.players[i].profile),
+                Target::Player(i) => self.display_name(&self.players[i].profile),
                 Target::Entity(id) => Component::text(self.entity_name(id)),
             });
         }
@@ -802,6 +821,10 @@ impl Game {
             CommandError::Usage(key) => t(
                 "commands.generic.usage",
                 vec![Arg::Component(t(key, vec![]))],
+            ),
+            CommandError::UsageWith(key, args) => t(
+                "commands.generic.usage",
+                vec![Arg::Component(t(key, args.clone()))],
             ),
             CommandError::Translated(key, args) => t(key, args.clone()),
             CommandError::Exception => t("commands.generic.exception", vec![]),
@@ -895,7 +918,7 @@ impl Game {
                 let outgoing = t(
                     "commands.message.display.outgoing",
                     vec![
-                        Arg::Component(Self::display_name(&self.players[target].profile)),
+                        Arg::Component(self.display_name(&self.players[target].profile)),
                         Arg::Component(text),
                     ],
                 )
@@ -1092,6 +1115,7 @@ impl Game {
                     p.save(&dir);
                 }
                 self.level.save_quietly();
+                self.scoreboard.save(&self.level.dir);
                 self.notify(sender, name, false, "commands.save.success", vec![]);
                 Ok(())
             }
@@ -1177,6 +1201,8 @@ impl Game {
                 Ok(())
             }
             "kill" => self.cmd_kill(sender, args),
+            "scoreboard" => self.cmd_scoreboard(sender, args),
+            "trigger" => self.cmd_trigger(sender, args),
             "clear" => self.cmd_clear(sender, args),
             "spawnpoint" => self.cmd_spawnpoint(sender, args),
             _ => self.not_implemented(sender, name),
@@ -1209,7 +1235,7 @@ impl Game {
             Some(target) => self.get_entity_player(sender, target, false, "kill")?,
             None => self.require_player(sender, None)?,
         };
-        let name = Arg::Component(Self::display_name(&self.players[i].profile));
+        let name = Arg::Component(self.display_name(&self.players[i].profile));
         self.attack_player(i, super::damage::DamageSource::OutOfWorld, f32::MAX);
         self.notify(
             sender,

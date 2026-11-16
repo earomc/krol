@@ -2,8 +2,7 @@
 //! `PlayerSelector`) and the target lookups built on them (`CommandBase.getPlayer`,
 //! `getEntity`), plus Java's lenient `UUID.fromString`.
 //!
-//! TODO(M5): scoreboard objectives and teams (krol has no scoreboard: `score_` arguments
-//! never match and everyone is on no team), the names of dropped items (vanilla
+//! TODO(M5): the names of dropped items (vanilla
 //! translates `item.<unlocalized name>`), entities in other dimensions, and entity
 //! UUIDs (non-player entities cannot be named by UUID yet).
 
@@ -307,7 +306,8 @@ impl Game {
     /// Every entity in `loadedEntityList` order (entity ids, like the update loop).
     fn selector_candidates(&self) -> Vec<Candidate> {
         let mut all = Vec::new();
-        for (i, p) in self.players.iter().enumerate() {
+        // A dead player's entity leaves the world after its death animation.
+        for (i, p) in self.players.iter().enumerate().filter(|(_, p)| !p.removed) {
             all.push(Candidate {
                 target: Target::Player(i),
                 pos: p.pos,
@@ -562,20 +562,40 @@ impl Game {
         if m != GAME_TYPE_NOT_SET && player.is_none_or(|p| p.gamemode != m) {
             return false;
         }
-        // Team: no teams exist, so every living entity's team name is empty.
+        // Team: living entities only (players are the only ones krol has).
         if let Some(team) = sel.get("team") {
             let (team, negated) = team.strip_prefix('!').map_or((team, false), |t| (t, true));
-            if player.is_none() || team.is_empty() == negated {
+            let Target::Player(i) = c.target else {
+                return false;
+            };
+            let own = self.team_of_player(i).unwrap_or("");
+            if (own == team) == negated {
                 return false;
             }
         }
-        // Scores: no objectives exist.
-        if sel
-            .args
-            .keys()
-            .any(|k| k.starts_with("score_") && k.len() > "score_".len())
-        {
-            return false;
+        // Scores: score_<objective> is a maximum, score_<objective>_min a minimum.
+        for (key, value) in &sel.args {
+            let Some(objective) = key.strip_prefix("score_").filter(|o| !o.is_empty()) else {
+                continue;
+            };
+            let (objective, min) = match objective.strip_suffix("_min") {
+                Some(o) if objective.len() > "_min".len() => (o, true),
+                _ => (objective, false),
+            };
+            let bound = int_or(value, 1);
+            if self.scoreboard.objectives.get(objective).is_none() {
+                return false;
+            }
+            // TODO(M5): other entities hold scores under their UUID.
+            let Some(name) = c.name.as_deref().filter(|_| player.is_some()) else {
+                return false;
+            };
+            let Some(score) = self.scoreboard.score(name, objective) else {
+                return false;
+            };
+            if (min && score.points < bound) || (!min && score.points > bound) {
+                return false;
+            }
         }
         // Name.
         if let Some(name) = sel.get("name") {
