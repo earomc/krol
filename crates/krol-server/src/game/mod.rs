@@ -15,6 +15,7 @@ mod block_update;
 pub mod blocks;
 mod brewing;
 mod buckets;
+mod cauldron;
 mod chest;
 mod combat;
 pub mod commands;

@@ -235,6 +235,11 @@ impl Game {
                     if is_plate(state >> 4) && plate_strength(state) == 0 {
                         self.update_plate((x, y, z), state);
                     }
+                    if state >> 4 == super::cauldron::CAULDRON
+                        && let Some(i) = player
+                    {
+                        self.cauldron_collision(i, (x, y, z), state, bb.min[1]);
+                    }
                     // BlockCactus.onEntityCollidedWithBlock.
                     if state >> 4 == super::ids::block::CACTUS
                         && let Some(i) = player

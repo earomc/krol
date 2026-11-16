@@ -1,0 +1,76 @@
+description = "Cauldrons: placed (ItemReed), filled to 3 by a water bucket (the bucket comes back), a bottle filled (level 2, the whole inventory resent), a dyed leather helmet washed (level 1), a banner's last pattern washed off (level 0, the washed banner replaces the held one), then a bottle and an empty hand on the empty cauldron changing nothing"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and is switched to
+# survival from the console.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+chat = [
+    "@3500 !hold 0",
+    "@3800 !place -469 3 -434 1",
+    "@4400 !hold 1",
+    "@4700 !place -469 4 -434 1",
+    "@5300 !hold 2",
+    "@5600 !place -469 4 -434 1",
+    "@6200 !hold 3",
+    "@6500 !place -469 4 -434 1",
+    "@7100 !hold 4",
+    "@7400 !place -469 4 -434 1",
+    "@8000 !hold 2",
+    "@8300 !place -469 4 -434 1",
+    "@8900 !hold 8",
+    "@9200 !place -469 4 -434 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ cauldron"
+
+[[steps]]
+action = "console"
+command = "give jeb_ water_bucket"
+
+[[steps]]
+action = "console"
+command = "give jeb_ glass_bottle 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ leather_helmet 1 0 {display:{color:16711680}}"
+
+[[steps]]
+action = "console"
+command = 'give jeb_ banner 1 4 {BlockEntityTag:{Base:4,Patterns:[{Pattern:"bs",Color:1}]}}'
+wait_ms = 11000
+
+[observe]
+log = true
+blocks = [[-469, 4, -434]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+]

@@ -189,8 +189,17 @@ impl Game {
                 self.step_lcg();
             }
             if self.world_rand.next_int_bounded(ICE_AND_SNOW_ODDS) == 0 {
+                let r = self.step_lcg();
+                let (x, z) = (cx * 16 + (r & 15), cz * 16 + (r >> 8 & 15));
                 // TODO(M5): freezing water and snowfall need biome temperatures.
-                self.step_lcg();
+                // Block.fillWithRain on the block below the precipitation height (only
+                // cauldrons do something).
+                if self.is_raining() {
+                    let y = self.precipitation_height(x, z) - 1;
+                    if self.biome_at(x, z).lightning {
+                        self.fill_cauldron_with_rain((x, y, z));
+                    }
+                }
             }
             if speed <= 0 {
                 continue;

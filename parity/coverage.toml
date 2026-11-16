@@ -507,3 +507,8 @@ scenarios = ["play/banners"]
 id = "blocks.flower_pots"
 description = "Flower pots: placement (ItemReed, solid top below), potting a plant (stat.flowerPotted, description packet), a full pot refusing another plant, the plant dropping before the pot when mined and after it when the pot pops off"
 scenarios = ["play/flower_pots"]
+
+[[feature]]
+id = "blocks.cauldrons"
+description = "Cauldrons: placement (ItemReed), water bucket, bottles (inventory resent), washing dyed leather armor and banner patterns, clicks that change nothing, the levels sent to the client. Not in a scenario: rain, putting out burning players, comparators"
+scenarios = ["play/cauldrons"]

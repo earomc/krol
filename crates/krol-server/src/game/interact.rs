@@ -185,6 +185,7 @@ impl Game {
                 true
             }
             super::flower_pot::FLOWER_POT => self.activate_flower_pot(i, pos),
+            super::cauldron::CAULDRON => self.activate_cauldron(i, pos, state),
             block::LEVER => {
                 self.activate_lever(pos);
                 true

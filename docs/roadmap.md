@@ -342,7 +342,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockAnvil` | ✅ | Placement, repair window, damage from use, falling (landing sound, damage on landing, shattering, hurting entities, crushing circuits blocks) |
 | `BlockEnchantmentTable` | ✅ | Opens the window (custom names from the tile entity) |
 | `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped, hoppers, comparators ✅ |
-| `BlockCauldron` | ❌ | Filling, rain, armor washing, comparator output |
+| `BlockCauldron` | ✅ | Water buckets, bottles, washing leather armor and banner patterns (with vanilla's stat quirk), rain, putting out burning players, comparator output. Rain and burning players are not in a scenario (rain needs pinned randoms) |
 | `BlockBeacon` | ❌ | |
 | `BlockFlowerPot` | ✅ | Placement on a solid top, potting plants (flowers, saplings, mushrooms, cactus, dead bush, fern), support, the plant dropping on any removal (not after a creative harvest) |
 | `BlockJukebox` | ❌ | The click is consumed when holding a record; records ❌ |
@@ -357,7 +357,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockRedstoneWire` | ✅ | Update order quirks reproduced |
 | `BlockRedstoneTorch` | ✅ | Burnout |
 | `BlockRedstoneLight` | ✅ | |
-| `BlockRedstoneRepeater`, `BlockRedstoneComparator`, `BlockRedstoneDiode` | ✅ | Comparators reading containers, cake ✅; jukeboxes, cauldrons, brewing stands, end portal frames, item frames ❌ |
+| `BlockRedstoneRepeater`, `BlockRedstoneComparator`, `BlockRedstoneDiode` | ✅ | Comparators reading containers, cake, cauldrons ✅; jukeboxes, brewing stands, end portal frames, item frames ❌ |
 | `BlockLever`, `BlockButton`, `BlockButtonStone`, `BlockButtonWood` | 🟡 | Wooden buttons pressed by arrows ❌ |
 | `BlockBasePressurePlate`, `BlockPressurePlate`, `BlockPressurePlateWeighted` | ✅ | Entity kinds limited to those krol has |
 | `BlockPistonBase`, `BlockPistonExtension`, `BlockPistonMoving` | 🟡 | Moving entities ❌ |
@@ -375,7 +375,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemStack`: NBT, display names, lore, `onBlockDestroyed` wear | ✅ | |
 | `ItemBlock`, `ItemMultiTexture`, `ItemCloth`, `ItemColored`, `ItemLeaves`, `ItemSlab`, `ItemPiston`, `ItemSnow`, `ItemDoublePlant` | ✅ | |
 | `ItemAnvilBlock` | 🟡 | Placement only |
-| `ItemReed` (sugar cane, cake, repeater, comparator, brewing stand, cauldron, flower pot, skull?) | 🟡 | Sugar cane, cake, repeaters, comparators, brewing stands, flower pots ✅; cauldron ❌ |
+| `ItemReed` (sugar cane, cake, repeater, comparator, brewing stand, cauldron, flower pot, skull?) | 🟡 | Sugar cane, cake, repeaters, comparators, brewing stands, flower pots, cauldrons ✅ |
 | `ItemSeeds`, `ItemSeedFood` | ✅ | |
 | `ItemDoor`, `ItemSign`, `ItemRedstone` | ✅ | |
 | `ItemBed` | ✅ | |

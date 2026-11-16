@@ -358,6 +358,8 @@ pub fn placed_state(
             .then_some(id << 4),
         // BlockBrewingStand: placed like any block (no bottles yet).
         super::brewing::BREWING_STAND => state(0),
+        // BlockCauldron: placed like any block, empty.
+        super::cauldron::CAULDRON => state(0),
         // BlockFlowerPot.canPlaceBlockAt: a solid top surface below.
         super::flower_pot::FLOWER_POT => solid_top(below).then_some(id << 4),
         // Farmland is an ordinary block item (dry when placed).
@@ -411,6 +413,7 @@ pub fn reed_block(item: i16) -> Option<u16> {
         354 => Some(CAKE),
         super::brewing::BREWING_STAND_ITEM => Some(super::brewing::BREWING_STAND),
         super::flower_pot::FLOWER_POT_ITEM => Some(super::flower_pot::FLOWER_POT),
+        super::cauldron::CAULDRON_ITEM => Some(super::cauldron::CAULDRON),
         _ => None,
     }
 }

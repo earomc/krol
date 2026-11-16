@@ -211,6 +211,7 @@ fn drop_plan(rand: &mut krol_java::JavaRandom, state: u16) -> DropPlan {
         super::ids::block::DEADBUSH => (0, None, 0),
         super::brewing::BREWING_STAND => (1, Some(super::brewing::BREWING_STAND_ITEM), 0),
         super::flower_pot::FLOWER_POT => (1, Some(super::flower_pot::FLOWER_POT_ITEM), 0),
+        super::cauldron::CAULDRON => (1, Some(super::cauldron::CAULDRON_ITEM), 0),
         super::beds::BED if super::beds::drops_item(m as u16) => {
             (1, Some(super::beds::BED_ITEM), 0)
         }

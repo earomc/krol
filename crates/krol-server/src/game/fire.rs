@@ -258,7 +258,7 @@ impl Game {
         self.count_item_use(i);
     }
 
-    fn player_fire(&self, i: usize) -> i32 {
+    pub(super) fn player_fire(&self, i: usize) -> i32 {
         i32::from(self.players[i].data.get_i16("Fire"))
     }
 
