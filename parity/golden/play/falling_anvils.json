@@ -36,32 +36,33 @@
         "spawn_object",
         "entity_metadata",
         "block_change",
+        "0x28",
+        "block_change",
+        "destroy_entities",
         "block_change",
         "spawn_object",
         "entity_metadata",
+        "block_change",
+        "spawn_object",
+        "entity_metadata",
+        "entity_metadata",
+        "destroy_entities",
+        "block_change",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "destroy_entities",
+        "block_change",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
         "0x28",
         "multi_block_change",
         "destroy_entities",
         "block_change",
         "spawn_object",
         "entity_metadata",
-        "spawn_object",
-        "entity_metadata",
-        "entity_metadata",
         "block_change",
-        "destroy_entities",
-        "block_change",
-        "spawn_object",
-        "entity_metadata",
-        "block_change",
-        "destroy_entities",
-        "block_change",
-        "spawn_object",
-        "entity_metadata",
-        "0x28",
-        "multi_block_change",
-        "block_change",
-        "destroy_entities",
         "entity_status",
         "chat",
         "0x28",
@@ -182,6 +183,18 @@
           "packet": "block_change"
         },
         {
+          "hex": "000003feffff8b0013fffe4d0000000000",
+          "packet": "0x28"
+        },
+        {
+          "hex": "ffff8b0013fffe4d9412",
+          "packet": "block_change"
+        },
+        {
+          "debug": "DestroyEntities([1])",
+          "packet": "destroy_entities"
+        },
+        {
           "hex": "ffff8b807bfffe4dc001",
           "packet": "block_change"
         },
@@ -196,15 +209,25 @@
           "packet": "entity_metadata"
         },
         {
-          "hex": "000003feffff8b0013fffe4d0000000000",
-          "packet": "0x28"
+          "hex": "ffff8b807bfffe4d00",
+          "packet": "block_change"
         },
         {
-          "hex": "ffffffe2ffffffe402cd049412ed1e00",
-          "packet": "multi_block_change"
+          "entity_id": 3,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
         },
         {
-          "debug": "DestroyEntities([1])",
+          "hex": "03000021012c820003000400aa000c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "03000021012c820003000400aa000c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([2])",
           "packet": "destroy_entities"
         },
         {
@@ -212,27 +235,13 @@
           "packet": "block_change"
         },
         {
-          "entity_id": 3,
+          "entity_id": 4,
           "kind": 70,
           "data": 32913,
           "packet": "spawn_object"
         },
         {
-          "hex": "03000021012c8200030004007f",
-          "packet": "entity_metadata"
-        },
-        {
-          "entity_id": 4,
-          "kind": 2,
-          "data": 1,
-          "packet": "spawn_object"
-        },
-        {
-          "hex": "04000021012c820003000400aa000c010000007f",
-          "packet": "entity_metadata"
-        },
-        {
-          "hex": "04000021012c820003000400aa000c010000007f",
+          "hex": "04000021012c8200030004007f",
           "packet": "entity_metadata"
         },
         {
@@ -240,7 +249,7 @@
           "packet": "block_change"
         },
         {
-          "debug": "DestroyEntities([2])",
+          "debug": "DestroyEntities([4])",
           "packet": "destroy_entities"
         },
         {
@@ -262,7 +271,15 @@
           "packet": "block_change"
         },
         {
-          "debug": "DestroyEntities([3])",
+          "hex": "000003feffff8c8013fffe4d0000000000",
+          "packet": "0x28"
+        },
+        {
+          "hex": "ffffffe3ffffffe4022d0493122d0330",
+          "packet": "multi_block_change"
+        },
+        {
+          "debug": "DestroyEntities([5])",
           "packet": "destroy_entities"
         },
         {
@@ -280,20 +297,8 @@
           "packet": "entity_metadata"
         },
         {
-          "hex": "000003feffff8c8013fffe4d0000000000",
-          "packet": "0x28"
-        },
-        {
-          "hex": "ffffffe3ffffffe4022d0493122d0330",
-          "packet": "multi_block_change"
-        },
-        {
           "hex": "ffff8a007bfffe4d00",
           "packet": "block_change"
-        },
-        {
-          "debug": "DestroyEntities([5])",
-          "packet": "destroy_entities"
         },
         {
           "entity_id": 0,

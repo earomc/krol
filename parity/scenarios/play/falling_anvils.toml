@@ -4,7 +4,8 @@ subsystem = "play"
 # jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and stands still. The
 # landing anvil's damage roll uses the falling block's own unseeded random: from more
 # than 20 blocks up its chance reaches 1, so the outcome is fixed. Shorter falls
-# (chance 0.05 + 0.05 per block) cannot be compared exactly.
+# (chance 0.05 + 0.05 per block) cannot be compared exactly. The drops are 3 s apart: a
+# 26-block fall takes about 2 s, so closer drops race one landing against the next spawn.
 
 [setup]
 world = "fixtures/worlds/flat"
@@ -32,7 +33,7 @@ action = "play"
 background = true
 protocol = 47
 name = "jeb_"
-seconds = 16
+seconds = 21
 
 [[steps]]
 action = "wait"
@@ -41,22 +42,22 @@ ms = 3000
 [[steps]]
 action = "console"
 command = "setblock -468 30 -435 anvil 0"
-wait_ms = 2000
+wait_ms = 3000
 
 [[steps]]
 action = "console"
 command = "setblock -466 30 -435 sand"
-wait_ms = 2000
+wait_ms = 3000
 
 [[steps]]
 action = "console"
 command = "setblock -464 30 -435 anvil 8"
-wait_ms = 2000
+wait_ms = 3000
 
 [[steps]]
 action = "console"
 command = "setblock -462 30 -435 anvil 3"
-wait_ms = 2000
+wait_ms = 3000
 
 [[steps]]
 action = "console"
