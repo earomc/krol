@@ -431,6 +431,12 @@ impl Game {
                     block::FURNACE
                 };
                 self.set_block_notify(pos, id << 4 | (state & 15));
+                // Vanilla quirk: setState puts the tile entity back while tile entities
+                // tick, so it joins the added list, whose blocks are marked for update
+                // afterwards: clients get the block again even when it did not change.
+                self.level
+                    .overworld
+                    .mark_block_for_update(pos.0, pos.1, pos.2);
             }
         }
     }
