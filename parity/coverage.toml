@@ -492,3 +492,8 @@ scenarios = ["commands/stat_scores"]
 id = "combat.effects"
 description = "Combat details: critical hits (attacker falling, crit animation), sprint attacks (extra knockback, sprinting stops), fire aspect (fire counter, the burning flag following on the victim's own update), thorns above level 10 (damage, damage.thorns sound heard by all but the attacker, armor wear)"
 scenarios = ["play/pvp_effects"]
+
+[[feature]]
+id = "combat.fall_messages"
+description = "Fall death messages: a fatal fall after hits by a player (plain, named sword) or by instant damage is still an accident (the fatal hit clears the earlier combat entries); respawned players keep their entity id and move to the end of the player list (latency updates)"
+scenarios = ["play/fall_messages"]

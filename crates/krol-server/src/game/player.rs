@@ -146,6 +146,10 @@ pub struct Player {
     pub removed: bool,
     /// `isDead` set by the death animation; removed in the next entity loop.
     pub dead_marked: bool,
+    /// Where the player stands in the world's entity list (`loadedEntityList`): its entity
+    /// id when it joined, the next free id when it respawned (a respawned player keeps
+    /// its entity id but is added at the end).
+    pub load_order: i32,
     /// The burning bit of the metadata flags (`getFlag(0)`): follows the fire counter
     /// only when `onEntityUpdate` runs.
     pub burning_flag: bool,

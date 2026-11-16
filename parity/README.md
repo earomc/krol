@@ -111,6 +111,9 @@ into server ticks. Rules learned from flaky scenarios:
   after another player's attack in the same tick depending on arrival order. A bot with
   `moves` of only `[]` sends no packets, so everything that happens to it comes from the
   attacker's packets and the entity loop (see `play/pvp_effects`).
+- **Players cannot be hurt by players for 60 ticks** after joining or respawning
+  (`respawnInvulnerabilityTicks`), and a respawned player keeps its entity id (target it
+  with the same `!attack` id).
 - **Space drops by their fall time**: a block dropped from 26 blocks up lands about 2 s
   later; console drops closer together race one landing against the next spawn.
 - Resting items and orbs keep a horizontal motion that shrinks every tick, and their

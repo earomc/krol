@@ -181,16 +181,27 @@ impl Game {
             return Component::translate("death.attack.generic", vec![name]);
         };
         // func_94544_f: the entry before the farthest fall (or out-of-world), if that
-        // fall was over 5 blocks.
+        // fall was over 5 blocks. (Its second candidate, the farthest fall from a ladder,
+        // vines or water, can never be chosen: vanilla compares it with a counter that
+        // stays 0.) Vanilla quirk: the killing hit's trackDamage runs after the health
+        // dropped to 0, so its reset() has already cleared every earlier entry; with the
+        // fall as the only entry, a fatal fall is always an accident, and the assist,
+        // killer and finish messages never appear in 1.8.
         let mut worst: Option<&CombatEntry> = None;
         let mut farthest = 0.0f32;
         for (k, e) in entries.iter().enumerate() {
+            // CombatEntry.getDamageAmount: the fall distance, or the most for the void.
+            let amount = if e.source == DamageSource::OutOfWorld {
+                f32::MAX
+            } else {
+                e.fall
+            };
             if matches!(e.source, DamageSource::Fall | DamageSource::OutOfWorld)
-                && e.fall > 0.0
-                && (worst.is_none() || e.fall > farthest)
+                && amount > 0.0
+                && (worst.is_none() || amount > farthest)
             {
                 worst = Some(if k > 0 { &entries[k - 1] } else { e });
-                farthest = e.fall;
+                farthest = amount;
             }
         }
         let worst = worst.filter(|_| farthest > 5.0);
@@ -201,10 +212,9 @@ impl Game {
                 let suffix = w.location.unwrap_or("generic");
                 return Component::translate(format!("death.fell.accident.{suffix}"), vec![name]);
             }
-            let last_name = self.source_name(last.source);
-            if let Some(by) = self.source_name(w.source)
-                && last_name.as_ref() != Some(&by)
-            {
+            // The fall itself has no attacker, so any attacker of the entry before it
+            // differs from it: an assist.
+            if let Some(by) = self.source_name(w.source) {
                 return match self.source_named_item(w.source) {
                     Some(item) => Component::translate(
                         "death.fell.assist.item",
@@ -212,17 +222,6 @@ impl Game {
                     ),
                     None => {
                         Component::translate("death.fell.assist", vec![name, Arg::Component(by)])
-                    }
-                };
-            }
-            if let Some(by) = last_name {
-                return match self.source_named_item(last.source) {
-                    Some(item) => Component::translate(
-                        "death.fell.finish.item",
-                        vec![name, Arg::Component(by), Arg::Component(item)],
-                    ),
-                    None => {
-                        Component::translate("death.fell.finish", vec![name, Arg::Component(by)])
                     }
                 };
             }
@@ -516,6 +515,12 @@ impl Game {
         self.players[i].dead_marked = false;
         // The new entity's ticksExisted starts over.
         self.players[i].spawn_tick = self.players[i].ticks;
+        // spawnEntityInWorld and playerEntityList.add: the new entity joins the end of
+        // the world's lists (keeping the old entity id).
+        self.players[i].load_order = self.next_entity_id;
+        let player = self.players.remove(i);
+        self.players.push(player);
+        let i = self.players.len() - 1;
         self.track_player(i);
         // addSelfToInternalCraftingInventory.
         let p = &self.players[i];

@@ -22,9 +22,7 @@ Status as of 2026-11-16 (commit `server: entities saved with their chunk`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **Parity coverage for the assisted/finished fall messages** (`death.fell.assist`,
-   `death.fell.finish`, ...).
-2. **The remaining M4 items**: firework and banner recipes, maps, the other containers
+1. **The remaining M4 items**: firework and banner recipes, maps, the other containers
    and item-placed blocks, special block drops (see the tables below).
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
@@ -490,7 +488,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Food stats: exhaustion, saturation, natural regeneration, starvation | ✅ | |
 | Experience: levels, orbs, death drops | ✅ | Enchanting cost ❌ |
 | Inventory, held item, armor, creative inventory | ✅ | |
-| Death: messages, drops, keepInventory, respawn | ✅ | The body leaves the world 20 ticks after death (`setDead`, removed in the next entity loop) but stays among the world's players until it respawns: it is shown new entities and is the orbs' closest player |
+| Death: messages, drops, keepInventory, respawn | ✅ | The body leaves the world 20 ticks after death (`setDead`, removed in the next entity loop) but stays among the world's players until it respawns: it is shown new entities and is the orbs' closest player. A respawned player keeps its entity id but moves to the end of the player list and the entity update order |
 | Sneaking, sprinting (metadata, speed boost, hunger) | ✅ | |
 | Suffocation, drowning, burning, fall damage, cactus | ✅ | |
 | Damage outside the world border | ❌ | |
@@ -639,7 +637,7 @@ krol notice.
 | `MathHelper` (sin table, floor, clamp, ...) | ✅ | JVM-verified (`krol-java`) |
 | `java.util.Random` | ✅ | JVM-verified |
 | `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, outOfWorld, explosion, explosion.player (difficulty scaling, knockback from the igniter), anvil, fallingBlock (helmet wear), player, thorns ✅; generic, starve, mob/projectile, indirect magic, lightningBolt ❌ |
-| `CombatTracker` (death messages) | 🟡 | For implemented sources; fall variants ✅ |
+| `CombatTracker` (death messages) | 🟡 | For implemented sources; fall variants ✅ (vanilla quirk: the fatal hit clears the earlier entries, so a fatal fall is always an accident) |
 | `IChatComponent` JSON (text, translation, styles, click/hover events) | ✅ | |
 | `StatCollector` (translation of log lines) | ✅ | For the keys krol uses |
 | `BlockPos`, `AxisAlignedBB`, `MovingObjectPosition`, `EnumFacing` | ✅ | |

@@ -578,9 +578,16 @@ impl Game {
         order.extend(self.orbs.keys().copied());
         order.extend(self.falling.keys().copied());
         order.extend(self.tnt.keys().copied());
-        order.sort_unstable();
+        let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
+        // A respawned player keeps its id but joined the list last; at equal places it
+        // came before entities spawned after it.
+        let players: std::collections::HashMap<i32, i32> = self
+            .players
+            .iter()
+            .map(|p| (p.entity_id, p.load_order))
+            .collect();
+        order.sort_by_key(|id| players.get(id).map_or((*id, 1), |&at| (at, 0)));
         let mut next = 0;
-        let mut newest = order.last().copied().unwrap_or(i32::MIN);
         loop {
             if next == order.len() {
                 let mut spawned: Vec<i32> = self
@@ -1261,6 +1268,7 @@ impl Game {
             removed: false,
             dead_marked: false,
             burning_flag: false,
+            load_order: join.entity_id,
             attacking_player: None,
             spawn_tick: 0,
             revenge_target: None,
