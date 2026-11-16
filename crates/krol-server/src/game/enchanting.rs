@@ -301,6 +301,17 @@ pub fn can_apply_together(chosen: i16, other: i16) -> bool {
     compatible(chosen, other)
 }
 
+/// `ItemEnchantedBook.addEnchantment` (the higher level of a stored enchantment
+/// stays).
+pub fn store_enchantment(stack: &mut ItemStack, id: i16, level: i32) {
+    add_enchantment(stack, id, level, true);
+}
+
+/// `Enchantment.getWeight`, for anvils.
+pub fn weight_of(id: i16) -> i32 {
+    weight(id)
+}
+
 /// `ItemStack.addEnchantment`, for commands.
 pub fn enchant_stack(stack: &mut ItemStack, id: i16, level: i32) {
     add_enchantment(stack, id, level, false);

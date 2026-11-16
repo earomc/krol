@@ -30,6 +30,7 @@ pub enum Layout {
     /// A brewing stand: three bottles, the ingredient, main, hotbar.
     Brewing,
     Enchanting,
+    Anvil,
 }
 
 impl Layout {
@@ -43,6 +44,7 @@ impl Layout {
             Self::Dispenser => super::dispenser::DISPENSER_SLOTS + 36,
             Self::Brewing => super::brewing::SLOTS + 36,
             Self::Enchanting => super::enchanting::TABLE_SLOTS + 36,
+            Self::Anvil => super::anvil::ANVIL_SLOTS + 36,
         }
     }
 
@@ -56,6 +58,7 @@ impl Layout {
                 | Self::Dispenser
                 | Self::Brewing
                 | Self::Enchanting
+                | Self::Anvil
         )
     }
 
@@ -66,6 +69,7 @@ impl Layout {
             Self::Workbench => (1..10, 3),
             // Not a crafting grid, but dropped on close the same way.
             Self::Enchanting => (0..super::enchanting::TABLE_SLOTS, 0),
+            Self::Anvil => (0..super::anvil::OUTPUT, 0),
             Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser | Self::Brewing => {
                 (0..0, 0)
             }
@@ -83,6 +87,7 @@ impl Layout {
             Self::Dispenser => super::dispenser::DISPENSER_SLOTS,
             Self::Brewing => super::brewing::SLOTS,
             Self::Enchanting => super::enchanting::TABLE_SLOTS,
+            Self::Anvil => super::anvil::ANVIL_SLOTS,
         }
     }
 
@@ -106,6 +111,7 @@ impl Layout {
             Self::Dispenser => k >= super::dispenser::DISPENSER_SLOTS,
             Self::Brewing => k >= super::brewing::SLOTS,
             Self::Enchanting => k >= super::enchanting::TABLE_SLOTS,
+            Self::Anvil => k >= super::anvil::ANVIL_SLOTS,
         }
     }
 
@@ -121,6 +127,9 @@ impl Layout {
                 3 => super::brewing::is_ingredient(stack),
                 _ => true,
             };
+        }
+        if self == Self::Anvil && k == super::anvil::OUTPUT {
+            return false;
         }
         if self == Self::Enchanting && k == super::enchanting::LAPIS_SLOT {
             return super::enchanting::is_lapis(stack);
@@ -219,6 +228,12 @@ impl Layout {
                 31..=39 => merge(slots, &mut stack, 4, 31, false),
                 _ => merge(slots, &mut stack, 4, 40, false),
             },
+            // ContainerRepair.transferStackInSlot.
+            Self::Anvil => match index {
+                2 => merge(slots, &mut stack, 3, 39, true),
+                0 | 1 => merge(slots, &mut stack, 3, 39, false),
+                _ => merge(slots, &mut stack, 0, 2, false),
+            },
             // ContainerEnchantment.transferStackInSlot.
             Self::Enchanting => match index {
                 0 | 1 => merge(slots, &mut stack, 2, 38, true),
@@ -305,6 +320,8 @@ pub struct WindowState {
     put_input: bool,
     /// The open enchanting table's seed and offers.
     pub offers: super::enchanting::Offers,
+    /// The open anvil's cost, material use and name.
+    pub anvil: super::anvil::AnvilState,
 }
 
 impl WindowState {
@@ -568,6 +585,17 @@ impl Game {
             (layout == Layout::Furnace).then(|| (flat[0].clone(), flat[2].clone()));
         let n = layout.len();
         let index = |s: i16| (s >= 0 && (s as usize) < n).then_some(s as usize);
+        // The anvil output's canTakeStack (levels, a cost, an output) gates taking it in
+        // every click mode but cloning and dragging; a refused normal click still
+        // reports the stack.
+        let locked_output = layout == Layout::Anvil && !self.anvil_can_take(i);
+        if locked_output && index(slot) == Some(super::anvil::OUTPUT) && mode != 3 && mode != 5 {
+            return if mode == 0 {
+                flat[super::anvil::OUTPUT].clone()
+            } else {
+                None
+            };
+        }
         let mut result = None;
         let button = i32::from(button);
         let mut drops: Vec<ItemStack> = Vec::new();
@@ -807,8 +835,9 @@ impl Game {
                     let mut s = start;
                     while s >= 0 && (s as usize) < n && c.count < max_stack(c.id) {
                         let idx = s as usize;
-                        // canMergeSlot: never from a crafting result.
+                        // canMergeSlot: never from a crafting result; canTakeStack.
                         if (idx != 0 || !layout.has_result())
+                            && !(locked_output && idx == super::anvil::OUTPUT)
                             && let Some(st) = flat[idx].clone()
                             && can_add(&flat[idx], Some(&c), true)
                             && (pass != 0 || st.count != max_stack(st.id))
@@ -991,10 +1020,21 @@ impl Game {
                 .map(|o| o.slots.clone())
         };
         let table_before = table(self);
+        let anvil_before = self.anvil_slots(i);
         let result = self.slot_click(i, slot, button, mode);
         // The table's markDirty runs inside the click.
         if table_before.is_some() && table(self) != table_before {
             self.enchanting_slots_changed(i);
+        }
+        // The anvil: a taken output pays and uses up the inputs; a changed input
+        // recomputes the output.
+        if let (Some(before), Some(after)) = (anvil_before, self.anvil_slots(i)) {
+            use super::anvil::OUTPUT;
+            if before[OUTPUT].is_some() && after[OUTPUT] != before[OUTPUT] {
+                self.anvil_output_taken(i);
+            } else if after[..OUTPUT] != before[..OUTPUT] {
+                self.anvil_inputs_changed(i, mode, slot);
+            }
         }
         if item == result {
             self.players[i].send(ClientboundPlay::ConfirmTransaction {
@@ -1215,6 +1255,8 @@ impl Game {
                     && w.tile_entity(pos).is_some()
                     && near(pos)
             }
+            // ContainerRepair.canInteractWith.
+            Layout::Anvil => w.block(pos.0, pos.1, pos.2) >> 4 == block::ANVIL && near(pos),
             // ContainerEnchantment.canInteractWith.
             Layout::Enchanting => {
                 w.block(pos.0, pos.1, pos.2) >> 4 == block::ENCHANTING_TABLE && near(pos)

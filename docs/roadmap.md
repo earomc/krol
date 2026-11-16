@@ -166,7 +166,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0C Steer Vehicle | ❌ | No vehicles |
 | 0x11 Enchant Item | ✅ | |
 | 0x14 Tab-Complete | ❌ | |
-| 0x17 Plugin Message | 🟡 | Received; `MC|BEdit`, `MC|BSign`, `MC|TrSel`, `MC|Beacon`, `MC|ItemName`, `MC|AdvCdm`, `MC|AutoCmd`, `MC|PickItem` unhandled |
+| 0x17 Plugin Message | 🟡 | Received; `MC|ItemName` ✅ (1.7's raw text translated); `MC|BEdit`, `MC|BSign`, `MC|TrSel`, `MC|Beacon`, `MC|AdvCdm`, `MC|AutoCmd`, `MC|PickItem` unhandled |
 | 0x18 Spectate | ❌ | |
 | 0x19 Resource Pack Status | ❌ | |
 
@@ -328,7 +328,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockSign`, `BlockStandingSign`, `BlockWallSign` | ✅ | |
 | `BlockCake` | ✅ | |
 | `BlockBed` | 🟡 | Placement, sleeping (occupied bit written quietly like vanilla), skipping the night, spawn point, halves breaking together, drops from the foot ✅; mobs keeping players awake, nether explosion ❌ |
-| `BlockAnvil` | 🟡 | Placement ✅; falling, damage, repair window ❌ |
+| `BlockAnvil` | 🟡 | Placement, repair window, damage from use ✅; falling (landing damage, hurting entities) ❌ |
 | `BlockEnchantmentTable` | ✅ | Opens the window (custom names from the tile entity) |
 | `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped, hoppers, comparators ✅ |
 | `BlockCauldron` | ❌ | Filling, rain, armor washing, comparator output |
@@ -417,7 +417,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `InventoryEnderChest` | ✅ | `EnderItems` in player data |
 | `ContainerEnchantment` | ✅ | Offers from `XpSeed` and bookshelves, hints, slot rules, shift-click, paying levels and lapis, books; all seven properties every tick like vanilla |
 | `ContainerBrewingStand` | ✅ | Slot rules, shift-click, brew time property; the potion achievement ❌ |
-| `ContainerRepair` (anvil, renaming via `MC|ItemName`) | ❌ | |
+| `ContainerRepair` (anvil, renaming via `MC|ItemName`) | ✅ | Repair with material, combining, enchantments, renaming against the en_US item names, prior work cost, Too Expensive, the output's `canTakeStack`, vanilla's change checks |
 | `ContainerBeacon` | ❌ | |
 | `ContainerMerchant`, `InventoryMerchant`, `SlotMerchantResult` | ❌ | |
 | `ContainerHorseInventory`, `AnimalChest` | ❌ | |
@@ -581,7 +581,7 @@ krol notice.
 | `tp` | 🟡 | Coordinates and players ✅; some forms (entity targets, rotation) ❌ |
 | `kill` · `spawnpoint` | ✅ | Players as targets (selectors ❌) |
 | `clear` | 🟡 | Data tags ❌ |
-| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `give` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | `give` needs item display names (`en_US.lang`) |
+| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `give` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | Item display names now exist (`data/item_names.txt`) for `give` |
 | `publish` | ➖ | LAN only |
 | `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | ❌ | Plain player names only |
 | `CommandResultStats` (`/stats` triggers) | ❌ | |

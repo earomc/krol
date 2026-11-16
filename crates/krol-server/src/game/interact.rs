@@ -176,6 +176,10 @@ impl Game {
                 self.activate_ender_chest(i, pos);
                 true
             }
+            block::ANVIL => {
+                self.open_anvil(i, pos);
+                true
+            }
             block::ENCHANTING_TABLE => {
                 self.open_enchanting_table(i, pos);
                 true

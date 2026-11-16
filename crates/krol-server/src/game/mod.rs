@@ -5,6 +5,7 @@
 //! scheduled packet tasks at the start of each tick. Packets to clients go through each
 //! player's [`Outgoing`] queue.
 
+mod anvil;
 mod attributes;
 mod beds;
 mod biome;
@@ -2172,6 +2173,10 @@ impl Game {
             // Answered as GameEvent::KeepAlive, stamped on the network side.
             ServerboundPlay::KeepAlive { .. } => {}
             ServerboundPlay::ClientStatus { action } => self.client_status(i, action),
+            // processVanilla250Packet: an anvil's new name.
+            ServerboundPlay::PluginMessage { channel, data } if channel == "MC|ItemName" => {
+                self.anvil_item_name(i, &data);
+            }
             ServerboundPlay::EnchantItem {
                 window,
                 enchantment,
