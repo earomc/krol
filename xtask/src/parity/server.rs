@@ -147,9 +147,9 @@ impl RunningServer {
         {
             let tx = tx.clone();
             std::thread::spawn(move || {
-                for line in BufReader::new(stream).lines() {
-                    let Ok(line) = line else { break };
-                    if tx.send(line).is_err() {
+                for line in BufReader::new(stream).split(b'\n') {
+                    let Ok(bytes) = line else { break };
+                    if tx.send(decode_console_line(bytes)).is_err() {
                         break;
                     }
                 }
@@ -244,5 +244,17 @@ impl RunningServer {
         }
         self.drain();
         Ok(self.log)
+    }
+}
+
+/// A console line as text: UTF-8 (krol), else Latin-1, which is what vanilla's Windows
+/// default charset (cp1252) makes of the `§` in formatted names.
+fn decode_console_line(mut bytes: Vec<u8>) -> String {
+    if bytes.last() == Some(&b'\r') {
+        bytes.pop();
+    }
+    match String::from_utf8(bytes) {
+        Ok(s) => s,
+        Err(e) => e.into_bytes().into_iter().map(char::from).collect(),
     }
 }
