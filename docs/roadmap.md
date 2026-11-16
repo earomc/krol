@@ -22,8 +22,8 @@ Status as of 2026-11-16 (commit `server: entities saved with their chunk`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **Parity coverage for combat**: critical hits, sprint knockback, fire aspect, thorns
-   and the assisted/finished fall messages.
+1. **Parity coverage for the assisted/finished fall messages** (`death.fell.assist`,
+   `death.fell.finish`, ...).
 2. **The remaining M4 items**: firework and banner recipes, maps, the other containers
    and item-placed blocks, special block drops (see the tables below).
 
@@ -495,7 +495,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Suffocation, drowning, burning, fall damage, cactus | ✅ | |
 | Damage outside the world border | ❌ | |
 | Sleeping | 🟡 | Use bed, sleep timer, waking (day, bed gone, leaving, night skipped), spawn point, respawning at the bed or being told it is missing ✅; the 0.2 x 0.2 sleeping box, players saved asleep moved out of the bed ❌ |
-| Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ✅ | Players only. Held item attack modifiers (also saved), sword blocking, thorns, tool wear and use stats, killers (combat tracker, `attackingPlayer`), revenge target (`HurtByTimestamp`), PvP death messages. Critical hits, sprint knockback, fire aspect and thorns are not in a scenario yet (thorns rolls the victim's unseeded random); the overkill achievement ❌ |
+| Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ✅ | Players only. Held item attack modifiers (also saved), sword blocking, thorns, tool wear and use stats, killers (combat tracker, `attackingPlayer`), revenge target (`HurtByTimestamp`), PvP death messages. Critical hits, sprint knockback, fire aspect (the burning flag follows on the victim's own update) and thorns (the sound at the attacker) are covered by `play/pvp_effects`; the overkill achievement ❌ |
 | Interacting with entities (`interactWith`) | ❌ | |
 | Riding (`mountEntity`) | ❌ | |
 | Spectator mode: camera, teleport via `Spectate` | 🟡 | Game mode and noclip ✅; camera/spectate packets ❌ |
@@ -560,7 +560,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Respiration | ✅ | |
 | Aqua Affinity, Efficiency | ❌ | Mining speed (the underwater and in-air penalties are ✅) |
 | Unbreaking | ✅ | Tool and armor wear |
-| Thorns | ❌ | |
+| Thorns | ✅ | Players hurting players (the victim's unseeded random decides at levels up to 10) |
 | Depth Strider | ❌ | |
 | Silk Touch, Fortune | ❌ | Drops |
 | Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting | ❌ | Needs attacking and mobs |
@@ -683,7 +683,7 @@ example plugin, `docs/bukkit-to-rust.md`.
 | `parity fuzz` | ❌ | |
 | `parity worldgen` | ❌ | M6 |
 | `parity plugins` | ❌ | M8 |
-| Testbot: protocol 47 and 5, movement, digging, placing, clicks, chat, item use | ✅ | Attacking/interacting with entities ❌ |
+| Testbot: protocol 47 and 5, movement, digging, placing, clicks, chat, item use, attacking (also critical hops), sprinting | ✅ | Interacting with entities ❌ |
 
 ### Tooling and docs
 

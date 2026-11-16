@@ -1,0 +1,92 @@
+description = "Combat details: a critical hit (attacker falling: 1.5x damage, crit animation), a sprinting hit (extra knockback, sprinting stops), a fire aspect hit (victim set on fire), all against Thorns XI armor that strikes back each time (thorns damage, armor wear)"
+subsystem = "play"
+
+# Notch (fixture: adventure mode, iron chestplate with Thorns XI) connects first and
+# gets entity id 0; jeb_ steps one block south so knockback has a direction (players at
+# the same spot get a random one). Wooden swords keep Notch alive through all three hits
+# and the burning. `!crit` hops up 1 block and 0.25 back down, attacking while falling.
+# The hits are 1.5 s apart, past the 10-tick hurt cooldown.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_thorns.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Healing would add exhaustion and health at a tick that depends on when the sessions end.
+[[steps]]
+action = "console"
+command = "gamerule naturalRegeneration false"
+
+[[steps]]
+id = "victim"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 16
+# Notch sends no movement packets at all: his own update (health packet, burning flag,
+# burn damage) would otherwise run before or after each attack depending on which
+# packet arrived first in the tick, in vanilla too. Everything that happens to him then
+# comes from jeb_'s packets and the entity loop. Fire aspect's fire counter is compared
+# in his player file.
+moves = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+moves = [[0, 0, 0.5], [0, 0, 1.0]]
+chat = [
+    "@5000 !hold 0",
+    "@5500 !crit 0",
+    "@7000 !sprint",
+    "@7500 !attack 0",
+    "@9000 !hold 1",
+    "@9500 !attack 0",
+]
+
+[[steps]]
+action = "console"
+command = "give jeb_ wooden_sword"
+
+[[steps]]
+action = "console"
+command = "give jeb_ wooden_sword 1 0 {ench:[{id:20s,lvl:1s}]}"
+wait_ms = 12000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+    # How far knockback carries jeb_ between his packets depends on the timing.
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.walkOneCm",
+]
+
+# Hurt timestamps count ticks since the start, which depends on how the attack packets
+# fall into ticks.
+[observe.tolerance]
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.HurtByTimestamp" = 4
+"file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.HurtByTimestamp" = 4
+# Knocked-back players move on the server between their packets; how far they get before
+# the session ends (walking exhaustion) depends on the timing.
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel" = 0.01
+"file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodExhaustionLevel" = 0.01

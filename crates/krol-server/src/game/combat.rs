@@ -44,6 +44,9 @@ const REACH_SQ_VISIBLE: f64 = 36.0;
 const REACH_SQ_HIDDEN: f64 = 9.0;
 /// `C02PacketUseEntity.Action` ids.
 const ATTACK: i32 = 1;
+/// The sound thorns make at the attacker (`damage.thorns`, volume 0.5, pitch 1).
+const THORNS_SOUND: &str = "damage.thorns";
+const THORNS_VOLUME: f32 = 0.5;
 /// `S0BPacketAnimation` ids of critical hits and enchanted hits.
 const CRITICAL_EFFECT: u8 = 4;
 const MAGIC_CRITICAL_EFFECT: u8 = 5;
@@ -345,6 +348,10 @@ impl Game {
                     };
                     let source = DamageSource::Thorns(self.players[victim].entity_id);
                     self.attack_player(attacker, source, amount as f32);
+                    // EntityPlayer.playSound: heard by everyone near but the attacker.
+                    let a = &self.players[attacker];
+                    let (pos, conn) = (a.pos, a.conn_id);
+                    self.play_sound_near_except(Some(conn), THORNS_SOUND, pos, THORNS_VOLUME, 1.0);
                     if let Some(s) = worn {
                         self.damage_slot_item(victim, s, 3);
                     }

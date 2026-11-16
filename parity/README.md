@@ -106,6 +106,11 @@ into server ticks. Rules learned from flaky scenarios:
   Offline players' UUIDs are name-based (version 3) and compared as they are.
 - Relative teleports (`tp ~ ~ ~`) are compared for 1.7 clients by resolving them against
   the previous teleport, which assumes the bot did not move in between.
+- **Keep a victim silent when hits must compare exactly**: a player's own update (health
+  packet, burning flag, burn damage) runs when its movement packet is handled, before or
+  after another player's attack in the same tick depending on arrival order. A bot with
+  `moves` of only `[]` sends no packets, so everything that happens to it comes from the
+  attacker's packets and the entity loop (see `play/pvp_effects`).
 - **Space drops by their fall time**: a block dropped from 26 blocks up lands about 2 s
   later; console drops closer together race one landing against the next spawn.
 - Resting items and orbs keep a horizontal motion that shrinks every tick, and their

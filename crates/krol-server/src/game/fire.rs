@@ -262,15 +262,12 @@ impl Game {
         i32::from(self.players[i].data.get_i16("Fire"))
     }
 
-    /// Sets the player's fire counter (`Entity.fire`, saved as `Fire`); the burning
-    /// flag in metadata 0 follows it.
+    /// Sets the player's fire counter (`Entity.fire`, saved as `Fire`); the burning flag
+    /// in metadata 0 follows in [`Self::player_fire_update`].
     fn set_player_fire(&mut self, i: usize, fire: i32) {
-        let p = &mut self.players[i];
-        let was = p.data.get_i16("Fire") > 0;
-        p.data.insert("Fire", krol_nbt::Tag::Short(fire as i16));
-        if was != (fire > 0) {
-            p.dirty_metadata.insert(0);
-        }
+        self.players[i]
+            .data
+            .insert("Fire", krol_nbt::Tag::Short(fire as i16));
     }
 
     /// `Entity.extinguish`.
@@ -326,6 +323,14 @@ impl Game {
             self.attack_player(i, super::damage::DamageSource::Lava, LAVA_DAMAGE);
             self.ignite_player(i, LAVA_BURN_SECONDS);
             self.players[i].fall_distance *= 0.5;
+        }
+        // setFlag(0, fire > 0): the burning bit catches up with the fire counter only
+        // here, so fire set by an attack shows on the victim's next update.
+        let burning = self.player_fire(i) > 0;
+        let p = &mut self.players[i];
+        if p.burning_flag != burning {
+            p.burning_flag = burning;
+            p.dirty_metadata.insert(0);
         }
     }
 

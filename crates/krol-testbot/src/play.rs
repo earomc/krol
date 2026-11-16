@@ -52,6 +52,9 @@ pub struct PlayObservation {
 /// given in 1/16; sends the swing first),
 /// `!use` (use the held item, face 255), `!hold <slot>` (select hotbar slot),
 /// `!swing` (arm animation), `!attack <entity id>` (swing, then attack),
+/// `!crit <entity id>` (a hop: up 1 block and 0.25 back down off the ground, the attack
+/// while falling, then landing where it started), `!sprint` / `!unsprint` (Entity
+/// Action start / stop sprinting),
 /// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0),
 /// `!click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]`,
 /// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`, `!enchant <window>
@@ -123,6 +126,8 @@ pub async fn play_session(
     let mut next_chat = start;
     // For 1.7 clients: the own entity id (sent in some 1.7 packets), once known.
     let mut v5_eid: Option<i32> = (version == ProtocolVersion::V5).then_some(0);
+    // The own entity id from Join Game (for Entity Action).
+    let mut own_eid = 0;
 
     let result: Result<(), BotError> = async { loop {
         tokio::select! {
@@ -140,7 +145,7 @@ pub async fn play_session(
                             .collect();
                         timed_chat.retain(|(ms, _)| *ms > elapsed);
                         for message in due {
-                            for packet in action_or_chat(&message, &held) {
+                            for packet in action_or_chat(&message, &held, here, own_eid) {
                                 if let ServerboundPlay::HeldItemChange { slot } = packet {
                                     held_slot = slot;
                                 }
@@ -196,6 +201,7 @@ pub async fn play_session(
                         send_play(&mut conn, v5_eid, &ServerboundPlay::KeepAlive { id: *id }).await?;
                     }
                     Some(ClientboundPlay::JoinGame { entity_id, .. }) => {
+                        own_eid = *entity_id;
                         if v5_eid.is_some() {
                             v5_eid = Some(*entity_id);
                         }
@@ -274,6 +280,8 @@ async fn send_play(
 fn action_or_chat(
     line: &str,
     held: &[Option<krol_protocol::packets::play::ItemStack>],
+    here: (f64, f64, f64),
+    own_eid: i32,
 ) -> Vec<ServerboundPlay> {
     let Some(action) = line.strip_prefix('!') else {
         return vec![ServerboundPlay::Chat {
@@ -369,6 +377,30 @@ fn action_or_chat(
                 target_pos: None,
             },
         ],
+        Some("crit") => {
+            let at = |dy: f64, on_ground: bool| ServerboundPlay::Position {
+                x: here.0,
+                y: here.1 + dy,
+                z: here.2,
+                on_ground,
+            };
+            vec![
+                at(1.0, false),
+                at(0.75, false),
+                ServerboundPlay::Animation,
+                ServerboundPlay::UseEntity {
+                    target: num(1),
+                    action: 1,
+                    target_pos: None,
+                },
+                at(0.0, true),
+            ]
+        }
+        Some(action @ ("sprint" | "unsprint")) => vec![ServerboundPlay::EntityAction {
+            entity: own_eid,
+            action: if action == "sprint" { 3 } else { 4 },
+            jump_boost: 0,
+        }],
         Some("hold") => vec![ServerboundPlay::HeldItemChange {
             slot: num(1) as i16,
         }],

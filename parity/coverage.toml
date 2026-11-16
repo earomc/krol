@@ -487,3 +487,8 @@ scenarios = ["play/death_xp_orbs"]
 id = "scoreboard.stat_criteria"
 description = "Statistic criteria: scores change the moment the statistic does (a jump, a dropped item after it spawns, a death), stat.timeSinceDeath scores reset to 0 on death and stop counting while dead"
 scenarios = ["commands/stat_scores"]
+
+[[feature]]
+id = "combat.effects"
+description = "Combat details: critical hits (attacker falling, crit animation), sprint attacks (extra knockback, sprinting stops), fire aspect (fire counter, the burning flag following on the victim's own update), thorns above level 10 (damage, damage.thorns sound heard by all but the attacker, armor wear)"
+scenarios = ["play/pvp_effects"]

@@ -412,6 +412,16 @@ impl ServerboundPlay {
             Self::Animation => {
                 w.varint(0x0a);
             }
+            Self::EntityAction {
+                entity,
+                action,
+                jump_boost,
+            } => {
+                w.varint(0x0b)
+                    .varint(*entity)
+                    .varint(*action)
+                    .varint(*jump_boost);
+            }
             Self::PluginMessage { channel, data } => {
                 w.varint(0x17).string(channel)?;
                 w.bytes(data);
@@ -1924,6 +1934,16 @@ mod tests {
     const V: ProtocolVersion = ProtocolVersion::V47;
 
     #[test]
+    fn entity_action_golden_bytes() {
+        let p = ServerboundPlay::EntityAction {
+            entity: 300,
+            action: 3,
+            jump_boost: 0,
+        };
+        assert_eq!(p.encode().unwrap().unwrap(), [0x0b, 0xac, 0x02, 0x03, 0x00]);
+    }
+
+    #[test]
     fn serverbound_round_trips() {
         let packets = [
             ServerboundPlay::KeepAlive { id: 99 },
@@ -1952,6 +1972,11 @@ mod tests {
             ServerboundPlay::EnchantItem {
                 window: 3,
                 enchantment: 2,
+            },
+            ServerboundPlay::EntityAction {
+                entity: 7,
+                action: 3,
+                jump_boost: 0,
             },
         ];
         for p in packets {

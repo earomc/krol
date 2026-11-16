@@ -146,6 +146,9 @@ pub struct Player {
     pub removed: bool,
     /// `isDead` set by the death animation; removed in the next entity loop.
     pub dead_marked: bool,
+    /// The burning bit of the metadata flags (`getFlag(0)`): follows the fire counter
+    /// only when `onEntityUpdate` runs.
+    pub burning_flag: bool,
     /// The last player who hurt this one and the updates left it counts as attacker
     /// (`attackingPlayer`, `recentlyHit`).
     pub attacking_player: Option<(i32, i32)>,

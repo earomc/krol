@@ -120,6 +120,17 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
         ServerboundPlay::Animation => {
             w.varint(0x0a).i32(own_entity).i8(1);
         }
+        // 1.7 counts entity actions from 1.
+        ServerboundPlay::EntityAction {
+            entity,
+            action,
+            jump_boost,
+        } => {
+            w.varint(0x0b)
+                .i32(*entity)
+                .i8((*action + 1) as i8)
+                .i32(*jump_boost);
+        }
         ServerboundPlay::CreativeInventoryAction { slot, item } => {
             w.varint(0x10).i16(*slot);
             write_item(&mut w, item.as_ref())?;

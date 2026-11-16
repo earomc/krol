@@ -1260,6 +1260,7 @@ impl Game {
             combined_health: player::NO_HEALTH_YET,
             removed: false,
             dead_marked: false,
+            burning_flag: false,
             attacking_player: None,
             spawn_tick: 0,
             revenge_target: None,

@@ -20,6 +20,9 @@
 # - notch_brewer.dat: Notch in survival mode at jeb_'s usual spawn spot, holding a
 #   brewing stand, three water bottles and a nether wart.
 # - notch_creative_flint.dat: the same in creative mode (explosions cannot hurt him).
+# - notch_thorns.dat: Notch in adventure mode at jeb_'s usual spawn spot, wearing an
+#   iron chestplate with Thorns XI (above level 10 thorns always strike back, for exactly
+#   level - 10 damage, so no unseeded roll decides anything).
 #
 # Run: python tools/fixtures/players.py
 
@@ -131,3 +134,8 @@ player(DIR + 'notch_gardener.dat', [-471.5, 4.0, -434.5], [
     item(4, 'minecraft:double_plant', 2, 0),
     item(5, 'minecraft:dye', 8, 3),
 ])
+player(DIR + 'notch_thorns.dat', [-471.5, 4.0, -434.5], [
+    item(102, 'minecraft:iron_chestplate', 1, 0, compound('tag', list_('ench', 10, [
+        compound_payload(short('id', 7), short('lvl', 11)),
+    ]))),
+], game_type=2)
