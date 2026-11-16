@@ -769,6 +769,60 @@ impl V5Translator {
                 }
                 one(w);
             }
+            ClientboundPlay::ScoreboardObjective {
+                name,
+                mode,
+                display,
+                ..
+            } => {
+                // 1.7 always sends a display name and has no render type.
+                let mut w = packet(0x3b);
+                w.string(name)?.string(display)?.u8(*mode);
+                one(w);
+            }
+            ClientboundPlay::UpdateScore {
+                name,
+                remove,
+                objective,
+                value,
+            } => {
+                // Known deviation: 1.7 can only remove a name from every objective, so
+                // removing one score removes all of that name's scores on the client.
+                let mut w = packet(0x3c);
+                w.string(name)?.u8(u8::from(*remove));
+                if !remove {
+                    w.string(objective)?.i32(*value);
+                }
+                one(w);
+            }
+            ClientboundPlay::DisplayScoreboard { position, name } => {
+                let mut w = packet(0x3d);
+                w.u8(*position).string(name)?;
+                one(w);
+            }
+            ClientboundPlay::Teams {
+                name,
+                mode,
+                info,
+                players,
+            } => {
+                // 1.7 teams have no name tag visibility or color.
+                let mut w = packet(0x3e);
+                w.string(name)?.u8(*mode);
+                if let Some(t) = info.as_ref().filter(|_| *mode == 0 || *mode == 2) {
+                    w.string(&t.display)?
+                        .string(&t.prefix)?
+                        .string(&t.suffix)?
+                        .u8(t.flags);
+                }
+                if matches!(mode, 0 | 3 | 4) {
+                    w.i16(players.len() as i16);
+                    for p in players {
+                        w.string(p)?;
+                    }
+                }
+                one(w);
+            }
             ClientboundPlay::UpdateTileEntity { pos, action, nbt } => {
                 // Banners (action 6) do not exist in 1.7.
                 if *action <= 5 {
@@ -1449,6 +1503,45 @@ mod tests {
                 channel: "MC|Brand".into(),
                 data: b"\x07vanilla".to_vec()
             }
+        );
+    }
+
+    #[test]
+    fn scoreboard_packets() {
+        let mut t = V5Translator::new();
+        let objective = ClientboundPlay::ScoreboardObjective {
+            name: "k".into(),
+            mode: 0,
+            display: "K".into(),
+            render: "hearts".into(),
+        };
+        assert_eq!(hex(&t.clientbound(&objective).unwrap()[0]), "3b016b014b00");
+        let score = ClientboundPlay::UpdateScore {
+            name: "a".into(),
+            remove: false,
+            objective: "k".into(),
+            value: 300,
+        };
+        assert_eq!(
+            hex(&t.clientbound(&score).unwrap()[0]),
+            "3c016100016b0000012c"
+        );
+        let team = ClientboundPlay::Teams {
+            name: "t".into(),
+            mode: 0,
+            info: Some(crate::packets::play::TeamInfo {
+                display: "T".into(),
+                prefix: String::new(),
+                suffix: String::new(),
+                flags: 3,
+                nametag: "never".into(),
+                color: 12,
+            }),
+            players: vec!["a".into()],
+        };
+        assert_eq!(
+            hex(&t.clientbound(&team).unwrap()[0]),
+            "3e017400015400000300010161"
         );
     }
 

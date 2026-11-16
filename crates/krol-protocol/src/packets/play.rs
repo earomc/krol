@@ -450,6 +450,23 @@ impl ServerboundPlay {
     }
 }
 
+/// A team's properties in a Teams packet (modes 0 and 2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TeamInfo {
+    /// Display name.
+    pub display: String,
+    /// Prefix before members' names.
+    pub prefix: String,
+    /// Suffix after members' names.
+    pub suffix: String,
+    /// Bit 0: friendly fire, bit 1: see invisible teammates.
+    pub flags: u8,
+    /// Name tag visibility (`always`, `never`, `hideForOtherTeams`, `hideForOwnTeam`).
+    pub nametag: String,
+    /// Color index (-1 for none).
+    pub color: i8,
+}
+
 /// One entry of a Player List Item packet (action 0, add player).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerListAdd {
@@ -741,6 +758,32 @@ pub enum ClientboundPlay {
     },
     /// `0x33`: a sign's four lines (JSON chat).
     UpdateSign { pos: BlockPos, lines: [String; 4] },
+    /// `0x3B`: creates (mode 0), removes (1) or updates (2) an objective; the display
+    /// name and render type (`integer` or `hearts`) are sent for modes 0 and 2.
+    ScoreboardObjective {
+        name: String,
+        mode: u8,
+        display: String,
+        render: String,
+    },
+    /// `0x3C`: sets a score, or removes one (`remove`; an empty objective removes the
+    /// name from every objective).
+    UpdateScore {
+        name: String,
+        remove: bool,
+        objective: String,
+        value: i32,
+    },
+    /// `0x3D`: shows an objective in a display slot (an empty name clears it).
+    DisplayScoreboard { position: u8, name: String },
+    /// `0x3E`: creates (mode 0), removes (1) or updates (2) a team, or adds (3) or removes
+    /// (4) members.
+    Teams {
+        name: String,
+        mode: u8,
+        info: Option<TeamInfo>,
+        players: Vec<String>,
+    },
     /// `0x35`: tile entity data (spawners, command blocks, beacons, skulls, flower pots,
     /// banners).
     UpdateTileEntity {
@@ -920,6 +963,10 @@ impl ClientboundPlay {
             Self::WindowProperty { .. } => 0x31,
             Self::SpawnExperienceOrb { .. } => 0x11,
             Self::UpdateSign { .. } => 0x33,
+            Self::ScoreboardObjective { .. } => 0x3b,
+            Self::UpdateScore { .. } => 0x3c,
+            Self::DisplayScoreboard { .. } => 0x3d,
+            Self::Teams { .. } => 0x3e,
             Self::UpdateTileEntity { .. } => 0x35,
             Self::SignEditorOpen { .. } => 0x36,
             Self::BlockBreakAnimation { .. } => 0x25,
@@ -1329,6 +1376,55 @@ impl ClientboundPlay {
                     w.string(line)?;
                 }
             }
+            Self::ScoreboardObjective {
+                name,
+                mode,
+                display,
+                render,
+            } => {
+                w.string(name)?.u8(*mode);
+                if *mode == 0 || *mode == 2 {
+                    w.string(display)?.string(render)?;
+                }
+            }
+            Self::UpdateScore {
+                name,
+                remove,
+                objective,
+                value,
+            } => {
+                w.string(name)?
+                    .varint(i32::from(*remove))
+                    .string(objective)?;
+                if !remove {
+                    w.varint(*value);
+                }
+            }
+            Self::DisplayScoreboard { position, name } => {
+                w.u8(*position).string(name)?;
+            }
+            Self::Teams {
+                name,
+                mode,
+                info,
+                players,
+            } => {
+                w.string(name)?.u8(*mode);
+                if let Some(t) = info.as_ref().filter(|_| *mode == 0 || *mode == 2) {
+                    w.string(&t.display)?
+                        .string(&t.prefix)?
+                        .string(&t.suffix)?
+                        .u8(t.flags)
+                        .string(&t.nametag)?
+                        .i8(t.color);
+                }
+                if matches!(mode, 0 | 3 | 4) {
+                    w.varint(players.len() as i32);
+                    for p in players {
+                        w.string(p)?;
+                    }
+                }
+            }
             Self::UpdateTileEntity { pos, action, nbt } => {
                 w.position(pos.0, pos.1, pos.2)
                     .u8(*action)
@@ -1548,6 +1644,66 @@ impl ClientboundPlay {
                 nbt: r.nbt()?,
             },
             0x36 => Self::SignEditorOpen { pos: r.position()? },
+            0x3b => {
+                let name = r.string(16)?;
+                let mode = r.u8()?;
+                let (display, render) = if mode == 0 || mode == 2 {
+                    (r.string(32)?, r.string(16)?)
+                } else {
+                    (String::new(), String::new())
+                };
+                Self::ScoreboardObjective {
+                    name,
+                    mode,
+                    display,
+                    render,
+                }
+            }
+            0x3c => {
+                let name = r.string(40)?;
+                let remove = r.varint()? == 1;
+                let objective = r.string(16)?;
+                let value = if remove { 0 } else { r.varint()? };
+                Self::UpdateScore {
+                    name,
+                    remove,
+                    objective,
+                    value,
+                }
+            }
+            0x3d => Self::DisplayScoreboard {
+                position: r.u8()?,
+                name: r.string(16)?,
+            },
+            0x3e => {
+                let name = r.string(16)?;
+                let mode = r.u8()?;
+                let info = if mode == 0 || mode == 2 {
+                    Some(TeamInfo {
+                        display: r.string(32)?,
+                        prefix: r.string(16)?,
+                        suffix: r.string(16)?,
+                        flags: r.u8()?,
+                        nametag: r.string(32)?,
+                        color: r.i8()?,
+                    })
+                } else {
+                    None
+                };
+                let mut players = Vec::new();
+                if matches!(mode, 0 | 3 | 4) {
+                    let n = r.varint()?;
+                    for _ in 0..n.max(0) {
+                        players.push(r.string(40)?);
+                    }
+                }
+                Self::Teams {
+                    name,
+                    mode,
+                    info,
+                    players,
+                }
+            }
             0x31 => Self::WindowProperty {
                 window: r.u8()?,
                 property: r.i16()?,
@@ -1738,6 +1894,86 @@ mod tests {
         for p in packets {
             let bytes = p.encode().unwrap().unwrap();
             assert_eq!(ServerboundPlay::decode(&bytes, V).unwrap(), p);
+        }
+    }
+
+    #[test]
+    fn scoreboard_bytes() {
+        let cases = [
+            (
+                ClientboundPlay::ScoreboardObjective {
+                    name: "k".into(),
+                    mode: 0,
+                    display: "K".into(),
+                    render: "integer".into(),
+                },
+                "3b016b00014b07696e7465676572",
+            ),
+            (
+                ClientboundPlay::ScoreboardObjective {
+                    name: "k".into(),
+                    mode: 1,
+                    display: String::new(),
+                    render: String::new(),
+                },
+                "3b016b01",
+            ),
+            (
+                ClientboundPlay::UpdateScore {
+                    name: "a".into(),
+                    remove: false,
+                    objective: "k".into(),
+                    value: 300,
+                },
+                "3c016100016bac02",
+            ),
+            (
+                ClientboundPlay::UpdateScore {
+                    name: "a".into(),
+                    remove: true,
+                    objective: String::new(),
+                    value: 0,
+                },
+                "3c01610100",
+            ),
+            (
+                ClientboundPlay::DisplayScoreboard {
+                    position: 1,
+                    name: "k".into(),
+                },
+                "3d01016b",
+            ),
+            (
+                ClientboundPlay::Teams {
+                    name: "t".into(),
+                    mode: 0,
+                    info: Some(TeamInfo {
+                        display: "T".into(),
+                        prefix: String::new(),
+                        suffix: String::new(),
+                        flags: 3,
+                        nametag: "always".into(),
+                        color: -1,
+                    }),
+                    players: vec!["a".into()],
+                },
+                "3e017400015400000306616c77617973ff010161",
+            ),
+            (
+                ClientboundPlay::Teams {
+                    name: "t".into(),
+                    mode: 4,
+                    info: None,
+                    players: vec!["a".into()],
+                },
+                "3e0174040101 61",
+            ),
+        ];
+        for (p, expected) in cases {
+            let bytes = p.encode(V).unwrap();
+            let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+            assert_eq!(hex, expected.replace(' ', ""));
+            assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
         }
     }
 
