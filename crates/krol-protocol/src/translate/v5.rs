@@ -1253,6 +1253,17 @@ fn plugin_data_v47(channel: &str, data: &[u8]) -> Result<Vec<u8>, DecodeError> {
             }
             Ok(w.into_bytes())
         }
+        // The anvil name: 1.7 sends the bytes of the text, 1.8 a length-prefixed string.
+        // Undecodable bytes become U+FFFD like Java's `new String(bytes, UTF_8)`.
+        "MC|ItemName" => {
+            if data.is_empty() {
+                return Ok(Vec::new());
+            }
+            let mut w = PacketWriter::new();
+            w.string(&String::from_utf8_lossy(data))
+                .map_err(|e| DecodeError::InvalidValue(e.to_string()))?;
+            Ok(w.into_bytes())
+        }
         // Command blocks: 1.8 adds a type byte (0 = block) and the track-output flag.
         "MC|AdvCdm" => {
             let mut w = PacketWriter::new();
@@ -1373,6 +1384,31 @@ mod tests {
         assert_eq!(r.f64().unwrap(), 11.0);
         assert_eq!(r.f64().unwrap(), 64.0 + EYE_HEIGHT);
         assert_eq!(r.f64().unwrap(), -3.0);
+    }
+
+    #[test]
+    fn anvil_name_gets_a_length_prefix() {
+        let mut t = V5Translator::new();
+        let mut w = PacketWriter::new();
+        w.varint(0x17).string("MC|ItemName").unwrap();
+        w.short_byte_array(b"Excalibur");
+        assert_eq!(
+            t.serverbound(w.as_bytes()).unwrap(),
+            ServerboundPlay::PluginMessage {
+                channel: "MC|ItemName".into(),
+                data: b"	Excalibur".to_vec()
+            }
+        );
+        let mut w = PacketWriter::new();
+        w.varint(0x17).string("MC|ItemName").unwrap();
+        w.short_byte_array(b"");
+        assert_eq!(
+            t.serverbound(w.as_bytes()).unwrap(),
+            ServerboundPlay::PluginMessage {
+                channel: "MC|ItemName".into(),
+                data: Vec::new()
+            }
+        );
     }
 
     #[test]

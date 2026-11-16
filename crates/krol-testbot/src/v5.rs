@@ -183,7 +183,14 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
         }
         ServerboundPlay::PluginMessage { channel, data } => {
             w.varint(0x17).string(channel)?;
-            w.short_byte_array(data);
+            if channel == "MC|ItemName" {
+                // 1.7 sends the name's bytes without the length prefix.
+                let mut r = krol_protocol::buf::PacketReader::new(data);
+                let name = r.string(32767).unwrap_or_default();
+                w.short_byte_array(name.as_bytes());
+            } else {
+                w.short_byte_array(data);
+            }
         }
         _ => return Ok(None),
     }
