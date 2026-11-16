@@ -331,6 +331,16 @@ impl ServerboundPlay {
             Self::Chat { message } => {
                 w.varint(0x01).string(message)?;
             }
+            Self::UseEntity {
+                target,
+                action,
+                target_pos,
+            } => {
+                w.varint(0x02).varint(*target).varint(*action);
+                if let (2, Some((x, y, z))) = (action, target_pos) {
+                    w.f32(*x).f32(*y).f32(*z);
+                }
+            }
             Self::Player { on_ground } => {
                 w.varint(0x03).bool(*on_ground);
             }
@@ -774,6 +784,16 @@ pub enum ClientboundPlay {
         objective: String,
         value: i32,
     },
+    /// `0x42`: a combat event for the player's own client: entering combat (0), ending
+    /// it (1, with its length in ticks and the main attacker's entity id or -1) or dying
+    /// (2, with the player's entity id, the killer's and the death message).
+    CombatEvent {
+        event: u8,
+        duration: i32,
+        entity_id: i32,
+        killer: i32,
+        message: String,
+    },
     /// `0x3D`: shows an objective in a display slot (an empty name clears it).
     DisplayScoreboard { position: u8, name: String },
     /// `0x3E`: creates (mode 0), removes (1) or updates (2) a team, or adds (3) or removes
@@ -964,6 +984,7 @@ impl ClientboundPlay {
             Self::SpawnExperienceOrb { .. } => 0x11,
             Self::UpdateSign { .. } => 0x33,
             Self::ScoreboardObjective { .. } => 0x3b,
+            Self::CombatEvent { .. } => 0x42,
             Self::UpdateScore { .. } => 0x3c,
             Self::DisplayScoreboard { .. } => 0x3d,
             Self::Teams { .. } => 0x3e,
@@ -1403,6 +1424,24 @@ impl ClientboundPlay {
             Self::DisplayScoreboard { position, name } => {
                 w.u8(*position).string(name)?;
             }
+            Self::CombatEvent {
+                event,
+                duration,
+                entity_id,
+                killer,
+                message,
+            } => {
+                w.varint(i32::from(*event));
+                match event {
+                    1 => {
+                        w.varint(*duration).i32(*killer);
+                    }
+                    2 => {
+                        w.varint(*entity_id).i32(*killer).string(message)?;
+                    }
+                    _ => {}
+                }
+            }
             Self::Teams {
                 name,
                 mode,
@@ -1671,6 +1710,30 @@ impl ClientboundPlay {
                     value,
                 }
             }
+            0x42 => {
+                let event = r.varint()? as u8;
+                let (mut duration, mut entity_id, mut killer, mut message) =
+                    (0, 0, 0, String::new());
+                match event {
+                    1 => {
+                        duration = r.varint()?;
+                        killer = r.i32()?;
+                    }
+                    2 => {
+                        entity_id = r.varint()?;
+                        killer = r.i32()?;
+                        message = r.string(32767)?;
+                    }
+                    _ => {}
+                }
+                Self::CombatEvent {
+                    event,
+                    duration,
+                    entity_id,
+                    killer,
+                    message,
+                }
+            }
             0x3d => Self::DisplayScoreboard {
                 position: r.u8()?,
                 name: r.string(16)?,
@@ -1935,6 +1998,16 @@ mod tests {
                     value: 0,
                 },
                 "3c01610100",
+            ),
+            (
+                ClientboundPlay::CombatEvent {
+                    event: 1,
+                    duration: 50,
+                    entity_id: 0,
+                    killer: -1,
+                    message: String::new(),
+                },
+                "4201 32ffffffff",
             ),
             (
                 ClientboundPlay::DisplayScoreboard {

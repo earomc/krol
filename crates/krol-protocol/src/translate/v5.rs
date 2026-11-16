@@ -795,6 +795,8 @@ impl V5Translator {
                 }
                 one(w);
             }
+            // 1.7 has no combat events.
+            ClientboundPlay::CombatEvent { .. } => {}
             ClientboundPlay::DisplayScoreboard { position, name } => {
                 let mut w = packet(0x3d);
                 w.u8(*position).string(name)?;
