@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-15 (commit after `server: suffocation`).
+Status as of 2026-11-16 (commit after `server: scoreboard, /scoreboard and /trigger`).
 
 **Legend**
 
@@ -17,6 +17,26 @@ Status as of 2026-11-15 (commit after `server: suffocation`).
 | ❌ | Missing |
 | ➖ | Not applicable to a dedicated server (client-only, demo, LAN, ...) |
 
+## Next up
+
+The working queue within the current milestones (M4/M5), most useful first. Update it
+when an item is done or priorities change.
+
+1. **Killers and player combat**: `EntityPlayer.attackTargetEntityWithCurrentItem`
+   (melee, knockback, criticals, sword enchantments), the combat tracker's killer
+   (`func_94060_bK`), `addToPlayerScore` with the kill criteria (`playerKillCount`,
+   `totalKillCount`, `teamkill.*`, `killedByTeam.*`), team friendly fire
+   (`canAttackPlayer`) and the PvP death messages.
+2. **Falling anvils**: `BlockAnvil` falling like sand, landing damage to the anvil and
+   to entities below (`EntityFallingBlock.fall`).
+3. **Non-player command targets**: entity UUIDs (from the entity's own random), `/kill`,
+   `/tp` and `/effect` on entities, dropped items' names for selectors (needs the
+   unlocalized-name table), scores of non-player holders.
+4. **Dead body vs. experience pickup order** (see Death below) and the statistic
+   scores' exact timing (see scoreboard).
+5. **The remaining M4 items**: firework and banner recipes, maps, the other containers
+   and item-placed blocks, special block drops (see the tables below).
+
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
 The nether and the end are ❌ (see [world](#netminecraftworld)).
 
@@ -24,6 +44,7 @@ The nether and the end are ❌ (see [world](#netminecraftworld)).
 
 ## Contents
 
+- [Next up](#next-up)
 - [net.minecraft.server: server lifecycle](#netminecraftserver)
 - [net.minecraft.network: protocol 47](#netminecraftnetwork)
 - [net.minecraft.nbt](#netminecraftnbt)

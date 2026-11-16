@@ -257,6 +257,9 @@ Dependency rules:
 - Prefer explicit, readable code over clever abstractions; game logic should be easy to
   compare against vanilla behavior.
 - Name types/functions idiomatically in Rust; reference vanilla names in doc comments.
+- No magic values: use named constants for block and item ids (`krol-server`
+  `game/ids.rs`), packet actions, slot indices and tick durations, and convert literals in
+  code you touch.
 
 ## 10. Testing
 
@@ -338,9 +341,19 @@ Every gameplay change must name the parity scenarios it adds or turns green.
 - Commit messages: imperative, scoped — e.g. `protocol: translate 1.7 chunk bulk packet`.
 - Before finishing a change: `cargo fmt`, `cargo clippy`, `cargo test --workspace`, and the
   relevant parity scenarios.
+- Parity scope: run the scenarios of the feature being built (`--filter`) plus the few
+  that share the touched code, in both protocols where they have play sessions. Run the
+  full suite (`cargo xtask parity run`, then `--protocol 5`; ~5 min each) only for
+  cross-cutting changes (NBT or protocol encoding, tick order, networking, inventory
+  rules, normalization) or before larger milestones. A scenario that "failed in parallel,
+  passed alone" is a timing race to make robust, not a pass. Say in the summary which
+  scenarios ran. `parity record` runs one JVM at a time.
 - CI (`.github/workflows/ci.yml`) is manual for now (`gh workflow run CI`); don't wait for it.
-  Run fmt, clippy, tests, docs and `cargo xtask parity run` (plus `--protocol 5`) locally
-  before each commit, and `cargo deny check` when dependencies change.
+  Run fmt, clippy, tests and docs locally before each commit, and `cargo deny check` when
+  dependencies change.
+- Leave nothing undone unrecorded: every gap or known deviation goes into
+  `docs/roadmap.md` (and a `TODO(M<n>)` at the spot in the code), and lessons about writing
+  scenarios into `parity/README.md`.
 
 ### Ask the user before
 - Changing the license.
@@ -369,7 +382,8 @@ Every gameplay change must name the parity scenarios it adds or turns green.
 The parity harness arrives in M1 on purpose: every later milestone is developed against it.
 
 [`docs/roadmap.md`](docs/roadmap.md) lists every vanilla feature by package with its status
-(done / partial / missing); keep it current along with the table below.
+(done / partial / missing) and starts with a **Next up** queue of the work to pick up
+next; keep both current along with the table below.
 
 ### Current status (keep this updated)
 
