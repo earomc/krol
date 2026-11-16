@@ -326,7 +326,7 @@ impl Game {
                 value: value as i16,
             });
         }
-        self.players[i].stats.add("stat.furnaceInteraction", 1);
+        self.add_stat(i, "stat.furnaceInteraction", 1);
     }
 
     /// `ContainerFurnace.detectAndSendChanges`: the properties that changed, in

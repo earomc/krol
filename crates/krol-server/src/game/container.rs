@@ -933,7 +933,8 @@ impl Game {
             if amount > 0
                 && let Some(name) = krol_world::items::name_for_id(b.id)
             {
-                self.players[i].stats.add(
+                self.add_stat(
+                    i,
                     &format!("stat.craftItem.{}", name.replace(':', ".")),
                     amount,
                 );
@@ -1199,8 +1200,9 @@ impl Game {
             fields: [0; 4],
             taken: 0,
         });
-        p.stats.add("stat.craftingTableInteraction", 1);
         self.open_container_gui(i);
+        // BlockWorkbench.onBlockActivated: counted once the window is open.
+        self.add_stat(i, "stat.craftingTableInteraction", 1);
     }
 
     /// `onCraftGuiOpened`: the whole window, the cursor, then the first change check.

@@ -133,6 +133,10 @@ action = "console"
 command = "kill @e[type=Item]"
 
 [observe]
+# The speed effect's attribute properties and the particle color metadata of both
+# players go out in an order that depends on which tick the effect lands in relative to
+# the movement packets (in vanilla too, see parity/README.md).
+unordered = [["entity_metadata", "entity_properties"]]
 log = true
 files = [
     "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",

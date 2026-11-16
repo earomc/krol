@@ -597,8 +597,8 @@ impl Game {
             p.motion.2 += f64::from(krol_java::math::cos(yaw) * 0.2);
         }
         p.airborne = true;
-        p.stats.add("stat.jump", 1);
         let amount = if p.sprinting { 0.8 } else { 0.2 };
+        self.add_stat(i, "stat.jump", 1);
         self.add_exhaustion(i, amount);
     }
 
@@ -636,35 +636,36 @@ impl Game {
         let ladder = self.on_ladder(i);
         let horizontal =
             || (krol_java::math::sqrt_f64(d.0 * d.0 + d.2 * d.2) * 100.0).round() as i32;
-        let p = &mut self.players[i];
+        let p = &self.players[i];
         let mut exhaustion = 0.0f32;
+        let mut stats: Vec<(&str, i32)> = Vec::new();
         if eye_water {
             let cm = (krol_java::math::sqrt_f64(d.0 * d.0 + d.1 * d.1 + d.2 * d.2) * 100.0).round()
                 as i32;
             if cm > 0 {
-                p.stats.add("stat.diveOneCm", cm);
+                stats.push(("stat.diveOneCm", cm));
                 exhaustion = 0.015 * cm as f32 * 0.01;
             }
         } else if p.in_water {
             let cm = horizontal();
             if cm > 0 {
-                p.stats.add("stat.swimOneCm", cm);
+                stats.push(("stat.swimOneCm", cm));
                 exhaustion = 0.015 * cm as f32 * 0.01;
             }
         } else if ladder {
             if d.1 > 0.0 {
-                p.stats.add("stat.climbOneCm", (d.1 * 100.0).round() as i32);
+                stats.push(("stat.climbOneCm", (d.1 * 100.0).round() as i32));
             }
         } else if p.on_ground {
             let cm = horizontal();
             if cm > 0 {
-                p.stats.add("stat.walkOneCm", cm);
+                stats.push(("stat.walkOneCm", cm));
                 if p.sprinting {
-                    p.stats.add("stat.sprintOneCm", cm);
+                    stats.push(("stat.sprintOneCm", cm));
                     exhaustion = 0.099_999_994 * cm as f32 * 0.01;
                 } else {
                     if p.sneaking {
-                        p.stats.add("stat.crouchOneCm", cm);
+                        stats.push(("stat.crouchOneCm", cm));
                     }
                     exhaustion = 0.01 * cm as f32 * 0.01;
                 }
@@ -672,8 +673,11 @@ impl Game {
         } else {
             let cm = horizontal();
             if cm > 25 {
-                p.stats.add("stat.flyOneCm", cm);
+                stats.push(("stat.flyOneCm", cm));
             }
+        }
+        for (stat, cm) in stats {
+            self.add_stat(i, stat, cm);
         }
         if exhaustion != 0.0 {
             self.add_exhaustion(i, exhaustion);
@@ -813,9 +817,12 @@ impl Game {
         if starve {
             // TODO(M5): DamageSource.starve.
         }
-        let p = &mut self.players[i];
-        p.stats.add("stat.playOneMinute", 1);
-        p.stats.add("stat.timeSinceDeath", 1);
+        self.add_stat(i, "stat.playOneMinute", 1);
+        // Only counted while alive (isEntityAlive).
+        let p = &self.players[i];
+        if p.health() > 0.0 && !p.dead_marked && !p.removed {
+            self.add_stat(i, "stat.timeSinceDeath", 1);
+        }
     }
 
     /// The end of `EntityPlayerMP.onUpdateEntity`: health and food go out when they
@@ -855,17 +862,18 @@ impl Game {
 
     /// Vanilla `EntityPlayer.fall` / `EntityLivingBase.fall`.
     fn player_fall(&mut self, i: usize, distance: f32, multiplier: f32) {
-        let p = &mut self.players[i];
-        let allow_flying = p.gamemode == 1 || p.gamemode == 3;
+        let allow_flying = matches!(self.players[i].gamemode, 1 | 3);
         if allow_flying {
             return;
         }
         if distance >= 2.0 {
-            p.stats.add(
+            self.add_stat(
+                i,
                 "stat.fallOneCm",
                 (f64::from(distance) * 100.0).round() as i32,
             );
         }
+        let p = &mut self.players[i];
         // TODO(M5): jump boost reduces the distance.
         let damage = krol_java::math::ceil_f32((distance - 3.0) * multiplier);
         if damage <= 0 {

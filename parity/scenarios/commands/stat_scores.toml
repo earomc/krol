@@ -1,0 +1,94 @@
+description = "Statistic objectives get their scores the moment the statistic changes (EntityPlayerMP.addStat): a jump, a dropped item (after the item spawns), a death (stat.deaths, and stat.timeSinceDeath reset to 0 and no longer counted while dead), as seen by another player"
+subsystem = "commands"
+
+# Steve (holding a stack, see drop_items.toml) jumps on his own movement packets, drops
+# one item, and is killed from the console. Notch watches from his saved spot nearby.
+# Scores only go out for objectives in a display slot, so each statistic gets one.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/5627dd98-e6be-3c21-b8a8-e92344183641.dat" = "fixtures/playerdata/steve.dat"
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_away.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Nothing drops on death: the orbs' and items' motion is random (Math.random), and could
+# land them next to Notch.
+[[steps]]
+action = "console"
+command = "gamerule keepInventory true"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add jumps stat.jump"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add drops stat.drop"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add deaths stat.deaths"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add alive stat.timeSinceDeath"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay list jumps"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay sidebar drops"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay belowName deaths"
+
+[[steps]]
+id = "watcher"
+action = "play"
+background = true
+protocol = 47
+name = "Notch"
+seconds = 16
+
+[[steps]]
+id = "steve"
+action = "play"
+background = true
+protocol = 47
+name = "Steve"
+seconds = 13
+chat = ["@5000 !dig 0 0 0 0 4"]
+moves = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0.42, 0, 0], [0, 0.75, 0, 0], [0, 1.0, 0, 0], [0, 1.17, 0, 0], [0, 1.25, 0, 0], [0, 1.17, 0, 0], [0, 1.0, 0, 0], [0, 0.75, 0, 0], [0, 0.42, 0, 0], [0, 0, 0, 1], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+
+[[steps]]
+action = "wait"
+ms = 5000
+
+[[steps]]
+action = "console"
+command = "kill Steve"
+wait_ms = 1000
+
+# stat.timeSinceDeath went back to 0 and stays there while Steve is dead. (Its score is
+# not displayed: it changes every tick, at a tick that depends on packet timing.)
+[[steps]]
+action = "console"
+command = "scoreboard players test Steve alive 0 0"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "scoreboard players test Steve alive 0 0"
+wait_ms = 1500
+
+[observe]
+log = true

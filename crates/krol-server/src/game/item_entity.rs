@@ -662,9 +662,6 @@ impl Game {
         motion.1 += f64::from((r.next_float() - r.next_float()) * 0.1);
         motion.2 += f64::from(angle).sin() * f64::from(speed);
         let pos = (p.pos.0, y, p.pos.2);
-        if traced {
-            p.stats.add("stat.drop", 1);
-        }
         // TODO(M5): the diamondsToYou achievement for the thrower.
         let id = self.spawn_item_moving(pos, stack, 40, Some(motion));
         if traced {
@@ -672,6 +669,8 @@ impl Game {
             if let Some(it) = self.items.get_mut(&id) {
                 it.thrower = Some(name);
             }
+            // Counted after the item joined the world.
+            self.add_stat(i, "stat.drop", 1);
         }
         id
     }

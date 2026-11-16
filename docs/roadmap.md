@@ -22,9 +22,8 @@ Status as of 2026-11-16 (commit `server: entities saved with their chunk`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **The statistic scores' exact timing** (see scoreboard), and parity coverage for
-   critical hits, sprint knockback, fire aspect, thorns and the assisted/finished fall
-   messages.
+1. **Parity coverage for combat**: critical hits, sprint knockback, fire aspect, thorns
+   and the assisted/finished fall messages.
 2. **The remaining M4 items**: firework and banner recipes, maps, the other containers
    and item-placed blocks, special block drops (see the tables below).
 
@@ -608,7 +607,7 @@ krol notice.
 
 | Feature | Status | Notes |
 |---|---|---|
-| Objectives, scores, criteria: dummy, trigger, health, deathCount, statistics and achievements | ✅ | Statistic scores update after the packet or tick step that changed the stat, not at once; a holder's scores keep creation order (vanilla: identity hash order) |
+| Objectives, scores, criteria: dummy, trigger, health, deathCount, statistics and achievements | ✅ | Statistic scores change the moment the statistic does (`addStat`), `stat.timeSinceDeath` scores reset on death; a holder's scores keep creation order (vanilla: identity hash order) |
 | Kill criteria (`playerKillCount`, `totalKillCount`, `teamkill.*`, `killedByTeam.*`) | ✅ | Player kills (mob kills arrive with mobs) |
 | Teams (prefix/suffix in display names, colors, name tag and death message visibility, packets) | ✅ | Friendly fire ✅; seeing invisible teammates affects nothing yet (no invisibility) |
 | Display slots (sidebar, list, below name, team sidebars) | ✅ | |

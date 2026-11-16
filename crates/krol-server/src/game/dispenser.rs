@@ -302,7 +302,7 @@ impl Game {
             taken: 0,
         });
         self.open_container_gui(i);
-        self.players[i].stats.add(stat, 1);
+        self.add_stat(i, stat, 1);
     }
 
     /// The contents dropped when the block breaks.

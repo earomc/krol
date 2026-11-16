@@ -728,6 +728,24 @@ impl Game {
         }
     }
 
+    /// `EntityPlayerMP.addStat`: raises a statistic and, at once, the scores of the
+    /// objectives counting it.
+    pub(super) fn add_stat(&mut self, i: usize, key: &str, amount: i32) {
+        self.players[i].stats.add(key, amount);
+        self.sb_apply_stats(i);
+    }
+
+    /// `EntityPlayerMP.func_175145_a`: resets a statistic and the scores of the
+    /// objectives counting it to 0.
+    pub(super) fn reset_stat(&mut self, i: usize, key: &str) {
+        self.sb_apply_stats(i);
+        self.players[i].stats.set(key, 0);
+        let name = self.players[i].profile.name.clone();
+        for objective in self.scoreboard.objectives_for(key) {
+            self.sb_set_score(&name, &objective, 0);
+        }
+    }
+
     /// [`Self::sb_apply_stats`] for every player.
     pub(super) fn sb_apply_all_stats(&mut self) {
         for i in 0..self.players.len() {

@@ -494,7 +494,7 @@ impl Game {
             taken: 0,
         });
         self.open_container_gui(i);
-        self.players[i].stats.add("stat.hopperInspected", 1);
+        self.add_stat(i, "stat.hopperInspected", 1);
     }
 
     /// `BlockHopper.breakBlock`: the contents spill out.

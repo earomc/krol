@@ -276,9 +276,8 @@ impl Game {
         if let Some(killer) = self.killer_of(i) {
             self.award_player_kill(killer, i);
         }
-        let p = &mut self.players[i];
-        p.stats.add("stat.deaths", 1);
-        p.stats.set("stat.timeSinceDeath", 0);
+        self.add_stat(i, "stat.deaths", 1);
+        self.reset_stat(i, "stat.timeSinceDeath");
         self.reset_combat(i);
     }
 

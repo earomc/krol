@@ -482,3 +482,8 @@ scenarios = ["play/brewing"]
 id = "entities.dead_body"
 description = "A dead player's experience dropping as orbs after 20 updates; the body leaving the entity list but staying among the world's players until it respawns (new entities are spawned to it, orbs fly to it as the closest player)"
 scenarios = ["play/death_xp_orbs"]
+
+[[feature]]
+id = "scoreboard.stat_criteria"
+description = "Statistic criteria: scores change the moment the statistic does (a jump, a dropped item after it spawns, a death), stat.timeSinceDeath scores reset to 0 on death and stop counting while dead"
+scenarios = ["commands/stat_scores"]

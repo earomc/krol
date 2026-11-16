@@ -244,7 +244,7 @@ impl Game {
             }
             self.clear_effects(i);
             if let Some(stat) = super::digging::use_stat(stack.id) {
-                self.players[i].stats.add(&stat, 1);
+                self.add_stat(i, &stat, 1);
             }
             let result = if milk.count <= 0 {
                 ItemStack {
@@ -278,7 +278,7 @@ impl Game {
         self.play_sound_near_except(None, "random.burp", pos, BURP_VOLUME, pitch);
         self.food_eaten(i, stack.id, stack.damage);
         if let Some(stat) = super::digging::use_stat(stack.id) {
-            self.players[i].stats.add(&stat, 1);
+            self.add_stat(i, &stat, 1);
         }
         let result = if f.leftover != 0 {
             Some(ItemStack {
@@ -307,7 +307,7 @@ impl Game {
             self.add_effect(i, e);
         }
         if let Some(stat) = super::digging::use_stat(stack.id) {
-            self.players[i].stats.add(&stat, 1);
+            self.add_stat(i, &stat, 1);
         }
         let bottle = || ItemStack {
             id: super::ids::item::GLASS_BOTTLE,

@@ -203,7 +203,7 @@ impl Game {
         } else {
             "stat.trappedChestTriggered"
         };
-        self.players[i].stats.add(stat, 1);
+        self.add_stat(i, stat, 1);
     }
 
     /// `EntityPlayerMP.displayGUIChest` for a chest.

@@ -471,7 +471,7 @@ impl Game {
         let shears = self.held_id(i) == Some(super::ids::item::SHEARS);
         if harvest && shears && matches!(b, 31 | 32 | 18 | 161 | 106) {
             if let Some(stat) = mine_stat(b) {
-                self.players[i].stats.add(&stat, 1);
+                self.add_stat(i, &stat, 1);
             }
             let damage = match b {
                 31 => state & 15,
@@ -490,7 +490,7 @@ impl Game {
         if harvest {
             // Block.harvestBlock.
             if let Some(stat) = mine_stat(b) {
-                self.players[i].stats.add(&stat, 1);
+                self.add_stat(i, &stat, 1);
             }
             self.add_exhaustion(i, 0.025);
             self.drop_block_items(pos, state);

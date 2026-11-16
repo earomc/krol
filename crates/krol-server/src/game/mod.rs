@@ -2107,9 +2107,8 @@ impl Game {
 
     /// `ItemStack.onItemUse` succeeded: the held item's use statistic.
     pub(super) fn count_item_use(&mut self, i: usize) {
-        let p = &mut self.players[i];
-        if let Some(stat) = p.held().and_then(|s| digging::use_stat(s.id)) {
-            p.stats.add(&stat, 1);
+        if let Some(stat) = self.players[i].held().and_then(|s| digging::use_stat(s.id)) {
+            self.add_stat(i, &stat, 1);
         }
     }
 
@@ -2419,7 +2418,7 @@ impl Game {
         .color("yellow");
         let conn_id = self.players[i].conn_id;
         self.broadcast_chat(&left, Some(conn_id));
-        self.players[i].stats.add("stat.leaveGame", 1);
+        self.add_stat(i, "stat.leaveGame", 1);
         let dir = self.level.dir.clone();
         self.players[i].save(&dir);
         // World.removeEntity: viewers destroy the player entity.

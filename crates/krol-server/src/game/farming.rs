@@ -70,7 +70,7 @@ impl Game {
         if p.data.get_i32("foodLevel") >= 20 || matches!(p.gamemode, 1 | 3) {
             return;
         }
-        self.players[i].stats.add("stat.cakeSlicesEaten", 1);
+        self.add_stat(i, "stat.cakeSlicesEaten", 1);
         self.add_food(i, 2, 0.1);
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         if state & 15 < LAST_BITE {

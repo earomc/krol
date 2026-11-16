@@ -114,7 +114,7 @@ impl Game {
             taken: 0,
         });
         self.open_container_gui(i);
-        self.players[i].stats.add("stat.enderchestOpened", 1);
+        self.add_stat(i, "stat.enderchestOpened", 1);
     }
 
     /// `TileEntityEnderChest.openChest` / `closeChest`.

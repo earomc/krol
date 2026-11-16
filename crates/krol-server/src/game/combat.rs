@@ -397,7 +397,7 @@ impl Game {
     /// victim's `killedByTeam.<killer's color>` scores, then the killer's
     /// `totalKillCount`, `playerKillCount` and `teamkill.<victim's color>` scores.
     pub(super) fn award_player_kill(&mut self, killer: usize, victim: usize) {
-        self.players[killer].stats.add("stat.playerKills", 1);
+        self.add_stat(killer, "stat.playerKills", 1);
         let killer_name = self.players[killer].profile.name.clone();
         let victim_name = self.players[victim].profile.name.clone();
         let mut objectives = self.scoreboard.objectives_for("totalKillCount");

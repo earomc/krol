@@ -809,7 +809,7 @@ impl Game {
                         lapis = None;
                     }
                 }
-                self.players[i].stats.add("stat.itemEnchanted", 1);
+                self.add_stat(i, "stat.itemEnchanted", 1);
                 let seed = self.players[i].data.get_i32("XpSeed");
                 let p = &mut self.players[i];
                 p.window.offers.seed = seed;

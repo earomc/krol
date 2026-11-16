@@ -49,14 +49,14 @@ impl Game {
             c.insert("note", krol_nbt::Tag::Byte(note as i8));
         }
         self.trigger_note(pos);
-        self.players[i].stats.add("stat.noteblockTuned", 1);
+        self.add_stat(i, "stat.noteblockTuned", 1);
     }
 
     /// `BlockNote.onBlockClicked` (a survival left-click): play the note.
     pub(super) fn click_note_block(&mut self, i: usize, pos: (i32, i32, i32)) {
         if self.level.overworld.tile_entity(pos).is_some() {
             self.trigger_note(pos);
-            self.players[i].stats.add("stat.noteblockPlayed", 1);
+            self.add_stat(i, "stat.noteblockPlayed", 1);
         }
     }
 

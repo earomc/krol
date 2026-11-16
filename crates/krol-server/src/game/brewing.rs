@@ -391,7 +391,7 @@ impl Game {
         if let Some(o) = &mut self.players[i].window.open {
             o.fields[0] = time;
         }
-        self.players[i].stats.add("stat.brewingstandInteraction", 1);
+        self.add_stat(i, "stat.brewingstandInteraction", 1);
     }
 
     /// `ContainerBrewingStand.detectAndSendChanges`: the brew time when it changed.
