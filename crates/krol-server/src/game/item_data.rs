@@ -44,6 +44,54 @@ fn table() -> &'static HashMap<i16, ItemInfo> {
     })
 }
 
+/// en_US item names by `(id, damage)`, extracted by `tools/datagen/ItemNameDump.java`
+/// into `data/item_names.txt` (damage 0 for every item, other damages where a variant's
+/// name differs).
+fn names() -> &'static HashMap<(i16, i16), &'static str> {
+    static NAMES: OnceLock<HashMap<(i16, i16), &'static str>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        include_str!("../../data/item_names.txt")
+            .lines()
+            .filter_map(|line| {
+                let mut f = line.splitn(3, '\t');
+                let id = f.next()?.parse().ok()?;
+                let damage = f.next()?.parse().ok()?;
+                Some(((id, damage), f.next()?))
+            })
+            .collect()
+    })
+}
+
+/// The custom name of a stack (`display.Name`), if it has one (`hasDisplayName`).
+pub fn custom_name(stack: &krol_protocol::packets::play::ItemStack) -> Option<&str> {
+    let display = stack.nbt.as_ref()?.get_compound("display")?;
+    match display.get("Name") {
+        Some(krol_nbt::Tag::String(name)) => Some(name),
+        _ => None,
+    }
+}
+
+/// `ItemStack.getDisplayName`: the custom name, else the item's en_US name as the
+/// server translates it.
+///
+/// TODO(M4): names that depend on NBT (skull owners, written book titles) and potion
+/// damage values above 255 fall back to the base name.
+pub fn display_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
+    if let Some(name) = custom_name(stack) {
+        return name.to_owned();
+    }
+    let damage = if has_subtypes(stack.id) {
+        stack.damage
+    } else {
+        0
+    };
+    let names = names();
+    names
+        .get(&(stack.id, damage))
+        .or_else(|| names.get(&(stack.id, 0)))
+        .map_or_else(String::new, |n| (*n).to_owned())
+}
+
 /// `Item.getItemStackLimit`.
 pub fn max_stack(id: i16) -> i8 {
     table().get(&id).map_or(DEFAULT_STACK, |i| i.max_stack)

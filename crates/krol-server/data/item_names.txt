@@ -1,0 +1,1860 @@
+1	0	Stone
+1	1	Granite
+1	2	Polished Granite
+1	3	Diorite
+1	4	Polished Diorite
+1	5	Andesite
+1	6	Polished Andesite
+2	0	Grass Block
+3	0	Dirt
+3	1	Coarse Dirt
+3	2	Podzol
+4	0	Cobblestone
+5	0	Oak Wood Planks
+5	1	Spruce Wood Planks
+5	2	Birch Wood Planks
+5	3	Jungle Wood Planks
+5	4	Acacia Wood Planks
+5	5	Dark Oak Wood Planks
+6	0	Oak Sapling
+6	1	Spruce Sapling
+6	2	Birch Sapling
+6	3	Jungle Sapling
+6	4	Acacia Sapling
+6	5	Dark Oak Sapling
+7	0	Bedrock
+12	0	Sand
+12	1	Red Sand
+13	0	Gravel
+14	0	Gold Ore
+15	0	Iron Ore
+16	0	Coal Ore
+17	0	Oak Wood
+17	1	Spruce Wood
+17	2	Birch Wood
+17	3	Jungle Wood
+17	4	Acacia Wood
+17	5	Dark Oak Wood
+18	0	Oak Leaves
+18	1	Spruce Leaves
+18	2	Birch Leaves
+18	3	Jungle Leaves
+18	5	Spruce Leaves
+18	6	Birch Leaves
+18	7	Jungle Leaves
+18	9	Spruce Leaves
+18	10	Birch Leaves
+18	11	Jungle Leaves
+18	13	Spruce Leaves
+18	14	Birch Leaves
+18	15	Jungle Leaves
+18	17	Spruce Leaves
+18	18	Birch Leaves
+18	19	Jungle Leaves
+18	21	Spruce Leaves
+18	22	Birch Leaves
+18	23	Jungle Leaves
+18	25	Spruce Leaves
+18	26	Birch Leaves
+18	27	Jungle Leaves
+18	29	Spruce Leaves
+18	30	Birch Leaves
+18	31	Jungle Leaves
+18	33	Spruce Leaves
+18	34	Birch Leaves
+18	35	Jungle Leaves
+18	37	Spruce Leaves
+18	38	Birch Leaves
+18	39	Jungle Leaves
+18	41	Spruce Leaves
+18	42	Birch Leaves
+18	43	Jungle Leaves
+18	45	Spruce Leaves
+18	46	Birch Leaves
+18	47	Jungle Leaves
+18	49	Spruce Leaves
+18	50	Birch Leaves
+18	51	Jungle Leaves
+18	53	Spruce Leaves
+18	54	Birch Leaves
+18	55	Jungle Leaves
+18	57	Spruce Leaves
+18	58	Birch Leaves
+18	59	Jungle Leaves
+18	61	Spruce Leaves
+18	62	Birch Leaves
+18	63	Jungle Leaves
+18	65	Spruce Leaves
+18	66	Birch Leaves
+18	67	Jungle Leaves
+18	69	Spruce Leaves
+18	70	Birch Leaves
+18	71	Jungle Leaves
+18	73	Spruce Leaves
+18	74	Birch Leaves
+18	75	Jungle Leaves
+18	77	Spruce Leaves
+18	78	Birch Leaves
+18	79	Jungle Leaves
+18	81	Spruce Leaves
+18	82	Birch Leaves
+18	83	Jungle Leaves
+18	85	Spruce Leaves
+18	86	Birch Leaves
+18	87	Jungle Leaves
+18	89	Spruce Leaves
+18	90	Birch Leaves
+18	91	Jungle Leaves
+18	93	Spruce Leaves
+18	94	Birch Leaves
+18	95	Jungle Leaves
+18	97	Spruce Leaves
+18	98	Birch Leaves
+18	99	Jungle Leaves
+18	101	Spruce Leaves
+18	102	Birch Leaves
+18	103	Jungle Leaves
+18	105	Spruce Leaves
+18	106	Birch Leaves
+18	107	Jungle Leaves
+18	109	Spruce Leaves
+18	110	Birch Leaves
+18	111	Jungle Leaves
+18	113	Spruce Leaves
+18	114	Birch Leaves
+18	115	Jungle Leaves
+18	117	Spruce Leaves
+18	118	Birch Leaves
+18	119	Jungle Leaves
+18	121	Spruce Leaves
+18	122	Birch Leaves
+18	123	Jungle Leaves
+18	125	Spruce Leaves
+18	126	Birch Leaves
+18	127	Jungle Leaves
+18	129	Spruce Leaves
+18	130	Birch Leaves
+18	131	Jungle Leaves
+18	133	Spruce Leaves
+18	134	Birch Leaves
+18	135	Jungle Leaves
+18	137	Spruce Leaves
+18	138	Birch Leaves
+18	139	Jungle Leaves
+18	141	Spruce Leaves
+18	142	Birch Leaves
+18	143	Jungle Leaves
+18	145	Spruce Leaves
+18	146	Birch Leaves
+18	147	Jungle Leaves
+18	149	Spruce Leaves
+18	150	Birch Leaves
+18	151	Jungle Leaves
+18	153	Spruce Leaves
+18	154	Birch Leaves
+18	155	Jungle Leaves
+18	157	Spruce Leaves
+18	158	Birch Leaves
+18	159	Jungle Leaves
+18	161	Spruce Leaves
+18	162	Birch Leaves
+18	163	Jungle Leaves
+18	165	Spruce Leaves
+18	166	Birch Leaves
+18	167	Jungle Leaves
+18	169	Spruce Leaves
+18	170	Birch Leaves
+18	171	Jungle Leaves
+18	173	Spruce Leaves
+18	174	Birch Leaves
+18	175	Jungle Leaves
+18	177	Spruce Leaves
+18	178	Birch Leaves
+18	179	Jungle Leaves
+18	181	Spruce Leaves
+18	182	Birch Leaves
+18	183	Jungle Leaves
+18	185	Spruce Leaves
+18	186	Birch Leaves
+18	187	Jungle Leaves
+18	189	Spruce Leaves
+18	190	Birch Leaves
+18	191	Jungle Leaves
+18	193	Spruce Leaves
+18	194	Birch Leaves
+18	195	Jungle Leaves
+18	197	Spruce Leaves
+18	198	Birch Leaves
+18	199	Jungle Leaves
+18	201	Spruce Leaves
+18	202	Birch Leaves
+18	203	Jungle Leaves
+18	205	Spruce Leaves
+18	206	Birch Leaves
+18	207	Jungle Leaves
+18	209	Spruce Leaves
+18	210	Birch Leaves
+18	211	Jungle Leaves
+18	213	Spruce Leaves
+18	214	Birch Leaves
+18	215	Jungle Leaves
+18	217	Spruce Leaves
+18	218	Birch Leaves
+18	219	Jungle Leaves
+18	221	Spruce Leaves
+18	222	Birch Leaves
+18	223	Jungle Leaves
+18	225	Spruce Leaves
+18	226	Birch Leaves
+18	227	Jungle Leaves
+18	229	Spruce Leaves
+18	230	Birch Leaves
+18	231	Jungle Leaves
+18	233	Spruce Leaves
+18	234	Birch Leaves
+18	235	Jungle Leaves
+18	237	Spruce Leaves
+18	238	Birch Leaves
+18	239	Jungle Leaves
+18	241	Spruce Leaves
+18	242	Birch Leaves
+18	243	Jungle Leaves
+18	245	Spruce Leaves
+18	246	Birch Leaves
+18	247	Jungle Leaves
+18	249	Spruce Leaves
+18	250	Birch Leaves
+18	251	Jungle Leaves
+18	253	Spruce Leaves
+18	254	Birch Leaves
+18	255	Jungle Leaves
+19	0	Sponge
+19	1	Wet Sponge
+19	3	Wet Sponge
+19	5	Wet Sponge
+19	7	Wet Sponge
+19	9	Wet Sponge
+19	11	Wet Sponge
+19	13	Wet Sponge
+19	15	Wet Sponge
+19	17	Wet Sponge
+19	19	Wet Sponge
+19	21	Wet Sponge
+19	23	Wet Sponge
+19	25	Wet Sponge
+19	27	Wet Sponge
+19	29	Wet Sponge
+19	31	Wet Sponge
+19	33	Wet Sponge
+19	35	Wet Sponge
+19	37	Wet Sponge
+19	39	Wet Sponge
+19	41	Wet Sponge
+19	43	Wet Sponge
+19	45	Wet Sponge
+19	47	Wet Sponge
+19	49	Wet Sponge
+19	51	Wet Sponge
+19	53	Wet Sponge
+19	55	Wet Sponge
+19	57	Wet Sponge
+19	59	Wet Sponge
+19	61	Wet Sponge
+19	63	Wet Sponge
+19	65	Wet Sponge
+19	67	Wet Sponge
+19	69	Wet Sponge
+19	71	Wet Sponge
+19	73	Wet Sponge
+19	75	Wet Sponge
+19	77	Wet Sponge
+19	79	Wet Sponge
+19	81	Wet Sponge
+19	83	Wet Sponge
+19	85	Wet Sponge
+19	87	Wet Sponge
+19	89	Wet Sponge
+19	91	Wet Sponge
+19	93	Wet Sponge
+19	95	Wet Sponge
+19	97	Wet Sponge
+19	99	Wet Sponge
+19	101	Wet Sponge
+19	103	Wet Sponge
+19	105	Wet Sponge
+19	107	Wet Sponge
+19	109	Wet Sponge
+19	111	Wet Sponge
+19	113	Wet Sponge
+19	115	Wet Sponge
+19	117	Wet Sponge
+19	119	Wet Sponge
+19	121	Wet Sponge
+19	123	Wet Sponge
+19	125	Wet Sponge
+19	127	Wet Sponge
+19	129	Wet Sponge
+19	131	Wet Sponge
+19	133	Wet Sponge
+19	135	Wet Sponge
+19	137	Wet Sponge
+19	139	Wet Sponge
+19	141	Wet Sponge
+19	143	Wet Sponge
+19	145	Wet Sponge
+19	147	Wet Sponge
+19	149	Wet Sponge
+19	151	Wet Sponge
+19	153	Wet Sponge
+19	155	Wet Sponge
+19	157	Wet Sponge
+19	159	Wet Sponge
+19	161	Wet Sponge
+19	163	Wet Sponge
+19	165	Wet Sponge
+19	167	Wet Sponge
+19	169	Wet Sponge
+19	171	Wet Sponge
+19	173	Wet Sponge
+19	175	Wet Sponge
+19	177	Wet Sponge
+19	179	Wet Sponge
+19	181	Wet Sponge
+19	183	Wet Sponge
+19	185	Wet Sponge
+19	187	Wet Sponge
+19	189	Wet Sponge
+19	191	Wet Sponge
+19	193	Wet Sponge
+19	195	Wet Sponge
+19	197	Wet Sponge
+19	199	Wet Sponge
+19	201	Wet Sponge
+19	203	Wet Sponge
+19	205	Wet Sponge
+19	207	Wet Sponge
+19	209	Wet Sponge
+19	211	Wet Sponge
+19	213	Wet Sponge
+19	215	Wet Sponge
+19	217	Wet Sponge
+19	219	Wet Sponge
+19	221	Wet Sponge
+19	223	Wet Sponge
+19	225	Wet Sponge
+19	227	Wet Sponge
+19	229	Wet Sponge
+19	231	Wet Sponge
+19	233	Wet Sponge
+19	235	Wet Sponge
+19	237	Wet Sponge
+19	239	Wet Sponge
+19	241	Wet Sponge
+19	243	Wet Sponge
+19	245	Wet Sponge
+19	247	Wet Sponge
+19	249	Wet Sponge
+19	251	Wet Sponge
+19	253	Wet Sponge
+19	255	Wet Sponge
+20	0	Glass
+21	0	Lapis Lazuli Ore
+22	0	Lapis Lazuli Block
+23	0	Dispenser
+24	0	Sandstone
+24	1	Chiseled Sandstone
+24	2	Smooth Sandstone
+25	0	Note Block
+27	0	Powered Rail
+28	0	Detector Rail
+29	0	Sticky Piston
+30	0	Cobweb
+31	0	Shrub
+31	1	Grass
+31	2	Fern
+31	3	Grass
+31	4	Grass
+31	5	Grass
+31	6	Grass
+31	7	Grass
+31	8	Grass
+31	9	Grass
+31	10	Grass
+31	11	Grass
+31	12	Grass
+31	13	Grass
+31	14	Grass
+31	15	Grass
+31	16	Grass
+31	17	Grass
+31	18	Grass
+31	19	Grass
+31	20	Grass
+31	21	Grass
+31	22	Grass
+31	23	Grass
+31	24	Grass
+31	25	Grass
+31	26	Grass
+31	27	Grass
+31	28	Grass
+31	29	Grass
+31	30	Grass
+31	31	Grass
+31	32	Grass
+31	33	Grass
+31	34	Grass
+31	35	Grass
+31	36	Grass
+31	37	Grass
+31	38	Grass
+31	39	Grass
+31	40	Grass
+31	41	Grass
+31	42	Grass
+31	43	Grass
+31	44	Grass
+31	45	Grass
+31	46	Grass
+31	47	Grass
+31	48	Grass
+31	49	Grass
+31	50	Grass
+31	51	Grass
+31	52	Grass
+31	53	Grass
+31	54	Grass
+31	55	Grass
+31	56	Grass
+31	57	Grass
+31	58	Grass
+31	59	Grass
+31	60	Grass
+31	61	Grass
+31	62	Grass
+31	63	Grass
+31	64	Grass
+31	65	Grass
+31	66	Grass
+31	67	Grass
+31	68	Grass
+31	69	Grass
+31	70	Grass
+31	71	Grass
+31	72	Grass
+31	73	Grass
+31	74	Grass
+31	75	Grass
+31	76	Grass
+31	77	Grass
+31	78	Grass
+31	79	Grass
+31	80	Grass
+31	81	Grass
+31	82	Grass
+31	83	Grass
+31	84	Grass
+31	85	Grass
+31	86	Grass
+31	87	Grass
+31	88	Grass
+31	89	Grass
+31	90	Grass
+31	91	Grass
+31	92	Grass
+31	93	Grass
+31	94	Grass
+31	95	Grass
+31	96	Grass
+31	97	Grass
+31	98	Grass
+31	99	Grass
+31	100	Grass
+31	101	Grass
+31	102	Grass
+31	103	Grass
+31	104	Grass
+31	105	Grass
+31	106	Grass
+31	107	Grass
+31	108	Grass
+31	109	Grass
+31	110	Grass
+31	111	Grass
+31	112	Grass
+31	113	Grass
+31	114	Grass
+31	115	Grass
+31	116	Grass
+31	117	Grass
+31	118	Grass
+31	119	Grass
+31	120	Grass
+31	121	Grass
+31	122	Grass
+31	123	Grass
+31	124	Grass
+31	125	Grass
+31	126	Grass
+31	127	Grass
+31	128	Grass
+31	129	Grass
+31	130	Grass
+31	131	Grass
+31	132	Grass
+31	133	Grass
+31	134	Grass
+31	135	Grass
+31	136	Grass
+31	137	Grass
+31	138	Grass
+31	139	Grass
+31	140	Grass
+31	141	Grass
+31	142	Grass
+31	143	Grass
+31	144	Grass
+31	145	Grass
+31	146	Grass
+31	147	Grass
+31	148	Grass
+31	149	Grass
+31	150	Grass
+31	151	Grass
+31	152	Grass
+31	153	Grass
+31	154	Grass
+31	155	Grass
+31	156	Grass
+31	157	Grass
+31	158	Grass
+31	159	Grass
+31	160	Grass
+31	161	Grass
+31	162	Grass
+31	163	Grass
+31	164	Grass
+31	165	Grass
+31	166	Grass
+31	167	Grass
+31	168	Grass
+31	169	Grass
+31	170	Grass
+31	171	Grass
+31	172	Grass
+31	173	Grass
+31	174	Grass
+31	175	Grass
+31	176	Grass
+31	177	Grass
+31	178	Grass
+31	179	Grass
+31	180	Grass
+31	181	Grass
+31	182	Grass
+31	183	Grass
+31	184	Grass
+31	185	Grass
+31	186	Grass
+31	187	Grass
+31	188	Grass
+31	189	Grass
+31	190	Grass
+31	191	Grass
+31	192	Grass
+31	193	Grass
+31	194	Grass
+31	195	Grass
+31	196	Grass
+31	197	Grass
+31	198	Grass
+31	199	Grass
+31	200	Grass
+31	201	Grass
+31	202	Grass
+31	203	Grass
+31	204	Grass
+31	205	Grass
+31	206	Grass
+31	207	Grass
+31	208	Grass
+31	209	Grass
+31	210	Grass
+31	211	Grass
+31	212	Grass
+31	213	Grass
+31	214	Grass
+31	215	Grass
+31	216	Grass
+31	217	Grass
+31	218	Grass
+31	219	Grass
+31	220	Grass
+31	221	Grass
+31	222	Grass
+31	223	Grass
+31	224	Grass
+31	225	Grass
+31	226	Grass
+31	227	Grass
+31	228	Grass
+31	229	Grass
+31	230	Grass
+31	231	Grass
+31	232	Grass
+31	233	Grass
+31	234	Grass
+31	235	Grass
+31	236	Grass
+31	237	Grass
+31	238	Grass
+31	239	Grass
+31	240	Grass
+31	241	Grass
+31	242	Grass
+31	243	Grass
+31	244	Grass
+31	245	Grass
+31	246	Grass
+31	247	Grass
+31	248	Grass
+31	249	Grass
+31	250	Grass
+31	251	Grass
+31	252	Grass
+31	253	Grass
+31	254	Grass
+31	255	Grass
+32	0	Dead Bush
+33	0	Piston
+35	0	Wool
+35	1	Orange Wool
+35	2	Magenta Wool
+35	3	Light Blue Wool
+35	4	Yellow Wool
+35	5	Lime Wool
+35	6	Pink Wool
+35	7	Gray Wool
+35	8	Light Gray Wool
+35	9	Cyan Wool
+35	10	Purple Wool
+35	11	Blue Wool
+35	12	Brown Wool
+35	13	Green Wool
+35	14	Red Wool
+35	15	Black Wool
+37	0	Dandelion
+38	0	Poppy
+38	1	Blue Orchid
+38	2	Allium
+38	3	Azure Bluet
+38	4	Red Tulip
+38	5	Orange Tulip
+38	6	White Tulip
+38	7	Pink Tulip
+38	8	Oxeye Daisy
+39	0	Mushroom
+40	0	Mushroom
+41	0	Block of Gold
+42	0	Block of Iron
+44	0	Stone Slab
+44	1	Sandstone Slab
+44	2	Wooden Slab
+44	3	Cobblestone Slab
+44	4	Bricks Slab
+44	5	Stone Bricks Slab
+44	6	Nether Brick Slab
+44	7	Quartz Slab
+45	0	Bricks
+46	0	TNT
+47	0	Bookshelf
+48	0	Moss Stone
+49	0	Obsidian
+50	0	Torch
+52	0	Monster Spawner
+53	0	Oak Wood Stairs
+54	0	Chest
+56	0	Diamond Ore
+57	0	Block of Diamond
+58	0	Crafting Table
+60	0	Farmland
+61	0	Furnace
+62	0	Furnace
+65	0	Ladder
+66	0	Rail
+67	0	Cobblestone Stairs
+69	0	Lever
+70	0	Stone Pressure Plate
+72	0	Wooden Pressure Plate
+73	0	Redstone Ore
+76	0	Redstone Torch
+77	0	Button
+78	0	Snow
+79	0	Ice
+80	0	Snow
+81	0	Cactus
+82	0	Clay
+84	0	Jukebox
+85	0	Oak Fence
+86	0	Pumpkin
+87	0	Netherrack
+88	0	Soul Sand
+89	0	Glowstone
+91	0	Jack o'Lantern
+95	0	White Stained Glass
+95	1	Orange Stained Glass
+95	2	Magenta Stained Glass
+95	3	Light Blue Stained Glass
+95	4	Yellow Stained Glass
+95	5	Lime Stained Glass
+95	6	Pink Stained Glass
+95	7	Gray Stained Glass
+95	8	Light Gray Stained Glass
+95	9	Cyan Stained Glass
+95	10	Purple Stained Glass
+95	11	Blue Stained Glass
+95	12	Brown Stained Glass
+95	13	Green Stained Glass
+95	14	Red Stained Glass
+95	15	Black Stained Glass
+96	0	Wooden Trapdoor
+97	0	Stone Monster Egg
+97	1	Cobblestone Monster Egg
+97	2	Stone Brick Monster Egg
+97	3	Mossy Stone Brick Monster Egg
+97	4	Cracked Stone Brick Monster Egg
+97	5	Chiseled Stone Brick Monster Egg
+98	0	Stone Bricks
+98	1	Mossy Stone Bricks
+98	2	Cracked Stone Bricks
+98	3	Chiseled Stone Bricks
+99	0	Mushroom
+100	0	Mushroom
+101	0	Iron Bars
+102	0	Glass Pane
+103	0	Melon
+106	0	Vines
+107	0	Oak Fence Gate
+108	0	Brick Stairs
+109	0	Stone Brick Stairs
+110	0	Mycelium
+111	0	Lily Pad
+112	0	Nether Brick
+113	0	Nether Brick Fence
+114	0	Nether Brick Stairs
+116	0	Enchantment Table
+120	0	End Portal
+121	0	End Stone
+122	0	Dragon Egg
+123	0	Redstone Lamp
+126	0	Oak Wood Slab
+126	1	Spruce Wood Slab
+126	2	Birch Wood Slab
+126	3	Jungle Wood Slab
+126	4	Acacia Wood Slab
+126	5	Dark Oak Wood Slab
+128	0	Sandstone Stairs
+129	0	Emerald Ore
+130	0	Ender Chest
+131	0	Tripwire Hook
+133	0	Block of Emerald
+134	0	Spruce Wood Stairs
+135	0	Birch Wood Stairs
+136	0	Jungle Wood Stairs
+137	0	Command Block
+138	0	Beacon
+139	0	Cobblestone Wall
+139	1	Mossy Cobblestone Wall
+143	0	Button
+145	0	Anvil
+145	1	Slightly Damaged Anvil
+145	2	Very Damaged Anvil
+146	0	Trapped Chest
+147	0	Weighted Pressure Plate (Light)
+148	0	Weighted Pressure Plate (Heavy)
+151	0	Daylight Sensor
+152	0	Block of Redstone
+153	0	Nether Quartz Ore
+154	0	Hopper
+155	0	Block of Quartz
+155	1	Chiseled Quartz Block
+155	2	Pillar Quartz Block
+156	0	Quartz Stairs
+157	0	Activator Rail
+158	0	Dropper
+159	0	White Stained Clay
+159	1	Orange Stained Clay
+159	2	Magenta Stained Clay
+159	3	Light Blue Stained Clay
+159	4	Yellow Stained Clay
+159	5	Lime Stained Clay
+159	6	Pink Stained Clay
+159	7	Gray Stained Clay
+159	8	Light Gray Stained Clay
+159	9	Cyan Stained Clay
+159	10	Purple Stained Clay
+159	11	Blue Stained Clay
+159	12	Brown Stained Clay
+159	13	Green Stained Clay
+159	14	Red Stained Clay
+159	15	Black Stained Clay
+160	0	White Stained Glass Pane
+160	1	Orange Stained Glass Pane
+160	2	Magenta Stained Glass Pane
+160	3	Light Blue Stained Glass Pane
+160	4	Yellow Stained Glass Pane
+160	5	Lime Stained Glass Pane
+160	6	Pink Stained Glass Pane
+160	7	Gray Stained Glass Pane
+160	8	Light Gray Stained Glass Pane
+160	9	Cyan Stained Glass Pane
+160	10	Purple Stained Glass Pane
+160	11	Blue Stained Glass Pane
+160	12	Brown Stained Glass Pane
+160	13	Green Stained Glass Pane
+160	14	Red Stained Glass Pane
+160	15	Black Stained Glass Pane
+161	0	Acacia Leaves
+161	1	Dark Oak Leaves
+161	2	Oak Leaves
+161	3	Oak Leaves
+161	5	Dark Oak Leaves
+161	6	Oak Leaves
+161	7	Oak Leaves
+161	9	Dark Oak Leaves
+161	10	Oak Leaves
+161	11	Oak Leaves
+161	13	Dark Oak Leaves
+161	14	Oak Leaves
+161	15	Oak Leaves
+161	17	Dark Oak Leaves
+161	18	Oak Leaves
+161	19	Oak Leaves
+161	21	Dark Oak Leaves
+161	22	Oak Leaves
+161	23	Oak Leaves
+161	25	Dark Oak Leaves
+161	26	Oak Leaves
+161	27	Oak Leaves
+161	29	Dark Oak Leaves
+161	30	Oak Leaves
+161	31	Oak Leaves
+161	33	Dark Oak Leaves
+161	34	Oak Leaves
+161	35	Oak Leaves
+161	37	Dark Oak Leaves
+161	38	Oak Leaves
+161	39	Oak Leaves
+161	41	Dark Oak Leaves
+161	42	Oak Leaves
+161	43	Oak Leaves
+161	45	Dark Oak Leaves
+161	46	Oak Leaves
+161	47	Oak Leaves
+161	49	Dark Oak Leaves
+161	50	Oak Leaves
+161	51	Oak Leaves
+161	53	Dark Oak Leaves
+161	54	Oak Leaves
+161	55	Oak Leaves
+161	57	Dark Oak Leaves
+161	58	Oak Leaves
+161	59	Oak Leaves
+161	61	Dark Oak Leaves
+161	62	Oak Leaves
+161	63	Oak Leaves
+161	65	Dark Oak Leaves
+161	66	Oak Leaves
+161	67	Oak Leaves
+161	69	Dark Oak Leaves
+161	70	Oak Leaves
+161	71	Oak Leaves
+161	73	Dark Oak Leaves
+161	74	Oak Leaves
+161	75	Oak Leaves
+161	77	Dark Oak Leaves
+161	78	Oak Leaves
+161	79	Oak Leaves
+161	81	Dark Oak Leaves
+161	82	Oak Leaves
+161	83	Oak Leaves
+161	85	Dark Oak Leaves
+161	86	Oak Leaves
+161	87	Oak Leaves
+161	89	Dark Oak Leaves
+161	90	Oak Leaves
+161	91	Oak Leaves
+161	93	Dark Oak Leaves
+161	94	Oak Leaves
+161	95	Oak Leaves
+161	97	Dark Oak Leaves
+161	98	Oak Leaves
+161	99	Oak Leaves
+161	101	Dark Oak Leaves
+161	102	Oak Leaves
+161	103	Oak Leaves
+161	105	Dark Oak Leaves
+161	106	Oak Leaves
+161	107	Oak Leaves
+161	109	Dark Oak Leaves
+161	110	Oak Leaves
+161	111	Oak Leaves
+161	113	Dark Oak Leaves
+161	114	Oak Leaves
+161	115	Oak Leaves
+161	117	Dark Oak Leaves
+161	118	Oak Leaves
+161	119	Oak Leaves
+161	121	Dark Oak Leaves
+161	122	Oak Leaves
+161	123	Oak Leaves
+161	125	Dark Oak Leaves
+161	126	Oak Leaves
+161	127	Oak Leaves
+161	129	Dark Oak Leaves
+161	130	Oak Leaves
+161	131	Oak Leaves
+161	133	Dark Oak Leaves
+161	134	Oak Leaves
+161	135	Oak Leaves
+161	137	Dark Oak Leaves
+161	138	Oak Leaves
+161	139	Oak Leaves
+161	141	Dark Oak Leaves
+161	142	Oak Leaves
+161	143	Oak Leaves
+161	145	Dark Oak Leaves
+161	146	Oak Leaves
+161	147	Oak Leaves
+161	149	Dark Oak Leaves
+161	150	Oak Leaves
+161	151	Oak Leaves
+161	153	Dark Oak Leaves
+161	154	Oak Leaves
+161	155	Oak Leaves
+161	157	Dark Oak Leaves
+161	158	Oak Leaves
+161	159	Oak Leaves
+161	161	Dark Oak Leaves
+161	162	Oak Leaves
+161	163	Oak Leaves
+161	165	Dark Oak Leaves
+161	166	Oak Leaves
+161	167	Oak Leaves
+161	169	Dark Oak Leaves
+161	170	Oak Leaves
+161	171	Oak Leaves
+161	173	Dark Oak Leaves
+161	174	Oak Leaves
+161	175	Oak Leaves
+161	177	Dark Oak Leaves
+161	178	Oak Leaves
+161	179	Oak Leaves
+161	181	Dark Oak Leaves
+161	182	Oak Leaves
+161	183	Oak Leaves
+161	185	Dark Oak Leaves
+161	186	Oak Leaves
+161	187	Oak Leaves
+161	189	Dark Oak Leaves
+161	190	Oak Leaves
+161	191	Oak Leaves
+161	193	Dark Oak Leaves
+161	194	Oak Leaves
+161	195	Oak Leaves
+161	197	Dark Oak Leaves
+161	198	Oak Leaves
+161	199	Oak Leaves
+161	201	Dark Oak Leaves
+161	202	Oak Leaves
+161	203	Oak Leaves
+161	205	Dark Oak Leaves
+161	206	Oak Leaves
+161	207	Oak Leaves
+161	209	Dark Oak Leaves
+161	210	Oak Leaves
+161	211	Oak Leaves
+161	213	Dark Oak Leaves
+161	214	Oak Leaves
+161	215	Oak Leaves
+161	217	Dark Oak Leaves
+161	218	Oak Leaves
+161	219	Oak Leaves
+161	221	Dark Oak Leaves
+161	222	Oak Leaves
+161	223	Oak Leaves
+161	225	Dark Oak Leaves
+161	226	Oak Leaves
+161	227	Oak Leaves
+161	229	Dark Oak Leaves
+161	230	Oak Leaves
+161	231	Oak Leaves
+161	233	Dark Oak Leaves
+161	234	Oak Leaves
+161	235	Oak Leaves
+161	237	Dark Oak Leaves
+161	238	Oak Leaves
+161	239	Oak Leaves
+161	241	Dark Oak Leaves
+161	242	Oak Leaves
+161	243	Oak Leaves
+161	245	Dark Oak Leaves
+161	246	Oak Leaves
+161	247	Oak Leaves
+161	249	Dark Oak Leaves
+161	250	Oak Leaves
+161	251	Oak Leaves
+161	253	Dark Oak Leaves
+161	254	Oak Leaves
+161	255	Oak Leaves
+162	0	Acacia Wood
+162	1	Dark Oak Wood
+162	2	Oak Wood
+162	3	Oak Wood
+162	4	Oak Wood
+162	5	Oak Wood
+162	6	Oak Wood
+162	7	Oak Wood
+162	8	Oak Wood
+162	9	Oak Wood
+162	10	Oak Wood
+162	11	Oak Wood
+162	12	Oak Wood
+162	13	Oak Wood
+162	14	Oak Wood
+162	15	Oak Wood
+162	16	Oak Wood
+162	17	Oak Wood
+162	18	Oak Wood
+162	19	Oak Wood
+162	20	Oak Wood
+162	21	Oak Wood
+162	22	Oak Wood
+162	23	Oak Wood
+162	24	Oak Wood
+162	25	Oak Wood
+162	26	Oak Wood
+162	27	Oak Wood
+162	28	Oak Wood
+162	29	Oak Wood
+162	30	Oak Wood
+162	31	Oak Wood
+162	32	Oak Wood
+162	33	Oak Wood
+162	34	Oak Wood
+162	35	Oak Wood
+162	36	Oak Wood
+162	37	Oak Wood
+162	38	Oak Wood
+162	39	Oak Wood
+162	40	Oak Wood
+162	41	Oak Wood
+162	42	Oak Wood
+162	43	Oak Wood
+162	44	Oak Wood
+162	45	Oak Wood
+162	46	Oak Wood
+162	47	Oak Wood
+162	48	Oak Wood
+162	49	Oak Wood
+162	50	Oak Wood
+162	51	Oak Wood
+162	52	Oak Wood
+162	53	Oak Wood
+162	54	Oak Wood
+162	55	Oak Wood
+162	56	Oak Wood
+162	57	Oak Wood
+162	58	Oak Wood
+162	59	Oak Wood
+162	60	Oak Wood
+162	61	Oak Wood
+162	62	Oak Wood
+162	63	Oak Wood
+162	64	Oak Wood
+162	65	Oak Wood
+162	66	Oak Wood
+162	67	Oak Wood
+162	68	Oak Wood
+162	69	Oak Wood
+162	70	Oak Wood
+162	71	Oak Wood
+162	72	Oak Wood
+162	73	Oak Wood
+162	74	Oak Wood
+162	75	Oak Wood
+162	76	Oak Wood
+162	77	Oak Wood
+162	78	Oak Wood
+162	79	Oak Wood
+162	80	Oak Wood
+162	81	Oak Wood
+162	82	Oak Wood
+162	83	Oak Wood
+162	84	Oak Wood
+162	85	Oak Wood
+162	86	Oak Wood
+162	87	Oak Wood
+162	88	Oak Wood
+162	89	Oak Wood
+162	90	Oak Wood
+162	91	Oak Wood
+162	92	Oak Wood
+162	93	Oak Wood
+162	94	Oak Wood
+162	95	Oak Wood
+162	96	Oak Wood
+162	97	Oak Wood
+162	98	Oak Wood
+162	99	Oak Wood
+162	100	Oak Wood
+162	101	Oak Wood
+162	102	Oak Wood
+162	103	Oak Wood
+162	104	Oak Wood
+162	105	Oak Wood
+162	106	Oak Wood
+162	107	Oak Wood
+162	108	Oak Wood
+162	109	Oak Wood
+162	110	Oak Wood
+162	111	Oak Wood
+162	112	Oak Wood
+162	113	Oak Wood
+162	114	Oak Wood
+162	115	Oak Wood
+162	116	Oak Wood
+162	117	Oak Wood
+162	118	Oak Wood
+162	119	Oak Wood
+162	120	Oak Wood
+162	121	Oak Wood
+162	122	Oak Wood
+162	123	Oak Wood
+162	124	Oak Wood
+162	125	Oak Wood
+162	126	Oak Wood
+162	127	Oak Wood
+162	128	Oak Wood
+162	129	Oak Wood
+162	130	Oak Wood
+162	131	Oak Wood
+162	132	Oak Wood
+162	133	Oak Wood
+162	134	Oak Wood
+162	135	Oak Wood
+162	136	Oak Wood
+162	137	Oak Wood
+162	138	Oak Wood
+162	139	Oak Wood
+162	140	Oak Wood
+162	141	Oak Wood
+162	142	Oak Wood
+162	143	Oak Wood
+162	144	Oak Wood
+162	145	Oak Wood
+162	146	Oak Wood
+162	147	Oak Wood
+162	148	Oak Wood
+162	149	Oak Wood
+162	150	Oak Wood
+162	151	Oak Wood
+162	152	Oak Wood
+162	153	Oak Wood
+162	154	Oak Wood
+162	155	Oak Wood
+162	156	Oak Wood
+162	157	Oak Wood
+162	158	Oak Wood
+162	159	Oak Wood
+162	160	Oak Wood
+162	161	Oak Wood
+162	162	Oak Wood
+162	163	Oak Wood
+162	164	Oak Wood
+162	165	Oak Wood
+162	166	Oak Wood
+162	167	Oak Wood
+162	168	Oak Wood
+162	169	Oak Wood
+162	170	Oak Wood
+162	171	Oak Wood
+162	172	Oak Wood
+162	173	Oak Wood
+162	174	Oak Wood
+162	175	Oak Wood
+162	176	Oak Wood
+162	177	Oak Wood
+162	178	Oak Wood
+162	179	Oak Wood
+162	180	Oak Wood
+162	181	Oak Wood
+162	182	Oak Wood
+162	183	Oak Wood
+162	184	Oak Wood
+162	185	Oak Wood
+162	186	Oak Wood
+162	187	Oak Wood
+162	188	Oak Wood
+162	189	Oak Wood
+162	190	Oak Wood
+162	191	Oak Wood
+162	192	Oak Wood
+162	193	Oak Wood
+162	194	Oak Wood
+162	195	Oak Wood
+162	196	Oak Wood
+162	197	Oak Wood
+162	198	Oak Wood
+162	199	Oak Wood
+162	200	Oak Wood
+162	201	Oak Wood
+162	202	Oak Wood
+162	203	Oak Wood
+162	204	Oak Wood
+162	205	Oak Wood
+162	206	Oak Wood
+162	207	Oak Wood
+162	208	Oak Wood
+162	209	Oak Wood
+162	210	Oak Wood
+162	211	Oak Wood
+162	212	Oak Wood
+162	213	Oak Wood
+162	214	Oak Wood
+162	215	Oak Wood
+162	216	Oak Wood
+162	217	Oak Wood
+162	218	Oak Wood
+162	219	Oak Wood
+162	220	Oak Wood
+162	221	Oak Wood
+162	222	Oak Wood
+162	223	Oak Wood
+162	224	Oak Wood
+162	225	Oak Wood
+162	226	Oak Wood
+162	227	Oak Wood
+162	228	Oak Wood
+162	229	Oak Wood
+162	230	Oak Wood
+162	231	Oak Wood
+162	232	Oak Wood
+162	233	Oak Wood
+162	234	Oak Wood
+162	235	Oak Wood
+162	236	Oak Wood
+162	237	Oak Wood
+162	238	Oak Wood
+162	239	Oak Wood
+162	240	Oak Wood
+162	241	Oak Wood
+162	242	Oak Wood
+162	243	Oak Wood
+162	244	Oak Wood
+162	245	Oak Wood
+162	246	Oak Wood
+162	247	Oak Wood
+162	248	Oak Wood
+162	249	Oak Wood
+162	250	Oak Wood
+162	251	Oak Wood
+162	252	Oak Wood
+162	253	Oak Wood
+162	254	Oak Wood
+162	255	Oak Wood
+163	0	Acacia Wood Stairs
+164	0	Dark Oak Wood Stairs
+165	0	Slime Block
+166	0	Barrier
+167	0	Iron Trapdoor
+168	0	Prismarine
+168	1	Prismarine Bricks
+168	2	Dark Prismarine
+169	0	Sea Lantern
+170	0	Hay Bale
+171	0	Carpet
+171	1	Orange Carpet
+171	2	Magenta Carpet
+171	3	Light Blue Carpet
+171	4	Yellow Carpet
+171	5	Lime Carpet
+171	6	Pink Carpet
+171	7	Gray Carpet
+171	8	Light Gray Carpet
+171	9	Cyan Carpet
+171	10	Purple Carpet
+171	11	Blue Carpet
+171	12	Brown Carpet
+171	13	Green Carpet
+171	14	Red Carpet
+171	15	Black Carpet
+172	0	Hardened Clay
+173	0	Block of Coal
+174	0	Packed Ice
+175	0	Sunflower
+175	1	Lilac
+175	2	Double Tallgrass
+175	3	Large Fern
+175	4	Rose Bush
+175	5	Peony
+179	0	Red Sandstone
+179	1	Chiseled Red Sandstone
+179	2	Smooth Red Sandstone
+180	0	Red Sandstone Stairs
+182	0	Red Sandstone Slab
+183	0	Spruce Fence Gate
+184	0	Birch Fence Gate
+185	0	Jungle Fence Gate
+186	0	Dark Oak Fence Gate
+187	0	Acacia Fence Gate
+188	0	Spruce Fence
+189	0	Birch Fence
+190	0	Jungle Fence
+191	0	Dark Oak Fence
+192	0	Acacia Fence
+256	0	Iron Shovel
+257	0	Iron Pickaxe
+258	0	Iron Axe
+259	0	Flint and Steel
+260	0	Apple
+261	0	Bow
+262	0	Arrow
+263	0	Coal
+263	1	Charcoal
+264	0	Diamond
+265	0	Iron Ingot
+266	0	Gold Ingot
+267	0	Iron Sword
+268	0	Wooden Sword
+269	0	Wooden Shovel
+270	0	Wooden Pickaxe
+271	0	Wooden Axe
+272	0	Stone Sword
+273	0	Stone Shovel
+274	0	Stone Pickaxe
+275	0	Stone Axe
+276	0	Diamond Sword
+277	0	Diamond Shovel
+278	0	Diamond Pickaxe
+279	0	Diamond Axe
+280	0	Stick
+281	0	Bowl
+282	0	Mushroom Stew
+283	0	Golden Sword
+284	0	Golden Shovel
+285	0	Golden Pickaxe
+286	0	Golden Axe
+287	0	String
+288	0	Feather
+289	0	Gunpowder
+290	0	Wooden Hoe
+291	0	Stone Hoe
+292	0	Iron Hoe
+293	0	Diamond Hoe
+294	0	Golden Hoe
+295	0	Seeds
+296	0	Wheat
+297	0	Bread
+298	0	Leather Cap
+299	0	Leather Tunic
+300	0	Leather Pants
+301	0	Leather Boots
+302	0	Chain Helmet
+303	0	Chain Chestplate
+304	0	Chain Leggings
+305	0	Chain Boots
+306	0	Iron Helmet
+307	0	Iron Chestplate
+308	0	Iron Leggings
+309	0	Iron Boots
+310	0	Diamond Helmet
+311	0	Diamond Chestplate
+312	0	Diamond Leggings
+313	0	Diamond Boots
+314	0	Golden Helmet
+315	0	Golden Chestplate
+316	0	Golden Leggings
+317	0	Golden Boots
+318	0	Flint
+319	0	Raw Porkchop
+320	0	Cooked Porkchop
+321	0	Painting
+322	0	Golden Apple
+323	0	Sign
+324	0	Oak Door
+325	0	Bucket
+326	0	Water Bucket
+327	0	Lava Bucket
+328	0	Minecart
+329	0	Saddle
+330	0	Iron Door
+331	0	Redstone
+332	0	Snowball
+333	0	Boat
+334	0	Leather
+335	0	Milk
+336	0	Brick
+337	0	Clay
+338	0	Sugar Canes
+339	0	Paper
+340	0	Book
+341	0	Slimeball
+342	0	Minecart with Chest
+343	0	Minecart with Furnace
+344	0	Egg
+345	0	Compass
+346	0	Fishing Rod
+347	0	Clock
+348	0	Glowstone Dust
+349	0	Raw Fish
+349	1	Raw Salmon
+349	2	Clownfish
+349	3	Pufferfish
+350	0	Cooked Fish
+350	1	Cooked Salmon
+350	2	Clownfish
+350	3	Pufferfish
+351	0	Ink Sac
+351	1	Rose Red
+351	2	Cactus Green
+351	3	Cocoa Beans
+351	4	Lapis Lazuli
+351	5	Purple Dye
+351	6	Cyan Dye
+351	7	Light Gray Dye
+351	8	Gray Dye
+351	9	Pink Dye
+351	10	Lime Dye
+351	11	Dandelion Yellow
+351	12	Light Blue Dye
+351	13	Magenta Dye
+351	14	Orange Dye
+351	15	Bone Meal
+352	0	Bone
+353	0	Sugar
+354	0	Cake
+355	0	Bed
+356	0	Redstone Repeater
+357	0	Cookie
+358	0	Map
+359	0	Shears
+360	0	Melon
+361	0	Pumpkin Seeds
+362	0	Melon Seeds
+363	0	Raw Beef
+364	0	Steak
+365	0	Raw Chicken
+366	0	Cooked Chicken
+367	0	Rotten Flesh
+368	0	Ender Pearl
+369	0	Blaze Rod
+370	0	Ghast Tear
+371	0	Gold Nugget
+372	0	Nether Wart
+373	0	Water Bottle
+373	1	Potion of Regeneration
+373	2	Potion of Swiftness
+373	3	Potion of Fire Resistance
+373	4	Potion of Poison
+373	5	Potion of Healing
+373	6	Potion of Night Vision
+373	7	Clear Potion
+373	8	Potion of Weakness
+373	9	Potion of Strength
+373	10	Potion of Slowness
+373	11	Potion of Leaping
+373	12	Potion of Harming
+373	13	Potion of Water Breathing
+373	14	Potion of Invisibility
+373	15	Thin Potion
+373	16	Awkward Potion
+373	17	Potion of Regeneration
+373	18	Potion of Swiftness
+373	19	Potion of Fire Resistance
+373	20	Potion of Poison
+373	21	Potion of Healing
+373	22	Potion of Night Vision
+373	23	Bungling Potion
+373	24	Potion of Weakness
+373	25	Potion of Strength
+373	26	Potion of Slowness
+373	27	Potion of Leaping
+373	28	Potion of Harming
+373	29	Potion of Water Breathing
+373	30	Potion of Invisibility
+373	31	Debonair Potion
+373	32	Thick Potion
+373	33	Potion of Regeneration
+373	34	Potion of Swiftness
+373	35	Potion of Fire Resistance
+373	36	Potion of Poison
+373	37	Potion of Healing
+373	38	Potion of Night Vision
+373	39	Charming Potion
+373	40	Potion of Weakness
+373	41	Potion of Strength
+373	42	Potion of Slowness
+373	43	Potion of Leaping
+373	44	Potion of Harming
+373	45	Potion of Water Breathing
+373	46	Potion of Invisibility
+373	47	Sparkling Potion
+373	48	Potent Potion
+373	49	Potion of Regeneration
+373	50	Potion of Swiftness
+373	51	Potion of Fire Resistance
+373	52	Potion of Poison
+373	53	Potion of Healing
+373	54	Potion of Night Vision
+373	55	Rank Potion
+373	56	Potion of Weakness
+373	57	Potion of Strength
+373	58	Potion of Slowness
+373	59	Potion of Leaping
+373	60	Potion of Harming
+373	61	Potion of Water Breathing
+373	62	Potion of Invisibility
+373	63	Stinky Potion
+373	64	Mundane Potion
+373	65	Potion of Regeneration
+373	66	Potion of Swiftness
+373	67	Potion of Fire Resistance
+373	68	Potion of Poison
+373	69	Potion of Healing
+373	70	Potion of Night Vision
+373	71	Clear Potion
+373	72	Potion of Weakness
+373	73	Potion of Strength
+373	74	Potion of Slowness
+373	75	Potion of Leaping
+373	76	Potion of Harming
+373	77	Potion of Water Breathing
+373	78	Potion of Invisibility
+373	79	Thin Potion
+373	80	Awkward Potion
+373	81	Potion of Regeneration
+373	82	Potion of Swiftness
+373	83	Potion of Fire Resistance
+373	84	Potion of Poison
+373	85	Potion of Healing
+373	86	Potion of Night Vision
+373	87	Bungling Potion
+373	88	Potion of Weakness
+373	89	Potion of Strength
+373	90	Potion of Slowness
+373	91	Potion of Leaping
+373	92	Potion of Harming
+373	93	Potion of Water Breathing
+373	94	Potion of Invisibility
+373	95	Debonair Potion
+373	96	Thick Potion
+373	97	Potion of Regeneration
+373	98	Potion of Swiftness
+373	99	Potion of Fire Resistance
+373	100	Potion of Poison
+373	101	Potion of Healing
+373	102	Potion of Night Vision
+373	103	Charming Potion
+373	104	Potion of Weakness
+373	105	Potion of Strength
+373	106	Potion of Slowness
+373	107	Potion of Leaping
+373	108	Potion of Harming
+373	109	Potion of Water Breathing
+373	110	Potion of Invisibility
+373	111	Sparkling Potion
+373	112	Potent Potion
+373	113	Potion of Regeneration
+373	114	Potion of Swiftness
+373	115	Potion of Fire Resistance
+373	116	Potion of Poison
+373	117	Potion of Healing
+373	118	Potion of Night Vision
+373	119	Rank Potion
+373	120	Potion of Weakness
+373	121	Potion of Strength
+373	122	Potion of Slowness
+373	123	Potion of Leaping
+373	124	Potion of Harming
+373	125	Potion of Water Breathing
+373	126	Potion of Invisibility
+373	127	Stinky Potion
+373	128	Mundane Potion
+373	129	Potion of Regeneration
+373	130	Potion of Swiftness
+373	131	Potion of Fire Resistance
+373	132	Potion of Poison
+373	133	Potion of Healing
+373	134	Potion of Night Vision
+373	135	Clear Potion
+373	136	Potion of Weakness
+373	137	Potion of Strength
+373	138	Potion of Slowness
+373	139	Potion of Leaping
+373	140	Potion of Harming
+373	141	Potion of Water Breathing
+373	142	Potion of Invisibility
+373	143	Thin Potion
+373	144	Awkward Potion
+373	145	Potion of Regeneration
+373	146	Potion of Swiftness
+373	147	Potion of Fire Resistance
+373	148	Potion of Poison
+373	149	Potion of Healing
+373	150	Potion of Night Vision
+373	151	Bungling Potion
+373	152	Potion of Weakness
+373	153	Potion of Strength
+373	154	Potion of Slowness
+373	155	Potion of Leaping
+373	156	Potion of Harming
+373	157	Potion of Water Breathing
+373	158	Potion of Invisibility
+373	159	Debonair Potion
+373	160	Thick Potion
+373	161	Potion of Regeneration
+373	162	Potion of Swiftness
+373	163	Potion of Fire Resistance
+373	164	Potion of Poison
+373	165	Potion of Healing
+373	166	Potion of Night Vision
+373	167	Charming Potion
+373	168	Potion of Weakness
+373	169	Potion of Strength
+373	170	Potion of Slowness
+373	171	Potion of Leaping
+373	172	Potion of Harming
+373	173	Potion of Water Breathing
+373	174	Potion of Invisibility
+373	175	Sparkling Potion
+373	176	Potent Potion
+373	177	Potion of Regeneration
+373	178	Potion of Swiftness
+373	179	Potion of Fire Resistance
+373	180	Potion of Poison
+373	181	Potion of Healing
+373	182	Potion of Night Vision
+373	183	Rank Potion
+373	184	Potion of Weakness
+373	185	Potion of Strength
+373	186	Potion of Slowness
+373	187	Potion of Leaping
+373	188	Potion of Harming
+373	189	Potion of Water Breathing
+373	190	Potion of Invisibility
+373	191	Stinky Potion
+373	192	Mundane Potion
+373	193	Potion of Regeneration
+373	194	Potion of Swiftness
+373	195	Potion of Fire Resistance
+373	196	Potion of Poison
+373	197	Potion of Healing
+373	198	Potion of Night Vision
+373	199	Clear Potion
+373	200	Potion of Weakness
+373	201	Potion of Strength
+373	202	Potion of Slowness
+373	203	Potion of Leaping
+373	204	Potion of Harming
+373	205	Potion of Water Breathing
+373	206	Potion of Invisibility
+373	207	Thin Potion
+373	208	Awkward Potion
+373	209	Potion of Regeneration
+373	210	Potion of Swiftness
+373	211	Potion of Fire Resistance
+373	212	Potion of Poison
+373	213	Potion of Healing
+373	214	Potion of Night Vision
+373	215	Bungling Potion
+373	216	Potion of Weakness
+373	217	Potion of Strength
+373	218	Potion of Slowness
+373	219	Potion of Leaping
+373	220	Potion of Harming
+373	221	Potion of Water Breathing
+373	222	Potion of Invisibility
+373	223	Debonair Potion
+373	224	Thick Potion
+373	225	Potion of Regeneration
+373	226	Potion of Swiftness
+373	227	Potion of Fire Resistance
+373	228	Potion of Poison
+373	229	Potion of Healing
+373	230	Potion of Night Vision
+373	231	Charming Potion
+373	232	Potion of Weakness
+373	233	Potion of Strength
+373	234	Potion of Slowness
+373	235	Potion of Leaping
+373	236	Potion of Harming
+373	237	Potion of Water Breathing
+373	238	Potion of Invisibility
+373	239	Sparkling Potion
+373	240	Potent Potion
+373	241	Potion of Regeneration
+373	242	Potion of Swiftness
+373	243	Potion of Fire Resistance
+373	244	Potion of Poison
+373	245	Potion of Healing
+373	246	Potion of Night Vision
+373	247	Rank Potion
+373	248	Potion of Weakness
+373	249	Potion of Strength
+373	250	Potion of Slowness
+373	251	Potion of Leaping
+373	252	Potion of Harming
+373	253	Potion of Water Breathing
+373	254	Potion of Invisibility
+373	255	Stinky Potion
+374	0	Glass Bottle
+375	0	Spider Eye
+376	0	Fermented Spider Eye
+377	0	Blaze Powder
+378	0	Magma Cream
+379	0	Brewing Stand
+380	0	Cauldron
+381	0	Eye of Ender
+382	0	Glistering Melon
+383	0	Spawn
+383	1	Spawn Item
+383	2	Spawn Experience Orb
+383	7	Spawn entity.ThrownEgg.name
+383	8	Spawn entity.LeashKnot.name
+383	9	Spawn Painting
+383	10	Spawn Arrow
+383	11	Spawn Snowball
+383	12	Spawn Fireball
+383	13	Spawn Small Fireball
+383	14	Spawn entity.ThrownEnderpearl.name
+383	15	Spawn entity.EyeOfEnderSignal.name
+383	16	Spawn Potion
+383	17	Spawn entity.ThrownExpBottle.name
+383	18	Spawn entity.ItemFrame.name
+383	19	Spawn entity.WitherSkull.name
+383	20	Spawn Block of TNT
+383	21	Spawn Falling Block
+383	22	Spawn entity.FireworksRocketEntity.name
+383	30	Spawn Armor Stand
+383	40	Spawn entity.MinecartCommandBlock.name
+383	41	Spawn Boat
+383	42	Spawn entity.MinecartRideable.name
+383	43	Spawn entity.MinecartChest.name
+383	44	Spawn entity.MinecartFurnace.name
+383	45	Spawn entity.MinecartTNT.name
+383	46	Spawn entity.MinecartHopper.name
+383	47	Spawn entity.MinecartSpawner.name
+383	48	Spawn Mob
+383	49	Spawn Monster
+383	50	Spawn Creeper
+383	51	Spawn Skeleton
+383	52	Spawn Spider
+383	53	Spawn Giant
+383	54	Spawn Zombie
+383	55	Spawn Slime
+383	56	Spawn Ghast
+383	57	Spawn Zombie Pigman
+383	58	Spawn Enderman
+383	59	Spawn Cave Spider
+383	60	Spawn Silverfish
+383	61	Spawn Blaze
+383	62	Spawn Magma Cube
+383	63	Spawn Ender Dragon
+383	64	Spawn Wither
+383	65	Spawn Bat
+383	66	Spawn Witch
+383	67	Spawn Endermite
+383	68	Spawn Guardian
+383	90	Spawn Pig
+383	91	Spawn Sheep
+383	92	Spawn Cow
+383	93	Spawn Chicken
+383	94	Spawn Squid
+383	95	Spawn Wolf
+383	96	Spawn Mooshroom
+383	97	Spawn Snow Golem
+383	98	Spawn Ocelot
+383	99	Spawn Iron Golem
+383	100	Spawn Horse
+383	101	Spawn Rabbit
+383	120	Spawn Villager
+383	200	Spawn entity.EnderCrystal.name
+384	0	Bottle o' Enchanting
+385	0	Fire Charge
+386	0	Book and Quill
+387	0	Written Book
+388	0	Emerald
+389	0	Item Frame
+390	0	Flower Pot
+391	0	Carrot
+392	0	Potato
+393	0	Baked Potato
+394	0	Poisonous Potato
+395	0	Empty Map
+396	0	Golden Carrot
+397	0	Skeleton Skull
+397	1	Wither Skeleton Skull
+397	2	Zombie Head
+397	3	Head
+397	4	Creeper Head
+398	0	Carrot on a Stick
+399	0	Nether Star
+400	0	Pumpkin Pie
+401	0	Firework Rocket
+402	0	Firework Star
+403	0	Enchanted Book
+404	0	Redstone Comparator
+405	0	Nether Brick
+406	0	Nether Quartz
+407	0	Minecart with TNT
+408	0	Minecart with Hopper
+409	0	Prismarine Shard
+410	0	Prismarine Crystals
+411	0	Raw Rabbit
+412	0	Cooked Rabbit
+413	0	Rabbit Stew
+414	0	Rabbit's Foot
+415	0	Rabbit Hide
+416	0	Armor Stand
+417	0	Iron Horse Armor
+418	0	Gold Horse Armor
+419	0	Diamond Horse Armor
+420	0	Lead
+421	0	Name Tag
+422	0	Minecart with Command Block
+423	0	Raw Mutton
+424	0	Cooked Mutton
+425	0	Black Banner
+425	1	Red Banner
+425	2	Green Banner
+425	3	Brown Banner
+425	4	Blue Banner
+425	5	Purple Banner
+425	6	Cyan Banner
+425	7	Light Gray Banner
+425	8	Gray Banner
+425	9	Pink Banner
+425	10	Lime Banner
+425	11	Yellow Banner
+425	12	Light Blue Banner
+425	13	Magenta Banner
+425	14	Orange Banner
+425	15	White Banner
+427	0	Spruce Door
+428	0	Birch Door
+429	0	Jungle Door
+430	0	Acacia Door
+431	0	Dark Oak Door
+2256	0	Music Disc
+2257	0	Music Disc
+2258	0	Music Disc
+2259	0	Music Disc
+2260	0	Music Disc
+2261	0	Music Disc
+2262	0	Music Disc
+2263	0	Music Disc
+2264	0	Music Disc
+2265	0	Music Disc
+2266	0	Music Disc
+2267	0	Music Disc
