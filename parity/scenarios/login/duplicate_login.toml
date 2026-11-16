@@ -38,3 +38,6 @@ seconds = 4
 
 [observe]
 log = true
+# How many chunks reach the kicked session depends on how far chunk streaming got before
+# the second login (wall-clock timing, visible under load).
+ignore = ["first.chunks"]
