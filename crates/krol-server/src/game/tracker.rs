@@ -540,7 +540,10 @@ impl Game {
         let Some(v) = self.view(entity_id) else {
             return;
         };
-        if v.player == Some(viewer) || self.players[viewer].removed {
+        // Vanilla quirk: a dead player's body leaves the entity list but stays among the
+        // world's players until it respawns, so it keeps being shown entities whose
+        // tracker entries update their viewers (new ones, those that moved far).
+        if v.player == Some(viewer) {
             return;
         }
         let Some(entry) = self.tracker.get(&entity_id) else {

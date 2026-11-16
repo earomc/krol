@@ -477,3 +477,8 @@ scenarios = ["play/potions"]
 id = "blocks.brewing_stands"
 description = "Brewing stands: placing (ItemReed), the window (minecraft:brewing_stand, brew time property, stat.brewingstandInteraction), slot rules and shift-click, TileEntityBrewingStand.update (400-tick brews, canBrew / brewPotions with vanilla's cached-list identity, PotionHelper.applyIngredient, the unsaved ingredient), the bottle bits on the block, contents dropped when broken. Not yet: hoppers, comparators, the potion achievement"
 scenarios = ["play/brewing"]
+
+[[feature]]
+id = "entities.dead_body"
+description = "A dead player's experience dropping as orbs after 20 updates; the body leaving the entity list but staying among the world's players until it respawns (new entities are spawned to it, orbs fly to it as the closest player)"
+scenarios = ["play/death_xp_orbs"]
