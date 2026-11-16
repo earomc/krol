@@ -30,6 +30,7 @@ mod codec;
 mod compression;
 mod error;
 mod tag;
+pub mod text;
 
 pub use codec::{MAX_DEPTH, read, write};
 pub use compression::{read_gzip, read_zlib, write_gzip, write_zlib};
