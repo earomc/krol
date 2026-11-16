@@ -29,6 +29,8 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "commands.clear.failure" => "Could not clear the inventory of %s, no items to remove",
         "commands.spawnpoint.success" => "Set %s's spawn point to (%d, %d, %d)",
         "commands.give.item.notFound" => "There is no such item with name %d",
+        "commands.give.success" => "Given %s * %d to %s",
+        "commands.give.tagError" => "Data tag parsing failed: %s",
         "death.attack.explosion.player" => "%1$s was blown up by %2$s",
         "death.fell.accident.generic" => "%1$s fell from a high place",
         "death.fell.accident.ladder" => "%1$s fell off a ladder",

@@ -176,7 +176,8 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 |---|---|---|
 | All tag types, named root, uncompressed/gzip/zlib | ✅ | `krol-nbt` |
 | Modified UTF-8 strings | ✅ | `krol-java` |
-| `JsonToNBT` (NBT in commands: `/give`, `/summon`, `/setblock` data tags, `/entitydata`, ...) | ❌ | |
+| `JsonToNBT` (NBT in commands: `/give`, `/summon`, `/setblock` data tags, `/entitydata`, ...) | ✅ | `krol_nbt::text::parse_data_tag`, with its quirks; used by `/give` |
+| `NBTBase.toString` (item hover text) | ✅ | `krol_nbt::text::to_java_string` |
 | `NBTUtil` (game profiles in skulls) | ❌ | |
 
 ## net.minecraft.world
@@ -577,11 +578,12 @@ krol notice.
 | `save-all` · `save-on` · `save-off` | ✅ | |
 | `op` · `deop` · `ban` · `pardon` · `ban-ip` · `pardon-ip` · `banlist` · `whitelist` | ✅ | |
 | `effect` · `enchant` | ✅ | |
+| `give` | ✅ | Players as targets (selectors ❌); command result stats and the dropped item's owner ❌ |
 | `setblock` | 🟡 | Data tags ❌ |
 | `tp` | 🟡 | Coordinates and players ✅; some forms (entity targets, rotation) ❌ |
 | `kill` · `spawnpoint` | ✅ | Players as targets (selectors ❌) |
 | `clear` | 🟡 | Data tags ❌ |
-| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `give` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | Item display names now exist (`data/item_names.txt`) for `give` |
+| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `particle` · `playsound` · `replaceitem` · `scoreboard` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `trigger` · `worldborder` | ❌ | |
 | `publish` | ➖ | LAN only |
 | `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | ❌ | Plain player names only |
 | `CommandResultStats` (`/stats` triggers) | ❌ | |

@@ -92,6 +92,68 @@ pub fn display_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
         .map_or_else(String::new, |n| (*n).to_owned())
 }
 
+/// Golden apples: damage 0 is rare, the enchanted ones epic.
+const GOLDEN_APPLE: i16 = 322;
+/// Enchanted books: uncommon when they store enchantments.
+const ENCHANTED_BOOK: i16 = 403;
+/// Music discs (13 to wait), all rare.
+const RECORDS: std::ops::RangeInclusive<i16> = 2256..=2267;
+
+/// `ItemStack.getRarity().rarityColor`: white (common), yellow (uncommon), aqua (rare)
+/// or light purple (epic).
+pub fn rarity_color(stack: &krol_protocol::packets::play::ItemStack) -> &'static str {
+    const COMMON: &str = "white";
+    const UNCOMMON: &str = "yellow";
+    const RARE: &str = "aqua";
+    const EPIC: &str = "light_purple";
+    let tag = stack.nbt.as_ref();
+    let enchanted = tag.is_some_and(|t| t.contains_key_of("ench", Some(krol_nbt::TagType::List)));
+    let base = if enchanted { RARE } else { COMMON };
+    match stack.id {
+        GOLDEN_APPLE if stack.damage == 0 => RARE,
+        GOLDEN_APPLE => EPIC,
+        ENCHANTED_BOOK
+            if tag
+                .and_then(|t| t.get_list("StoredEnchantments", krol_nbt::TagType::Compound))
+                .is_some_and(|l| !l.is_empty()) =>
+        {
+            UNCOMMON
+        }
+        id if RECORDS.contains(&id) => RARE,
+        _ => base,
+    }
+}
+
+/// `ItemStack.writeToNBT`: the stack as saved (`id`, `Count`, `Damage`, `tag`).
+pub fn stack_nbt(stack: &krol_protocol::packets::play::ItemStack) -> krol_nbt::Compound {
+    use krol_nbt::Tag;
+    let mut c = krol_nbt::Compound::new();
+    let name = krol_world::items::name_for_id(stack.id).unwrap_or("minecraft:air");
+    c.insert("id", Tag::String(name.to_owned()));
+    c.insert("Count", Tag::Byte(stack.count));
+    c.insert("Damage", Tag::Short(stack.damage));
+    if let Some(tag) = &stack.nbt {
+        c.insert("tag", Tag::Compound(tag.clone()));
+    }
+    c
+}
+
+/// `ItemStack.getChatComponent`: `[name]` in the rarity color (the name italic when
+/// custom) with a `show_item` hover holding the stack's NBT text.
+pub fn chat_component(stack: &krol_protocol::packets::play::ItemStack) -> crate::chat::Component {
+    use crate::chat::Component;
+    let mut name = Component::text(display_name(stack));
+    if custom_name(stack).is_some() {
+        name = name.italic();
+    }
+    let mut c = Component::text("[");
+    c.extra.push(name);
+    c.extra.push(Component::text("]"));
+    let nbt = krol_nbt::text::to_java_string(&krol_nbt::Tag::Compound(stack_nbt(stack)));
+    c.style.hover = Some(("show_item".into(), Box::new(Component::text(nbt))));
+    c.color(rarity_color(stack))
+}
+
 /// `Item.getItemStackLimit`.
 pub fn max_stack(id: i16) -> i8 {
     table().get(&id).map_or(DEFAULT_STACK, |i| i.max_stack)

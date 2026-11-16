@@ -251,7 +251,7 @@ impl Game {
 
     /// Creates an item entity (`new EntityItem`) and adds it to the world.
     pub(super) fn spawn_item(&mut self, pos: (f64, f64, f64), stack: ItemStack, delay: i32) {
-        self.spawn_item_moving(pos, stack, delay, None);
+        let _ = self.spawn_item_moving(pos, stack, delay, None);
     }
 
     /// Like [`Self::spawn_item`], replacing the random start motion.
@@ -261,7 +261,7 @@ impl Game {
         stack: ItemStack,
         delay: i32,
         motion: Option<(f64, f64, f64)>,
-    ) {
+    ) -> i32 {
         let entity_id = self.next_entity_id();
         // EntityItem: hoverStart (a field initializer), the yaw and the motion all come
         // from Math.random().
@@ -292,6 +292,7 @@ impl Game {
         };
         self.items.insert(entity_id, item);
         self.track_entity(entity_id);
+        entity_id
     }
 
     /// One item's turn in the entity loop: tick it unless dead, then remove it if dead.
@@ -538,8 +539,9 @@ impl Game {
     }
 
     /// Vanilla `EntityPlayer.dropItem(stack, false, traced)`: thrown along the look
-    /// direction from eye height; `traced` drops count `stat.drop`.
-    pub(super) fn toss(&mut self, i: usize, stack: ItemStack, traced: bool) {
+    /// direction from eye height; `traced` drops count `stat.drop`. Returns the item
+    /// entity's id.
+    pub(super) fn toss(&mut self, i: usize, stack: ItemStack, traced: bool) -> i32 {
         let p = &mut self.players[i];
         let y = p.pos.1 - f64::from(0.3f32) + f64::from(1.62f32);
         let (yaw, pitch) = (
@@ -564,7 +566,7 @@ impl Game {
             p.stats.add("stat.drop", 1);
         }
         // TODO(M5): remember the thrower (diamondsToYou achievement).
-        self.spawn_item_moving(pos, stack, 40, Some(motion));
+        self.spawn_item_moving(pos, stack, 40, Some(motion))
     }
 
     /// Items near the player get picked up (`EntityPlayer.onLivingUpdate` collisions,

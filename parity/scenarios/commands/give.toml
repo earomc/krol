@@ -1,0 +1,101 @@
+description = "/give from the console: usage, unknown player, unknown item (named as typed, path case kept), the one-character domain quirk, amount bounds, negative damage, a stack spilling into a second slot, data tags (custom name and enchantment: italic aqua name in the hover component; quirky primitives, ignored list indices, a mismatched list element warning), tag syntax errors, the golden apple's rarity, and the fake item vanilla shows after each give"
+subsystem = "commands"
+
+# jeb_ is made operator after joining so he sees the admin messages with the item's
+# hover component. Each give plays random.pop with a pitch from the player's unseeded
+# random, and drops a fake item thrown with motion from the same random; it vanishes on
+# its next tick. Gives are spaced so their spawn and destroy packets don't interleave.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+chat = []
+
+[[steps]]
+action = "console"
+command = "give"
+
+[[steps]]
+action = "console"
+command = "give Nobody stone"
+
+[[steps]]
+action = "console"
+command = "op jeb_"
+wait_ms = 3000
+
+[[steps]]
+action = "console"
+command = "give jeb_ foo"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give jeb_ Stone"
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 0"
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 65"
+
+[[steps]]
+action = "console"
+command = "give jeb_ a:stone"
+
+[[steps]]
+action = "console"
+command = "give jeb_ minecraft:stone 64"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give jeb_ wool 2 -5"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give jeb_ golden_apple 1 1"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = 'give jeb_ diamond_sword 1 5 {display:{Name:"Blade"},ench:[{id:16s,lvl:2s}]}'
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = 'give jeb_ stick 1 0 {a:1b,b:300b,c:[1,2],d:1|,e:"q\"x",f:[0:"x",1:2],g:[], h : 2.5 }'
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 1 0 foo"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 1 0 {a:1}{b:2}"
+
+[[steps]]
+action = "console"
+command = 'give jeb_ stone 1 0 {a:"x"y}'
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 1 0 {a:1"
+
+[observe]
+log = true
+files = ["world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat"]
+ignore = ["file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer"]

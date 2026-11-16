@@ -381,20 +381,18 @@ type CommandResult = Result<(), CommandError>;
 /// `CommandBase.getItemByText`: an item by resource location (no numeric ids;
 /// `ResourceLocation` lowercases the namespace only).
 fn item_by_text(text: &str) -> Result<i16, CommandError> {
-    let location = match text.split_once(':') {
-        Some((domain, path)) => {
-            let domain = if domain.is_empty() {
-                "minecraft"
-            } else {
-                domain
-            };
-            format!("{}:{path}", domain.to_ascii_lowercase())
-        }
+    let location = match text.find(':') {
+        // Vanilla quirk: a one-character domain is dropped (only `i > 1` takes it).
+        Some(i) if i > 1 => format!("{}:{}", text[..i].to_lowercase(), &text[i + 1..]),
+        Some(i) => format!("minecraft:{}", &text[i + 1..]),
         None => format!("minecraft:{text}"),
     };
     krol_world::items::id_for_name(&location)
         .ok_or_else(|| err("commands.give.item.notFound", vec![s(location)]))
 }
+
+/// The most items `/give` hands out at once.
+const MAX_GIVE: i8 = 64;
 
 /// The creative game mode.
 const CREATIVE: i32 = 1;
@@ -880,6 +878,7 @@ impl Game {
             "setblock" => self.cmd_setblock(sender, args),
             "effect" => self.cmd_effect(sender, args),
             "enchant" => self.cmd_enchant(sender, args),
+            "give" => self.cmd_give(sender, args),
             "save-off" | "save-on" => {
                 let enable = name == "save-on";
                 if self.saving_enabled == enable {
@@ -1383,6 +1382,91 @@ impl Game {
             ench::enchant_stack(held, id, level);
         }
         self.notify(sender, "enchant", false, "commands.enchant.success", vec![]);
+        Ok(())
+    }
+
+    fn cmd_give(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        /// `EntityItem.setInfinitePickupDelay`.
+        const NEVER_PICKED_UP: i32 = 32767;
+        /// The age `EntityItem.func_174870_v` gives the fake item: it despawns (at
+        /// 6000) on its next tick.
+        const FAKE_ITEM_AGE: i32 = 5999;
+        const POP_VOLUME: f32 = 0.2;
+        if args.len() < 2 {
+            return Err(usage("give"));
+        }
+        let target = self.find_player(args[0])?;
+        let id = item_by_text(args[1])?;
+        let amount = match args.get(2) {
+            Some(a) => parse_int(a, 1, i32::from(MAX_GIVE))?,
+            None => 1,
+        };
+        let damage = match args.get(3) {
+            Some(a) => parse_int(a, i32::MIN, i32::MAX)?,
+            None => 0,
+        };
+        let mut stack = krol_protocol::packets::play::ItemStack {
+            id,
+            count: amount as i8,
+            // `new ItemStack` clamps negative damage; NBT and packets keep a short.
+            damage: damage.max(0) as i16,
+            nbt: None,
+        };
+        if args.len() >= 5 {
+            let text = args[4..].join(" ");
+            let mut warnings = Vec::new();
+            let parsed =
+                krol_nbt::text::parse_data_tag(&text, &mut |w| warnings.push(w.to_owned()));
+            for w in warnings {
+                warn!("{w}");
+            }
+            match parsed {
+                Ok(tag) => stack.nbt = Some(tag),
+                Err(krol_nbt::text::ParseError::Syntax(message)) => {
+                    return Err(err("commands.give.tagError", vec![s(message)]));
+                }
+                Err(krol_nbt::text::ParseError::Internal) => {
+                    return Err(err("commands.generic.exception", vec![]));
+                }
+            }
+        }
+        let added =
+            super::item_entity::add_to_inventory(&mut self.players[target].inventory, &mut stack);
+        if added {
+            let p = &mut self.players[target];
+            let r = &mut p.rand;
+            let pitch = ((r.next_float() - r.next_float()) * 0.7 + 1.0) * 2.0;
+            let pos = p.pos;
+            self.play_sound_near_except(None, "random.pop", pos, POP_VOLUME, pitch);
+            self.detect_inventory_changes(target);
+        }
+        // TODO(M5): command result stats (AFFECTED_ITEMS) and the dropped item's owner.
+        if added && stack.count <= 0 {
+            // Vanilla shows a fake item that cannot be picked up and vanishes next tick.
+            stack.count = 1;
+            let item = self.toss(target, stack.clone(), false);
+            if let Some(it) = self.items.get_mut(&item) {
+                it.pickup_delay = NEVER_PICKED_UP;
+                it.age = FAKE_ITEM_AGE;
+            }
+        } else {
+            let item = self.toss(target, stack.clone(), false);
+            if let Some(it) = self.items.get_mut(&item) {
+                it.pickup_delay = 0;
+            }
+        }
+        let name = self.players[target].profile.name.clone();
+        self.notify(
+            sender,
+            "give",
+            false,
+            "commands.give.success",
+            vec![
+                Arg::Component(super::item_data::chat_component(&stack)),
+                s(amount),
+                s(name),
+            ],
+        );
         Ok(())
     }
 
