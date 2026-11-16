@@ -422,6 +422,41 @@ impl<'a> IntoIterator for &'a Compound {
     }
 }
 
+/// Whether `target` contains `pattern` (vanilla: `NBTUtil.func_181123_a`, used by
+/// `/clear`, `/testfor` and friends): every key of a pattern compound must match in the
+/// target, recursively; with `partial_lists` every element of a pattern list must match
+/// some target element (an empty pattern list only matches an empty list), otherwise
+/// lists must be equal. Other tags must be equal. A missing target never matches.
+///
+/// ```
+/// use krol_nbt::{Compound, Tag, matches_pattern};
+///
+/// let mut target = Compound::new();
+/// target.insert("a", Tag::Int(1));
+/// target.insert("b", Tag::Int(2));
+/// let mut pattern = Compound::new();
+/// pattern.insert("a", Tag::Int(1));
+/// assert!(matches_pattern(&Tag::Compound(pattern), Some(&Tag::Compound(target)), true));
+/// ```
+pub fn matches_pattern(pattern: &Tag, target: Option<&Tag>, partial_lists: bool) -> bool {
+    let Some(target) = target else {
+        return false;
+    };
+    match (pattern, target) {
+        (Tag::Compound(p), Tag::Compound(t)) => p
+            .iter()
+            .all(|(k, v)| matches_pattern(v, t.get(k), partial_lists)),
+        (Tag::List(p), Tag::List(t)) if partial_lists => {
+            if p.is_empty() {
+                return t.is_empty();
+            }
+            p.iter()
+                .all(|e| t.iter().any(|x| matches_pattern(e, Some(x), partial_lists)))
+        }
+        _ => pattern == target,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

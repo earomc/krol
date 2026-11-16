@@ -35,4 +35,4 @@ pub mod text;
 pub use codec::{MAX_DEPTH, read, write};
 pub use compression::{read_gzip, read_zlib, write_gzip, write_zlib};
 pub use error::{Error, Result};
-pub use tag::{Compound, List, Tag, TagType};
+pub use tag::{Compound, List, Tag, TagType, matches_pattern};
