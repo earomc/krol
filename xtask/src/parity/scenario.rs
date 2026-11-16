@@ -103,6 +103,10 @@ pub enum Step {
     /// Sleeps; produces no observation. Use to step past timing-dependent windows
     /// (e.g. vanilla's status has no player data before the first tick).
     Wait { ms: u64 },
+    /// Stops the server (which saves everything) and starts it again in the same
+    /// directory. Background play steps are collected first. The log observation runs
+    /// on across restarts.
+    Restart,
 }
 
 fn one() -> i64 {
@@ -124,7 +128,7 @@ impl Step {
             | Step::Raw { id, .. }
             | Step::LoginStart { id, .. }
             | Step::Play { id, .. } => Some(id),
-            Step::Wait { .. } | Step::Console { .. } => None,
+            Step::Wait { .. } | Step::Console { .. } | Step::Restart => None,
         }
     }
 }
@@ -155,6 +159,11 @@ pub struct Observe {
     /// null when there is none).
     #[serde(default)]
     pub tile_entities: Vec<[i32; 3]>,
+    /// Chunks (`[cx, cz]`) whose saved `Entities` lists are compared, read from the
+    /// region files after the server stopped. Saved UUIDs appear as UUID strings, so
+    /// random ones are compared as `<uuid-N>`.
+    #[serde(default)]
+    pub entities: Vec<[i32; 2]>,
     /// Observation paths excluded from comparison (known, documented deviations), e.g.
     /// `status_5.parsed.version`. Each entry should carry a comment in the TOML saying why.
     #[serde(default)]

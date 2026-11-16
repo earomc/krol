@@ -21,6 +21,8 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
     let mut server = RunningServer::start(target, dir, port, agent.as_deref())?;
     let mut obs = Map::new();
     obs.insert("started".into(), Value::Bool(server.started));
+    // The console log of every server run (more than one with restarts).
+    let mut logs = Vec::new();
 
     if server.started {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -53,6 +55,21 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
                 std::thread::sleep(std::time::Duration::from_millis(*wait_ms));
                 continue;
             }
+            if let Step::Restart = step {
+                for (id, handle) in background.drain(..) {
+                    let value = runtime
+                        .block_on(handle)
+                        .unwrap_or_else(|e| json!({ "error": e.to_string() }));
+                    obs.insert(id, value);
+                }
+                logs.push(server.stop()?);
+                server = RunningServer::start(target, dir, port, agent.as_deref())?;
+                if !server.started {
+                    obs.insert("restarted".into(), Value::Bool(false));
+                    break;
+                }
+                continue;
+            }
             let value = runtime.block_on(run_step(step, server.addr));
             if let Some(id) = step.id() {
                 obs.insert(id.to_owned(), value);
@@ -66,9 +83,13 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
         }
     }
 
-    let log = server.stop()?;
+    logs.push(server.stop()?);
     if scenario.observe.log {
-        obs.insert("log".into(), normalize_log(&log, &scenario.observe));
+        let lines: Vec<Value> = logs
+            .iter()
+            .flat_map(|log| normalize_log(log, &scenario.observe))
+            .collect();
+        obs.insert("log".into(), Value::Array(lines));
     }
     if !scenario.observe.blocks.is_empty() {
         obs.insert(
@@ -86,6 +107,12 @@ pub fn run(scenario: &Scenario, target: &Target, dir: &Path, parity_root: &Path)
         obs.insert(
             "tile_entities".into(),
             saved_tile_entities(&dir.join("world"), &scenario.observe.tile_entities),
+        );
+    }
+    if !scenario.observe.entities.is_empty() {
+        obs.insert(
+            "entities".into(),
+            saved_entities(&dir.join("world"), &scenario.observe.entities),
         );
     }
     for file in &scenario.observe.files {
@@ -129,7 +156,7 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
                 Err(e) => json!({ "error": e.to_string() }),
             }
         }
-        Step::Wait { .. } | Step::Console { .. } => Value::Null,
+        Step::Wait { .. } | Step::Console { .. } | Step::Restart => Value::Null,
         Step::Play {
             protocol,
             name,
@@ -253,8 +280,54 @@ fn saved_tile_entities(world: &Path, positions: &[[i32; 3]]) -> Value {
     Value::Object(out)
 }
 
+/// Reads the saved entity lists of chunks from the region files. Each entity's
+/// `UUIDMost` / `UUIDLeast` pair becomes one `UUID` string.
+fn saved_entities(world: &Path, chunks: &[[i32; 2]]) -> Value {
+    use krol_world::chunk::Chunk;
+    use krol_world::region::{RegionFile, region_file_name};
+    let mut out = serde_json::Map::new();
+    for &[cx, cz] in chunks {
+        let path = world.join("region").join(region_file_name(cx, cz));
+        let value = RegionFile::open(&path)
+            .ok()
+            .and_then(|mut r| r.read_chunk(cx & 31, cz & 31).ok().flatten())
+            .and_then(|root| Chunk::from_nbt(&root, cx, cz, true).ok())
+            .map(|c| Value::Array(c.entities.iter().map(entity_json).collect()))
+            .unwrap_or(Value::Null);
+        out.insert(format!("{cx},{cz}"), value);
+    }
+    Value::Object(out)
+}
+
+/// One saved entity (or its `Riding` mount) as JSON, with its UUID as a string.
+fn entity_json(tag: &krol_nbt::Tag) -> Value {
+    let krol_nbt::Tag::Compound(c) = tag else {
+        return tag_json(tag);
+    };
+    let mut c = c.clone();
+    if let (Some(most), Some(least)) = (c.remove("UUIDMost"), c.remove("UUIDLeast")) {
+        let (most, least) = (most.as_i64().unwrap_or(0), least.as_i64().unwrap_or(0));
+        let uuid = (most as u64 as u128) << 64 | least as u64 as u128;
+        let text = format!(
+            "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
+            uuid >> 96,
+            (uuid >> 80) & 0xffff,
+            (uuid >> 64) & 0xffff,
+            (uuid >> 48) & 0xffff,
+            uuid & 0xffff_ffff_ffff
+        );
+        c.insert("UUID", krol_nbt::Tag::String(text));
+    }
+    if let Some(mount) = c.remove("Riding") {
+        let mut v = compound_json(&c);
+        v["Riding"] = entity_json(&mount);
+        return v;
+    }
+    compound_json(&c)
+}
+
 /// Strips timestamps and run-specific values from console lines.
-fn normalize_log(lines: &[String], observe: &Observe) -> Value {
+fn normalize_log(lines: &[String], observe: &Observe) -> Vec<Value> {
     // Vanilla's JVM shutdown hook runs a second stopServer() while log4j shuts down,
     // which nondeterministically adds (or loses) this line and log4j errors after it.
     // That is a teardown race, not server behavior, so the log is cut before it.
@@ -293,7 +366,7 @@ fn normalize_log(lines: &[String], observe: &Observe) -> Value {
             Some(Value::String(normalize_text(line)))
         })
         .collect();
-    Value::Array(out)
+    out
 }
 
 /// Replaces the port of every `/<ip>:<port>` (client socket addresses) with `<port>`.
