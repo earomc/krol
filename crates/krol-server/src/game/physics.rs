@@ -255,6 +255,12 @@ pub struct MoveOutcome {
     /// The block walked on (`onEntityCollidedWithBlock(world, pos, entity)` of the block
     /// below, for entities that trigger walking and end the move on the ground).
     pub walked_on: Option<((i32, i32, i32), u16)>,
+    /// The vertical distance actually moved after collisions (the `y` that
+    /// `updateFallState` sees).
+    pub moved_y: f64,
+    /// The block under the entity after the move (`posY - 0.2`, or the fence below an
+    /// air block): the block `updateFallState` lands on.
+    pub below: ((i32, i32, i32), u16),
 }
 
 fn creep(d: f64) -> f64 {
@@ -284,8 +290,14 @@ pub fn move_entity(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64
 
 /// `moveEntity` for entities that do not trigger walking (`canTriggerWalking` false,
 /// e.g. items): no step sounds.
-pub fn move_entity_quiet(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64) {
-    move_entity_inner(world, body, dx, dy, dz, false);
+pub fn move_entity_quiet(
+    world: &mut World,
+    body: &mut Body,
+    dx: f64,
+    dy: f64,
+    dz: f64,
+) -> MoveOutcome {
+    move_entity_inner(world, body, dx, dy, dz, false)
 }
 
 fn move_entity_inner(
@@ -400,6 +412,8 @@ fn move_entity_inner(
             below_state = world.block(bx, by - 1, bz);
         }
     }
+    outcome.moved_y = y;
+    outcome.below = (below, below_state);
     if x0 != x {
         body.motion.0 = 0.0;
     }

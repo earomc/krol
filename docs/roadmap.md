@@ -22,15 +22,13 @@ Status as of 2026-11-16 (commit after `server: scoreboard, /scoreboard and /trig
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **Falling anvils**: `BlockAnvil` falling like sand, landing damage to the anvil and
-   to entities below (`EntityFallingBlock.fall`).
-2. **Non-player command targets**: entity UUIDs (from the entity's own random), `/kill`,
+1. **Non-player command targets**: entity UUIDs (from the entity's own random), `/kill`,
    `/tp` and `/effect` on entities, dropped items' names for selectors (needs the
    unlocalized-name table), scores of non-player holders.
-3. **Dead body vs. experience pickup order** (see Death below), the statistic
+2. **Dead body vs. experience pickup order** (see Death below), the statistic
    scores' exact timing (see scoreboard), and parity coverage for critical hits, sprint
    knockback, fire aspect, thorns and the assisted/finished fall messages.
-4. **The remaining M4 items**: firework and banner recipes, maps, the other containers
+3. **The remaining M4 items**: firework and banner recipes, maps, the other containers
    and item-placed blocks, special block drops (see the tables below).
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
@@ -307,17 +305,17 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Class | Status | Notes |
 |---|---|---|
 | `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Fortune and silk touch drops ❌ |
-| `BlockAir`, `BlockBarrier`, `BlockStone`, `BlockDirt` (coarse dirt, podzol), `BlockPlanks`, `BlockSand`, `BlockSandStone`, `BlockRedSandstone`, `BlockClay`, `BlockGlowstone`, `BlockObsidian`, `BlockBookshelf`, `BlockNetherBrick`, `BlockNetherrack`, `BlockHardenedClay`, `BlockColored`, `BlockCompressedPowered` (redstone block), `BlockOre`, `BlockPrismarine`, `BlockQuartz`, `BlockSeaLantern`, `BlockStoneBrick`, `BlockMelon`, `BlockHay`, `BlockGlass`, `BlockStainedGlass`, `BlockPackedIce` | ✅ | Drops per block (ores, glowstone, melons, clay, sea lanterns, ...). Hay reduces fall damage |
+| `BlockAir`, `BlockBarrier`, `BlockStone`, `BlockDirt` (coarse dirt, podzol), `BlockPlanks`, `BlockSand`, `BlockSandStone`, `BlockRedSandstone`, `BlockClay`, `BlockGlowstone`, `BlockObsidian`, `BlockBookshelf`, `BlockNetherBrick`, `BlockNetherrack`, `BlockHardenedClay`, `BlockColored`, `BlockCompressedPowered` (redstone block), `BlockOre`, `BlockPrismarine`, `BlockQuartz`, `BlockSeaLantern`, `BlockStoneBrick`, `BlockMelon`, `BlockHay`, `BlockGlass`, `BlockStainedGlass`, `BlockPackedIce` | ✅ | Drops per block (ores, glowstone, melons, clay, sea lanterns, ...). Hay does not soften falls in 1.8.8 |
 | `BlockGrass`, `BlockMycelium` | ✅ | Spreading/dying, snowy variant, bone meal on grass |
 | `BlockGravel` | 🟡 | Falling ✅; flint drop chance ✅; fortune ❌ |
-| `BlockFalling` (sand, gravel) | ✅ | Anvils and dragon eggs ❌ |
+| `BlockFalling` (sand, gravel, anvils) | ✅ | Dragon eggs ❌ |
 | `BlockLog`, `BlockOldLog`, `BlockNewLog`, `BlockRotatedPillar` | ✅ | Axis by clicked face; leaf decay triggers |
 | `BlockLeaves`, `BlockOldLeaf`, `BlockNewLeaf` | ✅ | Decay, drops (saplings, apples), shears, player-placed |
 | `BlockSapling` | ✅ | Every tree kind, 2x2 trees, bone meal |
 | `BlockBush`, `BlockFlower`, `BlockYellowFlower`, `BlockRedFlower`, `BlockTallGrass`, `BlockDeadBush`, `BlockDoublePlant` | ✅ | Support rules, drops, bone meal, shears. Double plant: the creative/shears-specific harvest rules (`onBlockHarvested`) 🟡 |
 | `BlockMushroom`, `BlockHugeMushroom` | ✅ | Spreading, light rule, huge mushrooms, drops |
 | `BlockCrops`, `BlockCarrot`, `BlockPotato`, `BlockStem`, `BlockNetherWart` | ✅ | Growth, bone meal, drops. Stems growing pumpkins/melons ✅ |
-| `BlockFarmland` | ✅ | Moisture, drying, reverting, trampling by players (mobs with mob griefing arrive with mobs) |
+| `BlockFarmland` | ✅ | Moisture, drying, reverting, turning into dirt under a solid block, trampling by players (mobs with mob griefing arrive with mobs) |
 | `BlockReed`, `BlockCactus` | ✅ | Growth, support, cactus damage |
 | `BlockCocoa` | ✅ | Placement, growth, bone meal, drops, collision box |
 | `BlockVine` | ✅ | Growth in all directions, support, shears. Climbing ✅ |
@@ -347,7 +345,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockSign`, `BlockStandingSign`, `BlockWallSign` | ✅ | |
 | `BlockCake` | ✅ | |
 | `BlockBed` | 🟡 | Placement, sleeping (occupied bit written quietly like vanilla), skipping the night, spawn point, halves breaking together, drops from the foot ✅; mobs keeping players awake, nether explosion ❌ |
-| `BlockAnvil` | 🟡 | Placement, repair window, damage from use ✅; falling (landing damage, hurting entities) ❌ |
+| `BlockAnvil` | ✅ | Placement, repair window, damage from use, falling (landing sound, damage on landing, shattering, hurting entities, crushing circuits blocks) |
 | `BlockEnchantmentTable` | ✅ | Opens the window (custom names from the tile entity) |
 | `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped, hoppers, comparators ✅ |
 | `BlockCauldron` | ❌ | Filling, rain, armor washing, comparator output |
@@ -515,7 +513,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 |---|---|---|
 | `EntityItem` | ✅ | Physics, merging, pickup, despawn, water. Burning in lava/fire ❌ |
 | `EntityXPOrb` | ✅ | Lava ❌ |
-| `EntityFallingBlock` | ✅ | Anvils (damage), dragon eggs ❌ |
+| `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random); dragon eggs, piston extensions, `TileEntityData` ❌ |
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50). Saving with the chunk ❌ |
 | `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | ❌ | |
 | `EntityBoat` | ❌ | |
@@ -643,7 +641,7 @@ krol notice.
 |---|---|---|
 | `MathHelper` (sin table, floor, clamp, ...) | ✅ | JVM-verified (`krol-java`) |
 | `java.util.Random` | ✅ | JVM-verified |
-| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, outOfWorld, explosion, explosion.player (difficulty scaling, knockback from the igniter) ✅; generic, starve, anvil, fallingBlock, player/mob/projectile/thorns, indirect magic, lightningBolt ❌ |
+| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, outOfWorld, explosion, explosion.player (difficulty scaling, knockback from the igniter), anvil, fallingBlock (helmet wear), player, thorns ✅; generic, starve, mob/projectile, indirect magic, lightningBolt ❌ |
 | `CombatTracker` (death messages) | 🟡 | For implemented sources; fall variants ✅ |
 | `IChatComponent` JSON (text, translation, styles, click/hover events) | ✅ | |
 | `StatCollector` (translation of log lines) | ✅ | For the keys krol uses |

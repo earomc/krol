@@ -23,6 +23,8 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "death.attack.inWall" => "%1$s suffocated in a wall",
         "death.attack.explosion" => "%1$s blew up",
         "death.attack.outOfWorld" => "%1$s fell out of the world",
+        "death.attack.anvil" => "%1$s was squashed by a falling anvil",
+        "death.attack.fallingBlock" => "%1$s was squashed by a falling block",
         "commands.kill.successful" => "Killed %s",
         "commands.clear.success" => "Cleared the inventory of %s, removing %d items",
         "commands.clear.testing" => "%s has %d items that match the criteria",

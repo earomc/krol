@@ -49,6 +49,10 @@ pub enum DamageSource {
     /// Thorns armor hurting an attacker, with the wearer's entity id
     /// (`EntityDamageSource("thorns")`).
     Thorns(i32),
+    /// A falling anvil landing on the entity (`DamageSource.anvil`).
+    Anvil,
+    /// Another falling block that hurts entities (`DamageSource.fallingBlock`).
+    FallingBlock,
 }
 
 impl DamageSource {
@@ -69,6 +73,8 @@ impl DamageSource {
             Self::ExplosionBy(_) => "explosion.player",
             Self::Player(_) => "player",
             Self::Thorns(_) => "thorns",
+            Self::Anvil => "anvil",
+            Self::FallingBlock => "fallingBlock",
         }
     }
 
@@ -131,7 +137,9 @@ impl DamageSource {
             | Self::Explosion
             | Self::ExplosionBy(_)
             | Self::Player(_)
-            | Self::Thorns(_) => DEFAULT_HUNGER_DAMAGE,
+            | Self::Thorns(_)
+            | Self::Anvil
+            | Self::FallingBlock => DEFAULT_HUNGER_DAMAGE,
         }
     }
 }
@@ -139,6 +147,8 @@ impl DamageSource {
 /// The armor slots of the player window: helmet, chestplate, leggings, boots
 /// (`armorInventory` is boots first).
 const ARMOR_SLOTS: [usize; 4] = [5, 6, 7, 8];
+/// The helmet's slot in the player window (`getEquipmentInSlot(4)`).
+const HELMET_SLOT: usize = ARMOR_SLOTS[0];
 
 /// `EnchantmentProtection.calcModifierDamage`.
 fn protection_modifier(id: i16, level: i32, source: DamageSource) -> i32 {
@@ -217,6 +227,22 @@ impl Game {
         if amount == 0.0 {
             return false;
         }
+        // EntityLivingBase: falling blocks wear the helmet and lose a quarter.
+        if matches!(source, DamageSource::Anvil | DamageSource::FallingBlock)
+            && p.inventory[HELMET_SLOT].is_some()
+        {
+            let wear = (amount * 4.0 + p.rand.next_float() * amount * 2.0) as i32;
+            self.damage_slot_item(i, HELMET_SLOT, wear);
+            let p = &mut self.players[i];
+            if p.inventory[HELMET_SLOT]
+                .as_ref()
+                .is_some_and(|s| s.count == 0)
+            {
+                p.inventory[HELMET_SLOT] = None;
+            }
+            amount *= 0.75;
+        }
+        let p = &mut self.players[i];
         // EntityLivingBase (maxHurtResistantTime 20).
         let fresh = if p.hurt_resistant_time as f32 > 10.0 {
             if amount <= p.last_damage {

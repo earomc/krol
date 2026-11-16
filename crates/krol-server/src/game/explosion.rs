@@ -32,9 +32,9 @@ const PACKET_RANGE_SQ: f64 = 4096.0;
 /// `random.explode` plays at volume 4.
 const SOUND_VOLUME: f32 = 4.0;
 
-/// An entity an explosion may hit.
+/// An entity an explosion or a falling anvil may hit.
 #[derive(Debug, Clone, Copy)]
-enum Target {
+pub(super) enum Target {
     Player(usize),
     Item(i32),
     Orb(i32),
@@ -172,33 +172,7 @@ impl Game {
             [floor(pos.0 - r), floor(pos.1 - r), floor(pos.2 - r)],
             [floor(pos.0 + r), floor(pos.1 + r), floor(pos.2 + r)],
         );
-        let mut targets: Vec<(i32, Target)> = Vec::new();
-        for (i, p) in self.players.iter().enumerate() {
-            if p.gamemode != SPECTATOR && Aabb::at(p.pos, 0.6, 1.8).intersects(&area) {
-                targets.push((p.entity_id, Target::Player(i)));
-            }
-        }
-        let mut add = |id: i32, bb: Aabb, t: Target| {
-            if Some(id) != exploder && bb.intersects(&area) {
-                targets.push((id, t));
-            }
-        };
-        for (&id, it) in &self.items {
-            add(id, it.body.bb(), Target::Item(id));
-        }
-        for (&id, o) in &self.orbs {
-            add(id, o.body.bb(), Target::Orb(id));
-        }
-        for (&id, f) in &self.falling {
-            add(id, f.body.bb(), Target::Falling(id));
-        }
-        for (&id, t) in &self.tnt {
-            if !t.dead {
-                add(id, t.body.bb(), Target::Tnt(id));
-            }
-        }
-        // Chunk entity lists keep insertion order, which follows entity ids here.
-        targets.sort_by_key(|(id, _)| *id);
+        let targets = self.entities_within(&area, exploder);
         let source = placed_by.map_or(DamageSource::Explosion, DamageSource::ExplosionBy);
         let mut knockback = Vec::new();
         for (entity_id, target) in targets {
@@ -264,6 +238,80 @@ impl Game {
         knockback
     }
 
+    /// `World.getEntitiesWithinAABBExcludingEntity(excluded, area)`: every entity but
+    /// spectators whose box intersects `area`, in chunk list order.
+    pub(super) fn entities_within(&self, area: &Aabb, excluded: Option<i32>) -> Vec<(i32, Target)> {
+        let mut targets: Vec<(i32, Target)> = Vec::new();
+        for (i, p) in self.players.iter().enumerate() {
+            if p.gamemode != SPECTATOR && Aabb::at(p.pos, 0.6, 1.8).intersects(area) {
+                targets.push((p.entity_id, Target::Player(i)));
+            }
+        }
+        let mut add = |id: i32, bb: Aabb, t: Target| {
+            if Some(id) != excluded && bb.intersects(area) {
+                targets.push((id, t));
+            }
+        };
+        for (&id, it) in &self.items {
+            add(id, it.body.bb(), Target::Item(id));
+        }
+        for (&id, o) in &self.orbs {
+            add(id, o.body.bb(), Target::Orb(id));
+        }
+        for (&id, f) in &self.falling {
+            add(id, f.body.bb(), Target::Falling(id));
+        }
+        for (&id, t) in &self.tnt {
+            if !t.dead {
+                add(id, t.body.bb(), Target::Tnt(id));
+            }
+        }
+        // Chunk entity lists keep insertion order, which follows entity ids here.
+        targets.sort_by_key(|(id, _)| *id);
+        targets
+    }
+
+    /// `attackEntityFrom(source, damage)` on any entity.
+    pub(super) fn attack_target(&mut self, target: Target, source: DamageSource, damage: f32) {
+        match target {
+            Target::Player(i) => {
+                self.attack_player(i, source, damage);
+            }
+            Target::Item(id) => {
+                if let Some(it) = self.items.get_mut(&id) {
+                    // Nether stars survive explosions.
+                    if !(source.explosion() && it.stack.id == NETHER_STAR) {
+                        it.body.velocity_changed = true;
+                        it.health = (it.health as f32 - damage) as i32;
+                        if it.health <= 0 {
+                            it.dead = true;
+                        }
+                    }
+                }
+            }
+            Target::Orb(id) => {
+                if let Some(o) = self.orbs.get_mut(&id) {
+                    o.body.velocity_changed = true;
+                    o.health = (o.health as f32 - damage) as i32;
+                    if o.health <= 0 {
+                        o.dead = true;
+                    }
+                }
+            }
+            // Entity.attackEntityFrom: only setBeenAttacked.
+            Target::Falling(id) => {
+                if let Some(f) = self.falling.get_mut(&id) {
+                    f.body.velocity_changed = true;
+                }
+            }
+            Target::Tnt(id) => {
+                if let Some(t) = self.tnt.get_mut(&id) {
+                    t.body.velocity_changed = true;
+                }
+            }
+        }
+    }
+
     /// Feet position, eye height (`getEyeHeight`) and box of a target.
     fn target_shape(&self, target: Target) -> Option<((f64, f64, f64), f32, Aabb)> {
         let body = match target {
@@ -293,9 +341,9 @@ impl Game {
         damage: f32,
         impact: f64,
     ) -> f64 {
+        self.attack_target(target, source, damage);
         match target {
             Target::Player(i) => {
-                self.attack_player(i, source, damage);
                 let level = super::item_data::armor_enchantment(
                     &self.players[i].inventory,
                     super::item_data::BLAST_PROTECTION,
@@ -309,42 +357,7 @@ impl Game {
                     impact
                 }
             }
-            Target::Item(id) => {
-                if let Some(it) = self.items.get_mut(&id) {
-                    // Nether stars survive explosions.
-                    if it.stack.id != NETHER_STAR {
-                        it.body.velocity_changed = true;
-                        it.health = (it.health as f32 - damage) as i32;
-                        if it.health <= 0 {
-                            it.dead = true;
-                        }
-                    }
-                }
-                impact
-            }
-            Target::Orb(id) => {
-                if let Some(o) = self.orbs.get_mut(&id) {
-                    o.body.velocity_changed = true;
-                    o.health = (o.health as f32 - damage) as i32;
-                    if o.health <= 0 {
-                        o.dead = true;
-                    }
-                }
-                impact
-            }
-            // Entity.attackEntityFrom: only setBeenAttacked.
-            Target::Falling(id) => {
-                if let Some(f) = self.falling.get_mut(&id) {
-                    f.body.velocity_changed = true;
-                }
-                impact
-            }
-            Target::Tnt(id) => {
-                if let Some(t) = self.tnt.get_mut(&id) {
-                    t.body.velocity_changed = true;
-                }
-                impact
-            }
+            _ => impact,
         }
     }
 

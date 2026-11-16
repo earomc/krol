@@ -1,0 +1,76 @@
+description = "Falling anvils: an anvil dropped 26 blocks crushes a torch and is damaged on landing (the landing sound), sand landing on a torch drops as an item, a very damaged anvil shatters, an anvil landing on farmland neither hurts nor is damaged (and turns it into dirt), and an anvil kills the player standing under it (death.attack.anvil)"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and stands still. The
+# landing anvil's damage roll uses the falling block's own unseeded random: from more
+# than 20 blocks up its chance reaches 1, so the outcome is fixed. Shorter falls
+# (chance 0.05 + 0.05 per block) cannot be compared exactly.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -468 4 -435 torch 5"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -435 torch 5"
+
+[[steps]]
+action = "console"
+command = "setblock -462 3 -435 farmland"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "setblock -468 30 -435 anvil 0"
+wait_ms = 2000
+
+[[steps]]
+action = "console"
+command = "setblock -466 30 -435 sand"
+wait_ms = 2000
+
+[[steps]]
+action = "console"
+command = "setblock -464 30 -435 anvil 8"
+wait_ms = 2000
+
+[[steps]]
+action = "console"
+command = "setblock -462 30 -435 anvil 3"
+wait_ms = 2000
+
+[[steps]]
+action = "console"
+command = "setblock -472 30 -435 anvil 1"
+wait_ms = 3000
+
+[observe]
+log = true
+blocks = [
+    [-468, 4, -435],
+    [-466, 4, -435],
+    [-466, 5, -435],
+    [-464, 4, -435],
+    [-462, 3, -435],
+    [-462, 4, -435],
+    [-472, 4, -435],
+]

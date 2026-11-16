@@ -3,9 +3,7 @@
 //!
 //! The repair output is recomputed whenever an input slot changes or the client sends a
 //! new name. The cost is sent to the client only when the window opens; afterwards the
-//! client computes it itself.
-//!
-//! TODO(M5): falling anvils (damage on landing, hurting entities below).
+//! client computes it itself. Falling anvils live in `falling_block`.
 
 use krol_nbt::{Compound, List, Tag, TagType};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};

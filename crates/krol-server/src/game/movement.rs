@@ -729,12 +729,12 @@ impl Game {
         if on_ground {
             if p.fall_distance > 0.0 {
                 let distance = p.fall_distance;
-                // Block.onFallenUpon: slime cancels the damage (unless sneaking), hay
-                // bales reduce it.
-                let multiplier = match block {
-                    165 if !p.sneaking => 0.0,
-                    170 => 0.2,
-                    _ => 1.0,
+                // Block.onFallenUpon: slime cancels the damage unless sneaking (hay
+                // bales only soften falls from 1.10 on).
+                let multiplier = if block == super::ids::block::SLIME && !p.sneaking {
+                    0.0
+                } else {
+                    1.0
                 };
                 // BlockFarmland.onFallenUpon: the faller's random decides whether it is
                 // trampled into dirt (always from 1.5 blocks up).

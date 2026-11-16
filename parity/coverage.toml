@@ -265,8 +265,8 @@ scenarios = ["play/levers_buttons"]
 
 [[feature]]
 id = "entities.falling_blocks"
-description = "Falling sand and gravel: scheduled checks on placement and neighbor changes, falling block entities (tracking, physics, landing, dropping as items), instant fall in unloaded areas. Not yet: anvils, dragon eggs"
-scenarios = ["play/falling_blocks"]
+description = "Falling sand, gravel and anvils: scheduled checks on placement and neighbor changes, falling block entities (tracking, physics, landing, dropping as items), instant fall in unloaded areas, anvils crushing circuits blocks, hurting entities (death.attack.anvil), being damaged or shattering on landing, the landing sound, no fall on farmland. Not yet: dragon eggs, short anvil falls (unseeded damage roll)"
+scenarios = ["play/falling_blocks", "play/falling_anvils"]
 
 [[feature]]
 id = "redstone.basics"

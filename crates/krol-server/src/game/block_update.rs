@@ -231,6 +231,14 @@ impl Game {
                 return;
             }
             block::PISTON_EXTENSION => return,
+            // BlockFarmland: a solid block on top turns it into dirt.
+            block::FARMLAND => {
+                let above = self.level.overworld.block(pos.0, pos.1 + 1, pos.2) >> 4;
+                if super::block_data::material(above).is_solid() {
+                    self.set_block_notify(pos, block::DIRT << 4);
+                }
+                return;
+            }
             block::NOTEBLOCK => {
                 self.note_block_changed(pos);
                 return;
