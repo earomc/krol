@@ -22,19 +22,15 @@ Status as of 2026-11-16 (commit after `server: scoreboard, /scoreboard and /trig
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **Killers and player combat**: `EntityPlayer.attackTargetEntityWithCurrentItem`
-   (melee, knockback, criticals, sword enchantments), the combat tracker's killer
-   (`func_94060_bK`), `addToPlayerScore` with the kill criteria (`playerKillCount`,
-   `totalKillCount`, `teamkill.*`, `killedByTeam.*`), team friendly fire
-   (`canAttackPlayer`) and the PvP death messages.
-2. **Falling anvils**: `BlockAnvil` falling like sand, landing damage to the anvil and
+1. **Falling anvils**: `BlockAnvil` falling like sand, landing damage to the anvil and
    to entities below (`EntityFallingBlock.fall`).
-3. **Non-player command targets**: entity UUIDs (from the entity's own random), `/kill`,
+2. **Non-player command targets**: entity UUIDs (from the entity's own random), `/kill`,
    `/tp` and `/effect` on entities, dropped items' names for selectors (needs the
    unlocalized-name table), scores of non-player holders.
-4. **Dead body vs. experience pickup order** (see Death below) and the statistic
-   scores' exact timing (see scoreboard).
-5. **The remaining M4 items**: firework and banner recipes, maps, the other containers
+3. **Dead body vs. experience pickup order** (see Death below), the statistic
+   scores' exact timing (see scoreboard), and parity coverage for critical hits, sprint
+   knockback, fire aspect, thorns and the assisted/finished fall messages.
+4. **The remaining M4 items**: firework and banner recipes, maps, the other containers
    and item-placed blocks, special block drops (see the tables below).
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
@@ -169,7 +165,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x3F Plugin Message | 🟡 | `MC|Brand` on join; `MC|BOpen`, `MC|TrList` missing |
 | 0x40 Disconnect | ✅ | |
 | 0x41 Server Difficulty | ✅ | |
-| 0x42 Combat Event | ❌ | Vanilla 1.8.8 sends it on death (`EntityPlayerMP.onDeath` via the combat tracker) |
+| 0x42 Combat Event | ✅ | Enter and end combat (vanilla 1.8.8 never sends "entity died"); not sent to 1.7 |
 | 0x43 Camera | ❌ | Spectator mode entity view |
 | 0x44 World Border | 🟡 | Initialize on join; changes (`/worldborder`) ❌ |
 | 0x45 Title | ❌ | `/title` |
@@ -183,7 +179,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | Packet | Status | Notes |
 |---|---|---|
 | 0x00 Keep Alive · 0x01 Chat · 0x03–0x06 Player/Position/Look · 0x07 Player Digging · 0x08 Block Placement · 0x09 Held Item Change · 0x0A Animation · 0x0B Entity Action · 0x0D Close Window · 0x0E Click Window · 0x0F Confirm Transaction · 0x10 Creative Inventory Action · 0x12 Update Sign · 0x13 Player Abilities · 0x15 Client Settings · 0x16 Client Status | ✅ | |
-| 0x02 Use Entity (attack, interact, interact at) | ❌ | No PvP or entity interaction yet |
+| 0x02 Use Entity (attack, interact, interact at) | 🟡 | Attacking players ✅ (items, orbs and oneself kick like vanilla); interacting and attacking other entities ❌ |
 | 0x0C Steer Vehicle | ❌ | No vehicles |
 | 0x11 Enchant Item | ✅ | |
 | 0x14 Tab-Complete | ❌ | |
@@ -505,7 +501,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Suffocation, drowning, burning, fall damage, cactus | ✅ | |
 | Damage outside the world border | ❌ | |
 | Sleeping | 🟡 | Use bed, sleep timer, waking (day, bed gone, leaving, night skipped), spawn point, respawning at the bed or being told it is missing ✅; the 0.2 x 0.2 sleeping box, players saved asleep moved out of the bed ❌ |
-| Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ❌ | |
+| Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ✅ | Players only. Held item attack modifiers (also saved), sword blocking, thorns, tool wear and use stats, killers (combat tracker, `attackingPlayer`), revenge target (`HurtByTimestamp`), PvP death messages. Critical hits, sprint knockback, fire aspect and thorns are not in a scenario yet (thorns rolls the victim's unseeded random); the overkill achievement ❌ |
 | Interacting with entities (`interactWith`) | ❌ | |
 | Riding (`mountEntity`) | ❌ | |
 | Spectator mode: camera, teleport via `Spectate` | 🟡 | Game mode and noclip ✅; camera/spectate packets ❌ |
@@ -618,8 +614,8 @@ krol notice.
 | Feature | Status | Notes |
 |---|---|---|
 | Objectives, scores, criteria: dummy, trigger, health, deathCount, statistics and achievements | ✅ | Statistic scores update after the packet or tick step that changed the stat, not at once; a holder's scores keep creation order (vanilla: identity hash order) |
-| Kill criteria (`playerKillCount`, `totalKillCount`, `teamkill.*`, `killedByTeam.*`) | ❌ | Needs killers |
-| Teams (prefix/suffix in display names, colors, name tag and death message visibility, packets) | ✅ | Friendly fire and seeing invisible teammates affect nothing yet (no PvP, no invisibility) |
+| Kill criteria (`playerKillCount`, `totalKillCount`, `teamkill.*`, `killedByTeam.*`) | ✅ | Player kills (mob kills arrive with mobs) |
+| Teams (prefix/suffix in display names, colors, name tag and death message visibility, packets) | ✅ | Friendly fire ✅; seeing invisible teammates affects nothing yet (no invisibility) |
 | Display slots (sidebar, list, below name, team sidebars) | ✅ | |
 | `data/scoreboard.dat` | ✅ | |
 

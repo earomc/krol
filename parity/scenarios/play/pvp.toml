@@ -1,0 +1,158 @@
+description = "Players fighting: a diamond sword hit, a named sword with sharpness and knockback (enchanted-hit effect, knockback velocity to the victim only), the kill (death.attack.player.item with the item's hover, team-colored names), kill criteria (playerKillCount, totalKillCount, deathCount, teamkill.red, killedByTeam.blue), the attacker's damage-dealt stat and sword wear, then friendly fire off (no damage) and on again"
+subsystem = "play"
+
+# jeb_ (blue) steps one block south of Dinnerbone (red) so knockback has a direction
+# (players at the same spot get a random one). Both spawn in adventure mode.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add pk playerKillCount"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add tk totalKillCount"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add d deathCount"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add tr teamkill.red"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives add kb killedByTeam.blue"
+
+[[steps]]
+action = "console"
+command = "scoreboard objectives setdisplay sidebar pk"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams add red"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red color red"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams add blue"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option blue color blue"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams join red Dinnerbone"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams join blue jeb_"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+moves = [[0, 0, 0.5], [0, 0, 1.0]]
+chat = [
+    "@5000 !hold 0",
+    "@5500 !attack 1",
+    "@6500 !hold 1",
+    "@7000 !attack 1",
+    "@8000 !attack 1",
+    "@11500 !attack 1",
+    "@13500 !attack 1",
+]
+
+[[steps]]
+id = "other"
+action = "play"
+background = true
+protocol = 47
+name = "Dinnerbone"
+seconds = 15
+chat = ["@8000 !respawn"]
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword"
+
+[[steps]]
+action = "console"
+command = 'give jeb_ diamond_sword 1 0 {display:{Name:"Edge"},ench:[{id:16s,lvl:2s},{id:19s,lvl:1s}]}'
+
+[[steps]]
+action = "wait"
+ms = 6500
+
+[[steps]]
+action = "console"
+command = "scoreboard teams join red jeb_"
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red friendlyfire false"
+wait_ms = 2000
+
+[[steps]]
+action = "console"
+command = "scoreboard teams option red friendlyfire true"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "scoreboard players test jeb_ pk 1 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test jeb_ tk 1 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test jeb_ tr 1 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test Dinnerbone d 1 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test Dinnerbone kb 1 1"
+
+[[steps]]
+action = "console"
+command = "scoreboard players test Dinnerbone pk 1 1"
+
+
+[observe]
+log = true
+# The victim's health update (its own movement packet), its metadata (the tracker)
+# and the attacker's equipment follow each other in an order that depends on whether its packet or the attack came
+# first in the tick (in vanilla too).
+unordered = [["update_health", "entity_metadata", "entity_equipment"]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat.foodTickTimer",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+]
+
+# HurtByTimestamp is stamped when jeb_'s logout ends Dinnerbone's revenge target, a
+# tick or two either way depending on how the disconnect falls into his updates.
+[observe.tolerance]
+"file:world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat.HurtByTimestamp" = 4

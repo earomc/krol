@@ -169,7 +169,7 @@ impl Game {
     }
 
     /// Whether the player stands in a ladder or vine (`isOnLadder`).
-    fn on_ladder(&mut self, i: usize) -> bool {
+    pub(super) fn on_ladder(&mut self, i: usize) -> bool {
         let p = &self.players[i];
         if p.gamemode == 3 {
             return false;
@@ -203,9 +203,11 @@ impl Game {
         let player = &mut self.players[i];
         let equipment = super::tracker::equipment(player);
         let mut changed = Vec::new();
+        let mut swaps = Vec::new();
         for (slot, item) in equipment.into_iter().enumerate() {
             if player.last_equipment[slot] != item {
-                player.last_equipment[slot] = item.clone();
+                let old = std::mem::replace(&mut player.last_equipment[slot], item.clone());
+                swaps.push((old, item.clone()));
                 changed.push(ClientboundPlay::EntityEquipment {
                     entity_id: player.entity_id,
                     slot: slot as i16,
@@ -214,8 +216,38 @@ impl Game {
             }
         }
         let entity_id = player.entity_id;
-        for packet in &changed {
+        for (packet, (old, new)) in changed.iter().zip(swaps) {
             self.send_to_tracking(entity_id, packet);
+            self.swap_equipment_modifiers(i, old.as_ref(), new.as_ref());
+        }
+        if self.players[i].ticks % super::death::COMBAT_RESET_INTERVAL == 0 {
+            self.reset_combat(i);
+        }
+    }
+
+    /// `EntityLivingBase.setSprinting`: the flag, and the speed boost removed and, when
+    /// sprinting, applied again (both mark the attribute changed).
+    pub(super) fn set_sprinting(&mut self, i: usize, sprinting: bool) {
+        use super::attributes::{MOVEMENT_SPEED, Modifier, SPRINT_AMOUNT, SPRINT_UUID};
+        let p = &mut self.players[i];
+        if p.sprinting != sprinting {
+            p.sprinting = sprinting;
+            p.dirty_metadata.insert(0);
+        }
+        if let Some(k) = p.modifiers.iter().position(|m| m.uuid == SPRINT_UUID) {
+            p.modifiers.remove(k);
+            p.dirty_attributes.insert(MOVEMENT_SPEED);
+        }
+        if sprinting {
+            p.modifiers.push(Modifier {
+                attribute: MOVEMENT_SPEED,
+                uuid: SPRINT_UUID,
+                name: "Sprinting speed boost".into(),
+                amount: SPRINT_AMOUNT,
+                operation: 2,
+                saved: false,
+            });
+            p.dirty_attributes.insert(MOVEMENT_SPEED);
         }
     }
 
@@ -407,6 +439,27 @@ impl Game {
         }
         if self.players[i].health() <= 0.0 {
             self.death_update(i);
+        }
+        // EntityLivingBase.onEntityUpdate: the revenge target is dropped once it is dead
+        // or gone, or 100 updates after it was set.
+        if let Some(target) = self.players[i].revenge_target {
+            let alive = self
+                .players
+                .iter()
+                .any(|q| q.entity_id == target && !q.removed && q.health() > 0.0);
+            let p = &self.players[i];
+            let since =
+                p.ticks.wrapping_sub(p.spawn_tick) as i32 - p.data.get_i32("HurtByTimestamp");
+            if !alive || since > super::combat::RECENTLY_HIT {
+                self.players[i].set_revenge_target(None);
+            }
+        }
+        // recentlyHit counts down, then the attacker is forgotten.
+        let p = &mut self.players[i];
+        match &mut p.attacking_player {
+            Some((_, t)) if *t > 0 => *t -= 1,
+            Some(_) => p.attacking_player = None,
+            None => {}
         }
         self.update_effects(i);
         let p = &mut self.players[i];
@@ -676,7 +729,6 @@ impl Game {
         if on_ground {
             if p.fall_distance > 0.0 {
                 let distance = p.fall_distance;
-                p.fall_distance = 0.0;
                 // Block.onFallenUpon: slime cancels the damage (unless sneaking), hay
                 // bales reduce it.
                 let multiplier = match block {
@@ -692,6 +744,9 @@ impl Game {
                     self.set_block_notify(below, super::ids::block::DIRT << 4);
                 }
                 self.player_fall(i, distance, multiplier);
+                // updateFallState: the distance is cleared after the fall (the combat
+                // tracker records it with the damage).
+                self.players[i].fall_distance = 0.0;
             }
         } else if dy < 0.0 {
             p.fall_distance = (f64::from(p.fall_distance) - dy) as f32;
@@ -1031,31 +1086,7 @@ impl Game {
                     p.dirty_metadata.insert(0);
                 }
             }
-            3 | 4 => {
-                let sprinting = action == 3;
-                if p.sprinting != sprinting {
-                    p.sprinting = sprinting;
-                    p.dirty_metadata.insert(0);
-                }
-                // EntityLivingBase.setSprinting: the speed boost is removed and, when
-                // sprinting, applied again (both mark the attribute changed).
-                use super::attributes::{MOVEMENT_SPEED, Modifier, SPRINT_AMOUNT, SPRINT_UUID};
-                if let Some(k) = p.modifiers.iter().position(|m| m.uuid == SPRINT_UUID) {
-                    p.modifiers.remove(k);
-                    p.dirty_attributes.insert(MOVEMENT_SPEED);
-                }
-                if sprinting {
-                    p.modifiers.push(Modifier {
-                        attribute: MOVEMENT_SPEED,
-                        uuid: SPRINT_UUID,
-                        name: "Sprinting speed boost".into(),
-                        amount: SPRINT_AMOUNT,
-                        operation: 2,
-                        saved: false,
-                    });
-                    p.dirty_attributes.insert(MOVEMENT_SPEED);
-                }
-            }
+            3 | 4 => self.set_sprinting(i, action == 3),
             // TODO(M5): leave bed, horse jump, horse inventory.
             _ => {}
         }

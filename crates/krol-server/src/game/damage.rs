@@ -43,6 +43,12 @@ pub enum DamageSource {
     /// (`EntityDamageSourceIndirect("explosion.player")`: difficulty scaled, knocks the
     /// victim away from the player).
     ExplosionBy(i32),
+    /// A player's attack, with the attacker's entity id
+    /// (`EntityDamageSource("player")`).
+    Player(i32),
+    /// Thorns armor hurting an attacker, with the wearer's entity id
+    /// (`EntityDamageSource("thorns")`).
+    Thorns(i32),
 }
 
 impl DamageSource {
@@ -61,6 +67,8 @@ impl DamageSource {
             Self::OutOfWorld => "outOfWorld",
             Self::Explosion => "explosion",
             Self::ExplosionBy(_) => "explosion.player",
+            Self::Player(_) => "player",
+            Self::Thorns(_) => "thorns",
         }
     }
 
@@ -95,9 +103,9 @@ impl DamageSource {
 
     /// The entity the damage is attributed to (`getEntity`), which knocks the victim
     /// back.
-    fn attacker(self) -> Option<i32> {
+    pub fn attacker(self) -> Option<i32> {
         match self {
-            Self::ExplosionBy(id) => Some(id),
+            Self::ExplosionBy(id) | Self::Player(id) | Self::Thorns(id) => Some(id),
             _ => None,
         }
     }
@@ -117,9 +125,13 @@ impl DamageSource {
             | Self::Wither
             | Self::InWall
             | Self::OutOfWorld => 0.0,
-            Self::InFire | Self::Lava | Self::Cactus | Self::Explosion | Self::ExplosionBy(_) => {
-                DEFAULT_HUNGER_DAMAGE
-            }
+            Self::InFire
+            | Self::Lava
+            | Self::Cactus
+            | Self::Explosion
+            | Self::ExplosionBy(_)
+            | Self::Player(_)
+            | Self::Thorns(_) => DEFAULT_HUNGER_DAMAGE,
         }
     }
 }
@@ -172,6 +184,15 @@ impl Game {
         {
             return false;
         }
+        // EntityDamageSource: players only hurt players with PvP on, and teammates with
+        // friendly fire.
+        if let Some(attacker) = source.attacker()
+            && self.players.iter().any(|p| p.entity_id == attacker)
+            && !self.can_be_attacked_by(i, attacker)
+        {
+            return false;
+        }
+        let p = &mut self.players[i];
         // EntityPlayer.
         let disable_damage = p.gamemode == 1 || p.gamemode == 3;
         if disable_damage && !source.harms_in_creative() {
@@ -179,6 +200,9 @@ impl Game {
         }
         if p.health() <= 0.0 {
             return false;
+        }
+        if p.sleeping {
+            self.wake_up(i, true, true, false);
         }
         let mut amount = amount;
         if source.difficulty_scaled() {
@@ -209,6 +233,14 @@ impl Game {
             true
         };
         let entity_id = self.players[i].entity_id;
+        if fresh
+            && let Some(attacker) = source.attacker()
+            && self.players.iter().any(|p| p.entity_id == attacker)
+        {
+            let p = &mut self.players[i];
+            p.attacking_player = Some((attacker, super::combat::RECENTLY_HIT));
+            p.set_revenge_target(Some(attacker));
+        }
         if fresh {
             // hurtTime = maxHurtTime (counts down in the living update).
             self.players[i]
@@ -349,8 +381,18 @@ impl Game {
         }
     }
 
-    /// Vanilla `EntityPlayer.damageEntity` (no sword blocking yet).
+    /// Vanilla `EntityPlayer.damageEntity`: blocking with a sword halves blockable damage
+    /// (plus a half), then armor and protection, then absorption.
     fn damage_player(&mut self, i: usize, source: DamageSource, amount: f32) {
+        let blocking = self.players[i]
+            .using
+            .as_ref()
+            .is_some_and(|u| super::combat::is_sword(u.id));
+        let amount = if !source.unblockable() && blocking && amount > 0.0 {
+            (1.0 + amount) * 0.5
+        } else {
+            amount
+        };
         let amount = self.apply_armor(i, source, amount);
         let amount = self.apply_protection(i, source, amount);
         let p = &mut self.players[i];
@@ -364,10 +406,13 @@ impl Game {
         }
         if damage != 0.0 {
             self.add_exhaustion(i, source.hunger_damage());
-            self.track_damage(i, source, damage);
+            // Vanilla quirk: the health drops before the hit is recorded, so a deadly
+            // hit finds the player dead, ends the combat and forgets the earlier hits.
             let p = &mut self.players[i];
             let health = p.health();
             p.set_health(health - damage);
+            self.track_damage(i, source, damage);
+            let p = &mut self.players[i];
             if damage < 3.402_823_5e37 {
                 p.stats
                     .add("stat.damageTaken", (damage * 10.0).round() as i32);

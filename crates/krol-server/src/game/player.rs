@@ -146,6 +146,15 @@ pub struct Player {
     pub removed: bool,
     /// `isDead` set by the death animation; removed in the next entity loop.
     pub dead_marked: bool,
+    /// The last player who hurt this one and the updates left it counts as attacker
+    /// (`attackingPlayer`, `recentlyHit`).
+    pub attacking_player: Option<(i32, i32)>,
+    /// `ticks` when this entity was created (respawning makes a new one): the entity's
+    /// `ticksExisted` is the difference.
+    pub spawn_tick: u64,
+    /// The entity id of the player to take revenge on (`entityLivingToAttack`); the
+    /// time it was set is saved as `HurtByTimestamp`.
+    pub revenge_target: Option<i32>,
     /// Health plus absorption as last given to health objectives (`combinedHealth`).
     pub combined_health: f32,
     /// Window click state (cursor item, drag, pending confirmation).
@@ -170,6 +179,13 @@ pub const NO_HEALTH_YET: f32 = -1.0e8;
 impl Player {
     /// The creative game mode's id.
     pub const CREATIVE: i32 = 1;
+
+    /// `EntityLivingBase.setRevengeTarget`: the time is saved as `HurtByTimestamp`.
+    pub fn set_revenge_target(&mut self, target: Option<i32>) {
+        self.revenge_target = target;
+        let now = self.ticks.wrapping_sub(self.spawn_tick) as i32;
+        self.data.insert("HurtByTimestamp", Tag::Int(now));
+    }
 
     /// `capabilities.isCreativeMode`.
     pub fn is_creative(&self) -> bool {

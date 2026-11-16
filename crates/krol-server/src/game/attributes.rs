@@ -75,7 +75,7 @@ pub fn base(attribute: &str) -> f64 {
         .map_or(0.0, |(_, b)| *b)
 }
 
-fn attribute_key(name: &str) -> Option<&'static str> {
+pub fn attribute_key(name: &str) -> Option<&'static str> {
     PLAYER_ATTRIBUTES
         .iter()
         .map(|(a, _)| *a)

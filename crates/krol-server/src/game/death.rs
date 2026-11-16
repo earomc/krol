@@ -2,8 +2,8 @@
 //! `InventoryPlayer.dropAllItems`, `NetHandlerPlayServer.processClientStatus`,
 //! `ServerConfigurationManager.recreatePlayerEntity`).
 //!
-//! TODO(M5): hardcore bans, team death message visibility, deathCount scoreboard
-//! criteria, killer statistics and scores, experience orbs, bed spawn points.
+//! TODO(M5): hardcore bans; killers that disconnected before the death are forgotten
+//! (vanilla keeps their entity).
 
 use krol_nbt::Tag;
 use krol_protocol::packets::play::{ChunkColumn, ClientboundPlay, PlayerListAction};
@@ -13,11 +13,22 @@ use super::damage::DamageSource;
 use super::player::default_player_data;
 use crate::chat::{Arg, Component};
 
+/// `S42PacketCombatEvent.Event` ids.
+const COMBAT_ENTER: u8 = 0;
+const COMBAT_END: u8 = 1;
+/// Ticks after the last hit when combat entries are forgotten, and when in combat.
+const COMBAT_WINDOW: u64 = 100;
+const IN_COMBAT_WINDOW: u64 = 300;
+/// `EntityLivingBase.onUpdate` resets the combat tracker every 20 ticks.
+pub const COMBAT_RESET_INTERVAL: u64 = 20;
+
 /// One recorded hit (vanilla `CombatEntry`).
 #[derive(Debug, Clone)]
 pub struct CombatEntry {
     source: DamageSource,
     damage: f32,
+    /// The fall distance when hit (`getDamageAmount`; the most for out-of-world).
+    fall: f32,
     /// Where the player was (`ladder`, `vines`, `water`), for fall messages.
     location: Option<&'static str>,
 }
@@ -28,6 +39,11 @@ pub struct CombatTracker {
     entries: Vec<CombatEntry>,
     last_damage_tick: u64,
     active: bool,
+    /// Hurt by a living entity (`field_94552_d`): the client is told combat started.
+    in_combat: bool,
+    /// When combat started and ended (`field_152775_d`, `field_152776_e`).
+    combat_start: u64,
+    combat_end: u64,
 }
 
 impl Game {
@@ -36,13 +52,36 @@ impl Game {
         self.reset_combat(i);
         let location = self.combat_location(i);
         let p = &mut self.players[i];
+        let fall = if source == DamageSource::OutOfWorld {
+            f32::MAX
+        } else {
+            p.fall_distance
+        };
         p.combat.entries.push(CombatEntry {
             source,
             damage,
+            fall,
             location,
         });
         p.combat.last_damage_tick = p.ticks;
         p.combat.active = true;
+        // isLivingDamageSrc: hurt by a player.
+        let living = source
+            .attacker()
+            .is_some_and(|id| self.players.iter().any(|q| q.entity_id == id));
+        let p = &mut self.players[i];
+        if living && !p.combat.in_combat && p.health() > 0.0 {
+            p.combat.in_combat = true;
+            p.combat.combat_start = p.ticks;
+            p.combat.combat_end = p.ticks;
+            p.send(ClientboundPlay::CombatEvent {
+                event: COMBAT_ENTER,
+                duration: 0,
+                entity_id: 0,
+                killer: 0,
+                message: String::new(),
+            });
+        }
     }
 
     /// `CombatTracker.func_94545_a`: on a ladder or vines, or in water.
@@ -65,15 +104,75 @@ impl Game {
 
     /// `CombatTracker.reset`: entries are forgotten 100 ticks after the last hit (or
     /// once the player is dead).
+    /// Combat ends 300 ticks after the last hit (`sendEndCombat`, with its length
+    /// and the main attacker).
     pub(super) fn reset_combat(&mut self, i: usize) {
-        let p = &mut self.players[i];
+        let p = &self.players[i];
         let alive = p.health() > 0.0;
-        if p.combat.active && (!alive || p.ticks.saturating_sub(p.combat.last_damage_tick) > 100) {
-            p.combat = CombatTracker::default();
+        let window = if p.combat.in_combat {
+            IN_COMBAT_WINDOW
+        } else {
+            COMBAT_WINDOW
+        };
+        if !(p.combat.active
+            && (!alive || p.ticks.saturating_sub(p.combat.last_damage_tick) > window))
+        {
+            return;
         }
+        let was = p.combat.in_combat;
+        let killer = self
+            .best_attacker(i)
+            .map_or(-1, |k| self.players[k].entity_id);
+        let p = &mut self.players[i];
+        p.combat.active = false;
+        p.combat.in_combat = false;
+        p.combat.combat_end = p.ticks;
+        if was {
+            let duration = p.combat.combat_end.wrapping_sub(p.combat.combat_start) as i32;
+            p.send(ClientboundPlay::CombatEvent {
+                event: COMBAT_END,
+                duration,
+                entity_id: 0,
+                killer,
+                message: String::new(),
+            });
+        }
+        p.combat.entries.clear();
     }
 
-    /// `CombatTracker.getDeathMessage` for the damage sources krol has.
+    /// `CombatTracker.func_94550_c`: the player who dealt the most damage.
+    fn best_attacker(&self, i: usize) -> Option<usize> {
+        let mut best: Option<(i32, f32)> = None;
+        for e in &self.players[i].combat.entries {
+            if let Some(id) = e.source.attacker()
+                && self.players.iter().any(|q| q.entity_id == id)
+                && best.is_none_or(|(_, d)| e.damage > d)
+            {
+                best = Some((id, e.damage));
+            }
+        }
+        let id = best?.0;
+        self.players.iter().position(|q| q.entity_id == id)
+    }
+
+    /// The display name of a damage source's entity (`getDamageSrcDisplayName`).
+    fn source_name(&self, source: DamageSource) -> Option<Component> {
+        let id = source.attacker()?;
+        let p = self.players.iter().find(|p| p.entity_id == id)?;
+        Some(self.display_name(&p.profile))
+    }
+
+    /// The held item of a damage source's entity, if it has a custom name (for the
+    /// `.item` death messages).
+    fn source_named_item(&self, source: DamageSource) -> Option<Component> {
+        let id = source.attacker()?;
+        let p = self.players.iter().find(|p| p.entity_id == id)?;
+        let held = p.held()?;
+        super::item_data::custom_name(held)?;
+        Some(super::item_data::chat_component(held))
+    }
+
+    /// `CombatTracker.getDeathMessage`.
     fn death_message(&self, i: usize) -> Component {
         let p = &self.players[i];
         let name = Arg::Component(self.display_name(&p.profile));
@@ -81,38 +180,85 @@ impl Game {
         let Some(last) = entries.last() else {
             return Component::translate("death.attack.generic", vec![name]);
         };
-        // The worst fall (over 5 damage) decides the message (`func_94544_f`).
+        // func_94544_f: the entry before the farthest fall (or out-of-world), if that
+        // fall was over 5 blocks.
         let mut worst: Option<&CombatEntry> = None;
-        let mut worst_damage = 0.0;
+        let mut farthest = 0.0f32;
         for (k, e) in entries.iter().enumerate() {
-            if e.source == DamageSource::Fall
-                && e.damage > 0.0
-                && (worst.is_none() || e.damage > worst_damage)
+            if matches!(e.source, DamageSource::Fall | DamageSource::OutOfWorld)
+                && e.fall > 0.0
+                && (worst.is_none() || e.fall > farthest)
             {
                 worst = Some(if k > 0 { &entries[k - 1] } else { e });
-                worst_damage = e.damage;
+                farthest = e.fall;
             }
         }
-        let worst = worst.filter(|_| worst_damage > 5.0);
-        match (worst, last.source) {
-            (Some(w), DamageSource::Fall) if w.source == DamageSource::Fall => {
+        let worst = worst.filter(|_| farthest > 5.0);
+        if let Some(w) = worst
+            && last.source == DamageSource::Fall
+        {
+            if matches!(w.source, DamageSource::Fall | DamageSource::OutOfWorld) {
                 let suffix = w.location.unwrap_or("generic");
-                Component::translate(format!("death.fell.accident.{suffix}"), vec![name])
+                return Component::translate(format!("death.fell.accident.{suffix}"), vec![name]);
             }
-            // EntityDamageSourceIndirect: the player who lit the TNT is named too.
-            (_, DamageSource::ExplosionBy(igniter)) => {
-                match self.players.iter().find(|p| p.entity_id == igniter) {
-                    Some(by) => Component::translate(
-                        "death.attack.explosion.player",
-                        vec![name, Arg::Component(self.display_name(&by.profile))],
+            let last_name = self.source_name(last.source);
+            if let Some(by) = self.source_name(w.source)
+                && last_name.as_ref() != Some(&by)
+            {
+                return match self.source_named_item(w.source) {
+                    Some(item) => Component::translate(
+                        "death.fell.assist.item",
+                        vec![name, Arg::Component(by), Arg::Component(item)],
                     ),
-                    // TODO(M5): the igniter's entity outlives its connection in vanilla.
-                    None => Component::translate("death.attack.explosion", vec![name]),
-                }
+                    None => {
+                        Component::translate("death.fell.assist", vec![name, Arg::Component(by)])
+                    }
+                };
             }
-            // TODO(M5): falls finished or assisted by an attacker.
-            _ => Component::translate(format!("death.attack.{}", last.source.name()), vec![name]),
+            if let Some(by) = last_name {
+                return match self.source_named_item(last.source) {
+                    Some(item) => Component::translate(
+                        "death.fell.finish.item",
+                        vec![name, Arg::Component(by), Arg::Component(item)],
+                    ),
+                    None => {
+                        Component::translate("death.fell.finish", vec![name, Arg::Component(by)])
+                    }
+                };
+            }
+            return Component::translate("death.fell.killer", vec![name]);
         }
+        let key = format!("death.attack.{}", last.source.name());
+        let Some(by) = self.source_name(last.source) else {
+            // TODO(M5): the attacker's entity outlives its connection in vanilla.
+            let key = match last.source {
+                DamageSource::ExplosionBy(_) => "death.attack.explosion".to_owned(),
+                _ => key,
+            };
+            return Component::translate(key, vec![name]);
+        };
+        // EntityDamageSource: ".item" when the attacker's held item has a custom name and
+        // the key exists (only for "player").
+        if matches!(last.source, DamageSource::Player(_))
+            && let Some(item) = self.source_named_item(last.source)
+        {
+            return Component::translate(
+                format!("{key}.item"),
+                vec![name, Arg::Component(by), Arg::Component(item)],
+            );
+        }
+        Component::translate(key, vec![name, Arg::Component(by)])
+    }
+
+    /// `EntityLivingBase.func_94060_bK`: the player who dealt the most damage
+    /// (`CombatTracker.func_94550_c`), else the last attacking player within 100
+    /// updates (`attackingPlayer`).
+    fn killer_of(&self, i: usize) -> Option<usize> {
+        if let Some(k) = self.best_attacker(i) {
+            return Some(k);
+        }
+        let (id, _) = self.players[i].attacking_player.filter(|&(_, t)| t > 0)?;
+        self.players.iter().position(|q| q.entity_id == id)
     }
 
     /// Vanilla `EntityPlayerMP.onDeath`.
@@ -127,7 +273,9 @@ impl Game {
         }
         let name = self.players[i].profile.name.clone();
         self.sb_increment(&name, super::scoreboard::DEATH_COUNT);
-        // TODO(M5): the killer's kill counts (addToPlayerScore).
+        if let Some(killer) = self.killer_of(i) {
+            self.award_player_kill(killer, i);
+        }
         let p = &mut self.players[i];
         p.stats.add("stat.deaths", 1);
         p.stats.set("stat.timeSinceDeath", 0);
@@ -367,6 +515,8 @@ impl Game {
         }
         self.players[i].removed = false;
         self.players[i].dead_marked = false;
+        // The new entity's ticksExisted starts over.
+        self.players[i].spawn_tick = self.players[i].ticks;
         self.track_player(i);
         // addSelfToInternalCraftingInventory.
         let p = &self.players[i];

@@ -15,6 +15,7 @@ pub mod blocks;
 mod brewing;
 mod buckets;
 mod chest;
+mod combat;
 pub mod commands;
 mod container;
 mod damage;
@@ -1248,6 +1249,9 @@ impl Game {
             combined_health: player::NO_HEALTH_YET,
             removed: false,
             dead_marked: false,
+            attacking_player: None,
+            spawn_tick: 0,
+            revenge_target: None,
             dig: digging::DigState::new(),
             pending_destroy: Vec::new(),
             combat: Default::default(),
@@ -2253,6 +2257,9 @@ impl Game {
                         },
                     );
                 }
+            }
+            ServerboundPlay::UseEntity { target, action, .. } => {
+                self.use_entity(i, target, action);
             }
             ServerboundPlay::HeldItemChange { slot } => {
                 if (0..9).contains(&slot) {

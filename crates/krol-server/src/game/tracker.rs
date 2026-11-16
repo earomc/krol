@@ -824,3 +824,14 @@ impl Game {
         }
     }
 }
+
+/// `S12PacketEntityVelocity`: motion clamped to 3.9 per axis, in 1/8000 blocks per tick.
+pub fn velocity_packet(entity_id: i32, motion: (f64, f64, f64)) -> ClientboundPlay {
+    let s = |m: f64| (m.clamp(-3.9, 3.9) * 8000.0) as i32 as i16;
+    ClientboundPlay::EntityVelocity {
+        entity_id,
+        x: s(motion.0),
+        y: s(motion.1),
+        z: s(motion.2),
+    }
+}

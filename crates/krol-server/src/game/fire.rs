@@ -273,6 +273,11 @@ impl Game {
         }
     }
 
+    /// `Entity.extinguish`.
+    pub(super) fn extinguish_player(&mut self, i: usize) {
+        self.set_player_fire(i, 0);
+    }
+
     /// `Entity.setFire(seconds)`, shortened by fire protection
     /// (`EnchantmentProtection.getFireTimeForEntity`).
     pub(super) fn ignite_player(&mut self, i: usize, seconds: i32) {
