@@ -1,0 +1,73 @@
+description = "Banners: a patterned banner placed standing (rotation from the yaw), a plain one on the side of a block (wall banner), a third standing banner kept (tile entity with base and patterns, sent to the client); the first mined in survival drops a banner with Base and Patterns, the wall banner pops off when its block goes and drops its whole tile entity"
+subsystem = "play"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and is switched to
+# survival from the console. The drops land at random spots (unseeded randoms), so their
+# positions and motion are not compared; jeb_ stays out of their pickup range.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -437 stone"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 13
+chat = [
+    "@3000 !hold 0",
+    "@3300 !place -469 3 -434 1",
+    "@3800 !hold 1",
+    "@4100 !place -469 4 -437 3",
+    "@4600 !hold 2",
+    "@4900 !place -469 3 -432 1",
+    "@5500 !dig -469 4 -434 1 0",
+    "@7500 !dig -469 4 -434 1 2",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = 'give jeb_ banner 1 4 {BlockEntityTag:{Base:4,Patterns:[{Pattern:"cbo",Color:0}]}}'
+
+[[steps]]
+action = "console"
+command = "give jeb_ banner 1 1"
+
+[[steps]]
+action = "console"
+command = 'give jeb_ banner 1 10 {BlockEntityTag:{Patterns:[{Pattern:"bri",Color:14}]}}'
+wait_ms = 8000
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -437 air"
+wait_ms = 3000
+
+[observe]
+log = true
+blocks = [[-469, 4, -434], [-469, 4, -436], [-469, 4, -432]]
+tile_entities = [[-469, 4, -432]]
+entities = [[-30, -28]]
+files = ["world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat"]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    "entities.-30,-28[0].Pos", "entities.-30,-28[0].Motion", "entities.-30,-28[0].Rotation",
+    "entities.-30,-28[0].Age", "entities.-30,-28[0].OnGround", "entities.-30,-28[0].FallDistance",
+    "entities.-30,-28[1].Pos", "entities.-30,-28[1].Motion", "entities.-30,-28[1].Rotation",
+    "entities.-30,-28[1].Age", "entities.-30,-28[1].OnGround", "entities.-30,-28[1].FallDistance",
+]

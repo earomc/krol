@@ -459,6 +459,10 @@ impl Game {
         let state = self.level.overworld.block(pos.0, pos.1, pos.2);
         let b = state >> 4;
         self.break_effect(i, pos, state);
+        // tryHarvestBlock takes the tile entity before the block goes.
+        let banner_te = super::banner::is_banner(b)
+            .then(|| self.level.overworld.tile_entity(pos).cloned())
+            .flatten();
         // TODO(M5): onBlockHarvested / onBlockDestroyedByPlayer (doors, beds).
         self.drop_container_contents(pos);
         self.set_block_notify(pos, 0);
@@ -485,6 +489,10 @@ impl Game {
                 nbt: None,
             };
             self.spawn_as_entity(pos, stack);
+            return;
+        }
+        if harvest && let Some(te) = &banner_te {
+            self.harvest_banner(pos, te);
             return;
         }
         if harvest {

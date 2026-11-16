@@ -497,3 +497,8 @@ scenarios = ["play/pvp_effects"]
 id = "combat.fall_messages"
 description = "Fall death messages: a fatal fall after hits by a player (plain, named sword) or by instant damage is still an accident (the fatal hit clears the earlier combat entries); respawned players keep their entity id and move to the end of the player list (latency updates)"
 scenarios = ["play/fall_messages"]
+
+[[feature]]
+id = "blocks.banners"
+description = "Banners: standing (rotation) and wall placement from the item with its base color and patterns, the tile entity and its description packet, survival harvest drop (Base and Patterns), the wall banner popping off with its whole tile entity"
+scenarios = ["play/banners"]

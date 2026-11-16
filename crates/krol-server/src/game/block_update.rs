@@ -302,8 +302,8 @@ impl Game {
                     };
                     placement::torch_can_attach(w, pos, face)
                 }
-                block::STANDING_SIGN => super::sign::solid_material(below),
-                block::WALL_SIGN => {
+                block::STANDING_SIGN | block::STANDING_BANNER => super::sign::solid_material(below),
+                block::WALL_SIGN | block::WALL_BANNER => {
                     let n = offset(pos, opposite(meta as u8));
                     super::sign::solid_material(w.block(n.0, n.1, n.2))
                 }

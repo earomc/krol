@@ -121,6 +121,10 @@ pub mod block {
     pub const LIT_FURNACE: u16 = 62;
     /// `standing_sign`.
     pub const STANDING_SIGN: u16 = 63;
+    /// `standing_banner`.
+    pub const STANDING_BANNER: u16 = 176;
+    /// `wall_banner`.
+    pub const WALL_BANNER: u16 = 177;
     /// `ladder`.
     pub const LADDER: u16 = 65;
     /// `rail`.
@@ -278,6 +282,8 @@ pub mod item {
     pub const WOODEN_HOE: i16 = 290;
     /// `sign`.
     pub const SIGN: i16 = 323;
+    /// `banner`.
+    pub const BANNER: i16 = 425;
     /// `bucket`.
     pub const BUCKET: i16 = 325;
     /// `water_bucket`.

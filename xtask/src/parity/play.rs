@@ -593,6 +593,14 @@ pub fn v5_view(summary: &Value, from_v5: bool) -> Value {
         if V18_ONLY.contains(&name) {
             continue;
         }
+        // Banners do not exist in 1.7: the translation drops their tile entity updates.
+        if name == "update_tile_entity"
+            && packet["debug"]
+                .as_str()
+                .is_some_and(|d| d.contains("action: 6,"))
+        {
+            continue;
+        }
         let entry = if SAME_IN_V5.contains(&name) {
             let mut p = packet.clone();
             if name == "position_look" && !from_v5 {

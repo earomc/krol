@@ -505,6 +505,13 @@ impl World {
         if old != new && has_tile_entity(old) && !furnace_swap {
             self.remove_tile_entity(pos);
         }
+        if super::banner::is_banner(new) && old != new && self.tile_entity_index(pos).is_none() {
+            let te = super::banner::new_tile_entity(pos);
+            let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
+            let _ = list.push(Tag::Compound(te));
+            sort_tile_entities(list);
+            return;
+        }
         // writeToNBT of a new TileEntityChest / TileEntityFurnace / TileEntitySign.
         let id = match new {
             n if block::is_furnace(n) => "Furnace",

@@ -7,6 +7,7 @@
 
 mod anvil;
 mod attributes;
+mod banner;
 mod beds;
 mod biome;
 pub mod block_data;
@@ -1964,6 +1965,10 @@ impl Game {
         }
         if stack.id == ids::item::SIGN {
             self.place_sign(i, pos, face as u8);
+            return;
+        }
+        if stack.id == ids::item::BANNER {
+            self.place_banner(i, pos, face as u8);
             return;
         }
         let player = &self.players[i];
