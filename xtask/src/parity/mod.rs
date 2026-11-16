@@ -381,6 +381,8 @@ fn run_one(
     };
     if let Some(mut expected) = expected {
         let mut actual = actual;
+        diff::remap_random_uuids(&mut expected);
+        diff::remap_random_uuids(&mut actual);
         for group in &sc.observe.unordered {
             diff::canonicalize_unordered(&mut expected, group);
             diff::canonicalize_unordered(&mut actual, group);

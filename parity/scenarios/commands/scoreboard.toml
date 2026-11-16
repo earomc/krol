@@ -281,3 +281,6 @@ ms = 3000
 [observe]
 log = true
 files = ["world/data/scoreboard.dat"]
+# /effect: the attribute properties go out at once, the particle color metadata with
+# the next tracker update, so their order depends on the tick the command lands in.
+unordered = [["entity_metadata", "entity_properties"]]

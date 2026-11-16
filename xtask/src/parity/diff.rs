@@ -56,6 +56,72 @@ pub fn canonicalize_unordered(observations: &mut Value, group: &[String]) {
     }
 }
 
+/// Replaces random (version 4) UUIDs in every string with `<uuid-N>`, numbered in order
+/// of first appearance. Non-player entities draw theirs from unseeded randoms, so only
+/// where and in which order they appear can be compared. Offline-mode player UUIDs are
+/// name-based (version 3) and stay as they are.
+pub fn remap_random_uuids(value: &mut Value) {
+    let mut seen: Vec<String> = Vec::new();
+    remap_uuids_in(value, &mut seen);
+}
+
+fn remap_uuids_in(value: &mut Value, seen: &mut Vec<String>) {
+    match value {
+        Value::String(s) => {
+            if let Some(remapped) = remap_uuids_in_str(s, seen) {
+                *s = remapped;
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(|v| remap_uuids_in(v, seen)),
+        Value::Object(map) => map.values_mut().for_each(|v| remap_uuids_in(v, seen)),
+        _ => {}
+    }
+}
+
+/// Whether `b` is a random UUID's text: `8-4-4-4-12` hex digits, version 4, IETF variant.
+fn is_random_uuid(b: &[u8]) -> bool {
+    b.len() == 36
+        && b.iter().enumerate().all(|(k, c)| match k {
+            8 | 13 | 18 | 23 => *c == b'-',
+            _ => c.is_ascii_hexdigit(),
+        })
+        && b[14] == b'4'
+        && matches!(b[19], b'8' | b'9' | b'a' | b'b' | b'A' | b'B')
+}
+
+fn remap_uuids_in_str(s: &str, seen: &mut Vec<String>) -> Option<String> {
+    let bytes = s.as_bytes();
+    if bytes.len() < 36 {
+        return None;
+    }
+    let mut out = String::new();
+    let mut last = 0;
+    let mut k = 0;
+    while k + 36 <= bytes.len() {
+        let boundary = |at: usize| bytes.get(at).is_none_or(|c| !c.is_ascii_hexdigit());
+        if (k == 0 || boundary(k - 1)) && boundary(k + 36) && is_random_uuid(&bytes[k..k + 36]) {
+            let uuid = s[k..k + 36].to_ascii_lowercase();
+            let n = match seen.iter().position(|u| *u == uuid) {
+                Some(n) => n,
+                None => {
+                    seen.push(uuid);
+                    seen.len() - 1
+                }
+            };
+            out.push_str(&s[last..k]);
+            out.push_str(&format!("<uuid-{}>", n + 1));
+            k += 36;
+            last = k;
+        } else {
+            k += 1;
+        }
+    }
+    (last > 0).then(|| {
+        out.push_str(&s[last..]);
+        out
+    })
+}
+
 /// Drops every packet of a type in `types` that equals the packet right before it, in
 /// each bot stream of `observations`.
 pub fn collapse_repeats(observations: &mut Value, types: &[String]) {
@@ -287,6 +353,28 @@ fn line_diff(path: &str, e: &[Value], a: &[Value], out: &mut Vec<Difference>) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn random_uuids_are_remapped_in_order() {
+        let mut v = serde_json::json!({
+            "log": ["Set score of obj for player 00382f3c-741f-4c73-9ec8-0b19b8352730 to 3"],
+            "packets": [
+                {"debug": "UpdateScore { name: \"00382F3C-741F-4C73-9EC8-0B19B8352730\" }"},
+                {"debug": "a762f560-4fce-3236-812a-b80efff0b62b and c4c94f80-4bad-4f39-967d-989a4cd574fe"}
+            ]
+        });
+        remap_random_uuids(&mut v);
+        assert_eq!(v["log"][0], "Set score of obj for player <uuid-1> to 3");
+        assert_eq!(
+            v["packets"][0]["debug"],
+            "UpdateScore { name: \"<uuid-1>\" }"
+        );
+        // The name-based (version 3) offline player UUID stays.
+        assert_eq!(
+            v["packets"][1]["debug"],
+            "a762f560-4fce-3236-812a-b80efff0b62b and <uuid-2>"
+        );
+    }
 
     #[test]
     fn repeats_collapse() {

@@ -99,6 +99,10 @@ pub async fn play_session(
     let mut tick = tokio::time::interval(Duration::from_millis(50));
     let mut positioned = false;
     let mut origin: Option<(f64, f64, f64)> = None;
+    // Where the bot last told the server it is, and its rotation: relative teleports
+    // are resolved against them, like the vanilla client does.
+    let mut here = (0.0f64, 0.0f64, 0.0f64);
+    let mut facing = (0.0f32, 0.0f32);
     let mut next_move = 0usize;
     let mut pending_chat: Vec<String> = chat
         .iter()
@@ -140,6 +144,9 @@ pub async fn play_session(
                                 if let ServerboundPlay::HeldItemChange { slot } = packet {
                                     held_slot = slot;
                                 }
+                                if let ServerboundPlay::Look { yaw, pitch, .. } = packet {
+                                    facing = (yaw, pitch);
+                                }
                                 if let ServerboundPlay::CreativeInventoryAction { slot, item } = &packet {
                                     if *slot >= 36 {
                                         held[(*slot - 36) as usize] = item.clone();
@@ -156,8 +163,9 @@ pub async fn play_session(
                         (Some((ox, oy, oz)), Some(m)) => {
                             next_move += 1;
                             let at = |k: usize| m.get(k).copied().unwrap_or(0.0);
+                            here = (ox + at(0), oy + at(1), oz + at(2));
                             send_play(&mut conn, v5_eid, &ServerboundPlay::Position {
-                                x: ox + at(0), y: oy + at(1), z: oz + at(2),
+                                x: here.0, y: here.1, z: here.2,
                                 on_ground: m.get(3).is_none_or(|g| *g != 0.0),
                             }).await?;
                         }
@@ -203,13 +211,21 @@ pub async fn play_session(
                             data: b"\x07vanilla".to_vec(),
                         }).await?;
                     }
-                    Some(ClientboundPlay::PositionLook { x, y, z, yaw, pitch, .. }) => {
+                    Some(ClientboundPlay::PositionLook { x, y, z, yaw, pitch, flags }) => {
+                        // S08PacketPlayerPosLook flags: x, y, z, yaw, pitch relative.
+                        let rel = |bit: i8, base: f64, v: f64| if flags & bit != 0 { base + v } else { v };
+                        here = (rel(0x01, here.0, *x), rel(0x02, here.1, *y), rel(0x04, here.2, *z));
+                        facing = (
+                            rel(0x08, f64::from(facing.0), f64::from(*yaw)) as f32,
+                            rel(0x10, f64::from(facing.1), f64::from(*pitch)) as f32,
+                        );
                         send_play(&mut conn, v5_eid, &ServerboundPlay::PositionLook {
-                            x: *x, y: *y, z: *z, yaw: *yaw, pitch: *pitch, on_ground: false,
+                            x: here.0, y: here.1, z: here.2, yaw: facing.0, pitch: facing.1,
+                            on_ground: false,
                         }).await?;
                         positioned = true;
                         positioned_at.get_or_insert_with(Instant::now);
-                        origin.get_or_insert((*x, *y, *z));
+                        origin.get_or_insert(here);
                         next_chat = Instant::now() + Duration::from_millis(500);
                     }
                     _ => {}

@@ -97,6 +97,11 @@ into server ticks. Rules learned from flaky scenarios:
   next movement packet, with the player tracker flushing every 2 ticks), declare them in
   a commented `[observe] unordered = [["entity_metadata", "entity_properties"]]` group:
   directly adjacent packets of those types are compared in a canonical order.
+- Random UUIDs (version 4: non-player entities draw theirs from an unseeded random)
+  are compared as `<uuid-N>`, numbered in order of first appearance, on both sides.
+  Offline players' UUIDs are name-based (version 3) and compared as they are.
+- Relative teleports (`tp ~ ~ ~`) are compared for 1.7 clients by resolving them against
+  the previous teleport, which assumes the bot did not move in between.
 - Spawn with `gamemode = "2"` in the properties (switch modes by console later): other
   modes randomize the spawn point with an unpinned random.
 - Vanilla on Windows logs in cp1252; the harness reads non-UTF-8 lines as Latin-1 so

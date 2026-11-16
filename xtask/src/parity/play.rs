@@ -584,6 +584,10 @@ pub fn v5_view(summary: &Value, from_v5: bool) -> Value {
     let packets = summary["packets"].as_array().unwrap_or(&empty);
     let mut sequence = Vec::new();
     let mut kept = Vec::new();
+    // The last teleport target: 1.7 has no relative teleports, so the translation
+    // layer resolves them, and so does this view of a 1.8 recording. (It assumes the
+    // bot did not move between teleports.)
+    let mut teleported = [0.0f64; 5];
     for (name, packet) in names.iter().zip(packets) {
         let name = name.as_str().unwrap_or_default();
         if V18_ONLY.contains(&name) {
@@ -591,6 +595,23 @@ pub fn v5_view(summary: &Value, from_v5: bool) -> Value {
         }
         let entry = if SAME_IN_V5.contains(&name) {
             let mut p = packet.clone();
+            if name == "position_look" && !from_v5 {
+                let flags = packet["flags"].as_i64().unwrap_or(0);
+                for (k, key) in ["x", "y", "z", "yaw", "pitch"].iter().enumerate() {
+                    let v = packet[*key].as_f64().unwrap_or(0.0);
+                    teleported[k] = if flags & (1 << k) != 0 {
+                        if k < 3 {
+                            teleported[k] + v
+                        } else {
+                            // Rotations are floats.
+                            f64::from(teleported[k] as f32 + v as f32)
+                        }
+                    } else {
+                        v
+                    };
+                    p[*key] = json!(teleported[k]);
+                }
+            }
             if let Value::Object(m) = &mut p {
                 m.remove("reduced_debug_info");
                 m.remove("position");
