@@ -22,13 +22,10 @@ Status as of 2026-11-17 (commit `server: moving piston blocks drop what they car
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **Close M4**: run the full parity suite in both protocols (milestone run, AGENTS.md
-   §11) and fix what it finds in one go. M4's only open item, maps in item frames,
-   waits for item frames (M5).
-2. **M5 entities without AI**: item frames and paintings (hanging entities), armor
+1. **M5 entities without AI**: item frames and paintings (hanging entities), armor
    stands, projectiles (arrows from bows, snowballs, eggs, ender pearls, splash
    potions), minecarts and boats, with their spawn packets, tracking and saving.
-3. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
+2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
