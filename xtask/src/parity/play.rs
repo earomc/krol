@@ -38,6 +38,7 @@ fn name(id: i32) -> String {
         0x0c => "spawn_player",
         0x0e => "spawn_object",
         0x0f => "spawn_mob",
+        0x10 => "spawn_painting",
         0x12 => "entity_velocity",
         0x13 => "destroy_entities",
         0x15 => "entity_rel_move",
@@ -202,6 +203,21 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
                 "pitch": if random_pitch { Value::Null } else { json!(pitch) },
             })
         }
+        // Item frames (71) sit at their block space, facing the way their data says.
+        ClientboundPlay::SpawnObject {
+            entity_id,
+            kind: kind @ 71,
+            x,
+            y,
+            z,
+            pitch,
+            yaw,
+            data,
+            ..
+        } => json!({
+            "entity_id": entity_id, "kind": kind, "data": data, "x": x, "y": y, "z": z,
+            "yaw": yaw, "pitch": pitch,
+        }),
         // Item positions, angles and speeds come from unseeded randoms in vanilla.
         ClientboundPlay::SpawnObject {
             entity_id,
@@ -209,6 +225,15 @@ fn decoded_json(p: &ClientboundPlay) -> Value {
             data,
             ..
         } => json!({ "entity_id": entity_id, "kind": kind, "data": data }),
+        ClientboundPlay::SpawnPainting {
+            entity_id,
+            title,
+            pos,
+            facing,
+        } => json!({
+            "entity_id": entity_id, "title": title, "pos": [pos.0, pos.1, pos.2],
+            "facing": facing,
+        }),
         // Orb positions are random too (Math.random start motion).
         ClientboundPlay::SpawnExperienceOrb {
             entity_id, count, ..

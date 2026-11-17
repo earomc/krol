@@ -247,6 +247,9 @@ struct Candidate {
     pos: (f64, f64, f64),
     /// Width and height of the bounding box.
     size: (f32, f32),
+    /// The bounding box of entities whose box is not centered on their position
+    /// (paintings and item frames).
+    bb: Option<super::physics::Aabb>,
     alive: bool,
     type_name: &'static str,
     name: Option<String>,
@@ -364,8 +367,8 @@ impl Game {
         }
     }
 
-    /// `Entity.setLocationAndAngles` of a non-player entity. Only items keep a
-    /// rotation krol tracks (their yaw, shown when they spawn for a player).
+    /// `Entity.setLocationAndAngles` of a non-player entity (paintings and item frames
+    /// move by block spaces).
     pub(super) fn set_location_and_angles(
         &mut self,
         id: i32,
@@ -390,6 +393,23 @@ impl Game {
             a.body.pos = pos;
             a.base.yaw = rotation.0;
             a.base.pitch = rotation.1;
+        } else if let Some(h) = self.hanging.get_mut(&id) {
+            if let super::hanging::Kind::Painting { .. } = h.kind {
+                // EntityPainting.setLocationAndAngles: the hanging position moves by the
+                // offset, and the position becomes that block's corner.
+                let (p, t) = (h.body.pos, h.tile);
+                let tile = (
+                    krol_java::math::floor_f64(f64::from(t.0) + (pos.0 - p.0)),
+                    krol_java::math::floor_f64(f64::from(t.1) + (pos.1 - p.1)),
+                    krol_java::math::floor_f64(f64::from(t.2) + (pos.2 - p.2)),
+                );
+                let corner = (f64::from(tile.0), f64::from(tile.1), f64::from(tile.2));
+                self.move_hanging(id, corner);
+            } else {
+                h.base.yaw = rotation.0;
+                h.base.pitch = rotation.1;
+                self.move_hanging(id, pos);
+            }
         }
     }
 
@@ -408,6 +428,8 @@ impl Game {
             t.dead = true;
         } else if let Some(a) = self.arrows.get_mut(&id) {
             a.dead = true;
+        } else if let Some(h) = self.hanging.get_mut(&id) {
+            h.dead = true;
         }
     }
 
@@ -420,6 +442,7 @@ impl Game {
                 target: Target::Player(i),
                 pos: p.pos,
                 size: (0.6, 1.8),
+                bb: None,
                 alive: p.health() > 0.0,
                 type_name: "Player",
                 name: Some(p.profile.name.clone()),
@@ -432,6 +455,7 @@ impl Game {
                 target: Target::Entity(id),
                 pos: it.body.pos,
                 size: (it.body.width, it.body.height),
+                bb: None,
                 alive: !it.dead,
                 type_name: "Item",
                 name: Some(super::item_data::item_entity_name(&it.stack)),
@@ -444,6 +468,7 @@ impl Game {
                 target: Target::Entity(id),
                 pos: o.body.pos,
                 size: (o.body.width, o.body.height),
+                bb: None,
                 alive: !o.dead,
                 type_name: "XPOrb",
                 name: Some("Experience Orb".into()),
@@ -456,6 +481,7 @@ impl Game {
                 target: Target::Entity(id),
                 pos: f.body.pos,
                 size: (f.body.width, f.body.height),
+                bb: None,
                 alive: !f.dead,
                 type_name: "FallingSand",
                 name: Some("Falling Block".into()),
@@ -468,6 +494,7 @@ impl Game {
                 target: Target::Entity(id),
                 pos: t.body.pos,
                 size: (t.body.width, t.body.height),
+                bb: None,
                 alive: !t.dead,
                 type_name: "PrimedTnt",
                 name: Some("Block of TNT".into()),
@@ -480,6 +507,7 @@ impl Game {
                 target: Target::Entity(id),
                 pos: t.body.pos,
                 size: (t.body.width, t.body.height),
+                bb: None,
                 alive: !t.dead,
                 type_name: t.kind.saved_id(),
                 name: Some(t.kind.name()),
@@ -492,10 +520,24 @@ impl Game {
                 target: Target::Entity(id),
                 pos: a.body.pos,
                 size: (a.body.width, a.body.height),
+                bb: None,
                 alive: !a.dead,
                 type_name: super::arrow::SAVED_ID,
                 name: Some(super::arrow::NAME.into()),
                 rotation: (a.base.yaw, a.base.pitch),
+                entity_id: id,
+            });
+        }
+        for (&id, h) in &self.hanging {
+            all.push(Candidate {
+                target: Target::Entity(id),
+                pos: h.body.pos,
+                size: (h.body.width, h.body.height),
+                bb: Some(h.bb),
+                alive: !h.dead,
+                type_name: h.kind.saved_id(),
+                name: Some(h.kind.name().into()),
+                rotation: (h.base.yaw, h.base.pitch),
                 entity_id: id,
             });
         }
@@ -797,12 +839,20 @@ fn within_box(all: &[Candidate], bb: (f64, f64, f64, f64, f64, f64)) -> Vec<&Can
         .iter()
         .filter(|c| {
             let half = f64::from(c.size.0) / 2.0;
-            let (x0, y0, z0) = (c.pos.0 - half, c.pos.1, c.pos.2 - half);
-            let (x1, y1, z1) = (
-                c.pos.0 + half,
-                c.pos.1 + f64::from(c.size.1),
-                c.pos.2 + half,
-            );
+            let ((x0, y0, z0), (x1, y1, z1)) = match c.bb {
+                Some(b) => (
+                    (b.min[0], b.min[1], b.min[2]),
+                    (b.max[0], b.max[1], b.max[2]),
+                ),
+                None => (
+                    (c.pos.0 - half, c.pos.1, c.pos.2 - half),
+                    (
+                        c.pos.0 + half,
+                        c.pos.1 + f64::from(c.size.1),
+                        c.pos.2 + half,
+                    ),
+                ),
+            };
             x1 > bb.0 && x0 < bb.3 && y1 > bb.1 && y0 < bb.4 && z1 > bb.2 && z0 < bb.5
         })
         .collect();

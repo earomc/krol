@@ -2,7 +2,7 @@
 //! `AnvilChunkLoader.writeChunkToNBT` / `readChunkFromNBT`, `Chunk.entityLists`,
 //! `Chunk.onChunkLoad`, `EntityList.createEntityFromNBT`, `Entity.writeToNBT` /
 //! `readFromNBT` and the `writeEntityToNBT` / `readEntityFromNBT` of items, experience
-//! orbs, falling blocks, primed TNT and thrown projectiles).
+//! orbs, falling blocks, primed TNT, projectiles, paintings and item frames).
 //!
 //! Every chunk keeps its entities in 16 lists, one per 16-block section, in the order
 //! they entered the section; the chunk saves them in that order. Saved entities of the
@@ -430,6 +430,8 @@ impl Game {
             Some(t.body.pos)
         } else if let Some(a) = self.arrows.get(&id) {
             Some(a.body.pos)
+        } else if let Some(h) = self.hanging.get(&id) {
+            Some(h.body.pos)
         } else {
             self.tnt.get(&id).map(|t| t.body.pos)
         }
@@ -584,6 +586,14 @@ impl Game {
                     .insert(id, super::arrow::Arrow::load(body, base, c));
                 pos
             }
+            super::hanging::PAINTING_ID | super::hanging::ITEM_FRAME_ID => {
+                let (base, uuid) = EntityBase::read(c, &mut body);
+                self.set_saved_uuid(id, uuid);
+                let h = super::hanging::Hanging::load(kind, body, base, c);
+                let pos = h.body.pos;
+                self.hanging.insert(id, h);
+                pos
+            }
             saved => match super::throwable::Kind::from_saved_id(saved) {
                 Some(thrown_kind) => {
                     body.width = super::throwable::SIZE;
@@ -683,6 +693,13 @@ impl Game {
             c.insert("id", Tag::String(super::arrow::SAVED_ID.into()));
             a.base.write(&a.body, uuid, &mut c);
             a.write(&mut c);
+        } else if let Some(h) = self.hanging.get(&id) {
+            if h.dead {
+                return None;
+            }
+            c.insert("id", Tag::String(h.kind.saved_id().into()));
+            h.base.write(&h.body, uuid, &mut c);
+            h.write(&mut c);
         } else {
             let t = self.tnt.get(&id).filter(|t| !t.dead)?;
             c.insert("id", Tag::String(TNT_ID.into()));

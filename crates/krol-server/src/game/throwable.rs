@@ -679,12 +679,13 @@ impl Game {
     }
 
     /// `canBeCollidedWith` of the entities krol simulates: living players, falling
-    /// blocks and primed TNT.
+    /// blocks, primed TNT, paintings and item frames.
     pub(super) fn can_be_collided_with(&self, target: Target) -> bool {
         match target {
             Target::Player(i) => !self.players[i].removed,
             Target::Falling(id) => self.falling.get(&id).is_some_and(|f| !f.dead),
             Target::Tnt(id) => self.tnt.get(&id).is_some_and(|t| !t.dead),
+            Target::Hanging(id) => self.hanging.get(&id).is_some_and(|h| !h.dead),
             Target::Item(_) | Target::Orb(_) | Target::Thrown(_) | Target::Arrow(_) => false,
         }
     }
@@ -705,12 +706,12 @@ impl Game {
             Kind::Snowball => {
                 // Snowballs hurt blazes for 3 (TODO(M5)); everything else for 0.
                 if let Some((_, target)) = entity_hit {
-                    self.attack_target(target, source, 0.0);
+                    let _ = self.attack_target(target, source, 0.0);
                 }
             }
             Kind::Egg => {
                 if let Some((_, target)) = entity_hit {
-                    self.attack_target(target, source, 0.0);
+                    let _ = self.attack_target(target, source, 0.0);
                 }
                 let r = &mut self.entity_rand;
                 if r.next_int_bounded(EGG_HATCH_CHANCE) == 0 {
@@ -732,7 +733,7 @@ impl Game {
                     if Some(other) == launched_by {
                         return;
                     }
-                    self.attack_target(target, source, 0.0);
+                    let _ = self.attack_target(target, source, 0.0);
                 }
                 let r = &mut self.entity_rand;
                 for _ in 0..PEARL_PARTICLES {
@@ -877,6 +878,7 @@ impl Game {
             Target::Tnt(id) => self.tnt.get(&id)?.body.bb(),
             Target::Thrown(id) => self.thrown.get(&id)?.body.bb(),
             Target::Arrow(id) => self.arrows.get(&id)?.body.bb(),
+            Target::Hanging(id) => self.hanging.get(&id)?.bb,
         })
     }
 }

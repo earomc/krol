@@ -52,6 +52,7 @@ pub struct PlayObservation {
 /// given in 1/16; sends the swing first),
 /// `!use` (use the held item, face 255), `!hold <slot>` (select hotbar slot),
 /// `!swing` (arm animation), `!attack <entity id>` (swing, then attack),
+/// `!interact <entity id>` (right click on an entity),
 /// `!crit <entity id>` (a hop: up 1 block and 0.25 back down off the ground, the attack
 /// while falling, then landing where it started), `!sprint` / `!unsprint` (Entity
 /// Action start / stop sprinting),
@@ -377,6 +378,13 @@ fn action_or_chat(
             yaw: parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(0.0),
             pitch: parts.get(2).and_then(|p| p.parse().ok()).unwrap_or(0.0),
             on_ground: true,
+        }],
+        // !interact <entity>: a right click on an entity. (A 1.8 client sends an
+        // interaction at the hit point first, which only armor stands answer.)
+        Some("interact") => vec![ServerboundPlay::UseEntity {
+            target: num(1),
+            action: 0,
+            target_pos: None,
         }],
         // The swing comes first, like a client's left click.
         Some("attack") => vec![

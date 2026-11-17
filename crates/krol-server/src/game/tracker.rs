@@ -1,8 +1,8 @@
 //! Which clients see which entities, and the packets that keep them in sync
 //! (vanilla: `EntityTracker`, `EntityTrackerEntry`).
 //!
-//! Players, dropped items, experience orbs, falling blocks, primed TNT and thrown
-//! projectiles are tracked so far. Every tracked entity has an entry holding what its
+//! Players, dropped items, experience orbs, falling blocks, primed TNT, projectiles,
+//! paintings and item frames are tracked so far. Every tracked entity has an entry holding what its
 //! viewers were last told (position in 1/32 blocks, angles in 1/256 turns). Each tick,
 //! after the entity updates, every entry:
 //!
@@ -48,6 +48,12 @@ const THROWN_FREQUENCY: u32 = 10;
 /// Arrows: range 64, every 20 ticks, no velocity updates.
 const ARROW_RANGE: i32 = 64;
 const ARROW_FREQUENCY: u32 = 20;
+/// Paintings and item frames: range 160, never updated after the first time
+/// (`Integer.MAX_VALUE`), no velocity updates.
+const HANGING_RANGE: i32 = 160;
+const HANGING_FREQUENCY: u32 = i32::MAX as u32;
+/// Item frames send their changed metadata every 10 ticks.
+const ITEM_FRAME_METADATA_INTERVAL: u32 = 10;
 /// Experience orbs: range 160, every 20 ticks, with velocity updates.
 const ORB_RANGE: i32 = 160;
 const ORB_FREQUENCY: u32 = 20;
@@ -246,6 +252,20 @@ impl Game {
                 player: None,
             });
         }
+        if let Some(h) = self.hanging.get(&entity_id) {
+            return Some(View {
+                pos: h.body.pos,
+                yaw: h.base.yaw,
+                pitch: h.base.pitch,
+                head: 0.0,
+                on_ground: h.body.on_ground,
+                motion: h.body.motion,
+                chunk: h.chunk,
+                airborne: h.airborne,
+                metadata_changed: h.metadata_changed,
+                player: None,
+            });
+        }
         if let Some(o) = self.orbs.get(&entity_id) {
             return Some(View {
                 pos: o.body.pos,
@@ -318,6 +338,8 @@ impl Game {
             (THROWN_RANGE, THROWN_FREQUENCY, true)
         } else if self.arrows.contains_key(&entity_id) {
             (ARROW_RANGE, ARROW_FREQUENCY, false)
+        } else if self.hanging.contains_key(&entity_id) {
+            (HANGING_RANGE, HANGING_FREQUENCY, false)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
         };
@@ -579,6 +601,38 @@ impl Game {
                 y: speed(v.motion.1),
                 z: speed(v.motion.2),
             });
+        } else if let Some(h) = self.hanging.get(&entity_id) {
+            match &h.kind {
+                super::hanging::Kind::Painting { art } => {
+                    packets.push(ClientboundPlay::SpawnPainting {
+                        entity_id,
+                        title: super::hanging::ARTS[*art].0.to_owned(),
+                        pos: h.tile,
+                        facing: h.facing,
+                    });
+                }
+                super::hanging::Kind::ItemFrame { .. } => {
+                    // The facing is the data; the position is the hanging position's
+                    // corner.
+                    let data = i32::from(h.facing);
+                    packets.push(ClientboundPlay::SpawnObject {
+                        entity_id,
+                        kind: super::hanging::ITEM_FRAME_OBJECT,
+                        x: h.tile.0.wrapping_mul(32),
+                        y: h.tile.1.wrapping_mul(32),
+                        z: h.tile.2.wrapping_mul(32),
+                        pitch: angle(v.pitch) as i8,
+                        yaw: angle(v.yaw) as i8,
+                        data,
+                        velocity: (data != 0)
+                            .then(|| (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2))),
+                    });
+                }
+            }
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: h.metadata(),
+            });
         } else if let Some(o) = self.orbs.get(&entity_id) {
             packets.push(ClientboundPlay::SpawnExperienceOrb {
                 entity_id,
@@ -722,6 +776,22 @@ impl Game {
             self.update_player_entities(entity_id);
         }
 
+        // Item frames send changed metadata every 10 ticks (and, TODO(M5), the map they
+        // show).
+        let mut v = v;
+        if self
+            .hanging
+            .get(&entity_id)
+            .is_some_and(|h| matches!(h.kind, super::hanging::Kind::ItemFrame { .. }))
+            && self
+                .tracker
+                .get(&entity_id)
+                .is_some_and(|e| e.update_counter % ITEM_FRAME_METADATA_INTERVAL == 0)
+        {
+            self.send_dirty_data(entity_id, &v);
+            v.metadata_changed = false;
+        }
+
         // Arrows move from their first update on and always send look and move together.
         let arrow = self.arrows.contains_key(&entity_id);
         let Some(entry) = self.tracker.get_mut(&entity_id) else {
@@ -838,6 +908,8 @@ impl Game {
             }
             if let Some(i) = v.player {
                 self.players[i].airborne = false;
+            } else if let Some(h) = self.hanging.get_mut(&entity_id) {
+                h.airborne = false;
             }
         }
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
@@ -921,6 +993,20 @@ impl Game {
             // DataWatcher.getChanged: every entry still watched.
             let dirty = std::mem::take(&mut a.dirty_metadata);
             let metadata = a
+                .metadata()
+                .into_iter()
+                .filter(|m| dirty.contains(&m.index))
+                .collect();
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata,
+            });
+        } else if let Some(h) = self.hanging.get_mut(&entity_id)
+            && std::mem::take(&mut h.metadata_changed)
+        {
+            // DataWatcher.getChanged: every entry still watched.
+            let dirty = std::mem::take(&mut h.dirty_metadata);
+            let metadata = h
                 .metadata()
                 .into_iter()
                 .filter(|m| dirty.contains(&m.index))

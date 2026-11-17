@@ -42,6 +42,7 @@ pub(super) enum Target {
     Tnt(i32),
     Thrown(i32),
     Arrow(i32),
+    Hanging(i32),
 }
 
 impl Game {
@@ -245,6 +246,11 @@ impl Game {
                         add(&mut a.body.motion);
                     }
                 }
+                Target::Hanging(id) => {
+                    if let Some(h) = self.hanging.get_mut(&id) {
+                        add(&mut h.body.motion);
+                    }
+                }
             }
         }
         knockback
@@ -288,17 +294,27 @@ impl Game {
                 add(id, a.body.bb(), Target::Arrow(id));
             }
         }
+        for (&id, h) in &self.hanging {
+            if !h.dead {
+                add(id, h.bb, Target::Hanging(id));
+            }
+        }
         // Chunk entity lists keep insertion order, which follows entity ids here.
         targets.sort_by_key(|(id, _)| *id);
         targets
     }
 
-    /// `attackEntityFrom(source, damage)` on any entity.
-    pub(super) fn attack_target(&mut self, target: Target, source: DamageSource, damage: f32) {
+    /// `attackEntityFrom(source, damage)` on any entity; returns whether it was hurt
+    /// (items, orbs and the plain entities never count as hurt).
+    pub(super) fn attack_target(
+        &mut self,
+        target: Target,
+        source: DamageSource,
+        damage: f32,
+    ) -> bool {
         match target {
-            Target::Player(i) => {
-                self.attack_player(i, source, damage);
-            }
+            Target::Player(i) => return self.attack_player(i, source, damage),
+            Target::Hanging(id) => return self.attack_hanging(id, source),
             Target::Item(id) => {
                 if let Some(it) = self.items.get_mut(&id) {
                     // Nether stars survive explosions.
@@ -342,6 +358,7 @@ impl Game {
                 }
             }
         }
+        false
     }
 
     /// Feet position, eye height (`getEyeHeight`) and box of a target.
@@ -365,6 +382,10 @@ impl Game {
                 // EntityTNTPrimed.getEyeHeight.
                 return Some((t.body.pos, 0.0, t.body.bb()));
             }
+            Target::Hanging(id) => {
+                let h = self.hanging.get(&id)?;
+                return Some((h.body.pos, h.body.height * 0.85, h.bb));
+            }
         };
         // Entity.getEyeHeight: 85% of the height.
         Some((body.pos, body.height * 0.85, body.bb()))
@@ -379,7 +400,7 @@ impl Game {
         damage: f32,
         impact: f64,
     ) -> f64 {
-        self.attack_target(target, source, damage);
+        let _ = self.attack_target(target, source, damage);
         match target {
             Target::Player(i) => {
                 let level = super::item_data::armor_enchantment(

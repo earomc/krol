@@ -47,6 +47,8 @@ pub struct V5Translator {
     profiles: HashMap<u128, (String, Properties)>,
     /// Entity ids of spawned players.
     player_entities: HashSet<i32>,
+    /// Entity ids of spawned item frames.
+    item_frames: HashSet<i32>,
 }
 
 /// A 1.7 packet under construction.
@@ -128,19 +130,70 @@ fn read_item(r: &mut PacketReader<'_>) -> Result<Option<ItemStack>, DecodeError>
     }))
 }
 
+/// The `S0EPacketSpawnObject` type of item frames.
+const ITEM_FRAME_OBJECT: i8 = 71;
+/// 1.8 item frames show their item at metadata index 8 and its rotation (in eighths)
+/// at 9; 1.7 frames at 2 and 3 (in quarters).
+const FRAME_ITEM_V47: u8 = 8;
+const FRAME_ROTATION_V47: u8 = 9;
+const FRAME_ITEM_V5: u8 = 2;
+const FRAME_ROTATION_V5: u8 = 3;
+
+/// The block offset of a horizontal facing index (south, west, north, east).
+fn horizontal_offset(facing: i32) -> (i32, i32) {
+    match facing & 3 {
+        0 => (0, 1),
+        1 => (-1, 0),
+        2 => (0, -1),
+        _ => (1, 0),
+    }
+}
+
 /// Writes 1.7 entity metadata, dropping entries 1.7 clients do not have.
 fn write_metadata(
     w: &mut PacketWriter,
     entries: &[Metadata],
     is_player: bool,
 ) -> Result<(), EncodeError> {
+    // 1.8 moved custom names to indices 2/3 for every entity and gave players skin flags
+    // at 10; 1.7 players have none of these.
+    // TODO(M5): move custom names of mobs to 1.7's indices 10/11.
+    let kept: Vec<Metadata> = entries
+        .iter()
+        .filter(|m| !(m.index == 2 || m.index == 3 || (is_player && m.index == 10)))
+        .cloned()
+        .collect();
+    write_metadata_entries(w, &kept)
+}
+
+/// Writes an item frame's metadata for 1.7: the custom name and silent flag go, the
+/// item and its rotation move to 1.7's indices (a 1.8 rotation of eighths rounds down
+/// to quarters).
+fn write_item_frame_metadata(
+    w: &mut PacketWriter,
+    entries: &[Metadata],
+) -> Result<(), EncodeError> {
+    let mut kept = Vec::new();
     for m in entries {
-        // 1.8 moved custom names to indices 2/3 for every entity and gave players skin
-        // flags at 10; 1.7 players have none of these.
-        // TODO(M5): move custom names of mobs to 1.7's indices 10/11.
-        if m.index == 2 || m.index == 3 || (is_player && m.index == 10) {
-            continue;
+        match (m.index, &m.value) {
+            (2..=4, _) => {}
+            (FRAME_ITEM_V47, value) => kept.push(Metadata {
+                index: FRAME_ITEM_V5,
+                value: value.clone(),
+            }),
+            (FRAME_ROTATION_V47, MetadataValue::Byte(r)) => kept.push(Metadata {
+                index: FRAME_ROTATION_V5,
+                value: MetadataValue::Byte(r / 2),
+            }),
+            _ => kept.push(m.clone()),
         }
+    }
+    write_metadata_entries(w, &kept)
+}
+
+/// Writes metadata entries in 1.7's encoding.
+fn write_metadata_entries(w: &mut PacketWriter, entries: &[Metadata]) -> Result<(), EncodeError> {
+    for m in entries {
         let ty = match m.value {
             MetadataValue::Byte(_) => 0,
             MetadataValue::Short(_) => 1,
@@ -522,7 +575,11 @@ impl V5Translator {
             } => {
                 let mut w = packet(0x1c);
                 w.i32(*entity_id);
-                write_metadata(&mut w, metadata, self.player_entities.contains(entity_id))?;
+                if self.item_frames.contains(entity_id) {
+                    write_item_frame_metadata(&mut w, metadata)?;
+                } else {
+                    write_metadata(&mut w, metadata, self.player_entities.contains(entity_id))?;
+                }
                 one(w);
             }
             ClientboundPlay::EntityProperties {
@@ -591,6 +648,7 @@ impl V5Translator {
             ClientboundPlay::DestroyEntities(ids) => {
                 for id in ids {
                     self.player_entities.remove(id);
+                    self.item_frames.remove(id);
                 }
                 // The count is a byte in 1.7.
                 for chunk in ids.chunks(127) {
@@ -670,12 +728,21 @@ impl V5Translator {
                 data,
                 velocity,
             } => {
+                // 1.7 item frames are placed by the block they hang on, behind the
+                // block space 1.8 names.
+                let (mut x, mut z) = (*x, *z);
+                if *kind == ITEM_FRAME_OBJECT {
+                    self.item_frames.insert(*entity_id);
+                    let (dx, dz) = horizontal_offset(*data);
+                    x = x.wrapping_sub(dx * 32);
+                    z = z.wrapping_sub(dz * 32);
+                }
                 let mut w = packet(0x0e);
                 w.varint(*entity_id)
                     .i8(*kind)
-                    .i32(*x)
+                    .i32(x)
                     .i32(*y)
-                    .i32(*z)
+                    .i32(z)
                     .i8(*pitch)
                     .i8(*yaw)
                     .i32(*data);
@@ -748,6 +815,23 @@ impl V5Translator {
             } => {
                 let mut w = packet(0x0d);
                 w.i32(*collected).i32(*collector);
+                one(w);
+            }
+            ClientboundPlay::SpawnPainting {
+                entity_id,
+                title,
+                pos,
+                facing,
+            } => {
+                // 1.7 names the block the painting hangs on.
+                let (dx, dz) = horizontal_offset(i32::from(*facing));
+                let mut w = packet(0x10);
+                w.varint(*entity_id)
+                    .string(title)?
+                    .i32(pos.0.wrapping_sub(dx))
+                    .i32(pos.1)
+                    .i32(pos.2.wrapping_sub(dz))
+                    .i32(i32::from(*facing));
                 one(w);
             }
             ClientboundPlay::SpawnExperienceOrb {

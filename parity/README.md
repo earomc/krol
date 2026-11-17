@@ -150,6 +150,16 @@ into server ticks. Rules learned from flaky scenarios:
   flight (`play/splash_potions`). Console steps run about 3 seconds after the first
   background bot joins (each background `play` step waits 1.5 s), so time bot actions
   that need given items after that.
+- **Drops from paintings and item frames start half inside their wall**, and once the
+  random start motion carries an item's middle into the wall block, `pushOutOfBlocks`
+  shoots it back out at up to 0.3 blocks per tick: no distance is safe. Wall the drops
+  in with glass and use the entities through it, within the 3 blocks allowed without
+  line of sight (`play/hanging`).
+- **`@e` matches are sorted by distance from the sender**, the console's being the
+  origin: killing randomly placed drops logs them in a random order
+  (`log_ignore_prefixes`).
+- A painting's art is drawn from its own unseeded random among the arts that fit:
+  leave its title out of the comparison (`player.packets[N].title`).
 - Damage with a random part (critical arrows) can still be compared exactly when every
   outcome kills: bring the victim down to a few hearts first (instant damage from the
   console after the respawn protection) and turn off `naturalRegeneration`, whose timer

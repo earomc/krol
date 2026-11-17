@@ -36,6 +36,7 @@ mod fire;
 mod flower_pot;
 mod food;
 mod furnace;
+mod hanging;
 mod hopper;
 pub mod ids;
 mod interact;
@@ -337,6 +338,8 @@ struct Game {
     thrown: std::collections::BTreeMap<i32, throwable::Throwable>,
     /// Arrows, by entity id.
     arrows: std::collections::BTreeMap<i32, arrow::Arrow>,
+    /// Paintings and item frames, by entity id.
+    hanging: std::collections::BTreeMap<i32, hanging::Hanging>,
     /// Every player but spectators lies in bed (`allPlayersSleeping`).
     all_sleeping: bool,
     /// Ticks since the last latency broadcast (`playerPingIndex`).
@@ -424,6 +427,7 @@ pub fn start(
         tnt: Default::default(),
         thrown: Default::default(),
         arrows: Default::default(),
+        hanging: Default::default(),
         all_sleeping: false,
         ping_index: 0,
         wire_gives_power: true,
@@ -610,6 +614,7 @@ impl Game {
         order.extend(self.tnt.keys().copied());
         order.extend(self.thrown.keys().copied());
         order.extend(self.arrows.keys().copied());
+        order.extend(self.hanging.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
@@ -630,6 +635,7 @@ impl Game {
                     .chain(self.tnt.keys())
                     .chain(self.thrown.keys())
                     .chain(self.arrows.keys())
+                    .chain(self.hanging.keys())
                     .copied()
                     .filter(|&e| e > newest)
                     .collect();
@@ -664,6 +670,10 @@ impl Game {
             }
             if self.arrows.contains_key(&id) {
                 self.update_arrow(id);
+                continue;
+            }
+            if self.hanging.contains_key(&id) {
+                self.update_hanging(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -1978,6 +1988,10 @@ impl Game {
             return;
         }
         if self.place_door(i, stack.id, pos, face as u8) {
+            return;
+        }
+        if hanging::is_hanging_item(stack.id) {
+            self.place_hanging(i, pos, face as u8);
             return;
         }
         if farming::is_hoe(stack.id) {

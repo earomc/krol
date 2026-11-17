@@ -807,6 +807,14 @@ pub enum ClientboundPlay {
         z: i32,
         count: i16,
     },
+    /// `0x10`: a painting's title, hanging position and facing (horizontal index:
+    /// south, west, north, east).
+    SpawnPainting {
+        entity_id: i32,
+        title: String,
+        pos: BlockPos,
+        facing: u8,
+    },
     /// `0x33`: a sign's four lines (JSON chat).
     UpdateSign { pos: BlockPos, lines: [String; 4] },
     /// `0x34`: a map's scale, icons, and the colors of a rectangle (`columns` 0: none).
@@ -1037,6 +1045,7 @@ impl ClientboundPlay {
             Self::BlockAction { .. } => 0x24,
             Self::WindowProperty { .. } => 0x31,
             Self::SpawnExperienceOrb { .. } => 0x11,
+            Self::SpawnPainting { .. } => 0x10,
             Self::UpdateSign { .. } => 0x33,
             Self::Maps { .. } => 0x34,
             Self::ScoreboardObjective { .. } => 0x3b,
@@ -1447,6 +1456,17 @@ impl ClientboundPlay {
             } => {
                 w.varint(*entity_id).i32(*x).i32(*y).i32(*z).i16(*count);
             }
+            Self::SpawnPainting {
+                entity_id,
+                title,
+                pos,
+                facing,
+            } => {
+                w.varint(*entity_id)
+                    .string(title)?
+                    .position(pos.0, pos.1, pos.2)
+                    .u8(*facing);
+            }
             Self::UpdateSign { pos, lines } => {
                 w.position(pos.0, pos.1, pos.2);
                 for line in lines {
@@ -1743,6 +1763,13 @@ impl ClientboundPlay {
                 z: r.i32()?,
                 count: r.i16()?,
             },
+            // The longest title is "SkullAndRoses".
+            0x10 => Self::SpawnPainting {
+                entity_id: r.varint()?,
+                title: r.string(13)?,
+                pos: r.position()?,
+                facing: r.u8()?,
+            },
             0x33 => Self::UpdateSign {
                 pos: r.position()?,
                 lines: [
@@ -2023,6 +2050,24 @@ mod tests {
     use super::*;
 
     const V: ProtocolVersion = ProtocolVersion::V47;
+
+    #[test]
+    fn spawn_painting_bytes() {
+        let p = ClientboundPlay::SpawnPainting {
+            entity_id: 5,
+            title: "Kebab".into(),
+            pos: (1, 64, -1),
+            facing: 2,
+        };
+        let bytes = p.encode(V).unwrap();
+        // Id, entity id, title, position (x << 38 | y << 26 | z & 0x3ffffff), facing.
+        let mut want = vec![0x10, 0x05, 0x05];
+        want.extend_from_slice(b"Kebab");
+        want.extend_from_slice(&(1u64 << 38 | 64 << 26 | 0x3ff_ffff).to_be_bytes());
+        want.push(2);
+        assert_eq!(bytes, want);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
+    }
 
     #[test]
     fn entity_action_golden_bytes() {

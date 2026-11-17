@@ -669,11 +669,7 @@ impl Game {
         }
         let hurt = match target {
             Target::Player(t) => self.attack_player(t, source, damage as f32),
-            // Entity.attackEntityFrom: only setBeenAttacked.
-            other_target => {
-                self.attack_target(other_target, source, damage as f32);
-                false
-            }
+            other_target => self.attack_target(other_target, source, damage as f32),
         };
         if !hurt {
             return false;

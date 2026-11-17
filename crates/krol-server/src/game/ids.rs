@@ -286,6 +286,10 @@ pub mod item {
     pub const SIGN: i16 = 323;
     /// `banner`.
     pub const BANNER: i16 = 425;
+    /// `painting`.
+    pub const PAINTING: i16 = 321;
+    /// `item_frame`.
+    pub const ITEM_FRAME: i16 = 389;
     /// `bucket`.
     pub const BUCKET: i16 = 325;
     /// `water_bucket`.

@@ -1,0 +1,112 @@
+description = "Paintings and item frames: a painting and two item frames hung on a wall (spawn packets, metadata), a third frame that does not fit (an entity id used up anyway), a diamond put into a frame and turned twice (a comparator behind the wall reads it), a diamond knocked out of the other frame and the frame broken, the painting popping off when its wall goes; drops, comparator output, the frame left hanging saved with its chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, facing south, and is
+# switched to survival from the console. Everything hangs on the north face of a stone
+# wall at z = -432. Drops start half inside that wall and get pushed out of it by their
+# own random, sometimes shot north fast enough to reach jeb_, so a glass wall at
+# z = -434 (with the corridor's ends closed) keeps them in: jeb_ hits and uses the frames
+# through it, within the 3 blocks allowed without line of sight. The drops are killed
+# before the server stops. The painting's art is drawn from its own random (unseeded,
+# not pinned) among those that fit (at most 2x2 blocks there), so its title is not
+# compared. The comparator stands south of the wall block behind frame B and reads it
+# through that block.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -476 4 -432 -466 6 -432 stone"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -434 -465 8 -434 glass"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -433 -477 8 -433 glass"
+
+[[steps]]
+action = "console"
+command = "fill -465 4 -433 -465 8 -433 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -431 unpowered_comparator 2"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 20
+chat = [
+    "@4500 !hold 0",
+    "@4800 !place -474 5 -432 2",
+    "@5300 !hold 1",
+    "@5600 !place -472 5 -432 2",
+    "@6100 !place -471 4 -432 2",
+    "@6400 !place -472 5 -432 2",
+    "@6600 !hold 2",
+    "@7000 !interact 6",
+    "@8000 !interact 6",
+    "@9000 !interact 6",
+    "@10000 !interact 5",
+    "@11000 !attack 5",
+    "@12000 !attack 5",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ painting"
+
+[[steps]]
+action = "console"
+command = "give jeb_ item_frame 3"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond 2"
+wait_ms = 11000
+
+[[steps]]
+action = "console"
+command = "setblock -474 5 -432 air"
+wait_ms = 7000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin), and
+# where the drops end up is random.
+log_ignore_prefixes = ["Killed item.item."]
+blocks = [[-471, 4, -431]]
+tile_entities = [[-471, 4, -431]]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    # The painting's art (random, see above).
+    "player.packets[37].title",
+]

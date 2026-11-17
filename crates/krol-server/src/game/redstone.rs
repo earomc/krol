@@ -842,8 +842,12 @@ impl Game {
             let s2 = self.level.overworld.block(behind.0, behind.1, behind.2);
             if let Some(signal) = self.comparator_override(behind, s2) {
                 power = signal;
+            } else if super::block_data::material(s2 >> 4) == super::block_data::Material::Air
+                && let Some(signal) = self.item_frame_signal(behind, facing)
+            {
+                // An item frame on the far side of the cube, facing the same way.
+                power = signal;
             }
-            // TODO(M5): item frames on the far side of the cube.
         }
         power
     }

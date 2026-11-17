@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-17 (commit `server: bows and arrows`).
+Status as of 2026-11-17 (commit `server: paintings and item frames`).
 
 **Legend**
 
@@ -22,10 +22,9 @@ Status as of 2026-11-17 (commit `server: bows and arrows`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 entities without AI**: item frames and paintings (hanging entities), armor
-   stands, minecarts and boats, with their spawn packets, tracking and saving
-   (projectiles from players are done: arrows, snowballs, eggs, ender pearls,
-   experience bottles, splash potions).
+1. **M5 entities without AI**: maps shown in item frames, armor stands, minecarts and
+   boats, with their spawn packets, tracking and saving (done: projectiles from
+   players, paintings and item frames).
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
 
@@ -127,9 +126,9 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
-| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows. Missing: boats, minecarts, fireballs, item frames, armor stands, fishing hooks, ... |
+| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames. Missing: boats, minecarts, fireballs, leash knots, armor stands, fishing hooks, ... |
 | 0x0F Spawn Mob | ❌ | No mobs |
-| 0x10 Spawn Painting | ❌ | |
+| 0x10 Spawn Painting | ✅ | |
 | 0x11 Spawn Experience Orb | ✅ | |
 | 0x12 Entity Velocity · 0x13 Destroy Entities · 0x15 Entity Relative Move · 0x16 Entity Look · 0x17 Entity Look And Relative Move · 0x18 Entity Teleport · 0x19 Entity Head Look | ✅ | |
 | 0x14 Entity (no-op) | ❌ | Not sent by krol yet; vanilla sends it for entities that didn't move in some update cycles |
@@ -361,7 +360,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockRedstoneWire` | ✅ | Update order quirks reproduced |
 | `BlockRedstoneTorch` | ✅ | Burnout |
 | `BlockRedstoneLight` | ✅ | |
-| `BlockRedstoneRepeater`, `BlockRedstoneComparator`, `BlockRedstoneDiode` | ✅ | Comparators reading containers, cake, cauldrons ✅; jukeboxes, brewing stands, end portal frames, item frames ❌ |
+| `BlockRedstoneRepeater`, `BlockRedstoneComparator`, `BlockRedstoneDiode` | ✅ | Comparators reading containers, cake, cauldrons, item frames ✅; jukeboxes, brewing stands, end portal frames ❌ |
 | `BlockLever`, `BlockButton`, `BlockButtonStone`, `BlockButtonWood` | 🟡 | Wooden buttons pressed by arrows ❌ |
 | `BlockBasePressurePlate`, `BlockPressurePlate`, `BlockPressurePlateWeighted` | ✅ | Entity kinds limited to those krol has |
 | `BlockPistonBase`, `BlockPistonExtension`, `BlockPistonMoving` | 🟡 | Moving entities ❌ |
@@ -402,7 +401,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemSnowball`, `ItemEgg`, `ItemEnderPearl`, `ItemExpBottle` | ✅ | Throwing (see [entity.projectile](#entityprojectile)): the stack shrinks unless creative (creative players cannot throw pearls), `random.bow` with `Item.itemRand`, the use statistic |
 | `ItemEnderEye`, `ItemFireball`, `ItemFirework`, `ItemFireworkCharge` | ❌ | |
 | `ItemMinecart`, `ItemBoat` | ❌ | |
-| `ItemHangingEntity` (paintings, item frames), `ItemArmorStand` | ❌ | |
+| `ItemHangingEntity` (paintings, item frames) | ✅ | The random art among those that fit, the use statistic even when nothing fits |
+| `ItemArmorStand` | ❌ | |
 | `ItemMonsterPlacer` (spawn eggs) | ❌ | |
 | `ItemSaddle`, `ItemLead`, `ItemNameTag`, `ItemCarrotOnAStick` | ❌ | |
 | `ItemMap`, `ItemEmptyMap` | 🟡 | Making maps, drawing the held map (block map colors extracted from vanilla, height shading, water depth, the rim), player icons and the off-map icon, map packets, maps without data recreated around the spawn, zoomed maps from the crafting grid (cursor pickup), cloning/extending recipes ✅; item frames, `Decorations` lists, shift-clicked zoom results, unloaded chunks, color ties at larger scales, the nether ❌ |
@@ -479,7 +479,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `DataWatcher` (metadata) | ✅ | |
 | `EntityLivingBase`: health, hurt time, hurt resistance, `attackEntityFrom`, armor, absorption, effects, attributes, air, death update, knockback | 🟡 | Knockback from attacking entities ✅ (explosions); combat tracker death messages ✅ for implemented sources |
 | `EntityLiving` (mobs: AI tasks, equipment, despawning, leashes) | ❌ | |
-| `EntityCreature`, `EntityAgeable`, `EntityFlying`, `EntityHanging` | ❌ | |
+| `EntityHanging` | ✅ | See `EntityItemFrame`, `EntityPainting` |
+| `EntityCreature`, `EntityAgeable`, `EntityFlying` | ❌ | |
 | `EntityTracker`, `EntityTrackerEntry` | 🟡 | All implemented entity kinds; ranges/intervals for missing kinds |
 | `EntityList` (ids, names, NBT creation, spawn eggs) | ❌ | |
 | `SharedMonsterAttributes`, `ai.attributes` | ✅ | Players |
@@ -518,7 +519,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
 | `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | ❌ | |
 | `EntityBoat` | ❌ | |
-| `EntityItemFrame`, `EntityPainting`, `EntityLeashKnot` | ❌ | |
+| `EntityItemFrame`, `EntityPainting` | 🟡 | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`. Maps shown in frames (decorations, map packets every 10 ticks) ❌; invulnerable frames, `/tp` and old saves are not in a scenario |
+| `EntityLeashKnot` | ❌ | |
 | `EntityArmorStand` | ❌ | |
 | `EntityEnderCrystal` | ❌ | |
 | `EntityFireworkRocket` | ❌ | |

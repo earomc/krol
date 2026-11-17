@@ -110,6 +110,11 @@ impl Game {
                 .values()
                 .filter(|a| !a.dead && a.body.bb().intersects(area))
                 .count()
+            + self
+                .hanging
+                .values()
+                .filter(|h| !h.dead && h.bb.intersects(area))
+                .count()
     }
 
     /// `computeRedstoneStrength`.

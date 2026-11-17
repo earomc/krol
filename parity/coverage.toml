@@ -259,6 +259,11 @@ description = "ItemBow and EntityArrow: drawing a bow (the use flag), releasing 
 scenarios = ["play/bows"]
 
 [[feature]]
+id = "entity.hanging"
+description = "EntityPainting and EntityItemFrame: ItemHangingEntity.onItemUse (on the side of a block, the item used up), spawn painting (title, hanging position, facing) and spawn object 71 at the hanging position with the facing as data, base metadata; a frame that does not fit (the entity id used up anyway, the item kept, the use statistic); hits and uses through glass within 3 blocks; an item put into a frame (the first change packet with every entry, the held slot resynced on the next player update), turned by eighths (only the rotation), knocked out by a hit (dropped, the frame stays) and the frame broken by a second hit (destroy entities, the frame dropped); a comparator reading a frame through a block (block change, OutputSignal); a painting popping off when its wall goes (the surface check every 101 updates, the painting dropped); a frame saved with its chunk (Item, ItemRotation, ItemDropChance, Facing, TileX/Y/Z). Not yet in a scenario: projectiles and explosions breaking hanging entities, creative players breaking them (no drops), doEntityDrops, invulnerable ones, loading, /tp, maps in frames (missing)"
+scenarios = ["play/hanging"]
+
+[[feature]]
 id = "entity.splash_potions"
 description = "EntityPotion: ItemPotion.onItemRightClick for splash potions (thrown like the other throwables: speed 0.5, lobbed 20 degrees, gravity 0.05), spawn object 73 with the potion's damage value as data, the 2002 effect with that value, direct hits at full strength: instant damage (indirectMagic, knockback from the thrower), instant health, a lasting effect with its attribute modifier; potion display names in /give's log line. Not yet in a scenario: splashes reaching entities that were not hit (the share depends on the unpinned throw spread), effects of 20 ticks or less being dropped, saving with the chunk"
 scenarios = ["play/splash_potions"]

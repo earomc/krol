@@ -4,9 +4,11 @@
 //! (`EntityLivingBase.func_94060_bK`) and the scores a kill gives
 //! (`EntityPlayer.addToPlayerScore`).
 //!
-//! TODO(M5): attacking other entities than players (only players are living entities
-//! in krol; falling blocks and primed TNT are ignored), interacting with entities, the
-//! overkill achievement.
+//! Paintings and item frames can be hit (which breaks them) and item frames used.
+//!
+//! TODO(M5): attacking other entities (only players are living entities in krol;
+//! falling blocks, primed TNT and projectiles are ignored), interacting with other
+//! entities, spectators attacking entities to spectate them, the overkill achievement.
 
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
@@ -43,7 +45,10 @@ const BLINDNESS: u8 = 15;
 const REACH_SQ_VISIBLE: f64 = 36.0;
 const REACH_SQ_HIDDEN: f64 = 9.0;
 /// `C02PacketUseEntity.Action` ids.
+const INTERACT: i32 = 0;
 const ATTACK: i32 = 1;
+/// The spectator game mode.
+const SPECTATOR: i32 = 3;
 /// The sound thorns make at the attacker (`damage.thorns`, volume 0.5, pitch 1).
 const THORNS_SOUND: &str = "damage.thorns";
 const THORNS_VOLUME: f32 = 0.5;
@@ -166,16 +171,21 @@ impl Game {
         }
     }
 
-    /// `processUseEntity`: attacks within reach (6 blocks, 3 through walls).
-    ///
-    /// TODO(M5): interacting with entities (actions 0 and 2).
+    /// `processUseEntity`: attacks and interactions within reach (6 blocks, 3 through
+    /// walls).
     pub(super) fn use_entity(&mut self, i: usize, target: i32, action: i32) {
         let target_player = self
             .players
             .iter()
             .position(|p| p.entity_id == target && !p.removed);
+        let hanging = self
+            .hanging
+            .get(&target)
+            .map(|h| (h.body.pos, h.body.height * 0.85));
         let pos = if let Some(t) = target_player {
             Some(self.players[t].pos)
+        } else if let Some((pos, _)) = hanging {
+            Some(pos)
         } else if let Some(it) = self.items.get(&target) {
             Some(it.body.pos)
         } else {
@@ -184,7 +194,13 @@ impl Game {
         let Some(pos) = pos else {
             return;
         };
-        let seen = target_player.is_none_or(|t| self.can_see(i, t));
+        let seen = match (target_player, hanging) {
+            (Some(t), _) => self.can_see(i, t),
+            (None, Some((pos, eye))) => {
+                self.can_see_point(i, (pos.0, pos.1 + f64::from(eye), pos.2))
+            }
+            (None, None) => true,
+        };
         let reach = if seen {
             REACH_SQ_VISIBLE
         } else {
@@ -192,7 +208,23 @@ impl Game {
         };
         let p = self.players[i].pos;
         let d = (p.0 - pos.0, p.1 - pos.1, p.2 - pos.2);
-        if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 >= reach || action != ATTACK {
+        if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 >= reach {
+            return;
+        }
+        if hanging.is_some() {
+            match action {
+                INTERACT => self.interact_hanging(i, target),
+                // EntityHanging.hitByEntity: a hit from a player that cannot hurt it
+                // (invulnerable) goes on as a plain attack, which hurts nothing either.
+                ATTACK if self.players[i].gamemode != SPECTATOR => {
+                    let attacker = self.players[i].entity_id;
+                    let _ = self.attack_hanging(target, DamageSource::Player(attacker));
+                }
+                _ => {}
+            }
+            return;
+        }
+        if action != ATTACK {
             return;
         }
         match target_player {
@@ -207,9 +239,16 @@ impl Game {
 
     /// `EntityLivingBase.canEntityBeSeen`: nothing blocks the line between the eyes.
     fn can_see(&mut self, i: usize, t: usize) -> bool {
-        let eye =
-            |p: &super::player::Player| (p.pos.0, p.pos.1 + f64::from(p.eye_height()), p.pos.2);
-        let (from, to) = (eye(&self.players[i]), eye(&self.players[t]));
+        let p = &self.players[t];
+        let to = (p.pos.0, p.pos.1 + f64::from(p.eye_height()), p.pos.2);
+        self.can_see_point(i, to)
+    }
+
+    /// Whether nothing blocks the line from the player's eyes to `to` (the eyes of the
+    /// entity looked at).
+    fn can_see_point(&mut self, i: usize, to: (f64, f64, f64)) -> bool {
+        let p = &self.players[i];
+        let from = (p.pos.0, p.pos.1 + f64::from(p.eye_height()), p.pos.2);
         super::raytrace::ray_trace_blocks(&mut self.level.overworld, from, to, false, false)
             .is_none()
     }
