@@ -114,6 +114,11 @@ into server ticks. Rules learned from flaky scenarios:
 - **Players cannot be hurt by players for 60 ticks** after joining or respawning
   (`respawnInvulnerabilityTicks`), and a respawned player keeps its entity id (target it
   with the same `!attack` id).
+- **Items spawned inside a block get pushed out by their own unseeded random**
+  (`pushOutOfBlocks`: a record popping out of a jukebox, drops landing in a wall).
+  They can slide several blocks, so wall them in away from players and leave their
+  position, motion and yaw out of the comparison (`play/jukeboxes`). `/give` hands items
+  over as entities picked up a tick later: wait before using what it gives.
 - **Space drops by their fall time**: a block dropped from 26 blocks up lands about 2 s
   later; console drops closer together race one landing against the next spawn.
 - Resting items and orbs keep a horizontal motion that shrinks every tick, and their

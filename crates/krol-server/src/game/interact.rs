@@ -15,14 +15,36 @@ use super::placement::{self, is_normal_cube, offset};
 /// Blocks whose `onBlockActivated` returns true without krol modeling what they do yet
 /// (the click is used up, nothing is placed).
 fn consumes_click(state: u16) -> bool {
-    let (id, meta) = (state >> 4, state & 15);
-    match id {
-        23 | 25 | 26 | 54 | 58 | 61 | 62 | 69 | 77 | 92 | 93 | 94 | 116 | 117 | 118 | 122 | 130
-        | 137 | 138 | 143 | 145 | 146 | 149 | 150 | 151 | 154 | 158 | 178 => true,
-        // A jukebox only reacts while it holds a record.
-        84 => meta & 1 != 0,
-        _ => false,
-    }
+    matches!(
+        state >> 4,
+        23 | 25
+            | 26
+            | 54
+            | 58
+            | 61
+            | 62
+            | 69
+            | 77
+            | 92
+            | 93
+            | 94
+            | 116
+            | 117
+            | 118
+            | 122
+            | 130
+            | 137
+            | 138
+            | 143
+            | 145
+            | 146
+            | 149
+            | 150
+            | 151
+            | 154
+            | 158
+            | 178
+    )
 }
 
 /// `EnumFacing.fromAngle`.
@@ -186,6 +208,7 @@ impl Game {
             }
             super::flower_pot::FLOWER_POT => self.activate_flower_pot(i, pos),
             super::cauldron::CAULDRON => self.activate_cauldron(i, pos, state),
+            super::jukebox::JUKEBOX => self.activate_jukebox(pos, state),
             block::LEVER => {
                 self.activate_lever(pos);
                 true

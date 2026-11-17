@@ -6,8 +6,8 @@
 //! the fortune bonus), then per drop a chance float and the item. Blocks whose quantity
 //! is 1 but drop nothing still roll the chance float.
 //!
-//! TODO(M5): pistons' moving blocks (`BlockPistonMoving` drops the block it carries),
-//! skulls and jukebox records.
+//! TODO(M5): pistons' moving blocks (`BlockPistonMoving` drops the block it carries)
+//! and skulls.
 
 use krol_protocol::packets::play::ItemStack;
 

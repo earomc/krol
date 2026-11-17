@@ -298,7 +298,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Class | Status | Notes |
 |---|---|---|
-| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Drops of every block (`quantityDroppedWithBonus`, `getItemDropped`, `damageDropped` and the `dropBlockAsItemWithChance` overrides: crops, stems, nether wart, potatoes, spawners' experience), with fortune and silk touch (`canSilkHarvest`, `createStackedBlock`) ✅; moving pistons' carried blocks, skulls and jukebox records ❌ |
+| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Drops of every block (`quantityDroppedWithBonus`, `getItemDropped`, `damageDropped` and the `dropBlockAsItemWithChance` overrides: crops, stems, nether wart, potatoes, spawners' experience), with fortune and silk touch (`canSilkHarvest`, `createStackedBlock`) ✅; moving pistons' carried blocks and skulls ❌ |
 | `BlockAir`, `BlockBarrier`, `BlockStone`, `BlockDirt` (coarse dirt, podzol), `BlockPlanks`, `BlockSand`, `BlockSandStone`, `BlockRedSandstone`, `BlockClay`, `BlockGlowstone`, `BlockObsidian`, `BlockBookshelf`, `BlockNetherBrick`, `BlockNetherrack`, `BlockHardenedClay`, `BlockColored`, `BlockCompressedPowered` (redstone block), `BlockOre`, `BlockPrismarine`, `BlockQuartz`, `BlockSeaLantern`, `BlockStoneBrick`, `BlockMelon`, `BlockHay`, `BlockGlass`, `BlockStainedGlass`, `BlockPackedIce` | ✅ | Drops per block (ores, glowstone, melons, clay, sea lanterns, ...). Hay does not soften falls in 1.8.8 |
 | `BlockGrass`, `BlockMycelium` | ✅ | Spreading/dying, snowy variant, bone meal on grass |
 | `BlockGravel` | ✅ | Falling, flint drop chance, fortune |
@@ -345,7 +345,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockCauldron` | ✅ | Water buckets, bottles, washing leather armor and banner patterns (with vanilla's stat quirk), rain, putting out burning players, comparator output. Rain and burning players are not in a scenario (rain needs pinned randoms) |
 | `BlockBeacon` | ❌ | |
 | `BlockFlowerPot` | ✅ | Placement on a solid top, potting plants (flowers, saplings, mushrooms, cactus, dead bush, fern), support, the plant dropping on any removal (not after a creative harvest) |
-| `BlockJukebox` | ❌ | The click is consumed when holding a record; records ❌ |
+| `BlockJukebox` | ✅ | Records in and out (effect 1005), the record popping out when the jukebox goes, comparator output |
 | `BlockSkull` | ❌ | Placement, tile entity, wither summoning |
 | `BlockBanner` | ✅ | Standing and wall banners, support, harvest drop (Base and Patterns, no exhaustion) and other drops (the whole tile entity) |
 | `BlockMobSpawner` | ❌ | Spawning logic, XP drop |
@@ -402,7 +402,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemSaddle`, `ItemLead`, `ItemNameTag`, `ItemCarrotOnAStick` | ❌ | |
 | `ItemMap`, `ItemEmptyMap` | ❌ | Map cloning/extending recipes ✅ |
 | `ItemBook`, `ItemWritableBook`, `ItemEditableBook`, `ItemEnchantedBook` | 🟡 | Book cloning recipe ✅; editing/signing books (`MC|BEdit`, `MC|BSign`) ❌ |
-| `ItemRecord` | ❌ | |
+| `ItemRecord` | ✅ | `stat.recordPlayed` |
 | `ItemCoal`, `ItemSimpleFoiled` | ✅ | |
 
 ### net.minecraft.item.crafting
@@ -461,7 +461,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `TileEntityDaylightDetector` | ❌ | |
 | `TileEntityCommandBlock` | ❌ | |
 | `TileEntityEndPortal` | ❌ | |
-| Jukebox (`BlockJukebox.TileEntityJukebox`) | ❌ | |
+| Jukebox (`BlockJukebox.TileEntityJukebox`) | 🟡 | `RecordItem` ✅; the old numeric `Record` tag on load and `/setblock` data tags ❌ |
 
 ## net.minecraft.entity
 
@@ -507,8 +507,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Class | Status | Notes |
 |---|---|---|
-| `EntityItem` | ✅ | Physics, merging, pickup, despawn, water, thrower, saving with the chunk. Burning in lava/fire (the saved `Fire` counter) ❌ |
-| `EntityXPOrb` | ✅ | Saving with the chunk (loaded orbs are 0.25 wide, a vanilla quirk). Lava, water flow ❌ |
+| `EntityItem` | ✅ | Physics (pushed out of blocks), merging, pickup, despawn, water, thrower, saving with the chunk. Burning in lava/fire (the saved `Fire` counter) ❌ |
+| `EntityXPOrb` | ✅ | Pushed out of blocks, saving with the chunk (loaded orbs are 0.25 wide, a vanilla quirk). Lava, water flow ❌ |
 | `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random), saving with the chunk (`TileEntityData` kept); dragon eggs, piston extensions, placing `TileEntityData` ❌ |
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
 | `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | ❌ | |

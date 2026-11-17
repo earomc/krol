@@ -798,6 +798,9 @@ impl Game {
         if id == super::cauldron::CAULDRON {
             return Some(i32::from(state & 15));
         }
+        if id == super::jukebox::JUKEBOX {
+            return Some(self.jukebox_signal(pos));
+        }
         if id == super::brewing::BREWING_STAND {
             return Some(container_signal(&self.brewing_items(pos)));
         }

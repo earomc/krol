@@ -84,12 +84,16 @@ impl Game {
             && state >> 4 != super::flower_pot::FLOWER_POT)
             .then(|| self.flower_pot_contents(pos))
             .flatten();
+        let record = self.jukebox_contents(pos, old, state);
         let w = &mut self.level.overworld;
         if !w.set_block_unmarked(pos.0, pos.1, pos.2, state) {
             return;
         }
         if let Some(plant) = potted {
             self.spawn_as_entity(pos, plant);
+        }
+        if let Some(record) = record {
+            self.jukebox_broken(pos, record);
         }
         if old >> 4 != state >> 4 {
             self.block_removed(pos, old);

@@ -39,6 +39,7 @@ pub mod ids;
 mod interact;
 mod item_data;
 mod item_entity;
+mod jukebox;
 mod leaves;
 mod light_data;
 mod liquids;
@@ -1973,6 +1974,10 @@ impl Game {
         }
         if stack.id == ids::item::BANNER {
             self.place_banner(i, pos, face as u8);
+            return;
+        }
+        if jukebox::is_record(stack.id) {
+            self.insert_record(i, pos);
             return;
         }
         let player = &self.players[i];

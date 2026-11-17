@@ -530,12 +530,13 @@ impl World {
             block::DROPPER => "Dropper",
             block::ENDER_CHEST => "EnderChest",
             block::ENCHANTING_TABLE => "EnchantTable",
+            super::jukebox::JUKEBOX => "RecordPlayer",
             _ => return,
         };
         if self.tile_entity_index(pos).is_some() {
             return;
         }
-        if id == "EnchantTable" {
+        if id == "EnchantTable" || id == "RecordPlayer" {
             // TileEntityEnchantmentTable without a custom name writes only the basics.
             let mut c = Compound::new();
             c.insert("id", Tag::String(id.into()));

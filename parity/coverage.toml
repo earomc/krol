@@ -215,7 +215,7 @@ scenarios = ["play/silk_fortune"]
 
 [[feature]]
 id = "blocks.special_drops"
-description = "Block drops by dropBlockAsItemWithChance (no fortune) with World.rand pinned: crops with their extra seed rolls and the poisonous potato roll, stem seed rolls, nether wart, sugar cane, string from tripwire and cobwebs, nothing from vines, stained glass, packed ice; wall and anvil variants; the chance rolls of blocks dropping nothing (end portal frame, dead bush, glass pane); quantity rolls of glowstone, melon, tall grass, redstone ore (with experience) and sea lanterns. Not yet: moving pistons' blocks, skulls, records"
+description = "Block drops by dropBlockAsItemWithChance (no fortune) with World.rand pinned: crops with their extra seed rolls and the poisonous potato roll, stem seed rolls, nether wart, sugar cane, string from tripwire and cobwebs, nothing from vines, stained glass, packed ice; wall and anvil variants; the chance rolls of blocks dropping nothing (end portal frame, dead bush, glass pane); quantity rolls of glowstone, melon, tall grass, redstone ore (with experience) and sea lanterns. Not yet: moving pistons' blocks, skulls"
 scenarios = ["play/block_drops_pinned"]
 
 [[feature]]
@@ -225,8 +225,13 @@ scenarios = ["play/silk_fortune", "play/block_drops_pinned"]
 
 [[feature]]
 id = "entity.items"
-description = "Item entities: block drops, spawn/metadata/velocity, physics, pickup (collect, pop sound, inventory), destroy"
-scenarios = ["play/survival_mining"]
+description = "Item entities: block drops, spawn/metadata/velocity, physics, pickup (collect, pop sound, inventory), destroy; pushOutOfBlocks (records popping out inside a jukebox)"
+scenarios = ["play/survival_mining", "play/jukeboxes"]
+
+[[feature]]
+id = "blocks.jukebox"
+description = "Jukeboxes and records: ItemRecord.onItemUse (effect 1005 with the record id, has_record set quietly, stat.recordPlayed, the record used up), taking the record out (effect 1005 with 0, the record popping out above), comparators reading the record number, a jukebox destroyed by /setblock dropping itself and then its record (breakBlock). Not yet: the old numeric Record tag, /setblock data tags"
+scenarios = ["play/jukeboxes"]
 
 [[feature]]
 id = "entity.item_drop"

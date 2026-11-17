@@ -1,0 +1,115 @@
+description = "Jukeboxes: a record put in (effect 1005 with the record id, has_record, stat.recordPlayed, the record used up), taken out with an empty hand (effect 1005 with 0, the record popping out on top), another record put in with a comparator behind reading its number (12 for record_wait), and a jukebox destroyed by /setblock dropping itself and then its record"
+subsystem = "blocks"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode (no spawn offset) and is
+# made survival from the console. The jukeboxes stand 4.5 blocks and more north of
+# him, out of his pickup reach, so the records they spit out stay where they land. Where that is
+# depends on unseeded randoms (World.rand for the spot, Math.random for the motion),
+# so their saved position, motion and yaw are not compared. A record pops out
+# partly inside the jukebox, where it is pushed out of the block (pushOutOfBlocks,
+# with the item's own random). Stone walls in the jukeboxes and the comparator, so a record pushed
+# out stays on the stone or in the comparator's pit, away from jeb_.
+#
+# /give hands the records over as items picked up a tick later, so the clicks wait
+# until all three have arrived.
+#
+# The comparator at z -440 faces south (metadata 0), reading the first jukebox.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -470 4 -443 -468 4 -438 stone"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -439 jukebox"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -442 jukebox"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -440 unpowered_comparator 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 13
+chat = [
+    "@5000 !place -469 4 -439 1",
+    "@6000 !place -469 4 -439 1",
+    "@6800 !hold 1",
+    "@7000 !place -469 4 -439 1",
+    "@7800 !hold 2",
+    "@8000 !place -469 4 -442 1",
+]
+
+[[steps]]
+action = "wait"
+ms = 1200
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ record_cat"
+
+[[steps]]
+action = "console"
+command = "give jeb_ record_wait"
+
+[[steps]]
+action = "console"
+command = "give jeb_ record_13"
+wait_ms = 9000
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -442 air 0 destroy"
+wait_ms = 2500
+
+[observe]
+log = true
+blocks = [[-469, 4, -439], [-469, 4, -442], [-469, 4, -440]]
+tile_entities = [[-469, 4, -439], [-469, 4, -440]]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    # Where the records end up is random (see above): they are pushed out of the jukebox
+    # by the item's own unseeded random and can slide a few blocks over the stone.
+    "entities.-30,-28[0].Pos",
+    "entities.-30,-28[1].Pos",
+    "entities.-30,-28[2].Pos",
+    "entities.-30,-28[0].Motion",
+    "entities.-30,-28[1].Motion",
+    "entities.-30,-28[2].Motion",
+    "entities.-30,-28[0].Rotation",
+    "entities.-30,-28[1].Rotation",
+    "entities.-30,-28[2].Rotation",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+]
+
+# Ages count the ticks until the server stops.
+[observe.tolerance]
+"entities.-30,-28[0].Age" = 60
+"entities.-30,-28[1].Age" = 60
+"entities.-30,-28[2].Age" = 60
