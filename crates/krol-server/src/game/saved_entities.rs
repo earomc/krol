@@ -2,7 +2,7 @@
 //! `AnvilChunkLoader.writeChunkToNBT` / `readChunkFromNBT`, `Chunk.entityLists`,
 //! `Chunk.onChunkLoad`, `EntityList.createEntityFromNBT`, `Entity.writeToNBT` /
 //! `readFromNBT` and the `writeEntityToNBT` / `readEntityFromNBT` of items, experience
-//! orbs, falling blocks and primed TNT).
+//! orbs, falling blocks, primed TNT and thrown projectiles).
 //!
 //! Every chunk keeps its entities in 16 lists, one per 16-block section, in the order
 //! they entered the section; the chunk saves them in that order. Saved entities of the
@@ -426,6 +426,8 @@ impl Game {
             Some(o.body.pos)
         } else if let Some(f) = self.falling.get(&id) {
             Some(f.body.pos)
+        } else if let Some(t) = self.thrown.get(&id) {
+            Some(t.body.pos)
         } else {
             self.tnt.get(&id).map(|t| t.body.pos)
         }
@@ -570,12 +572,24 @@ impl Game {
                 self.tnt.insert(id, PrimedTnt::load(body, base, c));
                 pos
             }
-            _ => {
-                let p = doubles(c, "Pos");
-                self.entity_uuids.remove(&id);
-                self.chunk_entities.kept.insert(id, c.clone());
-                (p[0], p[1], p[2])
-            }
+            saved => match super::throwable::Kind::from_saved_id(saved) {
+                Some(thrown_kind) => {
+                    body.width = super::throwable::SIZE;
+                    body.height = super::throwable::SIZE;
+                    let (base, uuid) = EntityBase::read(c, &mut body);
+                    self.set_saved_uuid(id, uuid);
+                    let pos = body.pos;
+                    let t = super::throwable::Throwable::load(thrown_kind, body, base, c);
+                    self.thrown.insert(id, t);
+                    pos
+                }
+                None => {
+                    let p = doubles(c, "Pos");
+                    self.entity_uuids.remove(&id);
+                    self.chunk_entities.kept.insert(id, c.clone());
+                    (p[0], p[1], p[2])
+                }
+            },
         };
         // Chunk.addEntity: an entity saved in the wrong chunk is set dead (it still
         // joins this chunk's list, and is not saved again).
@@ -643,6 +657,13 @@ impl Game {
             c.insert("id", Tag::String(FALLING_ID.into()));
             f.base.write(&f.body, uuid, &mut c);
             f.write(&mut c);
+        } else if let Some(t) = self.thrown.get(&id) {
+            if t.dead {
+                return None;
+            }
+            c.insert("id", Tag::String(t.kind.saved_id().into()));
+            t.base.write(&t.body, uuid, &mut c);
+            t.write(&mut c);
         } else {
             let t = self.tnt.get(&id).filter(|t| !t.dead)?;
             c.insert("id", Tag::String(TNT_ID.into()));

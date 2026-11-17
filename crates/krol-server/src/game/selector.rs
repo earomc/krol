@@ -382,6 +382,10 @@ impl Game {
             f.body.pos = pos;
         } else if let Some(t) = self.tnt.get_mut(&id) {
             t.body.pos = pos;
+        } else if let Some(t) = self.thrown.get_mut(&id) {
+            t.body.pos = pos;
+            t.base.yaw = rotation.0;
+            t.base.pitch = rotation.1;
         }
     }
 
@@ -395,6 +399,8 @@ impl Game {
         } else if let Some(f) = self.falling.get_mut(&id) {
             f.dead = true;
         } else if let Some(t) = self.tnt.get_mut(&id) {
+            t.dead = true;
+        } else if let Some(t) = self.thrown.get_mut(&id) {
             t.dead = true;
         }
     }
@@ -460,6 +466,18 @@ impl Game {
                 type_name: "PrimedTnt",
                 name: Some("Block of TNT".into()),
                 rotation: (0.0, 0.0),
+                entity_id: id,
+            });
+        }
+        for (&id, t) in &self.thrown {
+            all.push(Candidate {
+                target: Target::Entity(id),
+                pos: t.body.pos,
+                size: (t.body.width, t.body.height),
+                alive: !t.dead,
+                type_name: t.kind.saved_id(),
+                name: Some(t.kind.name()),
+                rotation: (t.base.yaw, t.base.pitch),
                 entity_id: id,
             });
         }

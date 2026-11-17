@@ -151,6 +151,31 @@ fn intermediate(from: Vec3, to: Vec3, axis: usize, value: f64) -> Option<Vec3> {
         .then(|| (f[0] + d[0] * t, f[1] + d[1] * t, f[2] + d[2] * t))
 }
 
+/// `AxisAlignedBB.calculateIntercept`: where the segment from `start` to `end` first
+/// enters `bb` (the closest crossing of its six faces), if it does.
+pub fn intercept(bb: &super::physics::Aabb, start: Vec3, end: Vec3) -> Option<Vec3> {
+    let within = |v: Vec3, a: usize, b: usize| {
+        let v = [v.0, v.1, v.2];
+        v[a] >= bb.min[a] && v[a] <= bb.max[a] && v[b] >= bb.min[b] && v[b] <= bb.max[b]
+    };
+    let mut best: Option<Vec3> = None;
+    for axis in 0..3 {
+        let (a, b) = match axis {
+            0 => (1, 2),
+            1 => (0, 2),
+            _ => (0, 1),
+        };
+        for value in [bb.min[axis], bb.max[axis]] {
+            if let Some(v) = intermediate(start, end, axis, value).filter(|&v| within(v, a, b))
+                && best.is_none_or(|b| sq_dist(start, v) < sq_dist(start, b))
+            {
+                best = Some(v);
+            }
+        }
+    }
+    best
+}
+
 /// `Block.collisionRayTrace` against the block's bounds.
 fn collision_ray_trace(state: u16, pos: (i32, i32, i32), start: Vec3, end: Vec3) -> Option<Hit> {
     let (lo, hi) = bounds(state);

@@ -249,6 +249,11 @@ description = "Jukeboxes and records: ItemRecord.onItemUse (effect 1005 with the
 scenarios = ["play/jukeboxes"]
 
 [[feature]]
+id = "entity.throwables"
+description = "EntityThrowable: ItemSnowball/ItemEnderPearl.onItemRightClick (the stack shrinks, random.bow, stat.useItem, the inventory resync), spawn object 61/65 with metadata, flight (block ray trace, the thrower ignored for 5 ticks, drag, gravity), the impact killing the entity (destroy entities); the ender pearl teleporting its thrower and dealing 5 fall damage. Not yet in a scenario: eggs (an unpinned 1-in-8 chick roll), experience bottles (their experience rolls on the world random), hits on entities, saving with the chunk, creative throwers"
+scenarios = ["play/throwables"]
+
+[[feature]]
 id = "entity.item_drop"
 description = "Dropping items (Q / Ctrl+Q): toss motion, 40-tick pickup delay, stat.drop, merging, pickup"
 scenarios = ["play/drop_items"]

@@ -1,0 +1,79 @@
+description = "Throwing: a snowball at a wall, a snowball onto the ground, an ender pearl at the ground (the thrower is teleported to it and takes 5 fall damage); spawn objects, the throw sound, use statistics"
+subsystem = "entity"
+
+# jeb_ spawns at -471.5 4 -434.5 (adventure: no spawn offset) facing south, 3.5 blocks
+# from a stone wall. The throws' headings get a small spread from each entity's own
+# random (unseeded, not pinned), so object positions are not compared (the harness
+# drops them anyway) and the pearl's landing spot has a tolerance. The first snowball
+# hits the wall in its third tick, far from a tick boundary; the pearl, thrown 45
+# degrees down, hits the ground in its second. Eggs are left out: vanilla hatches a
+# chick 1 time in 8 with that unpinned random. Mob spawning is off so the pearl cannot
+# spawn an endermite (5%, same random).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -476 4 -431 -467 8 -431 stone"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 10
+chat = [
+    "@3000 !use",
+    "@4000 !look 90 0",
+    "@4500 !use",
+    "@5500 !hold 1",
+    "@6000 !look 0 45",
+    "@6500 !use",
+]
+
+[[steps]]
+action = "console"
+command = "give jeb_ snowball 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ ender_pearl"
+wait_ms = 9000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    # The bot hovers where the pearl landed (it sends no positions after the teleport),
+    # so the falling speed it builds up depends on that height and the packet timing.
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Motion",
+]
+
+# The pearl's landing spot (the teleport and the saved position) depends on its random
+# spread: about 0.01 blocks per axis.
+[observe.tolerance]
+"player.packets[45].x" = 0.1
+"player.packets[45].y" = 0.1
+"player.packets[45].z" = 0.1
+# The same teleport in the 1.7 view, which leaves out the 1.8-only packets before it.
+"player.packets[43].x" = 0.1
+"player.packets[43].y" = 0.1
+"player.packets[43].z" = 0.1
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Pos" = 0.1

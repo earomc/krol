@@ -71,6 +71,7 @@ mod sign;
 mod skull;
 mod special_recipes;
 pub mod stats;
+mod throwable;
 mod tile_data;
 mod tnt;
 mod tracker;
@@ -331,6 +332,8 @@ struct Game {
     falling: std::collections::BTreeMap<i32, falling_block::FallingBlock>,
     /// Primed TNT, by entity id.
     tnt: std::collections::BTreeMap<i32, tnt::PrimedTnt>,
+    /// Thrown snowballs, eggs, ender pearls and experience bottles, by entity id.
+    thrown: std::collections::BTreeMap<i32, throwable::Throwable>,
     /// Every player but spectators lies in bed (`allPlayersSleeping`).
     all_sleeping: bool,
     /// Ticks since the last latency broadcast (`playerPingIndex`).
@@ -361,6 +364,8 @@ struct Game {
     enchant_rand: krol_java::JavaRandom,
     /// The generator behind `Math.random()` (one per JVM in vanilla, unseeded).
     math_random: krol_java::JavaRandom,
+    /// `Item.itemRand`, shared by all items (unseeded in vanilla).
+    item_rand: krol_java::JavaRandom,
     /// Stands in for the per-entity randoms of items and orbs (`Entity.rand`, unseeded
     /// in vanilla and never pinned).
     entity_rand: krol_java::JavaRandom,
@@ -414,6 +419,7 @@ pub fn start(
         orbs: Default::default(),
         falling: Default::default(),
         tnt: Default::default(),
+        thrown: Default::default(),
         all_sleeping: false,
         ping_index: 0,
         wire_gives_power: true,
@@ -443,6 +449,13 @@ pub fn start(
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| {
                     (d.as_nanos() as i64).wrapping_add(MATH_RANDOM_SCRAMBLE)
+                }),
+        ),
+        item_rand: krol_java::JavaRandom::new(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| {
+                    (d.as_nanos() as i64).wrapping_sub(MATH_RANDOM_SCRAMBLE)
                 }),
         ),
         math_random: krol_java::JavaRandom::new(
@@ -591,6 +604,7 @@ impl Game {
         order.extend(self.orbs.keys().copied());
         order.extend(self.falling.keys().copied());
         order.extend(self.tnt.keys().copied());
+        order.extend(self.thrown.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
@@ -609,6 +623,7 @@ impl Game {
                     .chain(self.orbs.keys())
                     .chain(self.falling.keys())
                     .chain(self.tnt.keys())
+                    .chain(self.thrown.keys())
                     .copied()
                     .filter(|&e| e > newest)
                     .collect();
@@ -635,6 +650,10 @@ impl Game {
             }
             if self.tnt.contains_key(&id) {
                 self.update_tnt(id);
+                continue;
+            }
+            if self.thrown.contains_key(&id) {
+                self.update_thrown(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -1855,8 +1874,11 @@ impl Game {
                 }
                 buckets::UseResult::Kept
             }
-            // TODO(M4): bows, throwables and the other usable items.
-            _ => buckets::UseResult::Unchanged,
+            // TODO(M5): bows, splash potions and the other usable items.
+            _ => match self.throw_held(i, &held) {
+                Some(result) => result,
+                None => buckets::UseResult::Unchanged,
+            },
         };
         let slot = 36 + self.players[i].selected;
         let mut new = match result {

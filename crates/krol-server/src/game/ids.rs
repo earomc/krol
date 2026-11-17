@@ -173,6 +173,8 @@ pub mod block {
     pub const MYCELIUM: u16 = 110;
     /// `glowstone`.
     pub const GLOWSTONE: u16 = 89;
+    /// `portal` (nether portal).
+    pub const PORTAL: u16 = 90;
     /// `unpowered_repeater`.
     pub const UNPOWERED_REPEATER: u16 = 93;
     /// `powered_repeater`.
@@ -292,6 +294,14 @@ pub mod item {
     pub const LAVA_BUCKET: i16 = 327;
     /// `potion` (the damage value encodes the effects).
     pub const POTION: i16 = 373;
+    /// `snowball`.
+    pub const SNOWBALL: i16 = 332;
+    /// `egg`.
+    pub const EGG: i16 = 344;
+    /// `ender_pearl`.
+    pub const ENDER_PEARL: i16 = 368;
+    /// `experience_bottle`.
+    pub const EXPERIENCE_BOTTLE: i16 = 384;
     /// `glass_bottle`.
     pub const GLASS_BOTTLE: i16 = 374;
     /// `milk_bucket`.

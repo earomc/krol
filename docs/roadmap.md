@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-17 (commit `server: moving piston blocks drop what they carry`).
+Status as of 2026-11-17 (commit `server: thrown snowballs, eggs, ender pearls and experience bottles`).
 
 **Legend**
 
@@ -23,8 +23,9 @@ The working queue within the current milestones (M4/M5), most useful first. Upda
 when an item is done or priorities change.
 
 1. **M5 entities without AI**: item frames and paintings (hanging entities), armor
-   stands, projectiles (arrows from bows, snowballs, eggs, ender pearls, splash
-   potions), minecarts and boats, with their spawn packets, tracking and saving.
+   stands, projectiles (arrows from bows, splash potions; snowballs, eggs, ender pearls
+   and experience bottles are done), minecarts and boats, with their spawn packets,
+   tracking and saving.
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
 
@@ -84,7 +85,7 @@ The nether and the end are ❌ (see [world](#netminecraftworld)).
 | `player-idle-timeout` (`/setidletimeout`) | ✅ | |
 | `ItemInWorldManager`: digging states, game modes, block activation, item use | 🟡 | See [block](#netminecraftblock) and [item](#netminecraftitem) for per-feature gaps |
 | `PlayerManager`: chunk tracking, view distance, chunk send order and rate, block change batching (`multi_block_change`) | ✅ | |
-| `EntityTracker`: tracking ranges, update intervals, spawn/move/look/teleport/velocity packets | 🟡 | Players, items, XP orbs, falling blocks only |
+| `EntityTracker`: tracking ranges, update intervals, spawn/move/look/teleport/velocity packets | 🟡 | Players, items, XP orbs, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles only |
 | Spawn chunk loading ("Preparing spawn area") | ✅ | |
 | Resource pack (`resource-pack`, `resource-pack-hash`) | ❌ | |
 | `network-compression-threshold` | ✅ | |
@@ -126,7 +127,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
-| 0x0E Spawn Object | 🟡 | Items, falling blocks. Missing: boats, minecarts, projectiles, TNT, item frames, armor stands, fishing hooks, ... |
+| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles. Missing: boats, minecarts, arrows, splash potions, fireballs, item frames, armor stands, fishing hooks, ... |
 | 0x0F Spawn Mob | ❌ | No mobs |
 | 0x10 Spawn Painting | ❌ | |
 | 0x11 Spawn Experience Orb | ✅ | |
@@ -398,7 +399,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemExpBottle` | ❌ | |
 | `ItemBow` | ❌ | |
 | `ItemFishingRod` | ❌ | |
-| `ItemSnowball`, `ItemEgg`, `ItemEnderPearl`, `ItemEnderEye`, `ItemFireball`, `ItemFirework`, `ItemFireworkCharge` | ❌ | Projectiles |
+| `ItemSnowball`, `ItemEgg`, `ItemEnderPearl`, `ItemExpBottle` | ✅ | Throwing (see [entity.projectile](#entityprojectile)): the stack shrinks unless creative (creative players cannot throw pearls), `random.bow` with `Item.itemRand`, the use statistic |
+| `ItemEnderEye`, `ItemFireball`, `ItemFirework`, `ItemFireworkCharge` | ❌ | |
 | `ItemMinecart`, `ItemBoat` | ❌ | |
 | `ItemHangingEntity` (paintings, item frames), `ItemArmorStand` | ❌ | |
 | `ItemMonsterPlacer` (spawn eggs) | ❌ | |
@@ -482,7 +484,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityList` (ids, names, NBT creation, spawn eggs) | ❌ | |
 | `SharedMonsterAttributes`, `ai.attributes` | ✅ | Players |
 | `EntityBodyHelper`, look/move/jump helpers | ❌ | |
-| Entities in chunk NBT (`Entities`): loading and saving | 🟡 | Items, XP orbs, falling blocks and primed TNT are loaded (UUIDs, base entity fields, legacy minecart ids, unknown ids skipped with vanilla's warning) and saved per chunk section in vanilla's order, with `needsSaving`'s entity rule. Other kinds keep their saved NBT and are written back unchanged (not ticked or tracked); their `Riding` mounts only take entity ids. Update order follows entity ids, which matches section order for vanilla-written chunks. The "Wrong location!" warning is not logged |
+| Entities in chunk NBT (`Entities`): loading and saving | 🟡 | Items, XP orbs, falling blocks, primed TNT and the throwables (snowballs, eggs, ender pearls, experience bottles) are loaded (UUIDs, base entity fields, legacy minecart ids, unknown ids skipped with vanilla's warning) and saved per chunk section in vanilla's order, with `needsSaving`'s entity rule. Other kinds keep their saved NBT and are written back unchanged (not ticked or tracked); their `Riding` mounts only take entity ids. Update order follows entity ids, which matches section order for vanilla-written chunks. The "Wrong location!" warning is not logged |
 
 ### entity.player
 
@@ -520,12 +522,19 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityArmorStand` | ❌ | |
 | `EntityEnderCrystal` | ❌ | |
 | `EntityFireworkRocket` | ❌ | |
-| `EntityEnderEye`, `EntityEnderPearl`, `EntityExpBottle` | ❌ | |
+| `EntityEnderPearl` | ✅ | Thrown (not in creative), flies through its thrower, teleports the thrower (online, awake, alive; else the pearl just breaks) with 5 fall damage, dies with its thrower. Endermites (the 5% roll is made) and dismounting ❌ |
+| `EntityExpBottle` | 🟡 | Thrown, lobbed (speed 0.7, -20° pitch, gravity 0.07), breaks with effect 2002 and 3-11 experience in orbs from the world random. No scenario: the world random cannot be pinned to the throw |
+| `EntityEnderEye` | ❌ | |
 
 ### entity.projectile
 
-`EntityArrow`, `EntitySnowball`, `EntityEgg`, `EntityPotion`, `EntityFishHook`,
-`EntityLargeFireball`, `EntitySmallFireball`, `EntityWitherSkull`, `EntityThrowable`: ❌
+| Class | Status | Notes |
+|---|---|---|
+| `EntityThrowable` | ✅ | Thrown from the eyes with a random spread (the entity's own random, unseeded), block and entity ray traces (collidable: players, falling blocks, primed TNT; the thrower only after 5 ticks), drag (0.8 in water), gravity, water push and splash, killed below y -64, saved with the chunk (`xTile`/`inTile`/`shake`/`inGround`/`ownerName`), thrower found again by name after loading. `play/throwables`. Nether portals (`setPortal`), catching fire in lava ❌ |
+| `EntitySnowball` | ✅ | Hits do 0 damage (players ignore it; other entities get `setBeenAttacked`). Blazes (3 damage) ❌ |
+| `EntityEgg` | 🟡 | Thrown and breaking (with the hatch rolls); the chicks ❌ (no mobs). No scenario: vanilla's 1-in-8 chick roll uses the unpinned entity random |
+| `EntityPotion` (splash potions) | ❌ | |
+| `EntityArrow`, `EntityFishHook`, `EntityLargeFireball`, `EntitySmallFireball`, `EntityWitherSkull` | ❌ | |
 
 ### entity.passive, entity.monster, entity.boss, entity.ai
 

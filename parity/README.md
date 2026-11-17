@@ -135,3 +135,12 @@ into server ticks. Rules learned from flaky scenarios:
   count once, so the distinct packets and their order are still compared.
 - `[observe] dedupe_runs` does the same for packets a server resends every tick while
   something stays open (e.g. the enchanting table's window properties, `"0x31"`).
+- **Tolerances on NBT lists go on the list itself** (`"file:<path>.dat.Pos" = 0.1`):
+  lists of values are otherwise diffed line by line, where element tolerances never
+  apply. Packet tolerances name a packet index, and the 1.7 view (`--protocol 5`) drops
+  the 1.8-only packets before it, so a packet that needs a tolerance usually needs a
+  second entry at its 1.7 index (`play/throwables`).
+- Thrown projectiles take their spread from the entity's own unseeded random: aim at
+  something whose hit tick is far from a tick boundary, and leave out anything whose
+  outcome is a roll on that random (eggs hatching chicks, endermites from pearls: turn
+  off `doMobSpawning`).

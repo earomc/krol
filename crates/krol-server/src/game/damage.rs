@@ -51,6 +51,9 @@ pub enum DamageSource {
     Thorns(i32),
     /// A falling anvil landing on the entity (`DamageSource.anvil`).
     Anvil,
+    /// A thrown snowball, egg or ender pearl, with the thrower's entity id if known
+    /// (`DamageSource.causeThrownDamage`: indirect, a projectile).
+    Thrown(Option<i32>),
     /// Another falling block that hurts entities (`DamageSource.fallingBlock`).
     FallingBlock,
 }
@@ -74,6 +77,7 @@ impl DamageSource {
             Self::Player(_) => "player",
             Self::Thorns(_) => "thorns",
             Self::Anvil => "anvil",
+            Self::Thrown(_) => "thrown",
             Self::FallingBlock => "fallingBlock",
         }
     }
@@ -112,6 +116,7 @@ impl DamageSource {
     pub fn attacker(self) -> Option<i32> {
         match self {
             Self::ExplosionBy(id) | Self::Player(id) | Self::Thorns(id) => Some(id),
+            Self::Thrown(thrower) => thrower,
             _ => None,
         }
     }
@@ -139,7 +144,8 @@ impl DamageSource {
             | Self::Player(_)
             | Self::Thorns(_)
             | Self::Anvil
-            | Self::FallingBlock => DEFAULT_HUNGER_DAMAGE,
+            | Self::FallingBlock
+            | Self::Thrown(_) => DEFAULT_HUNGER_DAMAGE,
         }
     }
 }
