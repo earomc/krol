@@ -6,6 +6,7 @@
 //! player's [`Outgoing`] queue.
 
 mod anvil;
+mod arrow;
 mod attributes;
 mod banner;
 mod beacon;
@@ -334,6 +335,8 @@ struct Game {
     tnt: std::collections::BTreeMap<i32, tnt::PrimedTnt>,
     /// Thrown snowballs, eggs, ender pearls and experience bottles, by entity id.
     thrown: std::collections::BTreeMap<i32, throwable::Throwable>,
+    /// Arrows, by entity id.
+    arrows: std::collections::BTreeMap<i32, arrow::Arrow>,
     /// Every player but spectators lies in bed (`allPlayersSleeping`).
     all_sleeping: bool,
     /// Ticks since the last latency broadcast (`playerPingIndex`).
@@ -420,6 +423,7 @@ pub fn start(
         falling: Default::default(),
         tnt: Default::default(),
         thrown: Default::default(),
+        arrows: Default::default(),
         all_sleeping: false,
         ping_index: 0,
         wire_gives_power: true,
@@ -605,6 +609,7 @@ impl Game {
         order.extend(self.falling.keys().copied());
         order.extend(self.tnt.keys().copied());
         order.extend(self.thrown.keys().copied());
+        order.extend(self.arrows.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
@@ -624,6 +629,7 @@ impl Game {
                     .chain(self.falling.keys())
                     .chain(self.tnt.keys())
                     .chain(self.thrown.keys())
+                    .chain(self.arrows.keys())
                     .copied()
                     .filter(|&e| e > newest)
                     .collect();
@@ -654,6 +660,10 @@ impl Game {
             }
             if self.thrown.contains_key(&id) {
                 self.update_thrown(id);
+                continue;
+            }
+            if self.arrows.contains_key(&id) {
+                self.update_arrow(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -1282,6 +1292,8 @@ impl Game {
             potions_dirty: false,
             effect_color: 0,
             effect_ambient: false,
+            arrow_count: 0,
+            arrow_hit_timer: 0,
             collided_horizontally: false,
             distance_walked_on_step: 0.0,
             next_step_distance: 1,
@@ -1679,8 +1691,7 @@ impl Game {
             return;
         }
         if status == RELEASE_USE_ITEM {
-            // stopUsingItem. TODO(M5): bows shoot (onPlayerStoppedUsing).
-            self.clear_item_in_use(i);
+            self.stop_using_item(i);
             return;
         }
         if !matches!(status, 0..=2) {
@@ -1867,6 +1878,10 @@ impl Game {
                 buckets::UseResult::Kept
             }
             ids::item::GLASS_BOTTLE => self.fill_bottle(i, &held),
+            ids::item::BOW => {
+                self.start_drawing_bow(i, &held);
+                buckets::UseResult::Kept
+            }
             maps::EMPTY_MAP => self.use_empty_map(i, &held),
             id if food::food(id, held.damage).is_some() => {
                 if let Some(f) = food::food(id, held.damage) {
@@ -1874,7 +1889,7 @@ impl Game {
                 }
                 buckets::UseResult::Kept
             }
-            // TODO(M5): bows and the other usable items.
+            // TODO(M5): the other usable items (fishing rods, eyes of ender, ...).
             _ => match self.throw_held(i, &held) {
                 Some(result) => result,
                 None => buckets::UseResult::Unchanged,

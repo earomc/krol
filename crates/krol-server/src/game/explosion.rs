@@ -41,6 +41,7 @@ pub(super) enum Target {
     Falling(i32),
     Tnt(i32),
     Thrown(i32),
+    Arrow(i32),
 }
 
 impl Game {
@@ -239,6 +240,11 @@ impl Game {
                         add(&mut t.body.motion);
                     }
                 }
+                Target::Arrow(id) => {
+                    if let Some(a) = self.arrows.get_mut(&id) {
+                        add(&mut a.body.motion);
+                    }
+                }
             }
         }
         knockback
@@ -275,6 +281,11 @@ impl Game {
         for (&id, t) in &self.thrown {
             if !t.dead {
                 add(id, t.body.bb(), Target::Thrown(id));
+            }
+        }
+        for (&id, a) in &self.arrows {
+            if !a.dead {
+                add(id, a.body.bb(), Target::Arrow(id));
             }
         }
         // Chunk entity lists keep insertion order, which follows entity ids here.
@@ -325,6 +336,11 @@ impl Game {
                     t.body.velocity_changed = true;
                 }
             }
+            Target::Arrow(id) => {
+                if let Some(a) = self.arrows.get_mut(&id) {
+                    a.body.velocity_changed = true;
+                }
+            }
         }
     }
 
@@ -339,6 +355,11 @@ impl Game {
             Target::Orb(id) => &self.orbs.get(&id)?.body,
             Target::Falling(id) => &self.falling.get(&id)?.body,
             Target::Thrown(id) => &self.thrown.get(&id)?.body,
+            Target::Arrow(id) => {
+                let a = self.arrows.get(&id)?;
+                // EntityArrow.getEyeHeight.
+                return Some((a.body.pos, 0.0, a.body.bb()));
+            }
             Target::Tnt(id) => {
                 let t = self.tnt.get(&id)?;
                 // EntityTNTPrimed.getEyeHeight.

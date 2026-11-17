@@ -1,0 +1,92 @@
+description = "Bows and arrows: drawing a bow (use flag), shooting at full power (spawn object 60 with the shooter as data, critical metadata, random.bow, the bow wearing, the arrow used up, stat.useItem.bow), the arrow sticking in a wall (random.bowhit, critical cleared, look-and-move tracker packets), picking it up again (collect, random.pop, the arrow item back), then a second shot killing a player (death.attack.arrow, arrow count metadata, change game state 6 to the shooter, knockback)"
+subsystem = "entity"
+
+# Both spawn at -471.5 4 -434.5 (adventure: no spawn offset) facing south. jeb_ gets one
+# arrow, so his second shot needs the first arrow picked up. A stone wall stands 1.5
+# blocks south of him, and Dinnerbone is moved 2.5 blocks north: both are hit in the
+# arrow's first tick, so the hit positions (and sounds) do not depend on the random
+# spread. Bows are drawn for well over a second (full power, so always critical); the
+# critical bonus damage is a roll on the arrow's unpinned random, so Dinnerbone is first
+# brought down to 2 health with instant damage (after his respawn protection ends), and
+# any arrow hit kills him. The effects come between the shots, well apart from the first
+# arrow's pickup and a few seconds before the second shot, so hurt resistance has worn
+# off each time.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Natural regeneration would heal Dinnerbone at a time set by his food timer.
+[[steps]]
+action = "console"
+command = "gamerule naturalRegeneration false"
+
+[[steps]]
+action = "console"
+command = "fill -476 4 -433 -467 8 -433 stone"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+chat = [
+    "@4000 !look 0 0",
+    "@4200 !use",
+    "@5800 !dig 0 0 0 0 5",
+    "@9500 !look 180 0",
+    "@9700 !use",
+    "@11500 !dig 0 0 0 0 5",
+]
+
+[[steps]]
+id = "other"
+action = "play"
+background = true
+protocol = 47
+name = "Dinnerbone"
+seconds = 13
+
+[[steps]]
+action = "console"
+command = "tp Dinnerbone -471.5 4 -437.0"
+
+[[steps]]
+action = "console"
+command = "give jeb_ bow"
+
+[[steps]]
+action = "console"
+command = "give jeb_ arrow"
+
+[[steps]]
+action = "wait"
+ms = 3900
+
+[[steps]]
+action = "console"
+command = "effect Dinnerbone instant_damage 1 1"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "effect Dinnerbone instant_damage 1 0"
+wait_ms = 10000
+
+[observe]
+log = true
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+]

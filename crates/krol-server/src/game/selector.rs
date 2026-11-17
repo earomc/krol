@@ -386,6 +386,10 @@ impl Game {
             t.body.pos = pos;
             t.base.yaw = rotation.0;
             t.base.pitch = rotation.1;
+        } else if let Some(a) = self.arrows.get_mut(&id) {
+            a.body.pos = pos;
+            a.base.yaw = rotation.0;
+            a.base.pitch = rotation.1;
         }
     }
 
@@ -402,6 +406,8 @@ impl Game {
             t.dead = true;
         } else if let Some(t) = self.thrown.get_mut(&id) {
             t.dead = true;
+        } else if let Some(a) = self.arrows.get_mut(&id) {
+            a.dead = true;
         }
     }
 
@@ -478,6 +484,18 @@ impl Game {
                 type_name: t.kind.saved_id(),
                 name: Some(t.kind.name()),
                 rotation: (t.base.yaw, t.base.pitch),
+                entity_id: id,
+            });
+        }
+        for (&id, a) in &self.arrows {
+            all.push(Candidate {
+                target: Target::Entity(id),
+                pos: a.body.pos,
+                size: (a.body.width, a.body.height),
+                alive: !a.dead,
+                type_name: super::arrow::SAVED_ID,
+                name: Some(super::arrow::NAME.into()),
+                rotation: (a.base.yaw, a.base.pitch),
                 entity_id: id,
             });
         }

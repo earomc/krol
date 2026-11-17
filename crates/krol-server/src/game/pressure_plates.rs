@@ -95,6 +95,21 @@ impl Game {
                 .values()
                 .filter(|f| !f.dead && f.body.bb().intersects(area))
                 .count()
+            + self
+                .tnt
+                .values()
+                .filter(|t| !t.dead && t.body.bb().intersects(area))
+                .count()
+            + self
+                .thrown
+                .values()
+                .filter(|t| !t.dead && t.body.bb().intersects(area))
+                .count()
+            + self
+                .arrows
+                .values()
+                .filter(|a| !a.dead && a.body.bb().intersects(area))
+                .count()
     }
 
     /// `computeRedstoneStrength`.

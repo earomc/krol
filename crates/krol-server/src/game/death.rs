@@ -236,10 +236,15 @@ impl Game {
             };
             return Component::translate(key, vec![name]);
         };
-        // EntityDamageSource: ".item" when the attacker's held item has a custom name and
-        // the key exists (only for "player").
-        if matches!(last.source, DamageSource::Player(_))
-            && let Some(item) = self.source_named_item(last.source)
+        // EntityDamageSource(Indirect): ".item" when the attacker's held item has a
+        // custom name and the key exists (player, arrow, thrown and indirectMagic).
+        if matches!(
+            last.source,
+            DamageSource::Player(_)
+                | DamageSource::Arrow { .. }
+                | DamageSource::Thrown(_)
+                | DamageSource::IndirectMagic(_)
+        ) && let Some(item) = self.source_named_item(last.source)
         {
             return Component::translate(
                 format!("{key}.item"),
@@ -431,6 +436,8 @@ impl Game {
         p.potions_dirty = false;
         p.effect_color = 0;
         p.effect_ambient = false;
+        p.arrow_count = 0;
+        p.arrow_hit_timer = 0;
         p.in_water = false;
         p.sneaking = false;
         p.sprinting = false;

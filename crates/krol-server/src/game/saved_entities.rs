@@ -419,7 +419,7 @@ impl ChunkEntities {
 
 impl Game {
     /// Where a simulated non-player entity is.
-    fn entity_position(&self, id: i32) -> Option<(f64, f64, f64)> {
+    pub(super) fn entity_position(&self, id: i32) -> Option<(f64, f64, f64)> {
         if let Some(it) = self.items.get(&id) {
             Some(it.body.pos)
         } else if let Some(o) = self.orbs.get(&id) {
@@ -428,6 +428,8 @@ impl Game {
             Some(f.body.pos)
         } else if let Some(t) = self.thrown.get(&id) {
             Some(t.body.pos)
+        } else if let Some(a) = self.arrows.get(&id) {
+            Some(a.body.pos)
         } else {
             self.tnt.get(&id).map(|t| t.body.pos)
         }
@@ -572,6 +574,16 @@ impl Game {
                 self.tnt.insert(id, PrimedTnt::load(body, base, c));
                 pos
             }
+            super::arrow::SAVED_ID => {
+                body.width = super::arrow::SIZE;
+                body.height = super::arrow::SIZE;
+                let (base, uuid) = EntityBase::read(c, &mut body);
+                self.set_saved_uuid(id, uuid);
+                let pos = body.pos;
+                self.arrows
+                    .insert(id, super::arrow::Arrow::load(body, base, c));
+                pos
+            }
             saved => match super::throwable::Kind::from_saved_id(saved) {
                 Some(thrown_kind) => {
                     body.width = super::throwable::SIZE;
@@ -664,6 +676,13 @@ impl Game {
             c.insert("id", Tag::String(t.kind.saved_id().into()));
             t.base.write(&t.body, uuid, &mut c);
             t.write(&mut c);
+        } else if let Some(a) = self.arrows.get(&id) {
+            if a.dead {
+                return None;
+            }
+            c.insert("id", Tag::String(super::arrow::SAVED_ID.into()));
+            a.base.write(&a.body, uuid, &mut c);
+            a.write(&mut c);
         } else {
             let t = self.tnt.get(&id).filter(|t| !t.dead)?;
             c.insert("id", Tag::String(TNT_ID.into()));

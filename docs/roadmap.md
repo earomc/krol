@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-17 (commit `server: splash potions`).
+Status as of 2026-11-17 (commit `server: bows and arrows`).
 
 **Legend**
 
@@ -23,9 +23,9 @@ The working queue within the current milestones (M4/M5), most useful first. Upda
 when an item is done or priorities change.
 
 1. **M5 entities without AI**: item frames and paintings (hanging entities), armor
-   stands, projectiles (arrows from bows; snowballs, eggs, ender pearls, experience
-   bottles and splash potions are done), minecarts and boats, with their spawn packets,
-   tracking and saving.
+   stands, minecarts and boats, with their spawn packets, tracking and saving
+   (projectiles from players are done: arrows, snowballs, eggs, ender pearls,
+   experience bottles, splash potions).
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
 
@@ -85,7 +85,7 @@ The nether and the end are ❌ (see [world](#netminecraftworld)).
 | `player-idle-timeout` (`/setidletimeout`) | ✅ | |
 | `ItemInWorldManager`: digging states, game modes, block activation, item use | 🟡 | See [block](#netminecraftblock) and [item](#netminecraftitem) for per-feature gaps |
 | `PlayerManager`: chunk tracking, view distance, chunk send order and rate, block change batching (`multi_block_change`) | ✅ | |
-| `EntityTracker`: tracking ranges, update intervals, spawn/move/look/teleport/velocity packets | 🟡 | Players, items, XP orbs, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions only |
+| `EntityTracker`: tracking ranges, update intervals, spawn/move/look/teleport/velocity packets | 🟡 | Players, items, XP orbs, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows (always look-and-move packets, from the first update) only |
 | Spawn chunk loading ("Preparing spawn area") | ✅ | |
 | Resource pack (`resource-pack`, `resource-pack-hash`) | ❌ | |
 | `network-compression-threshold` | ✅ | |
@@ -127,7 +127,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
-| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions. Missing: boats, minecarts, arrows, fireballs, item frames, armor stands, fishing hooks, ... |
+| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows. Missing: boats, minecarts, fireballs, item frames, armor stands, fishing hooks, ... |
 | 0x0F Spawn Mob | ❌ | No mobs |
 | 0x10 Spawn Painting | ❌ | |
 | 0x11 Spawn Experience Orb | ✅ | |
@@ -147,7 +147,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x28 Effect | 🟡 | Many effects (doors, fire, bone meal, dispensers, block break 2001, ...); missing those of unimplemented features (records, potion splash, portal travel, ...) |
 | 0x29 Sound Effect | 🟡 | Block, step, player and liquid sounds; mob and many item sounds missing |
 | 0x2A Particle | 🟡 | Block dust on falls; most server-sent particles belong to missing features |
-| 0x2B Change Game State | 🟡 | Rain, game mode, respawn screen, missing bed; missing: demo, credits, arrow hit, mob appearance |
+| 0x2B Change Game State | 🟡 | Rain, game mode, respawn screen, missing bed, arrow hitting a player; missing: demo, credits, mob appearance |
 | 0x2C Spawn Global Entity | ❌ | Lightning |
 | 0x2D Open Window · 0x2E Close Window · 0x2F Set Slot · 0x30 Window Items · 0x31 Window Property · 0x32 Confirm Transaction | ✅ | For the implemented windows |
 | 0x33 Update Sign · 0x36 Sign Editor Open | ✅ | |
@@ -397,7 +397,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemArmor` | 🟡 | Equipping, protection, wear ✅; leather dye ✅ (crafting); dispensing armor ❌ |
 | `ItemPotion`, `ItemGlassBottle` | 🟡 | Drinking (effects from the damage value via a port of `PotionHelper`, checked against all 32768 values, or `CustomPotionEffects`), filling bottles at water, throwing splash potions (`play/splash_potions`), display names ("Splash Potion of Harming", "Thin Potion"; checked against vanilla's names of damage values 1-255) ✅ |
 | `ItemExpBottle` | ❌ | |
-| `ItemBow` | ❌ | |
+| `ItemBow` | ✅ | Drawing (creative or with arrows; up to 72000 updates), releasing (power curve, nothing under 0.1, critical at full power), power/punch/flame/infinity, wear (a broken bow leaves the hand), `random.bow` from `Item.itemRand`, the first arrow stack used up (hotbar first), `stat.useItem`. `play/bows` |
 | `ItemFishingRod` | ❌ | |
 | `ItemSnowball`, `ItemEgg`, `ItemEnderPearl`, `ItemExpBottle` | ✅ | Throwing (see [entity.projectile](#entityprojectile)): the stack shrinks unless creative (creative players cannot throw pearls), `random.bow` with `Item.itemRand`, the use statistic |
 | `ItemEnderEye`, `ItemFireball`, `ItemFirework`, `ItemFireworkCharge` | ❌ | |
@@ -484,7 +484,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityList` (ids, names, NBT creation, spawn eggs) | ❌ | |
 | `SharedMonsterAttributes`, `ai.attributes` | ✅ | Players |
 | `EntityBodyHelper`, look/move/jump helpers | ❌ | |
-| Entities in chunk NBT (`Entities`): loading and saving | 🟡 | Items, XP orbs, falling blocks, primed TNT and the throwables (snowballs, eggs, ender pearls, experience bottles) are loaded (UUIDs, base entity fields, legacy minecart ids, unknown ids skipped with vanilla's warning) and saved per chunk section in vanilla's order, with `needsSaving`'s entity rule. Other kinds keep their saved NBT and are written back unchanged (not ticked or tracked); their `Riding` mounts only take entity ids. Update order follows entity ids, which matches section order for vanilla-written chunks. The "Wrong location!" warning is not logged |
+| Entities in chunk NBT (`Entities`): loading and saving | 🟡 | Items, XP orbs, falling blocks, primed TNT, the throwables (snowballs, eggs, ender pearls, experience bottles, splash potions) and arrows are loaded (UUIDs, base entity fields, legacy minecart ids, unknown ids skipped with vanilla's warning) and saved per chunk section in vanilla's order, with `needsSaving`'s entity rule. Other kinds keep their saved NBT and are written back unchanged (not ticked or tracked); their `Riding` mounts only take entity ids. Update order follows entity ids, which matches section order for vanilla-written chunks. The "Wrong location!" warning is not logged |
 
 ### entity.player
 
@@ -534,7 +534,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntitySnowball` | ✅ | Hits do 0 damage (players ignore it; other entities get `setBeenAttacked`). Blazes (3 damage) ❌ |
 | `EntityEgg` | 🟡 | Thrown and breaking (with the hatch rolls); the chicks ❌ (no mobs). No scenario: vanilla's 1-in-8 chick roll uses the unpinned entity random |
 | `EntityPotion` (splash potions) | ✅ | Thrown from the item (speed 0.5, lobbed 20°, gravity 0.05), spawn object 73 with the damage value as data (and the spawn velocity), effect 2002 with the potion's damage value. The splash reaches players (not spectating) in the box grown by 4/2/4 and within 4 blocks, scaled by distance (1.0 for the entity hit): instant health and damage (`indirectMagic` with the thrower as attacker, plain magic without one), other effects over 20 ticks. Saved with the `Potion` item (a survival throw saves its count as 0, like vanilla; old `potionValue` read). `play/splash_potions`. Mobs (undead reversed) ❌ |
-| `EntityArrow`, `EntityFishHook`, `EntityLargeFireball`, `EntitySmallFireball`, `EntityWitherSkull` | ❌ | |
+| `EntityArrow` | ✅ | Shot from bows (heading with a random sign per axis), flight with block and entity ray traces, sticking in blocks (pulled back 0.05, shake 7, falling out when the block changes, gone after 1200 ticks), hits on players (damage by speed, critical bonus from the unpinned random, fire from burning arrows, arrow count metadata and its countdown, punch, thorns, change game state 6 to the shooter, bouncing off when the hit does nothing; a player it may not hurt cancels the whole hit, a vanilla quirk), pickup (`pickup` 1 or 2), burning (velocity resent each second), water drag 0.6 and rain putting it out, pressure plates, saving with the chunk, the data watcher's `HashMap` order and first full change packet. `play/bows`. Wooden buttons and TNT hit by arrows, lava, mobs, dispensers ❌ |
+| `EntityFishHook`, `EntityLargeFireball`, `EntitySmallFireball`, `EntityWitherSkull` | ❌ | |
 
 ### entity.passive, entity.monster, entity.boss, entity.ai
 
@@ -568,7 +569,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 |---|---|---|
 | Protection, Fire Protection, Feather Falling | ✅ | |
 | Blast Protection | ✅ | Damage and explosion knockback |
-| Projectile Protection | ❌ | Needs projectiles |
+| Projectile Protection | 🟡 | Reduces arrow and thrown damage; not yet in a scenario |
 | Respiration | ✅ | |
 | Aqua Affinity, Efficiency | ✅ | Mining speed (efficiency only where the tool beats a hand); aqua affinity by unit test |
 | Unbreaking | ✅ | Tool and armor wear |
@@ -576,7 +577,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Depth Strider | ❌ | |
 | Silk Touch, Fortune | ✅ | Drops |
 | Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting | ❌ | Needs attacking and mobs |
-| Power, Punch, Flame, Infinity | ❌ | Needs bows |
+| Power, Punch, Flame, Infinity | 🟡 | Implemented with bows; not yet in a scenario (`play/bows` uses a plain bow) |
 | Luck of the Sea, Lure | ❌ | Needs fishing |
 | `EnchantmentHelper` (enchanting table selection, `/enchant`) | 🟡 | Table selection (`calcItemStackEnchantability`, `buildEnchantmentList`, `mapEnchantmentData` in Java `HashMap` order), `/enchant` (`canApply`, compatibility, translated names) ✅; `addRandomEnchantment` ❌ |
 
@@ -650,7 +651,7 @@ krol notice.
 |---|---|---|
 | `MathHelper` (sin table, floor, clamp, ...) | ✅ | JVM-verified (`krol-java`) |
 | `java.util.Random` | ✅ | JVM-verified |
-| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, outOfWorld, explosion, explosion.player (difficulty scaling, knockback from the igniter), anvil, fallingBlock (helmet wear), player, thorns, thrown, indirectMagic (splash potions of harming) ✅; generic, starve, mob/projectile (arrows), lightningBolt ❌ |
+| `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, outOfWorld, explosion, explosion.player (difficulty scaling, knockback from the igniter), anvil, fallingBlock (helmet wear), player, thorns, thrown, indirectMagic (splash potions of harming), arrow (knockback from the shooter, else the arrow), projectile protection, the `.item` death messages of indirect sources ✅; generic, starve, mob, lightningBolt ❌ |
 | `CombatTracker` (death messages) | 🟡 | For implemented sources; fall variants ✅ (vanilla quirk: the fatal hit clears the earlier entries, so a fatal fall is always an accident) |
 | `IChatComponent` JSON (text, translation, styles, click/hover events) | ✅ | |
 | `StatCollector` (translation of log lines) | ✅ | For the keys krol uses |

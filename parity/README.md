@@ -150,3 +150,7 @@ into server ticks. Rules learned from flaky scenarios:
   flight (`play/splash_potions`). Console steps run about 3 seconds after the first
   background bot joins (each background `play` step waits 1.5 s), so time bot actions
   that need given items after that.
+- Damage with a random part (critical arrows) can still be compared exactly when every
+  outcome kills: bring the victim down to a few hearts first (instant damage from the
+  console after the respawn protection) and turn off `naturalRegeneration`, whose timer
+  phase is not reproducible (`play/bows`).

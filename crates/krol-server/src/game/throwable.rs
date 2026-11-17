@@ -41,8 +41,8 @@ const WATER_DRAG: f32 = 0.8;
 const TURN_RATE: f32 = 0.2;
 /// The thrower is ignored by the entity ray trace for this many ticks in the air.
 const THROWER_GRACE: i32 = 5;
-/// Collidable entities' boxes grow by this much for the hit test.
-const HIT_MARGIN: f64 = 0.3;
+/// Collidable entities' boxes grow by this much for the hit test (`0.3F`).
+const HIT_MARGIN: f32 = 0.3;
 /// A throwable stuck in a block disappears after this many ticks.
 const GROUND_LIFETIME: i32 = 1200;
 /// Entities below this height are killed (`Entity.onEntityUpdate`).
@@ -234,13 +234,7 @@ impl Throwable {
     /// `EntityThrowable.readEntityFromNBT` for a throwable loaded with its chunk.
     pub fn load(kind: Kind, body: Body, base: EntityBase, c: &Compound) -> Self {
         let p = body.pos;
-        let in_tile = if c.contains_key_of("inTile", Some(TagType::String)) {
-            block_from_name(c.get_str("inTile"))
-        } else {
-            // Old saves keep the numeric id; unknown ids read as air.
-            let id = (c.get_i8("inTile") as u8) as i16;
-            Some(krol_world::items::name_for_id(id).map_or(block::AIR, |_| id as u16))
-        };
+        let in_tile = in_tile_from_nbt(c);
         let owner = c.get_str("ownerName");
         // EntityPotion: the `Potion` item, else an old `potionValue`; a potion whose item
         // does not load is removed.
@@ -309,6 +303,17 @@ impl Throwable {
     }
 }
 
+/// The saved `inTile` of a projectile: a block name, or in old saves a numeric id
+/// (unknown ids read as air).
+pub(super) fn in_tile_from_nbt(c: &Compound) -> Option<u16> {
+    if c.contains_key_of("inTile", Some(TagType::String)) {
+        block_from_name(c.get_str("inTile"))
+    } else {
+        let id = (c.get_i8("inTile") as u8) as i16;
+        Some(krol_world::items::name_for_id(id).map_or(block::AIR, |_| id as u16))
+    }
+}
+
 /// `Block.getBlockFromName`: a registered name, else a numeric id, else nothing.
 fn block_from_name(name: &str) -> Option<u16> {
     if let Some(id) = krol_world::items::id_for_name(name).filter(|&id| (0..256).contains(&id)) {
@@ -325,7 +330,7 @@ fn block_from_name(name: &str) -> Option<u16> {
 }
 
 /// The rotation of a flight direction (`atan2` of the motion, in degrees).
-fn heading(motion: (f64, f64, f64)) -> (f32, f32) {
+pub(super) fn heading(motion: (f64, f64, f64)) -> (f32, f32) {
     let horizontal = sqrt_f64(motion.0 * motion.0 + motion.2 * motion.2);
     // Vanilla: (float) (atan2(..) * 180.0 / (float) Math.PI), evaluated left to right.
     let degrees = |radians: f64| (radians * 180.0 / f64::from(std::f32::consts::PI)) as f32;
@@ -502,7 +507,9 @@ impl Game {
             return;
         };
         let prev_rotation = (t.base.yaw, t.base.pitch);
-        self.thrown_entity_update(&mut t);
+        if self.projectile_entity_update(&mut t.body, &mut t.base, &mut t.first_update, SIZE) {
+            t.dead = true;
+        }
         if t.shake > 0 {
             t.shake -= 1;
         }
@@ -551,7 +558,8 @@ impl Game {
             let Some(bb) = self.target_box(target) else {
                 continue;
             };
-            let bb = bb.expand([HIT_MARGIN, HIT_MARGIN, HIT_MARGIN]);
+            let margin = f64::from(HIT_MARGIN);
+            let bb = bb.expand([margin, margin, margin]);
             if let Some(v) = super::raytrace::intercept(&bb, start, end) {
                 let d = (v.0 - start.0).powi(2) + (v.1 - start.1).powi(2) + (v.2 - start.2).powi(2);
                 if closest.is_none_or(|(best, _, _)| d < best || best == 0.0) {
@@ -611,24 +619,30 @@ impl Game {
         self.thrown.insert(id, t);
     }
 
-    /// The parts of `Entity.onEntityUpdate` that matter for a throwable: water pushes
-    /// it and makes it splash, and it dies below the world.
+    /// The parts of `Entity.onEntityUpdate` that matter for a projectile `width`
+    /// wide: water pushes it and makes it splash (putting out fire), and below the
+    /// world it dies (returns `true`).
     ///
     /// TODO(M5): lava sets it on fire.
-    fn thrown_entity_update(&mut self, t: &mut Throwable) {
-        let bb = t
-            .body
+    pub(super) fn projectile_entity_update(
+        &mut self,
+        body: &mut Body,
+        base: &mut EntityBase,
+        first_update: &mut bool,
+        width: f32,
+    ) -> bool {
+        let bb = body
             .bb()
             .expand([0.0, f64::from(-0.4f32), 0.0])
             .contract([0.001, 0.001, 0.001]);
         let (water, push) = super::liquids::water_movement(&mut self.level.overworld, &bb, true);
-        t.body.motion.0 += push.0;
-        t.body.motion.1 += push.1;
-        t.body.motion.2 += push.2;
-        if water && !t.body.in_water && !t.first_update {
+        body.motion.0 += push.0;
+        body.motion.1 += push.1;
+        body.motion.2 += push.2;
+        if water && !body.in_water && !*first_update {
             // resetHeight: the splash (particles are client-side), with the entity's own
             // random (unseeded in vanilla).
-            let m = t.body.motion;
+            let m = body.motion;
             let volume = (sqrt_f64(
                 m.0 * m.0 * f64::from(0.2f32) + m.1 * m.1 + m.2 * m.2 * f64::from(0.2f32),
             ) * 0.2)
@@ -637,30 +651,41 @@ impl Game {
             let pitch = 1.0 + (r.next_float() - r.next_float()) * 0.4;
             // The bubbles (three floats each) and splashes (two each) are client-side
             // but draw from the random.
-            let particles = (1.0 + SIZE * 20.0).ceil() as usize;
+            let particles = (1.0 + width * 20.0).ceil() as usize;
             for _ in 0..particles * (3 + 2) {
                 let _ = r.next_float();
             }
-            self.play_sound_near_except(None, SPLASH_SOUND, t.body.pos, volume, pitch);
+            if !base.silent {
+                self.play_sound_near_except(None, SPLASH_SOUND, body.pos, volume, pitch);
+            }
         }
-        t.body.in_water = water;
+        body.in_water = water;
         if water {
-            t.base.wet();
+            base.wet();
         }
-        if t.body.pos.1 < VOID_Y {
-            t.dead = true;
+        *first_update = false;
+        body.pos.1 < VOID_Y
+    }
+
+    /// `Entity.isWet` of a projectile: in water, or in the rain at its feet or top.
+    pub(super) fn projectile_wet(&mut self, body: &Body) -> bool {
+        if body.in_water {
+            return true;
         }
-        t.first_update = false;
+        let p = body.pos;
+        let (x, z) = (floor_f64(p.0), floor_f64(p.2));
+        let top = floor_f64(p.1 + f64::from(body.height));
+        self.rains_at((x, floor_f64(p.1), z)) || self.rains_at((x, top, z))
     }
 
     /// `canBeCollidedWith` of the entities krol simulates: living players, falling
     /// blocks and primed TNT.
-    fn can_be_collided_with(&self, target: Target) -> bool {
+    pub(super) fn can_be_collided_with(&self, target: Target) -> bool {
         match target {
             Target::Player(i) => !self.players[i].removed,
             Target::Falling(id) => self.falling.get(&id).is_some_and(|f| !f.dead),
             Target::Tnt(id) => self.tnt.get(&id).is_some_and(|t| !t.dead),
-            Target::Item(_) | Target::Orb(_) | Target::Thrown(_) => false,
+            Target::Item(_) | Target::Orb(_) | Target::Thrown(_) | Target::Arrow(_) => false,
         }
     }
 
@@ -842,8 +867,8 @@ impl Game {
         self.attack_player(i, DamageSource::Fall, PEARL_DAMAGE);
     }
 
-    /// The box a target collides with, for the throwables' entity ray trace.
-    fn target_box(&self, target: Target) -> Option<super::physics::Aabb> {
+    /// The box a target collides with, for the projectiles' entity ray traces.
+    pub(super) fn target_box(&self, target: Target) -> Option<super::physics::Aabb> {
         Some(match target {
             Target::Player(i) => super::physics::Aabb::at(self.players[i].pos, 0.6, 1.8),
             Target::Item(id) => self.items.get(&id)?.body.bb(),
@@ -851,6 +876,7 @@ impl Game {
             Target::Falling(id) => self.falling.get(&id)?.body.bb(),
             Target::Tnt(id) => self.tnt.get(&id)?.body.bb(),
             Target::Thrown(id) => self.thrown.get(&id)?.body.bb(),
+            Target::Arrow(id) => self.arrows.get(&id)?.body.bb(),
         })
     }
 }

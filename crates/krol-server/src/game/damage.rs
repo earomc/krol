@@ -59,6 +59,15 @@ pub enum DamageSource {
     /// A splash potion of harming, with the thrower's entity id
     /// (`DamageSource.causeIndirectMagicDamage`: bypasses armor, magic).
     IndirectMagic(i32),
+    /// An arrow, with its entity id and its shooter's if known
+    /// (`DamageSource.causeArrowDamage`: indirect, a projectile; attributed to the
+    /// shooter, else to the arrow itself).
+    Arrow {
+        /// The arrow's entity id.
+        arrow: i32,
+        /// The shooter's entity id.
+        shooter: Option<i32>,
+    },
 }
 
 impl DamageSource {
@@ -83,6 +92,7 @@ impl DamageSource {
             Self::Thrown(_) => "thrown",
             Self::FallingBlock => "fallingBlock",
             Self::IndirectMagic(_) => "indirectMagic",
+            Self::Arrow { .. } => "arrow",
         }
     }
 
@@ -106,6 +116,11 @@ impl DamageSource {
         matches!(self, Self::OnFire | Self::InFire | Self::Lava)
     }
 
+    /// A projectile (`isProjectile`), reduced by projectile protection.
+    pub fn projectile(self) -> bool {
+        matches!(self, Self::Thrown(_) | Self::Arrow { .. })
+    }
+
     /// An explosion (`isExplosion`).
     pub fn explosion(self) -> bool {
         matches!(self, Self::Explosion | Self::ExplosionBy(_))
@@ -125,6 +140,7 @@ impl DamageSource {
             | Self::Thorns(id)
             | Self::IndirectMagic(id) => Some(id),
             Self::Thrown(thrower) => thrower,
+            Self::Arrow { arrow, shooter } => Some(shooter.unwrap_or(arrow)),
             _ => None,
         }
     }
@@ -154,7 +170,8 @@ impl DamageSource {
             | Self::Thorns(_)
             | Self::Anvil
             | Self::FallingBlock
-            | Self::Thrown(_) => DEFAULT_HUNGER_DAMAGE,
+            | Self::Thrown(_)
+            | Self::Arrow { .. } => DEFAULT_HUNGER_DAMAGE,
         }
     }
 }
@@ -177,7 +194,7 @@ fn protection_modifier(id: i16, level: i32, source: DamageSource) -> i32 {
         FIRE_PROTECTION if source.fire() => 1.25,
         FEATHER_FALLING if source == DamageSource::Fall => 2.5,
         super::item_data::BLAST_PROTECTION if source.explosion() => 1.5,
-        // TODO(M5): projectile protection (4).
+        super::item_data::PROJECTILE_PROTECTION if source.projectile() => 1.5,
         _ => return 0,
     };
     krol_java::math::floor_f32(f * factor)
@@ -301,10 +318,16 @@ impl Game {
                 let _ = p.rand.next_double();
                 p.velocity_changed = true;
             }
-            let attacker = source
-                .attacker()
-                .and_then(|id| self.players.iter().find(|p| p.entity_id == id))
-                .map(|a| a.pos);
+            // An arrow without a shooter knocks back from where it is.
+            let attacker = source.attacker().and_then(|id| {
+                match self.players.iter().find(|p| p.entity_id == id) {
+                    Some(a) => Some(a.pos),
+                    None if matches!(source, DamageSource::Arrow { .. }) => {
+                        self.entity_position(id)
+                    }
+                    None => None,
+                }
+            });
             match attacker {
                 Some(from) => self.knock_back(i, from),
                 // attackedAtYaw is picked with Math.random().

@@ -45,6 +45,9 @@ const TNT_OBJECT: i8 = 50;
 /// velocity updates.
 const THROWN_RANGE: i32 = 64;
 const THROWN_FREQUENCY: u32 = 10;
+/// Arrows: range 64, every 20 ticks, no velocity updates.
+const ARROW_RANGE: i32 = 64;
+const ARROW_FREQUENCY: u32 = 20;
 /// Experience orbs: range 160, every 20 ticks, with velocity updates.
 const ORB_RANGE: i32 = 160;
 const ORB_FREQUENCY: u32 = 20;
@@ -126,13 +129,16 @@ pub fn player_metadata(p: &Player) -> Vec<Metadata> {
         md(6, Float(d.get_f32("HealF"))),
         md(7, Int(p.effect_color)),
         md(8, Byte(i8::from(p.effect_ambient))),
-        md(9, Byte(0)),
+        md(ARROW_COUNT_INDEX, Byte(p.arrow_count)),
         md(10, Byte(p.skin_parts as i8)),
         md(16, Byte(0)),
         md(17, Float(d.get_f32("AbsorptionAmount"))),
         md(18, Int(d.get_i32("Score"))),
     ]
 }
+
+/// Metadata entry 9 of living entities: arrows stuck in the body.
+pub const ARROW_COUNT_INDEX: u8 = 9;
 
 /// All indices of a player's data watcher (everything is dirty on creation).
 pub const PLAYER_METADATA_INDICES: [u8; 13] = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 16, 17, 18];
@@ -209,6 +215,20 @@ impl Game {
                 chunk: t.chunk,
                 airborne: false,
                 metadata_changed: false,
+                player: None,
+            });
+        }
+        if let Some(a) = self.arrows.get(&entity_id) {
+            return Some(View {
+                pos: a.body.pos,
+                yaw: a.base.yaw,
+                pitch: a.base.pitch,
+                head: 0.0,
+                on_ground: a.body.on_ground,
+                motion: a.body.motion,
+                chunk: a.chunk,
+                airborne: false,
+                metadata_changed: a.metadata_changed,
                 player: None,
             });
         }
@@ -296,6 +316,8 @@ impl Game {
             (TNT_RANGE, TNT_FREQUENCY, true)
         } else if self.thrown.contains_key(&entity_id) {
             (THROWN_RANGE, THROWN_FREQUENCY, true)
+        } else if self.arrows.contains_key(&entity_id) {
+            (ARROW_RANGE, ARROW_FREQUENCY, false)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
         };
@@ -511,6 +533,26 @@ impl Game {
                 y: speed(v.motion.1),
                 z: speed(v.motion.2),
             });
+        } else if let Some(a) = self.arrows.get(&entity_id) {
+            // The data is the shooter's entity id (the arrow's own without one); like any
+            // data but 0 it brings the velocity. No velocity packet follows.
+            let data = a.shooter.unwrap_or(entity_id);
+            packets.push(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind: super::arrow::OBJECT_TYPE,
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                pitch: angle(v.pitch) as i8,
+                yaw: angle(v.yaw) as i8,
+                data,
+                velocity: (data != 0)
+                    .then(|| (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2))),
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: a.metadata(),
+            });
         } else if let Some(t) = self.thrown.get(&entity_id) {
             // Only splash potions have data (their damage value); data 0 carries no
             // velocity.
@@ -680,6 +722,8 @@ impl Game {
             self.update_player_entities(entity_id);
         }
 
+        // Arrows move from their first update on and always send look and move together.
+        let arrow = self.arrows.contains_key(&entity_id);
         let Some(entry) = self.tracker.get_mut(&entity_id) else {
             return rechecked;
         };
@@ -697,7 +741,7 @@ impl Game {
             let turned =
                 (yaw - entry.encoded_rot.0).abs() >= 4 || (pitch - entry.encoded_rot.1).abs() >= 4;
             let mut packet = None;
-            if counter > 0 {
+            if counter > 0 || arrow {
                 let small = |d: i32| (-128..128).contains(&d);
                 if small(dx)
                     && small(dy)
@@ -706,7 +750,10 @@ impl Game {
                     && entry.on_ground == v.on_ground
                 {
                     let on_ground = v.on_ground;
-                    packet = match (moved, turned) {
+                    // Vanilla quirk: an arrow sends the look and move packet even when
+                    // it neither moved nor turned, with a delta from the last position
+                    // that was counted as moved.
+                    packet = match (moved || arrow, turned || arrow) {
                         (true, true) => Some(ClientboundPlay::EntityLookMove {
                             entity_id,
                             dx: dx as i8,
@@ -833,6 +880,8 @@ impl Game {
             &mut f.body
         } else if let Some(t) = self.thrown.get_mut(&entity_id) {
             &mut t.body
+        } else if let Some(a) = self.arrows.get_mut(&entity_id) {
+            &mut a.body
         } else {
             &mut self.tnt.get_mut(&entity_id)?.body
         };
@@ -866,6 +915,20 @@ impl Game {
                     properties: super::attributes::properties(&dirty, &p.modifiers),
                 });
             }
+        } else if let Some(a) = self.arrows.get_mut(&entity_id)
+            && std::mem::take(&mut a.metadata_changed)
+        {
+            // DataWatcher.getChanged: every entry still watched.
+            let dirty = std::mem::take(&mut a.dirty_metadata);
+            let metadata = a
+                .metadata()
+                .into_iter()
+                .filter(|m| dirty.contains(&m.index))
+                .collect();
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata,
+            });
         } else if let Some(it) = self.items.get_mut(&entity_id)
             && !it.dirty_metadata.is_empty()
         {

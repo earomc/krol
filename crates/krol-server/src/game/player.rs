@@ -119,6 +119,10 @@ pub struct Player {
     pub effect_color: i32,
     /// Metadata 8: whether all effects are ambient.
     pub effect_ambient: bool,
+    /// Metadata 9: arrows stuck in the body (`getArrowCountInEntity`).
+    pub arrow_count: i8,
+    /// Updates until the next stuck arrow falls out (`arrowHitTimer`).
+    pub arrow_hit_timer: i32,
     /// The last move was blocked horizontally.
     pub collided_horizontally: bool,
     /// Distance walked, for step sounds (`distanceWalkedOnStepModified`).

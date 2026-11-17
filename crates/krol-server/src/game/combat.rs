@@ -319,7 +319,7 @@ impl Game {
     /// `EnchantmentHelper.applyThornEnchantments`: each thorns piece the victim holds or
     /// wears may hurt the attacker (`EnchantmentThorns.onUserHurt`, drawing from the
     /// victim's random) and wears.
-    fn apply_thorns(&mut self, victim: usize, attacker: usize) {
+    pub(super) fn apply_thorns(&mut self, victim: usize, attacker: usize) {
         // getInventory: the held item, then the armor from the boots up.
         let slots = [36 + self.players[victim].selected, 8, 7, 6, 5];
         for slot in slots {

@@ -388,6 +388,8 @@ impl Game {
             p.xp_cooldown -= 1;
         }
         self.sleep_tick(i);
+        // EntityLivingBase.onUpdate (after onEntityUpdate, which nothing here reads).
+        self.stuck_arrows_update(i);
         self.send_equipment_changes(i);
         // Entity.handleWaterMovement: flowing water pushes players who are not flying.
         let (water, push) = {

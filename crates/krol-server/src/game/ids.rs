@@ -296,6 +296,10 @@ pub mod item {
     pub const POTION: i16 = 373;
     /// `snowball`.
     pub const SNOWBALL: i16 = 332;
+    /// `bow`.
+    pub const BOW: i16 = 261;
+    /// `arrow`.
+    pub const ARROW: i16 = 262;
     /// `egg`.
     pub const EGG: i16 = 344;
     /// `ender_pearl`.

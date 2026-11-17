@@ -254,6 +254,11 @@ description = "EntityThrowable: ItemSnowball/ItemEnderPearl.onItemRightClick (th
 scenarios = ["play/throwables"]
 
 [[feature]]
+id = "entity.arrows"
+description = "ItemBow and EntityArrow: drawing a bow (the use flag), releasing at full power (spawn object 60 with the shooter's id as data, critical metadata in the data watcher's HashMap order, random.bow, bow wear, the arrow used up, stat.useItem.bow), the arrow sticking in a wall in its first tick (random.bowhit, the first change packet with every entry), pickup (collect, random.pop, the arrow item), a kill by arrow (death.attack.arrow, arrow count metadata, change game state 6, knockback from the shooter). Not yet in a scenario: partial power, power/punch/flame/infinity, arrows bouncing off, falling out of changed blocks, saving with the chunk, creative pickup"
+scenarios = ["play/bows"]
+
+[[feature]]
 id = "entity.splash_potions"
 description = "EntityPotion: ItemPotion.onItemRightClick for splash potions (thrown like the other throwables: speed 0.5, lobbed 20 degrees, gravity 0.05), spawn object 73 with the potion's damage value as data, the 2002 effect with that value, direct hits at full strength: instant damage (indirectMagic, knockback from the thrower), instant health, a lasting effect with its attribute modifier; potion display names in /give's log line. Not yet in a scenario: splashes reaching entities that were not hit (the share depends on the unpinned throw spread), effects of 20 ticks or less being dropped, saving with the chunk"
 scenarios = ["play/splash_potions"]

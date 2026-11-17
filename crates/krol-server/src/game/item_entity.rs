@@ -543,6 +543,12 @@ impl Game {
                     .filter(|(_, o)| !o.dead && o.body.bb().intersects(&area))
                     .map(|(id, _)| *id),
             )
+            .chain(
+                self.arrows
+                    .iter()
+                    .filter(|(_, a)| !a.dead && a.body.bb().intersects(&area))
+                    .map(|(id, _)| *id),
+            )
             .collect();
         // TODO(M5): vanilla goes through the chunk's entity lists; entity id order is
         // the order they were added.
@@ -550,6 +556,10 @@ impl Game {
         for id in near {
             if self.orbs.contains_key(&id) {
                 self.collect_orb(i, id);
+                continue;
+            }
+            if self.arrows.contains_key(&id) {
+                self.collect_arrow(i, id);
                 continue;
             }
             let Some(it) = self.items.get(&id) else {

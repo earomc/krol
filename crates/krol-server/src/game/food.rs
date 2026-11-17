@@ -96,8 +96,19 @@ pub struct ItemUse {
     pub damage: i16,
     /// Updates left.
     pub count: i32,
-    /// Drunk (milk) rather than eaten.
-    pub drink: bool,
+    /// How the item is used (`getItemUseAction`).
+    pub action: UseAction,
+}
+
+/// What using an item looks like (`EnumAction`, of the actions krol uses).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UseAction {
+    /// Food: crumbs and eating sounds.
+    Eat,
+    /// Milk and potions: drinking sounds.
+    Drink,
+    /// A bow being drawn: no effects while in use.
+    Bow,
 }
 
 impl Game {
@@ -123,7 +134,7 @@ impl Game {
                     id: held.id,
                     damage: held.damage,
                     count: EAT_DURATION,
-                    drink: false,
+                    action: UseAction::Eat,
                 });
                 p.dirty_metadata.insert(0);
             }
@@ -143,6 +154,18 @@ impl Game {
     /// `ItemBucketMilk.onItemRightClick` / `ItemPotion.onItemRightClick` (drinkable
     /// potions): drunk in any game mode, with no animation.
     pub(super) fn start_drinking(&mut self, i: usize, held: &ItemStack) {
+        self.start_using(i, held, UseAction::Drink, EAT_DURATION);
+    }
+
+    /// `EntityPlayer.setItemInUse` for an item that does not eat (no animation): the
+    /// use starts unless the same stack is already in use.
+    pub(super) fn start_using(
+        &mut self,
+        i: usize,
+        held: &ItemStack,
+        action: UseAction,
+        duration: i32,
+    ) {
         let p = &mut self.players[i];
         let slot = 36 + p.selected;
         let same = p
@@ -154,8 +177,8 @@ impl Game {
                 slot,
                 id: held.id,
                 damage: held.damage,
-                count: EAT_DURATION,
-                drink: true,
+                count: duration,
+                action,
             });
             p.dirty_metadata.insert(0);
         }
@@ -184,7 +207,7 @@ impl Game {
             return;
         }
         if u.count <= EAT_SOUNDS_FROM && u.count % 4 == 0 {
-            self.use_effects(i, u.drink, EAT_PARTICLES);
+            self.use_effects(i, u.action, EAT_PARTICLES);
         }
         let left = u.count - 1;
         if let Some(use_) = self.players[i].using.as_mut() {
@@ -196,9 +219,12 @@ impl Game {
     }
 
     /// `EntityPlayer.updateItemUse`: the drinking sound, or crumbs (client-side, from
-    /// the player's random) and the eating sound, for the others.
-    fn use_effects(&mut self, i: usize, drink: bool, particles: usize) {
-        if drink {
+    /// the player's random) and the eating sound, for the others; nothing for bows.
+    fn use_effects(&mut self, i: usize, action: UseAction, particles: usize) {
+        if action == UseAction::Bow {
+            return;
+        }
+        if action == UseAction::Drink {
             let pitch = self.world_rand.next_float() * 0.1 + 0.9;
             let p = &self.players[i];
             let (pos, conn) = (p.pos, p.conn_id);
@@ -223,8 +249,11 @@ impl Game {
             entity_id: p.entity_id,
             status: STATUS_USE_FINISHED,
         });
-        let drink = self.players[i].using.as_ref().is_some_and(|u| u.drink);
-        self.use_effects(i, drink, FINISH_PARTICLES);
+        let action = self.players[i]
+            .using
+            .as_ref()
+            .map_or(UseAction::Eat, |u| u.action);
+        self.use_effects(i, action, FINISH_PARTICLES);
         let p = &mut self.players[i];
         let slot = 36 + p.selected;
         let Some(stack) = p.inventory[slot].clone() else {

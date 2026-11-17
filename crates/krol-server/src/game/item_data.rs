@@ -377,6 +377,16 @@ pub const FIRE_PROTECTION: i16 = 1;
 
 /// `Enchantment.unbreaking`'s id.
 pub const UNBREAKING: i16 = 34;
+/// `Enchantment.projectileProtection`.
+pub const PROJECTILE_PROTECTION: i16 = 4;
+/// `Enchantment.power` (bows: more arrow damage).
+pub const POWER: i16 = 48;
+/// `Enchantment.punch` (bows: arrow knockback).
+pub const PUNCH: i16 = 49;
+/// `Enchantment.flame` (bows: burning arrows).
+pub const FLAME: i16 = 50;
+/// `Enchantment.infinity` (bows: no arrows used up).
+pub const INFINITY: i16 = 51;
 
 /// `Enchantment.respiration`'s id.
 pub const RESPIRATION: i16 = 5;
