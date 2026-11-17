@@ -537,6 +537,37 @@ pub struct ChunkColumn {
     pub data: Vec<u8>,
 }
 
+/// One icon on a map (vanilla `Vec4b`): its type (0 for a player), position in half
+/// pixels from the center, and rotation in 16 steps.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MapIcon {
+    /// The icon type (0-15).
+    pub kind: u8,
+    /// Position from the center, in half pixels.
+    pub x: i8,
+    /// Position from the center, in half pixels.
+    pub z: i8,
+    /// Rotation in 16 steps (0-15).
+    pub rotation: u8,
+}
+
+impl MapIcon {
+    /// The type in the high nibble, the rotation in the low one.
+    pub fn packed(&self) -> u8 {
+        (self.kind & 15) << 4 | (self.rotation & 15)
+    }
+
+    /// The icon from its packed byte and position.
+    pub fn unpack(packed: u8, x: i8, z: i8) -> Self {
+        Self {
+            kind: packed >> 4,
+            x,
+            z,
+            rotation: packed & 15,
+        }
+    }
+}
+
 /// Clientbound play packets (protocol 47 ids).
 #[derive(Debug, Clone, PartialEq)]
 #[allow(missing_docs)] // fields mirror the protocol documentation
@@ -778,6 +809,20 @@ pub enum ClientboundPlay {
     },
     /// `0x33`: a sign's four lines (JSON chat).
     UpdateSign { pos: BlockPos, lines: [String; 4] },
+    /// `0x34`: a map's scale, icons, and the colors of a rectangle (`columns` 0: none).
+    Maps {
+        /// The map's item damage.
+        map: i32,
+        scale: i8,
+        /// Icons as (type, x, z, rotation).
+        icons: Vec<MapIcon>,
+        columns: u8,
+        rows: u8,
+        x: u8,
+        z: u8,
+        /// The rectangle's colors, row by row.
+        data: Vec<u8>,
+    },
     /// `0x3B`: creates (mode 0), removes (1) or updates (2) an objective; the display
     /// name and render type (`integer` or `hearts`) are sent for modes 0 and 2.
     ScoreboardObjective {
@@ -993,6 +1038,7 @@ impl ClientboundPlay {
             Self::WindowProperty { .. } => 0x31,
             Self::SpawnExperienceOrb { .. } => 0x11,
             Self::UpdateSign { .. } => 0x33,
+            Self::Maps { .. } => 0x34,
             Self::ScoreboardObjective { .. } => 0x3b,
             Self::CombatEvent { .. } => 0x42,
             Self::UpdateScore { .. } => 0x3c,
@@ -1407,6 +1453,25 @@ impl ClientboundPlay {
                     w.string(line)?;
                 }
             }
+            Self::Maps {
+                map,
+                scale,
+                icons,
+                columns,
+                rows,
+                x,
+                z,
+                data,
+            } => {
+                w.varint(*map).i8(*scale).varint(icons.len() as i32);
+                for icon in icons {
+                    w.u8(icon.packed()).i8(icon.x).i8(icon.z);
+                }
+                w.u8(*columns);
+                if *columns > 0 {
+                    w.u8(*rows).u8(*x).u8(*z).byte_array(data);
+                }
+            }
             Self::ScoreboardObjective {
                 name,
                 mode,
@@ -1687,6 +1752,32 @@ impl ClientboundPlay {
                     r.string(32767)?,
                 ],
             },
+            0x34 => {
+                let map = r.varint()?;
+                let scale = r.i8()?;
+                let n = r.varint()?.max(0) as usize;
+                let mut icons = Vec::new();
+                for _ in 0..n {
+                    let packed = r.u8()?;
+                    icons.push(MapIcon::unpack(packed, r.i8()?, r.i8()?));
+                }
+                let columns = r.u8()?;
+                let (rows, x, z, data) = if columns > 0 {
+                    (r.u8()?, r.u8()?, r.u8()?, r.byte_array(1 << 21)?.to_vec())
+                } else {
+                    (0, 0, 0, Vec::new())
+                };
+                Self::Maps {
+                    map,
+                    scale,
+                    icons,
+                    columns,
+                    rows,
+                    x,
+                    z,
+                    data,
+                }
+            }
             0x35 => Self::UpdateTileEntity {
                 pos: r.position()?,
                 action: r.u8()?,
@@ -2391,5 +2482,41 @@ mod tests {
         let bytes = p.encode(V).unwrap();
         assert_eq!(&bytes[..3], &[0x38, 0, 1]);
         assert_eq!(bytes.len(), 3 + 16 + 2 + 1 + 9 + 2 + 1 + 2 + 1 + 1 + 1);
+    }
+
+    #[test]
+    fn maps_round_trip() {
+        let p = ClientboundPlay::Maps {
+            map: 3,
+            scale: 0,
+            icons: vec![MapIcon {
+                kind: 0,
+                x: -2,
+                z: 5,
+                rotation: 8,
+            }],
+            columns: 2,
+            rows: 1,
+            x: 10,
+            z: 20,
+            data: vec![4, 5],
+        };
+        let bytes = p.encode(V).unwrap();
+        assert_eq!(bytes, [0x34, 3, 0, 1, 0x08, 0xfe, 5, 2, 1, 10, 20, 2, 4, 5]);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
+        // Icons only: no rectangle follows.
+        let p = ClientboundPlay::Maps {
+            map: 0,
+            scale: 1,
+            icons: Vec::new(),
+            columns: 0,
+            rows: 0,
+            x: 0,
+            z: 0,
+            data: Vec::new(),
+        };
+        let bytes = p.encode(V).unwrap();
+        assert_eq!(bytes, [0x34, 0, 1, 0, 0]);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
     }
 }

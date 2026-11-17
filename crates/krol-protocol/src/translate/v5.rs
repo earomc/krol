@@ -761,6 +761,23 @@ impl V5Translator {
                 w.varint(*entity_id).i32(*x).i32(*y).i32(*z).i16(*count);
                 one(w);
             }
+            // 1.7 sends maps as a list of icons, a scale, and one packet per column.
+            ClientboundPlay::Maps {
+                map,
+                scale,
+                icons,
+                columns,
+                rows,
+                x,
+                z,
+                data,
+            } => {
+                for body in v5_map_bodies(*scale, icons, *columns, *rows, *x, *z, data) {
+                    let mut w = packet(0x34);
+                    w.varint(*map).short_byte_array(&body);
+                    one(w);
+                }
+            }
             ClientboundPlay::UpdateSign { pos, lines } => {
                 let mut w = packet(0x33);
                 w.i32(pos.0).i16(pos.1 as i16).i32(pos.2);
@@ -1330,6 +1347,37 @@ fn plugin_data_v47(channel: &str, data: &[u8]) -> Result<Vec<u8>, DecodeError> {
     }
 }
 
+/// The data arrays of the 1.7 map packets for one 1.8 map packet: the icons (type 1:
+/// the packed type and rotation, x, z per icon), and with colors the scale (type 2) and
+/// one array per column (type 0: x, the top row, the column's colors).
+pub fn v5_map_bodies(
+    scale: i8,
+    icons: &[crate::packets::play::MapIcon],
+    columns: u8,
+    rows: u8,
+    x: u8,
+    z: u8,
+    data: &[u8],
+) -> Vec<Vec<u8>> {
+    let mut out = Vec::new();
+    let mut list = vec![1u8];
+    for icon in icons {
+        list.extend_from_slice(&[icon.packed(), icon.x as u8, icon.z as u8]);
+    }
+    out.push(list);
+    if columns > 0 {
+        out.push(vec![2, scale as u8]);
+        for c in 0..usize::from(columns) {
+            let mut column = vec![0u8, x.wrapping_add(c as u8), z];
+            for r in 0..usize::from(rows) {
+                column.push(data.get(c + r * usize::from(columns)).copied().unwrap_or(0));
+            }
+            out.push(column);
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1598,5 +1646,26 @@ mod tests {
         assert_eq!(v5[4096], 0x00);
         assert_eq!(v5[4097], 0x0e);
         assert_eq!(v5[4096 + 2048], 0xab);
+    }
+
+    #[test]
+    fn maps_split_into_columns() {
+        let icon = crate::packets::play::MapIcon {
+            kind: 1,
+            x: 3,
+            z: -1,
+            rotation: 2,
+        };
+        let bodies = v5_map_bodies(2, &[icon], 2, 2, 5, 6, &[1, 2, 3, 4]);
+        assert_eq!(
+            bodies,
+            vec![
+                vec![1, 0x12, 3, 0xff],
+                vec![2, 2],
+                vec![0, 5, 6, 1, 3],
+                vec![0, 6, 6, 2, 4],
+            ]
+        );
+        assert_eq!(v5_map_bodies(0, &[], 0, 0, 0, 0, &[]), vec![vec![1]]);
     }
 }
