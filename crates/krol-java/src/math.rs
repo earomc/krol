@@ -230,6 +230,83 @@ pub fn round_up_to_power_of_two(value: i32) -> i32 {
     j.wrapping_add(1)
 }
 
+/// Entries of the arcsine table behind [`atan2`]: `asin(i / 256)` for `i` in `0..=256`.
+const ASIN_STEPS: usize = 256;
+/// `2^44`, whose unit in the last place is `1/256`: adding it to a value in `[0, 1]`
+/// rounds the value to a multiple of `1/256` and leaves that multiple's index in the
+/// low bits of the sum.
+const ASIN_ROUNDER: f64 = 17_592_186_044_416.0;
+/// The magic constant of the inverse square root estimate (vanilla:
+/// `MathHelper.func_181161_i`).
+const INV_SQRT_MAGIC: i64 = 0x5FE6_EB50_C7B5_37AA;
+
+/// `(asin(i / 256), cos(asin(i / 256)))` for every table step.
+fn asin_table() -> &'static [(f64, f64); ASIN_STEPS + 1] {
+    static TABLE: OnceLock<Box<[(f64, f64); ASIN_STEPS + 1]>> = OnceLock::new();
+    TABLE.get_or_init(|| {
+        let mut table = Box::new([(0.0, 0.0); ASIN_STEPS + 1]);
+        for (i, entry) in table.iter_mut().enumerate() {
+            let angle = (i as f64 / ASIN_STEPS as f64).asin();
+            *entry = (angle, angle.cos());
+        }
+        table
+    })
+}
+
+/// One Newton step on the bit-trick estimate of `1 / sqrt(value)` (vanilla:
+/// `MathHelper.func_181161_i`).
+pub fn fast_inv_sqrt(value: f64) -> f64 {
+    let half = 0.5 * value;
+    let estimate = f64::from_bits((INV_SQRT_MAGIC - ((value.to_bits() as i64) >> 1)) as u64);
+    estimate * (1.5 - half * estimate * estimate)
+}
+
+/// Vanilla's approximate arctangent of `y / x` in `(-π, π]` (vanilla: `MathHelper.atan2`,
+/// 1.8.8's replacement for `Math.atan2`): the angle is folded into the first octant,
+/// looked up in a 257-step arcsine table and refined with a third-order correction.
+///
+/// ```
+/// use krol_java::math;
+/// assert!((math::atan2(1.0, 1.0) - std::f64::consts::FRAC_PI_4).abs() < 1e-6);
+/// assert!(math::atan2(f64::NAN, 1.0).is_nan());
+/// ```
+pub fn atan2(y: f64, x: f64) -> f64 {
+    let length_sq = x * x + y * y;
+    if length_sq.is_nan() {
+        return f64::NAN;
+    }
+    let (negative_y, negative_x) = (y < 0.0, x < 0.0);
+    // Vanilla negates rather than taking `abs`, which keeps the sign of -0.0.
+    let mut y = if negative_y { -y } else { y };
+    let mut x = if negative_x { -x } else { x };
+    let steep = y > x;
+    if steep {
+        std::mem::swap(&mut x, &mut y);
+    }
+    let scale = fast_inv_sqrt(length_sq);
+    x *= scale;
+    y *= scale;
+    let rounded = ASIN_ROUNDER + y;
+    let index = rounded.to_bits() as i32 as usize;
+    let (base, cos_base) = asin_table()
+        .get(index)
+        .copied()
+        .unwrap_or((f64::NAN, f64::NAN));
+    let step = rounded - ASIN_ROUNDER;
+    let delta = y * cos_base - x * step;
+    let mut angle = base + (6.0 + delta * delta) * delta * 0.166_666_666_666_666_66;
+    if steep {
+        angle = std::f64::consts::FRAC_PI_2 - angle;
+    }
+    if negative_x {
+        angle = PI - angle;
+    }
+    if negative_y {
+        angle = -angle;
+    }
+    angle
+}
+
 /// A random version-4 UUID drawn from `rand`, as vanilla generates entity UUIDs
 /// (vanilla: `MathHelper.getRandomUuid`). Returns the 128-bit value with the most
 /// significant Java `long` in the high 64 bits.
@@ -241,6 +318,31 @@ pub fn random_uuid(rand: &mut JavaRandom) -> u128 {
 
 #[cfg(test)]
 mod tests {
+    /// `MathHelper.atan2` as the vanilla 1.8.8 jar computes it on Java 8 (inputs, then
+    /// the raw bits of the result).
+    #[test]
+    fn atan2_matches_vanilla() {
+        let vectors: [(f64, f64, u64); 14] = [
+            (1.0, 1.0, 0x3fe921fb45e6d12f),
+            (0.4, -0.3, 0x4001b6defa61c7dd),
+            (-0.1, 0.25, 0xbfd85a376860b135),
+            (-2.5, -0.001, 0xbff9239e1bc1a4e4),
+            (0.0, 1.0, 0x0),
+            (1.0, 0.0, 0x3ff921fb54442d18),
+            (0.0, -1.0, 0x400921fb54442d18),
+            (-0.0, -1.0, 0x400921fb54442d18),
+            (3.0E-5, 0.29, 0x3f1b19d91f7239cc),
+            (0.123456, 0.654321, 0x3fc7deafafb6001c),
+            (-0.37, 1.0E-4, 0xbff920e03191fd26),
+            (1.0E10, 3.0, 0x3ff921fb542f931b),
+            (0.2997, -0.0102, 0x3ff9ad56314e70b2),
+            (-0.03, -0.03, 0xc002d97c8d696b3c),
+        ];
+        for (y, x, bits) in vectors {
+            assert_eq!(atan2(y, x).to_bits(), bits, "atan2({y}, {x})");
+        }
+    }
+
     use super::*;
 
     #[test]
