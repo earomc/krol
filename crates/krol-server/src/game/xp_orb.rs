@@ -1,7 +1,7 @@
 //! Experience orbs (vanilla: `EntityXPOrb`, `Block.dropXpOnBlockBreak`,
 //! `SlotFurnaceOutput.onCrafting`).
 //!
-//! TODO(M5): orbs in lava (fizz), pushOutOfBlocks, water flow, damage; experience from mobs, breeding, trading, fishing and the player's own
+//! TODO(M5): orbs in lava (fizz), water flow, damage; experience from mobs, breeding, trading, fishing and the player's own
 //! death.
 
 use krol_java::math::floor_f64;
@@ -184,6 +184,17 @@ impl Game {
             orb.pickup_delay -= 1;
         }
         orb.body.motion.1 -= f64::from(GRAVITY);
+        // TODO(M5): lava.
+        // Entity.pushOutOfBlocks (the orb still collides with blocks).
+        let bb = orb.body.bb();
+        let at = (
+            orb.body.pos.0,
+            (bb.min[1] + bb.max[1]) / 2.0,
+            orb.body.pos.2,
+        );
+        let r = &mut self.entity_rand;
+        let mut push = || r.next_float() * 0.2 + 0.1;
+        physics::push_out_of_blocks(&mut self.level.overworld, &mut orb.body, at, &mut push);
         // Vanilla quirk: how often the orb looks for a player depends on its entity id.
         if orb.target_color < orb.color - 20 + id % 100 {
             let far = orb.target.is_none_or(|t| {

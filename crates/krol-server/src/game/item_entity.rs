@@ -1,7 +1,7 @@
 //! Dropped items (vanilla: `EntityItem`, `Block.dropBlockAsItemWithChance`,
 //! `Block.spawnAsEntity`, `InventoryPlayer.addItemStackToInventory`).
 //!
-//! TODO(M5): items in lava, being pushed out of solid blocks, despawn and
+//! TODO(M5): items in lava, despawn and
 //! merge rules for items with NBT, thrown items.
 
 use krol_nbt::{Compound, Tag};
@@ -276,20 +276,32 @@ impl Game {
         }
         let prev = it.body.pos;
         it.body.motion.1 -= f64::from(0.04f32);
-        // TODO(M5): pushOutOfBlocks when stuck inside a solid block.
-        let m = it.body.motion;
-        let moved =
-            physics::move_entity_quiet(&mut self.level.overworld, &mut it.body, m.0, m.1, m.2);
-        it.base.update_fall_state(it.body.on_ground, moved.moved_y);
-        it.base.moved();
-        // doBlockCollisions, with the item in the world.
+        // Entity.pushOutOfBlocks at the box's vertical middle, with the item's own
+        // random (unseeded in vanilla).
         let bb = it.body.bb();
-        self.items.insert(id, it);
-        let touched = self.block_collisions(&bb);
-        let Some(mut it) = self.items.remove(&id) else {
-            return;
-        };
-        it.body.touched(touched);
+        let at = (it.body.pos.0, (bb.min[1] + bb.max[1]) / 2.0, it.body.pos.2);
+        let r = &mut self.entity_rand;
+        let mut push = || r.next_float() * 0.2 + 0.1;
+        let no_clip =
+            physics::push_out_of_blocks(&mut self.level.overworld, &mut it.body, at, &mut push);
+        let m = it.body.motion;
+        if no_clip {
+            physics::move_no_clip(&mut it.body, m.0, m.1, m.2);
+        } else {
+            let moved =
+                physics::move_entity_quiet(&mut self.level.overworld, &mut it.body, m.0, m.1, m.2);
+            it.base.update_fall_state(it.body.on_ground, moved.moved_y);
+            it.base.moved();
+            // doBlockCollisions, with the item in the world.
+            let bb = it.body.bb();
+            self.items.insert(id, it);
+            let touched = self.block_collisions(&bb);
+            let Some(again) = self.items.remove(&id) else {
+                return;
+            };
+            it = again;
+            it.body.touched(touched);
+        }
         let p = it.body.pos;
         let crossed = prev.0 as i32 != p.0 as i32
             || prev.1 as i32 != p.1 as i32

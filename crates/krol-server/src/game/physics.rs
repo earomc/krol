@@ -135,6 +135,86 @@ pub fn colliding_boxes(world: &mut World, bb: &Aabb) -> Vec<Aabb> {
     out
 }
 
+/// `World.isBlockFullCube`: the block's collision box averages at least 1 per edge.
+/// The box is the union of the block's collision boxes (vanilla reads the block's
+/// current bounds, which match that for the blocks an item can be stuck in).
+fn is_full_cube_box(world: &mut World, pos: (i32, i32, i32)) -> bool {
+    let state = world.block(pos.0, pos.1, pos.2);
+    let boxes = block_boxes(state, pos);
+    let Some(first) = boxes.first() else {
+        return false;
+    };
+    let mut u = *first;
+    for b in &boxes[1..] {
+        for a in 0..3 {
+            u.min[a] = u.min[a].min(b.min[a]);
+            u.max[a] = u.max[a].max(b.max[a]);
+        }
+    }
+    let edges = (u.max[0] - u.min[0]) + (u.max[1] - u.min[1]) + (u.max[2] - u.min[2]);
+    edges / 3.0 >= 1.0
+}
+
+/// `Entity.pushOutOfBlocks` at `at` (an item passes its box's vertical middle): an
+/// entity overlapping a block gets pushed toward the nearest side that is not a full
+/// cube (up if all are), at `push` (the entity's `0.1 + nextFloat() * 0.2`, drawn only
+/// then). Returns whether it overlaps, in which case its next move passes through
+/// blocks (`noClip`).
+pub fn push_out_of_blocks(
+    world: &mut World,
+    body: &mut Body,
+    at: (f64, f64, f64),
+    push: &mut dyn FnMut() -> f32,
+) -> bool {
+    let pos = (floor_f64(at.0), floor_f64(at.1), floor_f64(at.2));
+    let (fx, fy, fz) = (
+        at.0 - f64::from(pos.0),
+        at.1 - f64::from(pos.1),
+        at.2 - f64::from(pos.2),
+    );
+    // World.func_147461_a: colliding_boxes without entities.
+    if colliding_boxes(world, &body.bb()).is_empty() && !is_full_cube_box(world, pos) {
+        return false;
+    }
+    // 0 west, 1 east, 3 up, 4 north, 5 south (EnumFacing order, down never).
+    let mut side = 3;
+    let mut nearest = 9999.0;
+    let candidates = [
+        ((-1, 0, 0), fx, 0),
+        ((1, 0, 0), 1.0 - fx, 1),
+        ((0, 1, 0), 1.0 - fy, 3),
+        ((0, 0, -1), fz, 4),
+        ((0, 0, 1), 1.0 - fz, 5),
+    ];
+    for (d, distance, s) in candidates {
+        let n = (pos.0 + d.0, pos.1 + d.1, pos.2 + d.2);
+        if !is_full_cube_box(world, n) && distance < nearest {
+            nearest = distance;
+            side = s;
+        }
+    }
+    let speed = f64::from(push());
+    match side {
+        0 => body.motion.0 = -speed,
+        1 => body.motion.0 = speed,
+        3 => body.motion.1 = speed,
+        4 => body.motion.2 = -speed,
+        _ => body.motion.2 = speed,
+    }
+    true
+}
+
+/// `moveEntity` with `noClip`: the box moves by the motion, through everything, and
+/// nothing else happens.
+pub fn move_no_clip(body: &mut Body, dx: f64, dy: f64, dz: f64) {
+    let bb = body.bb().offset([dx, dy, dz]);
+    body.pos = (
+        (bb.min[0] + bb.max[0]) / 2.0,
+        bb.min[1],
+        (bb.min[2] + bb.max[2]) / 2.0,
+    );
+}
+
 /// A moving entity's physical state (the fields of vanilla `Entity` used by
 /// `moveEntity`).
 #[derive(Debug, Clone)]
