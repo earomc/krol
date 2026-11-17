@@ -1,0 +1,657 @@
+{
+  "recorded_with": "vanilla 1.8.8",
+  "observations": {
+    "started": true,
+    "log": [
+      "[Server thread/INFO]: Starting minecraft server version 1.8.8",
+      "[Server thread/INFO]: Loading properties",
+      "[Server thread/INFO]: Default game type: ADVENTURE",
+      "[Server thread/INFO]: Generating keypair",
+      "[Server thread/INFO]: Starting Minecraft server on *:<port>",
+      "[Server thread/INFO]: Using default channel type",
+      "[Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!",
+      "[Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.",
+      "[Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.",
+      "[Server thread/WARN]: To change this, set \"online-mode\" to \"true\" in the server.properties file.",
+      "[Server thread/WARN]: Failed to load user banlist: ",
+      "java.io.FileNotFoundException: banned-players.json (The system cannot find the file specified)",
+      "[Server thread/WARN]: Failed to load ip banlist: ",
+      "java.io.FileNotFoundException: banned-ips.json (The system cannot find the file specified)",
+      "[Server thread/WARN]: Failed to load operators list: ",
+      "java.io.FileNotFoundException: ops.json (The system cannot find the file specified)",
+      "[Server thread/WARN]: Failed to load white-list: ",
+      "java.io.FileNotFoundException: whitelist.json (The system cannot find the file specified)",
+      "[Server thread/INFO]: Preparing level \"world\"",
+      "[Server thread/INFO]: Preparing start region for level 0",
+      "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
+      "[Server thread/INFO]: Game rule has been updated",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: No blocks filled",
+      "[Server thread/INFO]: Stopping the server",
+      "[Server thread/INFO]: Stopping server",
+      "[Server thread/INFO]: Saving players",
+      "[Server thread/INFO]: Saving worlds",
+      "[Server thread/INFO]: Saving chunks for level 'world'/Overworld",
+      "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
+      "[Server thread/INFO]: Saving chunks for level 'world'/The End"
+    ],
+    "entities": {
+      "-30,-28": [
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "1s",
+            "id": "minecraft:cobblestone_wall"
+          },
+          "Motion": [
+            "-0.00000000000000000000007245371202937456d",
+            "-0d",
+            "0.00000000000000000000018975638738302847d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-474.7919651479782d",
+            "4d",
+            "-442.7991131788572d"
+          ],
+          "Rotation": [
+            "269.70105f",
+            "0f"
+          ],
+          "UUID": "f2cf67ac-4d93-45d6-9427-4c8d345bc0a8",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "2s",
+            "id": "minecraft:anvil"
+          },
+          "Motion": [
+            "-0.00000000000000000000018115252292515736d",
+            "-0d",
+            "0.00000000000000000000016713331175058168d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-473.4078733820432d",
+            "4d",
+            "-442.5454257605103d"
+          ],
+          "Rotation": [
+            "126.68932f",
+            "0f"
+          ],
+          "UUID": "3ef4b3d6-7f97-47f7-80ff-6764610ea5a4",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "0s",
+            "id": "minecraft:string"
+          },
+          "Motion": [
+            "0.00000000000000000000004058481012340671d",
+            "-0d",
+            "0.00000000000000000000008160801989707911d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-470.150202911884d",
+            "4d",
+            "-442.6398222816695d"
+          ],
+          "Rotation": [
+            "334.3493f",
+            "0f"
+          ],
+          "UUID": "9f731937-ade2-4ad9-9c0a-4584abb8c3c4",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "0s",
+            "id": "minecraft:wheat"
+          },
+          "Motion": [
+            "-0.00000000000000000000011729856504031796d",
+            "-0d",
+            "-0.00000000000000000000005605900665016741d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-478.90986135151286d",
+            "4d",
+            "-439.9878846954362d"
+          ],
+          "Rotation": [
+            "170.27086f",
+            "0f"
+          ],
+          "UUID": "f5e985ca-c74a-4860-9de9-f84a1f92bbb6",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "0s",
+            "id": "minecraft:wheat_seeds"
+          },
+          "Motion": [
+            "-0.00000000000000000000005358754720256078d",
+            "-0d",
+            "0.00000000000000000000010508041450249681d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-478.70184052432927d",
+            "4d",
+            "-438.6130327455349d"
+          ],
+          "Rotation": [
+            "79.18125f",
+            "0f"
+          ],
+          "UUID": "c36e2351-bdb0-4cbe-b9ae-0bb22a16f93e",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "0s",
+            "id": "minecraft:wheat_seeds"
+          },
+          "Motion": [
+            "0.000000000000000000000010791246213621547d",
+            "-0d",
+            "-0.0000000000000000000001895755869769458d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-478.3251643112451d",
+            "4d",
+            "-440.34684185781344d"
+          ],
+          "Rotation": [
+            "158.83835f",
+            "0f"
+          ],
+          "UUID": "5db250cf-70b7-4b70-a87b-fbb90a137832",
+          "id": "Item"
+        },
+        {
+          "Age": "99s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "4b",
+            "Damage": "0s",
+            "id": "minecraft:carrot"
+          },
+          "Motion": [
+            "0.00000000000000000000003102255505126553d",
+            "-0d",
+            "0.00000000000000000000003216061816616705d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-476.1524405396207d",
+            "4d",
+            "-439.07917671672305d"
+          ],
+          "Rotation": [
+            "70.80811f",
+            "0f"
+          ],
+          "UUID": "fc2f80f8-1b3b-4189-a6d6-166f7ba2206b",
+          "id": "Item"
+        },
+        {
+          "Age": "99s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "3b",
+            "Damage": "0s",
+            "id": "minecraft:potato"
+          },
+          "Motion": [
+            "-0.000000000000000000000026478567334995434d",
+            "-0d",
+            "0.00000000000000000000012275633161413308d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-474.7424146128915d",
+            "4d",
+            "-438.84053605401135d"
+          ],
+          "Rotation": [
+            "348.47122f",
+            "0f"
+          ],
+          "UUID": "bb152037-cfed-412e-8494-445b4fba7a2f",
+          "id": "Item"
+        },
+        {
+          "Age": "99s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "3b",
+            "Damage": "0s",
+            "id": "minecraft:pumpkin_seeds"
+          },
+          "Motion": [
+            "0.00000000000000000000006419502835041312d",
+            "-0d",
+            "-0.00000000000000000000006036609501131897d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-472.0270891934944d",
+            "4d",
+            "-439.7623921674067d"
+          ],
+          "Rotation": [
+            "108.41929f",
+            "0f"
+          ],
+          "UUID": "9fdf2a52-9d3c-49c7-b6b4-892cfd2f800d",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "0s",
+            "id": "minecraft:nether_wart"
+          },
+          "Motion": [
+            "-0.00000000000000000000003129292027447451d",
+            "-0d",
+            "0.00000000000000000000000555257802929304d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-470.9872431200807d",
+            "4d",
+            "-439.2133968762469d"
+          ],
+          "Rotation": [
+            "154.45157f",
+            "0f"
+          ],
+          "UUID": "cc3136f4-55ed-4c7c-9ae2-657d2f40d32a",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "3b",
+            "Damage": "0s",
+            "id": "minecraft:nether_wart"
+          },
+          "Motion": [
+            "0.000000000000000000000059531466461419d",
+            "-0d",
+            "-0.00000000000000000000014174249072603808d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-470.0346073365382d",
+            "4d",
+            "-440.3838675207391d"
+          ],
+          "Rotation": [
+            "99.19226f",
+            "0f"
+          ],
+          "UUID": "ffbb5fed-37ca-4f4f-91a0-0688d1f0786d",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "0s",
+            "id": "minecraft:reeds"
+          },
+          "Motion": [
+            "0.0000000000000000000000056643044953762675d",
+            "-0d",
+            "0.000000000000000000000034596870472766106d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-468.45868081213354d",
+            "4d",
+            "-439.44535464646447d"
+          ],
+          "Rotation": [
+            "70.92311f",
+            "0f"
+          ],
+          "UUID": "c2f74aa4-32b2-4745-a9a2-a5c6de52312f",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "1b",
+            "Damage": "0s",
+            "id": "minecraft:string"
+          },
+          "Motion": [
+            "0.00000000000000000000009395868507200923d",
+            "-0d",
+            "0.00000000000000000000013009621053839372d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-465.9246426205513d",
+            "4d",
+            "-438.27371513112547d"
+          ],
+          "Rotation": [
+            "358.79013f",
+            "0f"
+          ],
+          "UUID": "1085e0b7-2f7e-4983-8c7b-5ccf096663f6",
+          "id": "Item"
+        },
+        {
+          "Age": "99s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "3b",
+            "Damage": "0s",
+            "id": "minecraft:glowstone_dust"
+          },
+          "Motion": [
+            "0.00000000000000000000006415415310686677d",
+            "-0d",
+            "0.0000000000000000000001512185343856313d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-478.35709761439006d",
+            "4d",
+            "-434.8684495046691d"
+          ],
+          "Rotation": [
+            "24.66258f",
+            "0f"
+          ],
+          "UUID": "b1f9268b-a167-4aa8-9e2b-077cf3966958",
+          "id": "Item"
+        },
+        {
+          "Age": "99s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "3b",
+            "Damage": "0s",
+            "id": "minecraft:melon"
+          },
+          "Motion": [
+            "-0.00000000000000000000004584810309420896d",
+            "-0d",
+            "0.0000000000000000000001926746386771927d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-476.519921060993d",
+            "4d",
+            "-434.625718555799d"
+          ],
+          "Rotation": [
+            "318.50317f",
+            "0f"
+          ],
+          "UUID": "c9018bf5-6233-4674-9d2a-61cef4e77b22",
+          "id": "Item"
+        },
+        {
+          "Age": "99s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "4b",
+            "Damage": "0s",
+            "id": "minecraft:redstone"
+          },
+          "Motion": [
+            "-0.000000000000000000000037120688474726675d",
+            "-0d",
+            "0.000000000000000000000024461923261877235d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-472.6655041424365d",
+            "4d",
+            "-435.2631189829427d"
+          ],
+          "Rotation": [
+            "119.040695f",
+            "0f"
+          ],
+          "UUID": "29879dba-f6c2-4054-81ea-9dc7a7664c60",
+          "id": "Item"
+        },
+        {
+          "Age": "100s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Motion": [
+            "-0.000000000000000000008881324360922458d",
+            "-0d",
+            "0.0000000000000000000012577148366391421d"
+          ],
+          "OnGround": "1b",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-475.3204265790573d",
+            "4d",
+            "-435.1005897082488d"
+          ],
+          "Rotation": [
+            "186.54878f",
+            "0f"
+          ],
+          "UUID": "bcd5b1bb-daca-4c9b-9ad2-a02e9be30afb",
+          "Value": "1s",
+          "id": "XPOrb"
+        },
+        {
+          "Age": "99s",
+          "Air": "300s",
+          "Dimension": 0,
+          "FallDistance": "0f",
+          "Fire": "-1s",
+          "Health": "5s",
+          "Invulnerable": "0b",
+          "Item": {
+            "Count": "3b",
+            "Damage": "0s",
+            "id": "minecraft:prismarine_crystals"
+          },
+          "Motion": [
+            "0.00000000000000000000008120880167841268d",
+            "-0d",
+            "0.00000000000000000000006308875077154116d"
+          ],
+          "OnGround": "1b",
+          "PickupDelay": "0s",
+          "PortalCooldown": 0,
+          "Pos": [
+            "-466.078481090849d",
+            "4d",
+            "-434.84840025315253d"
+          ],
+          "Rotation": [
+            "54.46393f",
+            "0f"
+          ],
+          "UUID": "60c61574-d690-4d99-ac6c-6749b20e33ee",
+          "id": "Item"
+        }
+      ]
+    }
+  }
+}

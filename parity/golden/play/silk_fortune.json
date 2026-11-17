@@ -1,0 +1,1932 @@
+{
+  "recorded_with": "vanilla 1.8.8",
+  "observations": {
+    "started": true,
+    "player": {
+      "login": [
+        {
+          "type": "set_compression",
+          "threshold": 256
+        },
+        {
+          "type": "success",
+          "uuid": "a762f560-4fce-3236-812a-b80efff0b62b",
+          "username": "jeb_"
+        }
+      ],
+      "sequence": [
+        "join_game",
+        "plugin_message",
+        "server_difficulty",
+        "spawn_position",
+        "player_abilities",
+        "held_item_change",
+        "statistics",
+        "player_list_item",
+        "player_list_item",
+        "position_look",
+        "world_border",
+        "window_items",
+        "set_slot",
+        "update_health",
+        "set_experience",
+        "entity_metadata",
+        "entity_properties",
+        "player_abilities",
+        "player_list_item",
+        "change_game_state",
+        "player_abilities",
+        "chat",
+        "sound_effect",
+        "set_slot",
+        "spawn_object",
+        "entity_metadata",
+        "destroy_entities",
+        "sound_effect",
+        "set_slot",
+        "spawn_object",
+        "entity_metadata",
+        "destroy_entities",
+        "sound_effect",
+        "set_slot",
+        "spawn_object",
+        "entity_metadata",
+        "destroy_entities",
+        "entity_effect",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "entity_metadata",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "destroy_entities",
+        "entity_metadata",
+        "destroy_entities",
+        "entity_metadata",
+        "destroy_entities",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "destroy_entities",
+        "entity_metadata",
+        "destroy_entities",
+        "entity_metadata",
+        "destroy_entities",
+        "entity_metadata",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "destroy_entities",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "destroy_entities",
+        "entity_metadata",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "entity_metadata",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "entity_metadata",
+        "spawn_object",
+        "entity_metadata",
+        "block_change",
+        "set_slot",
+        "entity_metadata",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "sound_effect",
+        "0x0d",
+        "set_slot",
+        "destroy_entities",
+        "remove_entity_effect",
+        "entity_metadata"
+      ],
+      "packets": [
+        {
+          "gamemode": 2,
+          "dimension": 0,
+          "difficulty": 1,
+          "max_players": 20,
+          "level_type": "flat",
+          "reduced_debug_info": false,
+          "packet": "join_game"
+        },
+        {
+          "channel": "MC|Brand",
+          "data": "0776616e696c6c61",
+          "packet": "plugin_message"
+        },
+        {
+          "difficulty": 1,
+          "packet": "server_difficulty"
+        },
+        {
+          "pos": [
+            -472,
+            4,
+            -435
+          ],
+          "packet": "spawn_position"
+        },
+        {
+          "flags": 0,
+          "flying_speed": 0.05000000074505806,
+          "walking_speed": 0.10000000149011612,
+          "packet": "player_abilities"
+        },
+        {
+          "slot": 0,
+          "packet": "held_item_change"
+        },
+        {
+          "hex": "00",
+          "packet": "statistics"
+        },
+        {
+          "hex": "0001a762f5604fce3236812ab80efff0b62b046a65625f00020000",
+          "packet": "player_list_item"
+        },
+        {
+          "hex": "0001a762f5604fce3236812ab80efff0b62b046a65625f00020000",
+          "packet": "player_list_item"
+        },
+        {
+          "x": -471.5,
+          "y": 4.0,
+          "z": -434.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "flags": 0,
+          "packet": "position_look"
+        },
+        {
+          "hex": "0300000000000000000000000000000000418c9c3800000000418c9c380000000000f086a70e050f",
+          "packet": "world_border"
+        },
+        {
+          "hex": "00002dffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "packet": "window_items"
+        },
+        {
+          "hex": "ffffffffff",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "41a000001440a00000",
+          "packet": "update_health"
+        },
+        {
+          "hex": "000000000000",
+          "packet": "set_experience"
+        },
+        {
+          "hex": "00000021012c8200030004006641a000004700000000080009000a7f1000710000000052000000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 0,
+          "properties": [
+            [
+              "generic.movementSpeed",
+              0.10000000149011612
+            ]
+          ],
+          "packet": "entity_properties"
+        },
+        {
+          "flags": 0,
+          "flying_speed": 0.05000000074505806,
+          "walking_speed": 0.10000000149011612,
+          "packet": "player_abilities"
+        },
+        {
+          "hex": "0101a762f5604fce3236812ab80efff0b62b00",
+          "packet": "player_list_item"
+        },
+        {
+          "hex": "0300000000",
+          "packet": "change_game_state"
+        },
+        {
+          "flags": 0,
+          "flying_speed": 0.05000000074505806,
+          "walking_speed": 0.10000000149011612,
+          "packet": "player_abilities"
+        },
+        {
+          "json": "{\"translate\":\"gameMode.changed\"}",
+          "position": 1,
+          "packet": "chat"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "hex": "00002401160100000a0000090004656e63680a000000010200036c766c7d00020002696400230000",
+          "packet": "set_slot"
+        },
+        {
+          "entity_id": 1,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "01000021012c820003000400aa01160100000a0000090004656e63680a000000010200036c766c7d000200026964002300007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([1])",
+          "packet": "destroy_entities"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "hex": "00002501160100000a0000090004656e63680a000000020200036c766c000102000269640021000200036c766c0005020002696400200000",
+          "packet": "set_slot"
+        },
+        {
+          "entity_id": 2,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "02000021012c820003000400aa01160100000a0000090004656e63680a000000020200036c766c000102000269640021000200036c766c00050200026964002000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([2])",
+          "packet": "destroy_entities"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "hex": "00002601150100000a0000090004656e63680a000000010200036c766c0001020002696400210000",
+          "packet": "set_slot"
+        },
+        {
+          "entity_id": 3,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "03000021012c820003000400aa01150100000a0000090004656e63680a000000010200036c766c00010200026964002100007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([3])",
+          "packet": "destroy_entities"
+        },
+        {
+          "entity_id": 0,
+          "effect": 3,
+          "amplifier": 1,
+          "duration": 160,
+          "show_particles": true,
+          "packet": "entity_effect"
+        },
+        {
+          "hex": "004700d9c0437f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 4,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "04000021012c820003000400aa013e010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff89c013fffe4c00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002401160100010a0000090004656e63680a000000010200036c766c7d00020002696400230000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "04000021012c820003000400aa013e010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 4,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000027013e01000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([4])",
+          "packet": "destroy_entities"
+        },
+        {
+          "entity_id": 5,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "05000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 6,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "06000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 7,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "07000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 8,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "08000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff8a0013fffe4c00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002401160100020a0000090004656e63680a000000010200036c766c7d00020002696400230000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "05000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "06000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "07000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "08000021012c820003000400aa015c010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "05aa015c020000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([7])",
+          "packet": "destroy_entities"
+        },
+        {
+          "hex": "05aa015c030000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([6])",
+          "packet": "destroy_entities"
+        },
+        {
+          "hex": "05aa015c040000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([8])",
+          "packet": "destroy_entities"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 5,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000028015c04000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([5])",
+          "packet": "destroy_entities"
+        },
+        {
+          "entity_id": 9,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "09000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 10,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "0a000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 11,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "0b000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 12,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "0c000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 13,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "0d000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 14,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "0e000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 15,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "0f000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 16,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "10000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 17,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "11000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff8a4013fffe4c00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002401160100030a0000090004656e63680a000000010200036c766c7d00020002696400230000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "10000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "11000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "09000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "0a000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "0b000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "0c000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "0d000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "0e000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "0f000021012c820003000400aa0168010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "09aa0168020000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([13])",
+          "packet": "destroy_entities"
+        },
+        {
+          "hex": "09aa0168030000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([14])",
+          "packet": "destroy_entities"
+        },
+        {
+          "hex": "09aa0168040000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "debug": "DestroyEntities([16])",
+          "packet": "destroy_entities"
+        },
+        {
+          "hex": "09aa0168050000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 9,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000029016805000000",
+          "packet": "set_slot"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 11,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000029016806000000",
+          "packet": "set_slot"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 12,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000029016807000000",
+          "packet": "set_slot"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 15,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000029016808000000",
+          "packet": "set_slot"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 17,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000029016809000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([10])",
+          "packet": "destroy_entities"
+        },
+        {
+          "debug": "DestroyEntities([9, 11, 12, 15, 17])",
+          "packet": "destroy_entities"
+        },
+        {
+          "entity_id": 18,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "12000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 19,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "13000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 20,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "14000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 21,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "15000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 22,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "16000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff8a4013fffe4d00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002401160100040a0000090004656e63680a000000010200036c766c7d00020002696400230000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "12000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "13000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "14000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "15000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "16000021012c820003000400aa019a010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "12aa019a020000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 23,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "17000021012c820003000400aa0001010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff8a4013fffe4e00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002501160100010a0000090004656e63680a000000020200036c766c000102000269640021000200036c766c0005020002696400200000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([19])",
+          "packet": "destroy_entities"
+        },
+        {
+          "hex": "17000021012c820003000400aa0001010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 18,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "00002a019a02000000",
+          "packet": "set_slot"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 20,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "00002a019a03000000",
+          "packet": "set_slot"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 21,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "00002a019a04000000",
+          "packet": "set_slot"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 22,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "00002a019a05000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([18, 20, 21, 22])",
+          "packet": "destroy_entities"
+        },
+        {
+          "entity_id": 24,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "18000021012c820003000400aa004f010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff8a0013fffe4e00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002501160100020a0000090004656e63680a000000020200036c766c000102000269640021000200036c766c0005020002696400200000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "18000021012c820003000400aa004f010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 23,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "00002b000101000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([23])",
+          "packet": "destroy_entities"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 24,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "00002c004f01000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([24])",
+          "packet": "destroy_entities"
+        },
+        {
+          "entity_id": 25,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "19000021012c820003000400aa0014010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff89c013fffe4e00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002501160100030a0000090004656e63680a000000020200036c766c000102000269640021000200036c766c0005020002696400200000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "19000021012c820003000400aa0014010000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "entity_id": 26,
+          "kind": 2,
+          "data": 1,
+          "packet": "spawn_object"
+        },
+        {
+          "hex": "1a000021012c820003000400aa014c050000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "hex": "ffff89c013fffe4d00",
+          "packet": "block_change"
+        },
+        {
+          "hex": "00002601150100010a0000090004656e63680a000000010200036c766c0001020002696400210000",
+          "packet": "set_slot"
+        },
+        {
+          "hex": "1a000021012c820003000400aa014c050000007f",
+          "packet": "entity_metadata"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 25,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "000009001401000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([25])",
+          "packet": "destroy_entities"
+        },
+        {
+          "name": "random.pop",
+          "x": null,
+          "y": null,
+          "z": null,
+          "volume": 0.20000000298023224,
+          "pitch": null,
+          "packet": "sound_effect"
+        },
+        {
+          "collected": 26,
+          "collector": 0,
+          "packet": "0x0d"
+        },
+        {
+          "hex": "00000a014c05000000",
+          "packet": "set_slot"
+        },
+        {
+          "debug": "DestroyEntities([26])",
+          "packet": "destroy_entities"
+        },
+        {
+          "entity_id": 0,
+          "effect": 3,
+          "packet": "remove_entity_effect"
+        },
+        {
+          "hex": "0047000000007f",
+          "packet": "entity_metadata"
+        }
+      ],
+      "chat": [
+        {
+          "json": "{\"translate\":\"gameMode.changed\"}",
+          "position": 1
+        }
+      ],
+      "chunks": [
+        "-20,-18,0001",
+        "-20,-19,0001",
+        "-20,-20,0001",
+        "-20,-21,0001",
+        "-20,-22,0001",
+        "-20,-23,0001",
+        "-20,-24,0001",
+        "-20,-25,0001",
+        "-20,-26,0001",
+        "-20,-27,0001",
+        "-20,-28,0001",
+        "-20,-29,0001",
+        "-20,-30,0001",
+        "-20,-31,0001",
+        "-20,-32,0001",
+        "-20,-33,0001",
+        "-20,-34,0001",
+        "-20,-35,0001",
+        "-20,-36,0001",
+        "-20,-37,0001",
+        "-20,-38,0001",
+        "-21,-18,0001",
+        "-21,-19,0001",
+        "-21,-20,0001",
+        "-21,-21,0001",
+        "-21,-22,0001",
+        "-21,-23,0001",
+        "-21,-24,0001",
+        "-21,-25,0001",
+        "-21,-26,0001",
+        "-21,-27,0001",
+        "-21,-28,0001",
+        "-21,-29,0001",
+        "-21,-30,0001",
+        "-21,-31,0001",
+        "-21,-32,0001",
+        "-21,-33,0001",
+        "-21,-34,0001",
+        "-21,-35,0001",
+        "-21,-36,0001",
+        "-21,-37,0001",
+        "-21,-38,0001",
+        "-22,-18,0001",
+        "-22,-19,0001",
+        "-22,-20,0001",
+        "-22,-21,0001",
+        "-22,-22,0001",
+        "-22,-23,0001",
+        "-22,-24,0001",
+        "-22,-25,0001",
+        "-22,-26,0001",
+        "-22,-27,0001",
+        "-22,-28,0001",
+        "-22,-29,0001",
+        "-22,-30,0001",
+        "-22,-31,0001",
+        "-22,-32,0001",
+        "-22,-33,0001",
+        "-22,-34,0001",
+        "-22,-35,0001",
+        "-22,-36,0001",
+        "-22,-37,0001",
+        "-22,-38,0001",
+        "-23,-18,0001",
+        "-23,-19,0001",
+        "-23,-20,0001",
+        "-23,-21,0001",
+        "-23,-22,0001",
+        "-23,-23,0001",
+        "-23,-24,0001",
+        "-23,-25,0001",
+        "-23,-26,0001",
+        "-23,-27,0001",
+        "-23,-28,0001",
+        "-23,-29,0001",
+        "-23,-30,0001",
+        "-23,-31,0001",
+        "-23,-32,0001",
+        "-23,-33,0001",
+        "-23,-34,0001",
+        "-23,-35,0001",
+        "-23,-36,0001",
+        "-23,-37,0001",
+        "-23,-38,0001",
+        "-24,-18,0001",
+        "-24,-19,0001",
+        "-24,-20,0001",
+        "-24,-21,0001",
+        "-24,-22,0001",
+        "-24,-23,0001",
+        "-24,-24,0001",
+        "-24,-25,0001",
+        "-24,-26,0001",
+        "-24,-27,0001",
+        "-24,-28,0001",
+        "-24,-29,0001",
+        "-24,-30,0001",
+        "-24,-31,0001",
+        "-24,-32,0001",
+        "-24,-33,0001",
+        "-24,-34,0001",
+        "-24,-35,0001",
+        "-24,-36,0001",
+        "-24,-37,0001",
+        "-24,-38,0001",
+        "-25,-18,0001",
+        "-25,-19,0001",
+        "-25,-20,0001",
+        "-25,-21,0001",
+        "-25,-22,0001",
+        "-25,-23,0001",
+        "-25,-24,0001",
+        "-25,-25,0001",
+        "-25,-26,0001",
+        "-25,-27,0001",
+        "-25,-28,0001",
+        "-25,-29,0001",
+        "-25,-30,0001",
+        "-25,-31,0001",
+        "-25,-32,0001",
+        "-25,-33,0001",
+        "-25,-34,0001",
+        "-25,-35,0001",
+        "-25,-36,0001",
+        "-25,-37,0001",
+        "-25,-38,0001",
+        "-26,-18,0001",
+        "-26,-19,0001",
+        "-26,-20,0001",
+        "-26,-21,0001",
+        "-26,-22,0001",
+        "-26,-23,0001",
+        "-26,-24,0001",
+        "-26,-25,0001",
+        "-26,-26,0001",
+        "-26,-27,0001",
+        "-26,-28,0001",
+        "-26,-29,0001",
+        "-26,-30,0001",
+        "-26,-31,0001",
+        "-26,-32,0001",
+        "-26,-33,0001",
+        "-26,-34,0001",
+        "-26,-35,0001",
+        "-26,-36,0001",
+        "-26,-37,0001",
+        "-26,-38,0001",
+        "-27,-18,0001",
+        "-27,-19,0001",
+        "-27,-20,0001",
+        "-27,-21,0001",
+        "-27,-22,0001",
+        "-27,-23,0001",
+        "-27,-24,0001",
+        "-27,-25,0001",
+        "-27,-26,0001",
+        "-27,-27,0001",
+        "-27,-28,0001",
+        "-27,-29,0001",
+        "-27,-30,0001",
+        "-27,-31,0001",
+        "-27,-32,0001",
+        "-27,-33,0001",
+        "-27,-34,0001",
+        "-27,-35,0001",
+        "-27,-36,0001",
+        "-27,-37,0001",
+        "-27,-38,0001",
+        "-28,-18,0001",
+        "-28,-19,0001",
+        "-28,-20,0001",
+        "-28,-21,0001",
+        "-28,-22,0001",
+        "-28,-23,0001",
+        "-28,-24,0001",
+        "-28,-25,0001",
+        "-28,-26,0001",
+        "-28,-27,0001",
+        "-28,-28,0001",
+        "-28,-29,0001",
+        "-28,-30,0001",
+        "-28,-31,0001",
+        "-28,-32,0001",
+        "-28,-33,0001",
+        "-28,-34,0001",
+        "-28,-35,0001",
+        "-28,-36,0001",
+        "-28,-37,0001",
+        "-28,-38,0001",
+        "-29,-18,0001",
+        "-29,-19,0001",
+        "-29,-20,0001",
+        "-29,-21,0001",
+        "-29,-22,0001",
+        "-29,-23,0001",
+        "-29,-24,0001",
+        "-29,-25,0001",
+        "-29,-26,0001",
+        "-29,-27,0001",
+        "-29,-28,0001",
+        "-29,-29,0001",
+        "-29,-30,0001",
+        "-29,-31,0001",
+        "-29,-32,0001",
+        "-29,-33,0001",
+        "-29,-34,0001",
+        "-29,-35,0001",
+        "-29,-36,0001",
+        "-29,-37,0001",
+        "-29,-38,0001",
+        "-30,-18,0001",
+        "-30,-19,0001",
+        "-30,-20,0001",
+        "-30,-21,0001",
+        "-30,-22,0001",
+        "-30,-23,0001",
+        "-30,-24,0001",
+        "-30,-25,0001",
+        "-30,-26,0001",
+        "-30,-27,0001",
+        "-30,-28,0001",
+        "-30,-29,0001",
+        "-30,-30,0001",
+        "-30,-31,0001",
+        "-30,-32,0001",
+        "-30,-33,0001",
+        "-30,-34,0001",
+        "-30,-35,0001",
+        "-30,-36,0001",
+        "-30,-37,0001",
+        "-30,-38,0001",
+        "-31,-18,0001",
+        "-31,-19,0001",
+        "-31,-20,0001",
+        "-31,-21,0001",
+        "-31,-22,0001",
+        "-31,-23,0001",
+        "-31,-24,0001",
+        "-31,-25,0001",
+        "-31,-26,0001",
+        "-31,-27,0001",
+        "-31,-28,0001",
+        "-31,-29,0001",
+        "-31,-30,0001",
+        "-31,-31,0001",
+        "-31,-32,0001",
+        "-31,-33,0001",
+        "-31,-34,0001",
+        "-31,-35,0001",
+        "-31,-36,0001",
+        "-31,-37,0001",
+        "-31,-38,0001",
+        "-32,-18,0001",
+        "-32,-19,0001",
+        "-32,-20,0001",
+        "-32,-21,0001",
+        "-32,-22,0001",
+        "-32,-23,0001",
+        "-32,-24,0001",
+        "-32,-25,0001",
+        "-32,-26,0001",
+        "-32,-27,0001",
+        "-32,-28,0001",
+        "-32,-29,0001",
+        "-32,-30,0001",
+        "-32,-31,0001",
+        "-32,-32,0001",
+        "-32,-33,0001",
+        "-32,-34,0001",
+        "-32,-35,0001",
+        "-32,-36,0001",
+        "-32,-37,0001",
+        "-32,-38,0001",
+        "-33,-18,0001",
+        "-33,-19,0001",
+        "-33,-20,0001",
+        "-33,-21,0001",
+        "-33,-22,0001",
+        "-33,-23,0001",
+        "-33,-24,0001",
+        "-33,-25,0001",
+        "-33,-26,0001",
+        "-33,-27,0001",
+        "-33,-28,0001",
+        "-33,-29,0001",
+        "-33,-30,0001",
+        "-33,-31,0001",
+        "-33,-32,0001",
+        "-33,-33,0001",
+        "-33,-34,0001",
+        "-33,-35,0001",
+        "-33,-36,0001",
+        "-33,-37,0001",
+        "-33,-38,0001",
+        "-34,-18,0001",
+        "-34,-19,0001",
+        "-34,-20,0001",
+        "-34,-21,0001",
+        "-34,-22,0001",
+        "-34,-23,0001",
+        "-34,-24,0001",
+        "-34,-25,0001",
+        "-34,-26,0001",
+        "-34,-27,0001",
+        "-34,-28,0001",
+        "-34,-29,0001",
+        "-34,-30,0001",
+        "-34,-31,0001",
+        "-34,-32,0001",
+        "-34,-33,0001",
+        "-34,-34,0001",
+        "-34,-35,0001",
+        "-34,-36,0001",
+        "-34,-37,0001",
+        "-34,-38,0001",
+        "-35,-18,0001",
+        "-35,-19,0001",
+        "-35,-20,0001",
+        "-35,-21,0001",
+        "-35,-22,0001",
+        "-35,-23,0001",
+        "-35,-24,0001",
+        "-35,-25,0001",
+        "-35,-26,0001",
+        "-35,-27,0001",
+        "-35,-28,0001",
+        "-35,-29,0001",
+        "-35,-30,0001",
+        "-35,-31,0001",
+        "-35,-32,0001",
+        "-35,-33,0001",
+        "-35,-34,0001",
+        "-35,-35,0001",
+        "-35,-36,0001",
+        "-35,-37,0001",
+        "-35,-38,0001",
+        "-36,-18,0001",
+        "-36,-19,0001",
+        "-36,-20,0001",
+        "-36,-21,0001",
+        "-36,-22,0001",
+        "-36,-23,0001",
+        "-36,-24,0001",
+        "-36,-25,0001",
+        "-36,-26,0001",
+        "-36,-27,0001",
+        "-36,-28,0001",
+        "-36,-29,0001",
+        "-36,-30,0001",
+        "-36,-31,0001",
+        "-36,-32,0001",
+        "-36,-33,0001",
+        "-36,-34,0001",
+        "-36,-35,0001",
+        "-36,-36,0001",
+        "-36,-37,0001",
+        "-36,-38,0001",
+        "-37,-18,0001",
+        "-37,-19,0001",
+        "-37,-20,0001",
+        "-37,-21,0001",
+        "-37,-22,0001",
+        "-37,-23,0001",
+        "-37,-24,0001",
+        "-37,-25,0001",
+        "-37,-26,0001",
+        "-37,-27,0001",
+        "-37,-28,0001",
+        "-37,-29,0001",
+        "-37,-30,0001",
+        "-37,-31,0001",
+        "-37,-32,0001",
+        "-37,-33,0001",
+        "-37,-34,0001",
+        "-37,-35,0001",
+        "-37,-36,0001",
+        "-37,-37,0001",
+        "-37,-38,0001",
+        "-38,-18,0001",
+        "-38,-19,0001",
+        "-38,-20,0001",
+        "-38,-21,0001",
+        "-38,-22,0001",
+        "-38,-23,0001",
+        "-38,-24,0001",
+        "-38,-25,0001",
+        "-38,-26,0001",
+        "-38,-27,0001",
+        "-38,-28,0001",
+        "-38,-29,0001",
+        "-38,-30,0001",
+        "-38,-31,0001",
+        "-38,-32,0001",
+        "-38,-33,0001",
+        "-38,-34,0001",
+        "-38,-35,0001",
+        "-38,-36,0001",
+        "-38,-37,0001",
+        "-38,-38,0001",
+        "-39,-18,0001",
+        "-39,-19,0001",
+        "-39,-20,0001",
+        "-39,-21,0001",
+        "-39,-22,0001",
+        "-39,-23,0001",
+        "-39,-24,0001",
+        "-39,-25,0001",
+        "-39,-26,0001",
+        "-39,-27,0001",
+        "-39,-28,0001",
+        "-39,-29,0001",
+        "-39,-30,0001",
+        "-39,-31,0001",
+        "-39,-32,0001",
+        "-39,-33,0001",
+        "-39,-34,0001",
+        "-39,-35,0001",
+        "-39,-36,0001",
+        "-39,-37,0001",
+        "-39,-38,0001",
+        "-40,-18,0001",
+        "-40,-19,0001",
+        "-40,-20,0001",
+        "-40,-21,0001",
+        "-40,-22,0001",
+        "-40,-23,0001",
+        "-40,-24,0001",
+        "-40,-25,0001",
+        "-40,-26,0001",
+        "-40,-27,0001",
+        "-40,-28,0001",
+        "-40,-29,0001",
+        "-40,-30,0001",
+        "-40,-31,0001",
+        "-40,-32,0001",
+        "-40,-33,0001",
+        "-40,-34,0001",
+        "-40,-35,0001",
+        "-40,-36,0001",
+        "-40,-37,0001",
+        "-40,-38,0001"
+      ],
+      "periodic": {
+        "keep_alive": true,
+        "time_update": true
+      },
+      "entities": {},
+      "closed_by_server": false
+    },
+    "log": [
+      "[Server thread/INFO]: Starting minecraft server version 1.8.8",
+      "[Server thread/INFO]: Loading properties",
+      "[Server thread/INFO]: Default game type: ADVENTURE",
+      "[Server thread/INFO]: Generating keypair",
+      "[Server thread/INFO]: Starting Minecraft server on *:<port>",
+      "[Server thread/INFO]: Using default channel type",
+      "[Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!",
+      "[Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.",
+      "[Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.",
+      "[Server thread/WARN]: To change this, set \"online-mode\" to \"true\" in the server.properties file.",
+      "[Server thread/WARN]: Failed to load user banlist: ",
+      "java.io.FileNotFoundException: banned-players.json (The system cannot find the file specified)",
+      "[Server thread/WARN]: Failed to load ip banlist: ",
+      "java.io.FileNotFoundException: banned-ips.json (The system cannot find the file specified)",
+      "[Server thread/WARN]: Failed to load operators list: ",
+      "java.io.FileNotFoundException: ops.json (The system cannot find the file specified)",
+      "[Server thread/WARN]: Failed to load white-list: ",
+      "java.io.FileNotFoundException: whitelist.json (The system cannot find the file specified)",
+      "[Server thread/INFO]: Preparing level \"world\"",
+      "[Server thread/INFO]: Preparing start region for level 0",
+      "[Server thread/INFO]: Done (<time>)! For help, type \"help\" or \"?\"",
+      "[Server thread/INFO]: Game rule has been updated",
+      "[Server thread/INFO]: 50 blocks filled",
+      "[Server thread/INFO]: 18 blocks filled",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: Block placed",
+      "[Server thread/INFO]: jeb_[/127.0.0.1:<port>] logged in with entity id 0 at (-471.5, 4.0, -434.5)",
+      "[Server thread/INFO]: jeb_ joined the game",
+      "[Server thread/INFO]: Set jeb_'s game mode to Survival Mode",
+      "[Server thread/INFO]: Given [Diamond Pickaxe] * 1 to jeb_",
+      "[Server thread/INFO]: Given [Diamond Pickaxe] * 1 to jeb_",
+      "[Server thread/INFO]: Given [Diamond Shovel] * 1 to jeb_",
+      "[Server thread/INFO]: Given Haste (ID 3) * 1 to jeb_ for 8 seconds",
+      "[Server thread/INFO]: jeb_ lost connection: TextComponent{text='Disconnected', siblings=[], style=Style{hasParent=false, color=null, bold=null, italic=null, underlined=null, obfuscated=null, clickEvent=null, hoverEvent=null, insertion=null}}",
+      "[Server thread/INFO]: jeb_ left the game",
+      "[Server thread/INFO]: Stopping the server",
+      "[Server thread/INFO]: Stopping server",
+      "[Server thread/INFO]: Saving players",
+      "[Server thread/INFO]: Saving worlds",
+      "[Server thread/INFO]: Saving chunks for level 'world'/Overworld",
+      "[Server thread/INFO]: Saving chunks for level 'world'/Nether",
+      "[Server thread/INFO]: Saving chunks for level 'world'/The End"
+    ],
+    "blocks": {
+      "-473,4,-436": "0:0",
+      "-472,4,-436": "0:0",
+      "-471,4,-436": "0:0",
+      "-471,4,-435": "0:0",
+      "-471,4,-434": "0:0",
+      "-472,4,-434": "0:0",
+      "-473,4,-434": "0:0",
+      "-473,4,-435": "0:0"
+    },
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat": {
+      "AbsorptionAmount": "0f",
+      "Air": "300s",
+      "Attributes": [
+        {
+          "Base": "20d",
+          "Name": "generic.maxHealth"
+        },
+        {
+          "Base": "0d",
+          "Name": "generic.knockbackResistance"
+        },
+        {
+          "Base": "0.10000000149011612d",
+          "Name": "generic.movementSpeed"
+        },
+        {
+          "Base": "1d",
+          "Modifiers": [
+            {
+              "Amount": "4d",
+              "Name": "Tool modifier",
+              "Operation": 0,
+              "UUIDLeast": "-6586624321849018929L",
+              "UUIDMost": "-3801225194067177672L"
+            }
+          ],
+          "Name": "generic.attackDamage"
+        }
+      ],
+      "DeathTime": "0s",
+      "Dimension": 0,
+      "EnderItems": [],
+      "FallDistance": "0f",
+      "Fire": "-20s",
+      "HealF": "20f",
+      "Health": "20s",
+      "HurtByTimestamp": 0,
+      "HurtTime": "0s",
+      "Inventory": [
+        {
+          "Count": "1b",
+          "Damage": "4s",
+          "Slot": "0b",
+          "id": "minecraft:diamond_pickaxe",
+          "tag": {
+            "ench": [
+              {
+                "id": "35s",
+                "lvl": "32000s"
+              }
+            ]
+          }
+        },
+        {
+          "Count": "1b",
+          "Damage": "3s",
+          "Slot": "1b",
+          "id": "minecraft:diamond_pickaxe",
+          "tag": {
+            "ench": [
+              {
+                "id": "33s",
+                "lvl": "1s"
+              },
+              {
+                "id": "32s",
+                "lvl": "5s"
+              }
+            ]
+          }
+        },
+        {
+          "Count": "1b",
+          "Damage": "1s",
+          "Slot": "2b",
+          "id": "minecraft:diamond_shovel",
+          "tag": {
+            "ench": [
+              {
+                "id": "33s",
+                "lvl": "1s"
+              }
+            ]
+          }
+        },
+        {
+          "Count": "1b",
+          "Damage": "0s",
+          "Slot": "3b",
+          "id": "minecraft:flint"
+        },
+        {
+          "Count": "4b",
+          "Damage": "0s",
+          "Slot": "4b",
+          "id": "minecraft:glowstone_dust"
+        },
+        {
+          "Count": "9b",
+          "Damage": "0s",
+          "Slot": "5b",
+          "id": "minecraft:melon"
+        },
+        {
+          "Count": "5b",
+          "Damage": "0s",
+          "Slot": "6b",
+          "id": "minecraft:prismarine_crystals"
+        },
+        {
+          "Count": "1b",
+          "Damage": "0s",
+          "Slot": "7b",
+          "id": "minecraft:stone"
+        },
+        {
+          "Count": "1b",
+          "Damage": "0s",
+          "Slot": "8b",
+          "id": "minecraft:ice"
+        },
+        {
+          "Count": "1b",
+          "Damage": "0s",
+          "Slot": "9b",
+          "id": "minecraft:glass"
+        },
+        {
+          "Count": "5b",
+          "Damage": "0s",
+          "Slot": "10b",
+          "id": "minecraft:snowball"
+        }
+      ],
+      "Invulnerable": "0b",
+      "Motion": [
+        "0d",
+        "-0.0784000015258789d",
+        "0d"
+      ],
+      "OnGround": "1b",
+      "PortalCooldown": 0,
+      "Pos": [
+        "-471.5d",
+        "4d",
+        "-434.5d"
+      ],
+      "Rotation": [
+        "0f",
+        "0f"
+      ],
+      "Score": 0,
+      "SelectedItem": {
+        "Count": "1b",
+        "Damage": "1s",
+        "id": "minecraft:diamond_shovel",
+        "tag": {
+          "ench": [
+            {
+              "id": "33s",
+              "lvl": "1s"
+            }
+          ]
+        }
+      },
+      "SelectedItemSlot": 2,
+      "SleepTimer": "0s",
+      "Sleeping": "0b",
+      "UUIDLeast": "-9139290119231982037L",
+      "UUIDMost": "-6385271527653363146L",
+      "XpLevel": 0,
+      "XpP": "0f",
+      "XpSeed": 0,
+      "XpTotal": 0,
+      "abilities": {
+        "flySpeed": "0.05f",
+        "flying": "0b",
+        "instabuild": "0b",
+        "invulnerable": "0b",
+        "mayBuild": "1b",
+        "mayfly": "0b",
+        "walkSpeed": "0.1f"
+      },
+      "foodExhaustionLevel": "0.17500001f",
+      "foodLevel": 20,
+      "foodSaturationLevel": "5f",
+      "foodTickTimer": 0,
+      "playerGameType": 0
+    },
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json": {
+      "keys": [
+        "stat.mineBlock.minecraft.snow_layer",
+        "stat.playOneMinute",
+        "stat.mineBlock.minecraft.gravel",
+        "stat.mineBlock.minecraft.glass",
+        "stat.leaveGame",
+        "stat.mineBlock.minecraft.sea_lantern",
+        "stat.mineBlock.minecraft.ice",
+        "stat.useItem.minecraft.diamond_pickaxe",
+        "stat.mineBlock.minecraft.melon_block",
+        "stat.timeSinceDeath",
+        "stat.mineBlock.minecraft.glowstone",
+        "stat.useItem.minecraft.diamond_shovel",
+        "stat.mineBlock.minecraft.stone",
+        "achievement.exploreAllBiomes"
+      ],
+      "value": {
+        "stat.mineBlock.minecraft.snow_layer": 1,
+        "stat.playOneMinute": 235,
+        "stat.mineBlock.minecraft.gravel": 1,
+        "stat.mineBlock.minecraft.glass": 1,
+        "stat.leaveGame": 1,
+        "stat.mineBlock.minecraft.sea_lantern": 1,
+        "stat.mineBlock.minecraft.ice": 1,
+        "stat.useItem.minecraft.diamond_pickaxe": 7,
+        "stat.mineBlock.minecraft.melon_block": 1,
+        "stat.timeSinceDeath": 235,
+        "stat.mineBlock.minecraft.glowstone": 1,
+        "stat.useItem.minecraft.diamond_shovel": 1,
+        "stat.mineBlock.minecraft.stone": 1,
+        "achievement.exploreAllBiomes": {
+          "value": 0,
+          "progress": [
+            "Plains"
+          ]
+        }
+      }
+    }
+  }
+}

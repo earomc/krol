@@ -31,6 +31,9 @@ const SAPLING_CHANCE: i32 = 20;
 const JUNGLE_SAPLING_CHANCE: i32 = 40;
 /// 1 in this many oak or dark oak leaves drop an apple.
 const APPLE_CHANCE: i32 = 200;
+/// Fortune lowers the sapling and apple odds down to these (`BlockLeaves`).
+const MIN_SAPLING_CHANCE: i32 = 10;
+const MIN_APPLE_CHANCE: i32 = 40;
 /// Leaf variants (metadata & 3) of `leaves` and `leaves2`.
 const OAK: u16 = 0;
 const JUNGLE: u16 = 3;
@@ -135,16 +138,21 @@ impl Game {
         }
     }
 
-    /// `BlockLeaves.dropBlockAsItemWithChance` (no fortune): sometimes a sapling of the
-    /// leaf's kind, and from oak and dark oak sometimes an apple.
-    pub(super) fn drop_leaves(&mut self, pos: (i32, i32, i32), state: u16) {
+    /// `BlockLeaves.dropBlockAsItemWithChance`: sometimes a sapling of the leaf's kind,
+    /// and from oak and dark oak sometimes an apple; fortune makes both likelier.
+    pub(super) fn drop_leaves(&mut self, pos: (i32, i32, i32), state: u16, fortune: i32) {
         let (id, variant) = (state >> 4, state & 3);
         let old = id == block::LEAVES;
-        let chance = if old && variant == JUNGLE {
+        let mut chance = if old && variant == JUNGLE {
             JUNGLE_SAPLING_CHANCE
         } else {
             SAPLING_CHANCE
         };
+        if fortune > 0 {
+            chance = chance
+                .wrapping_sub(2i32.wrapping_shl(fortune as u32))
+                .max(MIN_SAPLING_CHANCE);
+        }
         if self.world_rand.next_int_bounded(chance) == 0 {
             let damage = if old { variant } else { variant + 4 };
             self.spawn_as_entity(pos, stack(super::ids::item::SAPLING, damage as i16));
@@ -155,7 +163,14 @@ impl Game {
             variant == DARK_OAK
         };
         // dropApple draws only for the kinds that drop apples.
-        if apples && self.world_rand.next_int_bounded(APPLE_CHANCE) == 0 {
+        let apple_chance = if fortune > 0 {
+            APPLE_CHANCE
+                .wrapping_sub(10i32.wrapping_shl(fortune as u32))
+                .max(MIN_APPLE_CHANCE)
+        } else {
+            APPLE_CHANCE
+        };
+        if apples && self.world_rand.next_int_bounded(apple_chance) == 0 {
             self.spawn_as_entity(pos, stack(APPLE, 0));
         }
     }

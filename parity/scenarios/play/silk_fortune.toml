@@ -1,0 +1,135 @@
+description = "Silk touch, fortune and dig speed: a Fortune pickaxe (level 32000) breaks gravel (always flint from Fortune III on), glowstone (4 dust), a melon (9 slices) and a sea lantern (5 crystals); a Silk Touch, Efficiency V pickaxe under Haste II mines stone and ice instantly on the first dig packet (stone and ice drop themselves, the ice leaves no water) and glass (glass); a Silk Touch shovel takes a 4-layer snow layer as one stack of 5 snowballs (BlockSnow.harvestBlock ignores silk touch)"
+subsystem = "blocks"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5, in the block column -472, -435) in
+# adventure mode (no spawn offset) and is made survival from the console. The eight
+# blocks around his column are the targets, inside a two-high stone ring: every drop
+# lands within his pickup reach (his box grown by 1 sideways and 0.5 up and down)
+# wherever it flies, so everything ends up in his inventory and the saved player
+# data shows what dropped. The fortune level is so high that the clamped counts are
+# reached but for a chance of about 1 in 5000 per block.
+#
+# Item motion is random (unseeded in vanilla), so whether two drops of one block merge
+# before they are picked up varies, and with it the pickup packets: his packet stream
+# is not compared; the inventory, stats and blocks are.
+#
+# The stone breaks on the start packet alone only with efficiency and haste counted
+# (34 * 1.4 / 1.5 / 30 >= 1; without haste 0.76); no stop packet follows for it or the
+# ice. Haste runs out before the server stops, so no effect is saved.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -474 4 -437 -470 5 -433 stone"
+
+[[steps]]
+action = "console"
+command = "fill -473 4 -436 -471 5 -434 air"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -436 gravel"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -436 glowstone"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -436 melon_block"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -435 sea_lantern"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -434 stone"
+
+[[steps]]
+action = "console"
+command = "setblock -472 4 -434 ice"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -434 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -435 snow_layer 3"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 12
+chat = [
+    "@3000 !dig -473 4 -436 1",
+    "@4300 !dig -473 4 -436 1 2",
+    "@4500 !dig -472 4 -436 1",
+    "@5300 !dig -472 4 -436 1 2",
+    "@5500 !dig -471 4 -436 1",
+    "@7700 !dig -471 4 -436 1 2",
+    "@7900 !dig -471 4 -435 1",
+    "@8700 !dig -471 4 -435 1 2",
+    "@8900 !hold 1",
+    "@9100 !dig -471 4 -434 1",
+    "@9300 !dig -472 4 -434 1",
+    "@9500 !dig -473 4 -434 1",
+    "@10100 !dig -473 4 -434 1 2",
+    "@10300 !hold 2",
+    "@10500 !dig -473 4 -435 1",
+]
+
+[[steps]]
+action = "wait"
+ms = 1200
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_pickaxe 1 0 {ench:[{id:35s,lvl:32000s}]}"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_pickaxe 1 0 {ench:[{id:33s,lvl:1s},{id:32s,lvl:5s}]}"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_shovel 1 0 {ench:[{id:33s,lvl:1s}]}"
+
+[[steps]]
+action = "console"
+command = "effect jeb_ haste 8 1"
+wait_ms = 10500
+
+[observe]
+log = true
+blocks = [
+    [-473, 4, -436], [-472, 4, -436], [-471, 4, -436], [-471, 4, -435],
+    [-471, 4, -434], [-472, 4, -434], [-473, 4, -434], [-473, 4, -435],
+]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "player.packets",
+    "player.sequence",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+]

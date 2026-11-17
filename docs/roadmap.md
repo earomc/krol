@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-16 (commit `server: entities saved with their chunk`).
+Status as of 2026-11-17 (commit `server: silk touch, fortune and the remaining block drops`).
 
 **Legend**
 
@@ -298,10 +298,10 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Class | Status | Notes |
 |---|---|---|
-| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Fortune and silk touch drops ❌ |
+| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Drops of every block (`quantityDroppedWithBonus`, `getItemDropped`, `damageDropped` and the `dropBlockAsItemWithChance` overrides: crops, stems, nether wart, potatoes, spawners' experience), with fortune and silk touch (`canSilkHarvest`, `createStackedBlock`) ✅; moving pistons' carried blocks, skulls and jukebox records ❌ |
 | `BlockAir`, `BlockBarrier`, `BlockStone`, `BlockDirt` (coarse dirt, podzol), `BlockPlanks`, `BlockSand`, `BlockSandStone`, `BlockRedSandstone`, `BlockClay`, `BlockGlowstone`, `BlockObsidian`, `BlockBookshelf`, `BlockNetherBrick`, `BlockNetherrack`, `BlockHardenedClay`, `BlockColored`, `BlockCompressedPowered` (redstone block), `BlockOre`, `BlockPrismarine`, `BlockQuartz`, `BlockSeaLantern`, `BlockStoneBrick`, `BlockMelon`, `BlockHay`, `BlockGlass`, `BlockStainedGlass`, `BlockPackedIce` | ✅ | Drops per block (ores, glowstone, melons, clay, sea lanterns, ...). Hay does not soften falls in 1.8.8 |
 | `BlockGrass`, `BlockMycelium` | ✅ | Spreading/dying, snowy variant, bone meal on grass |
-| `BlockGravel` | 🟡 | Falling ✅; flint drop chance ✅; fortune ❌ |
+| `BlockGravel` | ✅ | Falling, flint drop chance, fortune |
 | `BlockFalling` (sand, gravel, anvils) | ✅ | Dragon eggs ❌ |
 | `BlockLog`, `BlockOldLog`, `BlockNewLog`, `BlockRotatedPillar` | ✅ | Axis by clicked face; leaf decay triggers |
 | `BlockLeaves`, `BlockOldLeaf`, `BlockNewLeaf` | ✅ | Decay, drops (saplings, apples), shears, player-placed |
@@ -314,7 +314,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockCocoa` | ✅ | Placement, growth, bone meal, drops, collision box |
 | `BlockVine` | ✅ | Growth in all directions, support, shears. Climbing ✅ |
 | `BlockLilyPad` | 🟡 | Placement rule; `ItemLilyPad` on water ❌ |
-| `BlockSnow` (layers), `BlockSnowBlock`, `BlockIce` | ✅ | Melting, placement rules, layer stacking, snowball drops, ice turning into water when broken above something solid or liquid (silk touch ❌, nether vaporizing ❌ with the nether) |
+| `BlockSnow` (layers), `BlockSnowBlock`, `BlockIce` | ✅ | Melting, placement rules, layer stacking, snowball drops, ice turning into water when broken above something solid or liquid unless silk touch takes it, a harvested snow layer as one stack of layers + 1 snowballs (nether vaporizing ❌ with the nether) |
 | `BlockFire` | ✅ | Spread, burning, rain, netherrack. Nether portal lighting ❌ |
 | `BlockLiquid`, `BlockDynamicLiquid`, `BlockStaticLiquid` | ✅ | Flow, mixing, lava fire. Nether lava speed ❌ (no nether) |
 | `BlockSponge` | ❌ | Absorbing water; wet sponge drying in furnaces ✅ |
@@ -332,7 +332,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockPumpkin` | 🟡 | Placement ✅; building iron golems and snow golems ❌ |
 | `BlockWorkbench` | ✅ | Crafting window |
 | `BlockChest` | ✅ | Trapped chests: weak and strong power from viewers; neighbors notified on open/close |
-| `BlockEnderChest` | 🟡 | Placement, window, blocked by a normal cube on top, lid events and sounds, 8 obsidian ✅; silk touch ❌ |
+| `BlockEnderChest` | 🟡 | Placement, window, blocked by a normal cube on top, lid events and sounds, 8 obsidian, silk touch ✅ |
 | `BlockFurnace` | ✅ | |
 | `BlockDispenser`, `BlockDropper` | 🟡 | Default behavior ✅; special dispense behaviors ❌ |
 | `BlockHopper` | ✅ | Minecart hoppers ❌ |
@@ -545,7 +545,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `PotionEffect`: adding, combining, durations, amplifiers, ambient, particles flag, NBT | ✅ | |
 | Ticking effects: regeneration, poison, wither, hunger, saturation, instant health/damage, absorption, health boost | ✅ | |
 | Attribute effects: speed, slowness, strength, weakness | ✅ | Strength/weakness only affect attacking, which is ❌ |
-| Haste, mining fatigue (dig speed) | ❌ | |
+| Haste, mining fatigue (dig speed) | ✅ | Mining fatigue by unit test |
 | Jump boost, night vision, blindness, nausea, water breathing, fire resistance, resistance, invisibility | 🟡 | Fire resistance and resistance ✅ (golden apples); jump boost/water breathing server effects ❌; client-side effects ➖ |
 | `PotionHelper` | ✅ | `getPotionEffects`, `applyIngredient` |
 | Effect particles' random draws on the entity random | ❌ | |
@@ -558,11 +558,11 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Blast Protection | ✅ | Damage and explosion knockback |
 | Projectile Protection | ❌ | Needs projectiles |
 | Respiration | ✅ | |
-| Aqua Affinity, Efficiency | ❌ | Mining speed (the underwater and in-air penalties are ✅) |
+| Aqua Affinity, Efficiency | ✅ | Mining speed (efficiency only where the tool beats a hand); aqua affinity by unit test |
 | Unbreaking | ✅ | Tool and armor wear |
 | Thorns | ✅ | Players hurting players (the victim's unseeded random decides at levels up to 10) |
 | Depth Strider | ❌ | |
-| Silk Touch, Fortune | ❌ | Drops |
+| Silk Touch, Fortune | ✅ | Drops |
 | Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting | ❌ | Needs attacking and mobs |
 | Power, Punch, Flame, Infinity | ❌ | Needs bows |
 | Luck of the Sea, Lure | ❌ | Needs fishing |
@@ -595,7 +595,7 @@ krol notice.
 | `tp` | ✅ | Every form, on players (relative flags) and other entities; the head yaw of players is not set |
 | `kill` · `spawnpoint` | ✅ | |
 | `clear` | ✅ | |
-| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `fill` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
+| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
 | `scoreboard` · `trigger` | ✅ | `players set` data tags for other entities than players ❌ |
 | `publish` | ➖ | LAN only |
 | `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | 🟡 | All arguments; one command run per target; UUIDs as names (entity UUIDs from their own unseeded random); selectors in `/say`, `/me`, `/tell`; `score_` for every entity, `team` for players; dropped items' names (`item.<unlocalized name>`, `data/item_entity_names.txt`); custom entity names ❌; `@r` shuffles with its own unseeded random like vanilla |

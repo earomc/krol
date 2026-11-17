@@ -14,6 +14,10 @@ use super::saved_entities::EntityBase;
 
 /// Orbs are 0.5 x 0.5 on the server (`setSize` in the constructor).
 const SIZE: f32 = 0.5;
+/// `mob_spawner`.
+const MOB_SPAWNER: u16 = 52;
+/// A broken spawner drops 15 plus twice up to 14 experience (`BlockMobSpawner`).
+const SPAWNER_XP: i32 = 15;
 /// Orbs created from saved data are 0.25 x 0.25 (the world-only constructor's size).
 pub const LOADED_SIZE: f32 = 0.25;
 /// Orbs fly to the closest player within this distance.
@@ -289,7 +293,8 @@ impl Game {
         }
     }
 
-    /// `Block.dropXpOnBlockBreak` for an ore that dropped its item rather than itself.
+    /// `Block.dropXpOnBlockBreak` for an ore that dropped its item rather than itself, or a
+    /// spawner.
     pub(super) fn drop_block_xp(&mut self, pos: (i32, i32, i32), block: u16) {
         use super::ids::block as b;
         use krol_java::math::random_i32_in_range as range;
@@ -299,6 +304,9 @@ impl Game {
             b::DIAMOND_ORE | b::EMERALD_ORE => range(r, 3, 7),
             b::LAPIS_ORE | b::QUARTZ_ORE => range(r, 2, 5),
             b::REDSTONE_ORE | b::LIT_REDSTONE_ORE => 1 + r.next_int_bounded(5),
+            MOB_SPAWNER => {
+                SPAWNER_XP + r.next_int_bounded(SPAWNER_XP) + r.next_int_bounded(SPAWNER_XP)
+            }
             _ => return,
         };
         if self.level.data.game_rule("doTileDrops") == Some("false") {

@@ -7,13 +7,15 @@
 //! then; otherwise the server keeps counting and breaks the block itself once it is
 //! fully broken. Other players see the progress as block break animations.
 //!
-//! TODO(M5): efficiency enchantment, haste and mining fatigue, aqua affinity, adventure
-//! mode `CanDestroy` tags, block-specific harvest effects.
+//! TODO(M5): adventure mode `CanDestroy` tags.
 
 use krol_protocol::packets::play::ClientboundPlay;
 
 use super::Game;
 use super::block_data::{self, Material};
+
+/// `snowball`.
+const SNOWBALL: i16 = 332;
 
 /// Per-player digging state (`ItemInWorldManager` fields).
 #[derive(Debug, Default, Clone)]
@@ -195,19 +197,70 @@ pub fn can_harvest(held: Option<i16>, b: u16) -> bool {
     }
 }
 
+/// What speeds up or slows down a player's digging besides the tool itself
+/// (`EntityPlayer.getToolDigEfficiency`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DigSpeed {
+    /// The held item's efficiency level.
+    pub efficiency: i32,
+    /// The haste amplifier, if active.
+    pub haste: Option<u8>,
+    /// The mining fatigue amplifier, if active.
+    pub fatigue: Option<u8>,
+    /// Eyes in water without aqua affinity on the armor.
+    pub under_water: bool,
+    /// Standing on the ground.
+    pub on_ground: bool,
+}
+
+impl DigSpeed {
+    /// Plain digging on the ground: no enchantments, effects or water.
+    #[cfg(test)]
+    pub const PLAIN: Self = Self {
+        efficiency: 0,
+        haste: None,
+        fatigue: None,
+        under_water: false,
+        on_ground: true,
+    };
+}
+
+/// Haste speeds digging up by this much per level.
+const HASTE_PER_LEVEL: f32 = 0.2;
+/// Mining fatigue's factor by amplifier (the last one for 3 and above).
+const FATIGUE_FACTORS: [f32; 4] = [0.3, 0.09, 0.0027, 8.1E-4];
+/// Digging under water or in the air is this many times slower.
+const WATER_OR_AIR_SLOWDOWN: f32 = 5.0;
+
+/// `EntityPlayer.getToolDigEfficiency`.
+fn dig_efficiency(held: Option<i16>, b: u16, speed: DigSpeed) -> f32 {
+    let mut f = strength(held, b);
+    // Vanilla: efficiency only helps where the tool is already faster than a hand.
+    if f > 1.0 && speed.efficiency > 0 && held.is_some() {
+        f += (speed.efficiency * speed.efficiency + 1) as f32;
+    }
+    if let Some(amp) = speed.haste {
+        f *= 1.0 + (i32::from(amp) + 1) as f32 * HASTE_PER_LEVEL;
+    }
+    if let Some(amp) = speed.fatigue {
+        f *= FATIGUE_FACTORS[usize::from(amp).min(FATIGUE_FACTORS.len() - 1)];
+    }
+    if speed.under_water {
+        f /= WATER_OR_AIR_SLOWDOWN;
+    }
+    if !speed.on_ground {
+        f /= WATER_OR_AIR_SLOWDOWN;
+    }
+    f
+}
+
 /// The share of the block broken per tick (`getPlayerRelativeBlockHardness`).
-pub fn relative_hardness(held: Option<i16>, b: u16, on_ground: bool, eyes_in_water: bool) -> f32 {
+pub fn relative_hardness(held: Option<i16>, b: u16, speed: DigSpeed) -> f32 {
     let hardness = block_data::hardness(b);
     if hardness < 0.0 {
         return 0.0;
     }
-    let mut efficiency = strength(held, b);
-    if eyes_in_water {
-        efficiency /= 5.0;
-    }
-    if !on_ground {
-        efficiency /= 5.0;
-    }
+    let efficiency = dig_efficiency(held, b, speed);
     if can_harvest(held, b) {
         efficiency / hardness / 30.0
     } else {
@@ -301,8 +354,21 @@ impl Game {
 
     fn relative_hardness_for(&mut self, i: usize, pos: (i32, i32, i32)) -> f32 {
         let b = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
-        // TODO(M5): eyes in water.
-        relative_hardness(self.held_id(i), b, self.players[i].on_ground, false)
+        let under_water = self.eyes_in_water(i)
+            && super::item_data::armor_enchantment(
+                &self.players[i].inventory,
+                super::item_data::AQUA_AFFINITY,
+            ) == 0;
+        let p = &self.players[i];
+        let effect = |id| p.effects.iter().find(|e| e.id == id).map(|e| e.amplifier);
+        let speed = DigSpeed {
+            efficiency: super::item_data::enchantment_level(p.held(), super::item_data::EFFICIENCY),
+            haste: effect(super::potions::effect::HASTE),
+            fatigue: effect(super::potions::effect::MINING_FATIGUE),
+            under_water,
+            on_ground: p.on_ground,
+        };
+        relative_hardness(self.held_id(i), b, speed)
     }
 
     /// Sends a block break animation to the other players within 32 blocks
@@ -491,6 +557,22 @@ impl Game {
             self.spawn_as_entity(pos, stack);
             return;
         }
+        // BlockSnow.harvestBlock: one stack of a snowball per layer plus one, without
+        // exhaustion.
+        // Vanilla quirk: `layers + 1` where the metadata is already `layers - 1`.
+        if harvest && b == super::ids::block::SNOW_LAYER {
+            if let Some(stat) = mine_stat(b) {
+                self.add_stat(i, &stat, 1);
+            }
+            let stack = krol_protocol::packets::play::ItemStack {
+                id: SNOWBALL,
+                count: (state & 7) as i8 + 2,
+                damage: 0,
+                nbt: None,
+            };
+            self.spawn_as_entity(pos, stack);
+            return;
+        }
         if harvest && let Some(te) = &banner_te {
             self.harvest_banner(pos, te);
             return;
@@ -501,10 +583,10 @@ impl Game {
                 self.add_stat(i, &stat, 1);
             }
             self.add_exhaustion(i, 0.025);
-            self.drop_block_items(pos, state);
-            // BlockIce.harvestBlock (no silk touch yet): melts into water when something
-            // solid or liquid is below.
-            if b == super::ids::block::ICE {
+            let silk = self.harvest_drops(i, pos, state);
+            // BlockIce.harvestBlock: without silk touch it melts into water when
+            // something solid or liquid is below.
+            if b == super::ids::block::ICE && !silk {
                 let below = self.level.overworld.block(pos.0, pos.1 - 1, pos.2) >> 4;
                 let m = super::block_data::material(below);
                 if m.blocks_movement() || m.is_liquid() {
@@ -570,27 +652,72 @@ mod tests {
     use super::*;
 
     #[test]
+    fn dig_speed_modifiers() {
+        let plain = DigSpeed::PLAIN;
+        // Efficiency V on a diamond pickaxe against stone: 8 + 26.
+        let eff = DigSpeed {
+            efficiency: 5,
+            ..plain
+        };
+        assert_eq!(dig_efficiency(Some(278), 1, eff), 34.0);
+        // Not where the tool is no better than a hand.
+        assert_eq!(dig_efficiency(Some(278), 3, eff), 1.0);
+        let haste = DigSpeed {
+            haste: Some(1),
+            ..eff
+        };
+        assert!(relative_hardness(Some(278), 1, haste) >= 1.0);
+        assert!(relative_hardness(Some(278), 1, eff) < 1.0);
+        for (amp, factor) in [
+            (0, 0.3f32),
+            (1, 0.09),
+            (2, 0.0027),
+            (3, 8.1E-4),
+            (9, 8.1E-4),
+        ] {
+            let tired = DigSpeed {
+                fatigue: Some(amp),
+                ..plain
+            };
+            assert_eq!(dig_efficiency(None, 1, tired), factor);
+        }
+        // Under water (no aqua affinity) and in the air: each five times slower.
+        let wet = DigSpeed {
+            under_water: true,
+            on_ground: false,
+            ..plain
+        };
+        assert_eq!(dig_efficiency(None, 1, wet), 1.0 / 5.0 / 5.0);
+    }
+
+    #[test]
     fn dig_rules() {
         // Stone by hand: not harvestable, 1/1.5/100 per tick.
         assert!(!can_harvest(None, 1));
-        assert_eq!(relative_hardness(None, 1, true, false), 1.0 / 1.5 / 100.0);
+        assert_eq!(
+            relative_hardness(None, 1, DigSpeed::PLAIN),
+            1.0 / 1.5 / 100.0
+        );
         // Wooden pickaxe: 2/1.5/30.
         assert_eq!(
-            relative_hardness(Some(270), 1, true, false),
+            relative_hardness(Some(270), 1, DigSpeed::PLAIN),
             2.0 / 1.5 / 30.0
         );
         // Dirt by hand and with a shovel.
-        assert_eq!(relative_hardness(None, 3, true, false), 1.0 / 0.5 / 30.0);
         assert_eq!(
-            relative_hardness(Some(277), 3, true, false),
+            relative_hardness(None, 3, DigSpeed::PLAIN),
+            1.0 / 0.5 / 30.0
+        );
+        assert_eq!(
+            relative_hardness(Some(277), 3, DigSpeed::PLAIN),
             8.0 / 0.5 / 30.0
         );
         // Obsidian needs diamond.
         assert!(!can_harvest(Some(257), 49));
         assert!(can_harvest(Some(278), 49));
         // Instant blocks and bedrock.
-        assert!(relative_hardness(None, 31, true, false) >= 1.0);
-        assert_eq!(relative_hardness(Some(278), 7, true, false), 0.0);
+        assert!(relative_hardness(None, 31, DigSpeed::PLAIN) >= 1.0);
+        assert_eq!(relative_hardness(Some(278), 7, DigSpeed::PLAIN), 0.0);
     }
 
     #[test]

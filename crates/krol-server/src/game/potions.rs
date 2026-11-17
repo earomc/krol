@@ -24,6 +24,10 @@ pub mod effect {
     pub const SPEED: u8 = 1;
     /// `moveSlowdown`.
     pub const SLOWNESS: u8 = 2;
+    /// `digSpeed` (haste).
+    pub const HASTE: u8 = 3;
+    /// `digSlowdown` (mining fatigue).
+    pub const MINING_FATIGUE: u8 = 4;
     /// `damageBoost`.
     pub const STRENGTH: u8 = 5;
     /// `weakness`.

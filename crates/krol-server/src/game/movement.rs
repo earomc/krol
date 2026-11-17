@@ -267,7 +267,7 @@ impl Game {
 
     /// `Entity.isInsideOfMaterial(water)` for a player: the eyes are below the water's
     /// surface.
-    fn eyes_in_water(&mut self, i: usize) -> bool {
+    pub(super) fn eyes_in_water(&mut self, i: usize) -> bool {
         let p = &self.players[i];
         let eye_y = p.pos.1 + f64::from(p.eye_height());
         let (x, y, z) = (floor_f64(p.pos.0), floor_f64(eye_y), floor_f64(p.pos.2));

@@ -1,0 +1,157 @@
+description = "Special block drops with World.rand pinned: one /fill destroy breaks ripe wheat, carrots, potatoes (extra seed rolls, poisonous potato roll), a pumpkin stem (seed rolls), ripe nether wart, sugar cane, tripwire and cobweb (string), a vine, stained glass and packed ice (nothing), a mossy cobblestone wall and a damaged anvil (their variant), an end portal frame, dead bush and glass pane (nothing, but a chance roll each), glowstone, a melon, tall grass, redstone ore and a sea lantern (quantity rolls); the dropped items are compared as saved"
+subsystem = "blocks"
+
+# No player joins, so no chunk is active and nothing else draws from World.rand. The
+# blocks stand two apart in three rows in the spawn chunk (-30, -28), so breaking one
+# never updates another. `krolpin` pins World.rand and Math.random() (item positions,
+# yaws and motion) and runs the fill in the same tick; the fill destroys the box in z,
+# y, x order. Every block is gone before the fill sets air, so it reports no blocks
+# filled. The items settle within the 5 seconds before the server stops; their ages
+# depend on when it stops.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+pin_random = true
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Soil.
+[[steps]]
+action = "console"
+command = "setblock -479 3 -440 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -477 3 -440 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -475 3 -440 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -440 farmland 7"
+
+[[steps]]
+action = "console"
+command = "setblock -471 3 -440 soul_sand"
+
+# Row z = -444.
+[[steps]]
+action = "console"
+command = "setblock -479 4 -444 vine 1"
+
+[[steps]]
+action = "console"
+command = "setblock -477 4 -444 stained_glass 3"
+
+[[steps]]
+action = "console"
+command = "setblock -475 4 -444 cobblestone_wall 1"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -444 anvil 9"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -444 web"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -444 packed_ice"
+
+[[steps]]
+action = "console"
+command = "setblock -467 4 -444 end_portal_frame"
+
+# Row z = -440.
+[[steps]]
+action = "console"
+command = "setblock -479 4 -440 wheat 7"
+
+[[steps]]
+action = "console"
+command = "setblock -477 4 -440 carrots 7"
+
+[[steps]]
+action = "console"
+command = "setblock -475 4 -440 potatoes 7"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -440 pumpkin_stem 7"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -440 nether_wart 3"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -440 reeds"
+
+[[steps]]
+action = "console"
+command = "setblock -467 4 -440 tripwire"
+
+# Row z = -436.
+[[steps]]
+action = "console"
+command = "setblock -479 4 -436 glowstone"
+
+[[steps]]
+action = "console"
+command = "setblock -477 4 -436 melon_block"
+
+[[steps]]
+action = "console"
+command = "setblock -475 4 -436 tallgrass 1"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -436 redstone_ore"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -436 deadbush"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -436 glass_pane"
+
+[[steps]]
+action = "console"
+command = "setblock -467 4 -436 sea_lantern"
+
+[[steps]]
+action = "console"
+command = "krolpin 7 -- fill -479 4 -444 -467 4 -436 air 0 destroy"
+wait_ms = 5000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+
+# Ages count the ticks until the server stops.
+[observe.tolerance]
+"entities.-30,-28[0].Age" = 60
+"entities.-30,-28[1].Age" = 60
+"entities.-30,-28[2].Age" = 60
+"entities.-30,-28[3].Age" = 60
+"entities.-30,-28[4].Age" = 60
+"entities.-30,-28[5].Age" = 60
+"entities.-30,-28[6].Age" = 60
+"entities.-30,-28[7].Age" = 60
+"entities.-30,-28[8].Age" = 60
+"entities.-30,-28[9].Age" = 60
+"entities.-30,-28[10].Age" = 60
+"entities.-30,-28[11].Age" = 60
+"entities.-30,-28[12].Age" = 60
+"entities.-30,-28[13].Age" = 60
+"entities.-30,-28[14].Age" = 60
+"entities.-30,-28[15].Age" = 60
+"entities.-30,-28[16].Age" = 60
+"entities.-30,-28[17].Age" = 60

@@ -24,6 +24,7 @@ mod damage;
 mod death;
 mod digging;
 mod dispenser;
+mod drops;
 mod enchanting;
 mod ender_chest;
 mod explosion;

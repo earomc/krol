@@ -265,6 +265,18 @@ pub const UNBREAKING: i16 = 34;
 /// `Enchantment.respiration`'s id.
 pub const RESPIRATION: i16 = 5;
 
+/// `Enchantment.aquaAffinity`'s id.
+pub const AQUA_AFFINITY: i16 = 6;
+
+/// `Enchantment.efficiency`'s id.
+pub const EFFICIENCY: i16 = 32;
+
+/// `Enchantment.silkTouch`'s id.
+pub const SILK_TOUCH: i16 = 33;
+
+/// `Enchantment.fortune`'s id.
+pub const FORTUNE: i16 = 35;
+
 /// The `(id, level)` pairs of a stack's enchantments, in order.
 pub fn enchantments(stack: &krol_protocol::packets::play::ItemStack) -> Vec<(i16, i32)> {
     let Some(list) = stack

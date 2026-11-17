@@ -205,8 +205,23 @@ scenarios = []
 
 [[feature]]
 id = "blocks.survival_digging"
-description = "Survival digging: stop at 70%, server-side completion, break animations, effects, mining stats"
-scenarios = ["play/survival_mining"]
+description = "Survival digging: stop at 70%, server-side completion, break animations, effects, mining stats; dig speed with efficiency and haste (instant breaks on the start packet). Mining fatigue and aqua affinity by unit test"
+scenarios = ["play/survival_mining", "play/silk_fortune"]
+
+[[feature]]
+id = "blocks.silk_fortune"
+description = "Block.harvestBlock with silk touch (canSilkHarvest, createStackedBlock: stone, glass, ice without water) and fortune (gravel flint odds, glowstone, melon and sea lantern clamps); BlockSnow.harvestBlock (one stack of layers + 1 snowballs, silk touch ignored). Unit tests: ore fortune multipliers, stacked blocks of logs, quartz pillars, monster eggs, lit redstone ore"
+scenarios = ["play/silk_fortune"]
+
+[[feature]]
+id = "blocks.special_drops"
+description = "Block drops by dropBlockAsItemWithChance (no fortune) with World.rand pinned: crops with their extra seed rolls and the poisonous potato roll, stem seed rolls, nether wart, sugar cane, string from tripwire and cobwebs, nothing from vines, stained glass, packed ice; wall and anvil variants; the chance rolls of blocks dropping nothing (end portal frame, dead bush, glass pane); quantity rolls of glowstone, melon, tall grass, redstone ore (with experience) and sea lanterns. Not yet: moving pistons' blocks, skulls, records"
+scenarios = ["play/block_drops_pinned"]
+
+[[feature]]
+id = "commands.fill"
+description = "/fill: the box in z, y, x order, block updates after the whole box, destroy mode (drops, effect), the success count and 'No blocks filled'. Not yet in a scenario: hollow, outline, keep, replace filters, data tags, tooManyBlocks"
+scenarios = ["play/silk_fortune", "play/block_drops_pinned"]
 
 [[feature]]
 id = "entity.items"
@@ -365,7 +380,7 @@ scenarios = ["play/lava"]
 
 [[feature]]
 id = "blocks.tool_wear"
-description = "ItemStack.onBlockDestroyed when mining in survival: tools wear by 1 and swords by 2 on blocks that are not instantly broken, shears by 1 on leaves, cobwebs, tall grass, vines, tripwire and wool; use statistics; broken tools leave the hand; shears harvesting tall grass, dead bushes, leaves and vines (the block itself, no exhaustion). Not yet: double plants, silk touch, fortune"
+description = "ItemStack.onBlockDestroyed when mining in survival: tools wear by 1 and swords by 2 on blocks that are not instantly broken, shears by 1 on leaves, cobwebs, tall grass, vines, tripwire and wool; use statistics; broken tools leave the hand; shears harvesting tall grass, dead bushes, leaves and vines (the block itself, no exhaustion). Not yet: double plants"
 scenarios = ["play/tool_wear"]
 
 [[feature]]

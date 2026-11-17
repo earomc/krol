@@ -63,7 +63,7 @@ impl Game {
             }
             // canDropFromExplosion: everything but TNT.
             if id != super::tnt::TNT {
-                self.drop_block_items_with_chance(p, state, 1.0 / strength);
+                self.drop_block_items_with_chance(p, state, 1.0 / strength, 0);
             }
             self.drop_container_contents(p);
             self.set_block_notify(p, 0);
