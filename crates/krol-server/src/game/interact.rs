@@ -34,7 +34,6 @@ fn consumes_click(state: u16) -> bool {
             | 122
             | 130
             | 137
-            | 138
             | 143
             | 145
             | 146
@@ -209,6 +208,10 @@ impl Game {
             super::flower_pot::FLOWER_POT => self.activate_flower_pot(i, pos),
             super::cauldron::CAULDRON => self.activate_cauldron(i, pos, state),
             super::jukebox::JUKEBOX => self.activate_jukebox(pos, state),
+            super::beacon::BEACON => {
+                self.activate_beacon(i, pos);
+                true
+            }
             block::LEVER => {
                 self.activate_lever(pos);
                 true

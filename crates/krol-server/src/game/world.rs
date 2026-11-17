@@ -314,7 +314,7 @@ impl World {
                 if let Tag::Compound(c) = t {
                     let p = (c.get_i32("x"), c.get_i32("y"), c.get_i32("z"));
                     match c.get_str("id") {
-                        "Furnace" | "Hopper" | "Cauldron" => self.tickables.push(p),
+                        "Furnace" | "Hopper" | "Cauldron" | "Beacon" => self.tickables.push(p),
                         "EnderChest" => {
                             self.tickables.push(p);
                             self.ender_chests.insert(p, Default::default());
@@ -536,6 +536,7 @@ impl World {
             block::ENDER_CHEST => "EnderChest",
             block::ENCHANTING_TABLE => "EnchantTable",
             super::jukebox::JUKEBOX => "RecordPlayer",
+            super::beacon::BEACON => "Beacon",
             _ => return,
         };
         if self.tile_entity_index(pos).is_some() {
@@ -603,6 +604,17 @@ impl World {
             if id == "Cauldron" {
                 c.insert("BrewTime", Tag::Short(0));
                 self.tickables.push(pos);
+            }
+            if id == "Beacon" {
+                // TileEntityBeacon.writeToNBT before its first update.
+                c.insert("Primary", Tag::Int(0));
+                c.insert("Secondary", Tag::Int(0));
+                c.insert("Levels", Tag::Int(-1));
+                self.tickables.push(pos);
+                let list = &mut self.chunk_mut(pos.0 >> 4, pos.2 >> 4).tile_entities;
+                let _ = list.push(Tag::Compound(c));
+                sort_tile_entities(list);
+                return;
             }
             if id == "Furnace" {
                 c.insert("BurnTime", Tag::Short(0));

@@ -229,6 +229,11 @@ description = "Item entities: block drops, spawn/metadata/velocity, physics, pic
 scenarios = ["play/survival_mining", "play/jukeboxes"]
 
 [[feature]]
+id = "blocks.beacon"
+description = "Beacons: pyramid levels and the beam check (updateBeacon on a neighbor change and every 80 ticks), the window (container.beacon, window properties once, stat.beaconInteraction), the payment slot by shift-click, MC|Beacon setting the powers and using up the payment, ambient effects for players in range. Not yet: stained glass above, custom names, the payment dropped on close"
+scenarios = ["play/beacons"]
+
+[[feature]]
 id = "blocks.skull"
 description = "Mob heads: ItemSkull.onItemUse on the floor, a wall and in place of a replaceable block (facing, Rot, SkullType, Owner from a textured SkullOwner), update tile entity action 4, the head dropped by breakBlock when mined (with SkullOwner), none after a creative break (NODROP), the '%s's Head' item name. Not yet: profile lookups for SkullOwner names, wither summoning"
 scenarios = ["play/skulls"]

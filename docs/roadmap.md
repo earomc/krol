@@ -148,7 +148,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x2D Open Window · 0x2E Close Window · 0x2F Set Slot · 0x30 Window Items · 0x31 Window Property · 0x32 Confirm Transaction | ✅ | For the implemented windows |
 | 0x33 Update Sign · 0x36 Sign Editor Open | ✅ | |
 | 0x34 Maps | ❌ | |
-| 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), banners, flower pots, skulls; mob spawners/beacons missing |
+| 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), banners, flower pots, skulls, beacons; mob spawners missing |
 | 0x37 Statistics | ✅ | |
 | 0x38 Player List Item | 🟡 | Add, game mode, remove, latency (keep-alive round trips, every 600 ticks) ✅; display names ❌ |
 | 0x39 Player Abilities | ✅ | |
@@ -175,7 +175,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0C Steer Vehicle | ❌ | No vehicles |
 | 0x11 Enchant Item | ✅ | |
 | 0x14 Tab-Complete | ❌ | |
-| 0x17 Plugin Message | 🟡 | Received; `MC|ItemName` ✅ (1.7's raw text translated); `MC|BEdit`, `MC|BSign`, `MC|TrSel`, `MC|Beacon`, `MC|AdvCdm`, `MC|AutoCmd`, `MC|PickItem` unhandled |
+| 0x17 Plugin Message | 🟡 | Received; `MC|ItemName` ✅ (1.7's raw text translated), `MC|Beacon` ✅; `MC|BEdit`, `MC|BSign`, `MC|TrSel`, `MC|AdvCdm`, `MC|AutoCmd`, `MC|PickItem` unhandled |
 | 0x18 Spectate | ❌ | |
 | 0x19 Resource Pack Status | ❌ | |
 
@@ -343,7 +343,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockEnchantmentTable` | ✅ | Opens the window (custom names from the tile entity) |
 | `BlockBrewingStand` | 🟡 | Placement (item), window, brewing, bottle bits, contents dropped, hoppers, comparators ✅ |
 | `BlockCauldron` | ✅ | Water buckets, bottles, washing leather armor and banner patterns (with vanilla's stat quirk), rain, putting out burning players, comparator output. Rain and burning players are not in a scenario (rain needs pinned randoms) |
-| `BlockBeacon` | ❌ | |
+| `BlockBeacon` | 🟡 | Window, neighbor changes updating it twice (directly and by its block event) ✅; stained glass above (`updateColorAsync`), custom names from renamed items ❌ |
 | `BlockFlowerPot` | ✅ | Placement on a solid top, potting plants (flowers, saplings, mushrooms, cactus, dead bush, fern), support, the plant dropping on any removal (not after a creative harvest) |
 | `BlockJukebox` | ✅ | Records in and out (effect 1005), the record popping out when the jukebox goes, comparator output |
 | `BlockSkull` | 🟡 | Placement, tile entity, drops, creative `NODROP` ✅; wither summoning ❌ (M5) |
@@ -431,7 +431,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ContainerEnchantment` | ✅ | Offers from `XpSeed` and bookshelves, hints, slot rules, shift-click, paying levels and lapis, books; all seven properties every tick like vanilla |
 | `ContainerBrewingStand` | ✅ | Slot rules, shift-click, brew time property; the potion achievement ❌ |
 | `ContainerRepair` (anvil, renaming via `MC|ItemName`) | ✅ | Repair with material, combining, enchantments, renaming against the en_US item names, prior work cost, Too Expensive, the output's `canTakeStack`, vanilla's change checks |
-| `ContainerBeacon` | ❌ | |
+| `ContainerBeacon` | ✅ | Payment slot (one emerald, diamond, gold or iron ingot), shift-clicks, the payment dropped on close, window properties sent once |
 | `ContainerMerchant`, `InventoryMerchant`, `SlotMerchantResult` | ❌ | |
 | `ContainerHorseInventory`, `AnimalChest` | ❌ | |
 | `LockCode` (container locks) | ❌ | |
@@ -453,7 +453,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `TileEntityEnderChest` | ✅ | Ticks with the other tickables; the 20-tick viewer resync (`% 20 * 4` quirk) |
 | `TileEntityEnchantmentTable` | 🟡 | Created and stored; its book animation tick (no observable effect) is not run |
 | `TileEntityBrewingStand` | ✅ | Brewing with vanilla's list-identity rules, the unsaved ingredient (a reload restarts the brew) |
-| `TileEntityBeacon` | ❌ | |
+| `TileEntityBeacon` | 🟡 | Levels and the beam check every 80 ticks, effects for players in range (doubled primary at level 4, secondary), `MC|Beacon` powers ✅; beam colors (client-only), the `fullBeacon` achievement ❌ |
 | `TileEntityMobSpawner`, `MobSpawnerBaseLogic` | ❌ | |
 | `TileEntitySkull` | 🟡 | `SkullType`, `Rot`, `Owner`, description packet ✅; `updateGameprofile` lookups and the old `ExtraType` ❌ |
 | `TileEntityBanner` | ✅ | Base and patterns, description packet (action 6; not sent to 1.7 clients, which have no banners) |

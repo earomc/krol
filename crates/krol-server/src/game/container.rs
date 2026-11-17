@@ -31,6 +31,8 @@ pub enum Layout {
     Brewing,
     Enchanting,
     Anvil,
+    /// A beacon: the payment slot, main, hotbar.
+    Beacon,
 }
 
 impl Layout {
@@ -45,6 +47,7 @@ impl Layout {
             Self::Brewing => super::brewing::SLOTS + 36,
             Self::Enchanting => super::enchanting::TABLE_SLOTS + 36,
             Self::Anvil => super::anvil::ANVIL_SLOTS + 36,
+            Self::Beacon => super::beacon::SLOTS + 36,
         }
     }
 
@@ -59,6 +62,7 @@ impl Layout {
                 | Self::Brewing
                 | Self::Enchanting
                 | Self::Anvil
+                | Self::Beacon
         )
     }
 
@@ -70,6 +74,8 @@ impl Layout {
             // Not a crafting grid, but dropped on close the same way.
             Self::Enchanting => (0..super::enchanting::TABLE_SLOTS, 0),
             Self::Anvil => (0..super::anvil::OUTPUT, 0),
+            // ContainerBeacon.onContainerClosed: the payment drops.
+            Self::Beacon => (0..super::beacon::SLOTS, 0),
             Self::Chest(_) | Self::Furnace | Self::Hopper | Self::Dispenser | Self::Brewing => {
                 (0..0, 0)
             }
@@ -88,6 +94,7 @@ impl Layout {
             Self::Brewing => super::brewing::SLOTS,
             Self::Enchanting => super::enchanting::TABLE_SLOTS,
             Self::Anvil => super::anvil::ANVIL_SLOTS,
+            Self::Beacon => super::beacon::SLOTS,
         }
     }
 
@@ -112,6 +119,7 @@ impl Layout {
             Self::Brewing => k >= super::brewing::SLOTS,
             Self::Enchanting => k >= super::enchanting::TABLE_SLOTS,
             Self::Anvil => k >= super::anvil::ANVIL_SLOTS,
+            Self::Beacon => k >= super::beacon::SLOTS,
         }
     }
 
@@ -130,6 +138,9 @@ impl Layout {
         }
         if self == Self::Anvil && k == super::anvil::OUTPUT {
             return false;
+        }
+        if self == Self::Beacon && k == 0 {
+            return super::beacon::is_payment(stack);
         }
         if self == Self::Enchanting && k == super::enchanting::LAPIS_SLOT {
             return super::enchanting::is_lapis(stack);
@@ -158,6 +169,7 @@ impl Layout {
         if (self == Self::Player && (5..=8).contains(&k))
             || (self == Self::Brewing && k < 3)
             || (self == Self::Enchanting && k == 0)
+            || (self == Self::Beacon && k == 0)
             || (self == Self::Furnace && k == super::furnace::FUEL && stack.id == item::BUCKET)
         {
             1
@@ -227,6 +239,19 @@ impl Layout {
                 4..=30 => merge(slots, &mut stack, 31, 40, false),
                 31..=39 => merge(slots, &mut stack, 4, 31, false),
                 _ => merge(slots, &mut stack, 4, 40, false),
+            },
+            // ContainerBeacon.transferStackInSlot.
+            Self::Beacon => match index {
+                0 => merge(slots, &mut stack, 1, 37, true),
+                _ if slots[0].is_none()
+                    && super::beacon::is_payment(&stack)
+                    && stack.count == 1 =>
+                {
+                    merge(slots, &mut stack, 0, 1, false)
+                }
+                1..=27 => merge(slots, &mut stack, 28, 37, false),
+                28..=36 => merge(slots, &mut stack, 1, 28, false),
+                _ => merge(slots, &mut stack, 1, 37, false),
             },
             // ContainerRepair.transferStackInSlot.
             Self::Anvil => match index {
@@ -1268,6 +1293,12 @@ impl Game {
             }
             // ContainerRepair.canInteractWith.
             Layout::Anvil => w.block(pos.0, pos.1, pos.2) >> 4 == block::ANVIL && near(pos),
+            // TileEntityBeacon.isUseableByPlayer.
+            Layout::Beacon => {
+                w.block(pos.0, pos.1, pos.2) >> 4 == super::beacon::BEACON
+                    && w.tile_entity(pos).is_some()
+                    && near(pos)
+            }
             // ContainerEnchantment.canInteractWith.
             Layout::Enchanting => {
                 w.block(pos.0, pos.1, pos.2) >> 4 == block::ENCHANTING_TABLE && near(pos)

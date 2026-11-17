@@ -8,6 +8,7 @@
 mod anvil;
 mod attributes;
 mod banner;
+mod beacon;
 mod beds;
 mod biome;
 pub mod block_data;
@@ -1063,6 +1064,7 @@ impl Game {
                 Some("Hopper") => self.tick_hopper(pos),
                 Some("Cauldron") => self.tick_brewing_stand(pos),
                 Some("EnderChest") => self.tick_ender_chest(pos),
+                Some("Beacon") => self.tick_beacon(pos),
                 _ => {}
             }
         }
@@ -2284,6 +2286,10 @@ impl Game {
             // processVanilla250Packet: an anvil's new name.
             ServerboundPlay::PluginMessage { channel, data } if channel == "MC|ItemName" => {
                 self.anvil_item_name(i, &data);
+            }
+            // processVanilla250Packet: a beacon's powers.
+            ServerboundPlay::PluginMessage { channel, data } if channel == "MC|Beacon" => {
+                self.choose_beacon_powers(i, &data);
             }
             ServerboundPlay::EnchantItem {
                 window,

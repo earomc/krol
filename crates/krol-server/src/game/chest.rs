@@ -313,6 +313,8 @@ impl Game {
                     self.piston_event(e.pos, state, e.action, e.param)
                 } else if e.block == block::NOTEBLOCK {
                     self.note_event(e.pos, e.action, e.param)
+                } else if e.block == super::beacon::BEACON {
+                    self.beacon_event(e.pos, e.action)
                 } else if e.block == block::ENDER_CHEST {
                     self.ender_chest_event(e.pos, e.action, e.param)
                 } else if block::is_chest(e.block) && e.action == EVENT_VIEWERS {

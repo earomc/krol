@@ -1,0 +1,87 @@
+description = "Beacons: a full four-level pyramid (iron, gold, diamond, emerald), the beacon updated by a neighbor change (levels 4), the window (container.beacon, the levels and powers as window properties once, stat.beaconInteraction), an iron ingot shift-clicked into the payment slot, MC|Beacon choosing speed and regeneration (the payment used up), and both effects given every 80 ticks of world time (ambient, 9 seconds)"
+subsystem = "blocks"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, just south of the
+# pyramid, well within its 50-block range. The beacon is updated once by the stone
+# set next to it, so its levels are known before he opens it. /give hands the ingot over
+# a tick later, so the clicks wait. The beacon gives its effects whenever the world time
+# reaches a multiple of 80, at a point relative to the clicks that depends on how fast
+# the server started: the window stays open (closing it resends the inventory, before
+# or after the first effects), the repeated effect updates are deduplicated, and the
+# effects' time left is compared with a tolerance.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -473 4 -444 -465 4 -436 iron_block"
+
+[[steps]]
+action = "console"
+command = "fill -472 5 -443 -466 5 -437 gold_block"
+
+[[steps]]
+action = "console"
+command = "fill -471 6 -442 -467 6 -438 diamond_block"
+
+[[steps]]
+action = "console"
+command = "fill -470 7 -441 -468 7 -439 emerald_block"
+
+[[steps]]
+action = "console"
+command = "setblock -469 8 -440 beacon"
+
+[[steps]]
+action = "console"
+command = "setblock -468 8 -440 stone"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 12
+chat = [
+    "@4000 !place -469 8 -440 3",
+    "@4600 !click 1 28 0 1 1 265 1 0",
+    "@5200 !beacon 1 10",
+]
+
+[[steps]]
+action = "wait"
+ms = 1500
+
+[[steps]]
+action = "console"
+command = "give jeb_ iron_ingot"
+wait_ms = 11000
+
+[observe]
+log = true
+# Every 80-tick update resends both effects and the speed attribute (the potion color
+# metadata only the first time), one or two times within the session (see above).
+dedupe_runs = ["entity_effect", "entity_properties", "entity_metadata"]
+blocks = [[-469, 8, -440]]
+tile_entities = [[-469, 8, -440]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+]
+
+# Where the last 80-tick update falls (see above).
+[observe.tolerance]
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.ActiveEffects" = 80

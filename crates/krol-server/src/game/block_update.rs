@@ -187,6 +187,10 @@ impl Game {
                 self.liquid_neighbor_changed(pos, state);
                 return;
             }
+            super::beacon::BEACON => {
+                self.beacon_neighbor_changed(pos);
+                return;
+            }
             block::FIRE => {
                 self.fire_neighbor_changed(pos);
                 return;

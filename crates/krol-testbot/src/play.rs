@@ -58,7 +58,8 @@ pub struct PlayObservation {
 /// `!look <yaw> <pitch>` (Player Look, on ground), `!respawn` (Client Status 0),
 /// `!click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]`,
 /// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`, `!enchant <window>
-/// <button>`, `!itemname [text]` (anvil name field).
+/// <button>`, `!itemname [text]` (anvil name field), `!beacon <primary> <secondary>`
+/// (beacon powers).
 /// Optional
 /// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
 /// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1; `[]` sends nothing that
@@ -343,6 +344,15 @@ fn action_or_chat(
             vec![ServerboundPlay::PluginMessage {
                 channel: "MC|ItemName".into(),
                 data: w.into_bytes(),
+            }]
+        }
+        // !beacon <primary> <secondary>: a beacon's powers (MC|Beacon, two ints).
+        Some("beacon") => {
+            let mut data = (num(1) as i32).to_be_bytes().to_vec();
+            data.extend_from_slice(&(num(2) as i32).to_be_bytes());
+            vec![ServerboundPlay::PluginMessage {
+                channel: "MC|Beacon".into(),
+                data,
             }]
         }
         // !enchant <window> <button>: picks an enchanting table offer (0-2).
