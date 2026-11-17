@@ -109,11 +109,14 @@ pub fn custom_name(stack: &krol_protocol::packets::play::ItemStack) -> Option<&s
 /// `ItemStack.getDisplayName`: the custom name, else the item's en_US name as the
 /// server translates it.
 ///
-/// TODO(M4): names that depend on NBT (skull owners, written book titles) and potion
-/// damage values above 255 fall back to the base name.
+/// TODO(M4): names that depend on NBT (written book titles) and potion damage values
+/// above 255 fall back to the base name.
 pub fn display_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
     if let Some(name) = custom_name(stack) {
         return name.to_owned();
+    }
+    if let Some(owner) = skull_owner_name(stack) {
+        return format!("{owner}'s Head");
     }
     let damage = if has_subtypes(stack.id) {
         stack.damage
@@ -125,6 +128,22 @@ pub fn display_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
         .get(&(stack.id, damage))
         .or_else(|| names.get(&(stack.id, 0)))
         .map_or_else(String::new, |n| (*n).to_owned())
+}
+
+/// `ItemSkull.getItemStackDisplayName`: a player head's owner, from a `SkullOwner`
+/// name or the `Name` in a `SkullOwner` profile (`item.skull.player.name`).
+fn skull_owner_name(stack: &krol_protocol::packets::play::ItemStack) -> Option<&str> {
+    use krol_nbt::{Tag, TagType};
+    if stack.id != super::skull::SKULL_ITEM || stack.damage != 3 {
+        return None;
+    }
+    match stack.nbt.as_ref()?.get("SkullOwner")? {
+        Tag::String(name) => Some(name),
+        Tag::Compound(c) if c.contains_key_of("Name", Some(TagType::String)) => {
+            Some(c.get_str("Name"))
+        }
+        _ => None,
+    }
 }
 
 /// Golden apples: damage 0 is rare, the enchanted ones epic.

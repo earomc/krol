@@ -506,9 +506,14 @@ impl World {
             self.remove_tile_entity(pos);
         }
         let fresh = old != new && self.tile_entity_index(pos).is_none();
-        if fresh && (super::banner::is_banner(new) || new == super::flower_pot::FLOWER_POT) {
+        let own = super::banner::is_banner(new)
+            || new == super::flower_pot::FLOWER_POT
+            || new == super::skull::SKULL;
+        if fresh && own {
             let te = if new == super::flower_pot::FLOWER_POT {
                 super::flower_pot::new_tile_entity(pos)
+            } else if new == super::skull::SKULL {
+                super::skull::new_tile_entity(pos)
             } else {
                 super::banner::new_tile_entity(pos)
             };

@@ -229,6 +229,11 @@ description = "Item entities: block drops, spawn/metadata/velocity, physics, pic
 scenarios = ["play/survival_mining", "play/jukeboxes"]
 
 [[feature]]
+id = "blocks.skull"
+description = "Mob heads: ItemSkull.onItemUse on the floor, a wall and in place of a replaceable block (facing, Rot, SkullType, Owner from a textured SkullOwner), update tile entity action 4, the head dropped by breakBlock when mined (with SkullOwner), none after a creative break (NODROP), the '%s's Head' item name. Not yet: profile lookups for SkullOwner names, wither summoning"
+scenarios = ["play/skulls"]
+
+[[feature]]
 id = "blocks.jukebox"
 description = "Jukeboxes and records: ItemRecord.onItemUse (effect 1005 with the record id, has_record set quietly, stat.recordPlayed, the record used up), taking the record out (effect 1005 with 0, the record popping out above), comparators reading the record number, a jukebox destroyed by /setblock dropping itself and then its record (breakBlock). Not yet: the old numeric Record tag, /setblock data tags"
 scenarios = ["play/jukeboxes"]

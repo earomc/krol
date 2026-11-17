@@ -148,7 +148,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x2D Open Window · 0x2E Close Window · 0x2F Set Slot · 0x30 Window Items · 0x31 Window Property · 0x32 Confirm Transaction | ✅ | For the implemented windows |
 | 0x33 Update Sign · 0x36 Sign Editor Open | ✅ | |
 | 0x34 Maps | ❌ | |
-| 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), banners, flower pots; mob spawners/skulls/beacons missing |
+| 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), banners, flower pots, skulls; mob spawners/beacons missing |
 | 0x37 Statistics | ✅ | |
 | 0x38 Player List Item | 🟡 | Add, game mode, remove, latency (keep-alive round trips, every 600 ticks) ✅; display names ❌ |
 | 0x39 Player Abilities | ✅ | |
@@ -187,7 +187,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | Modified UTF-8 strings | ✅ | `krol-java` |
 | `JsonToNBT` (NBT in commands: `/give`, `/summon`, `/setblock` data tags, `/entitydata`, ...) | ✅ | `krol_nbt::text::parse_data_tag`, with its quirks; used by `/give` |
 | `NBTBase.toString` (item hover text) | ✅ | `krol_nbt::text::to_java_string` |
-| `NBTUtil` (game profiles in skulls) | ❌ | |
+| `NBTUtil` (game profiles in skulls) | ✅ | `readGameProfileFromNBT`/`writeGameProfile` |
 | `NBTUtil.func_181123_a` (partial NBT matching for `/clear`, `/testfor`) | ✅ | `krol_nbt::matches_pattern` |
 
 ## net.minecraft.world
@@ -298,7 +298,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Class | Status | Notes |
 |---|---|---|
-| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Drops of every block (`quantityDroppedWithBonus`, `getItemDropped`, `damageDropped` and the `dropBlockAsItemWithChance` overrides: crops, stems, nether wart, potatoes, spawners' experience), with fortune and silk touch (`canSilkHarvest`, `createStackedBlock`) ✅; moving pistons' carried blocks and skulls ❌ |
+| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Drops of every block (`quantityDroppedWithBonus`, `getItemDropped`, `damageDropped` and the `dropBlockAsItemWithChance` overrides: crops, stems, nether wart, potatoes, spawners' experience), with fortune and silk touch (`canSilkHarvest`, `createStackedBlock`) ✅; heads (`BlockSkull.breakBlock`, `NODROP`) ✅; moving pistons' carried blocks ❌ |
 | `BlockAir`, `BlockBarrier`, `BlockStone`, `BlockDirt` (coarse dirt, podzol), `BlockPlanks`, `BlockSand`, `BlockSandStone`, `BlockRedSandstone`, `BlockClay`, `BlockGlowstone`, `BlockObsidian`, `BlockBookshelf`, `BlockNetherBrick`, `BlockNetherrack`, `BlockHardenedClay`, `BlockColored`, `BlockCompressedPowered` (redstone block), `BlockOre`, `BlockPrismarine`, `BlockQuartz`, `BlockSeaLantern`, `BlockStoneBrick`, `BlockMelon`, `BlockHay`, `BlockGlass`, `BlockStainedGlass`, `BlockPackedIce` | ✅ | Drops per block (ores, glowstone, melons, clay, sea lanterns, ...). Hay does not soften falls in 1.8.8 |
 | `BlockGrass`, `BlockMycelium` | ✅ | Spreading/dying, snowy variant, bone meal on grass |
 | `BlockGravel` | ✅ | Falling, flint drop chance, fortune |
@@ -346,7 +346,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockBeacon` | ❌ | |
 | `BlockFlowerPot` | ✅ | Placement on a solid top, potting plants (flowers, saplings, mushrooms, cactus, dead bush, fern), support, the plant dropping on any removal (not after a creative harvest) |
 | `BlockJukebox` | ✅ | Records in and out (effect 1005), the record popping out when the jukebox goes, comparator output |
-| `BlockSkull` | ❌ | Placement, tile entity, wither summoning |
+| `BlockSkull` | 🟡 | Placement, tile entity, drops, creative `NODROP` ✅; wither summoning ❌ (M5) |
 | `BlockBanner` | ✅ | Standing and wall banners, support, harvest drop (Base and Patterns, no exhaustion) and other drops (the whole tile entity) |
 | `BlockMobSpawner` | ❌ | Spawning logic, XP drop |
 | `BlockCommandBlock` | ❌ | |
@@ -380,7 +380,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemDoor`, `ItemSign`, `ItemRedstone` | ✅ | |
 | `ItemBed` | ✅ | |
 | `ItemBanner` | ✅ | Placement (rotation, wall facing, no cactus next to it), base color and patterns from the item |
-| `ItemSkull` | ❌ | |
+| `ItemSkull` | 🟡 | Placement, owner names (`%s's Head`) ✅; completing profiles through the profile cache and session server, `updateItemStackNBT` ❌ |
 | `ItemLilyPad` | ❌ | |
 | `ItemTool`, `ItemPickaxe`, `ItemAxe`, `ItemSpade`, `ItemSword` | ✅ | Mining speed, wear. Sword blocking ❌, attack damage ❌ (no attacking) |
 | `ItemHoe` | ✅ | |
@@ -455,7 +455,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `TileEntityBrewingStand` | ✅ | Brewing with vanilla's list-identity rules, the unsaved ingredient (a reload restarts the brew) |
 | `TileEntityBeacon` | ❌ | |
 | `TileEntityMobSpawner`, `MobSpawnerBaseLogic` | ❌ | |
-| `TileEntitySkull` | ❌ | |
+| `TileEntitySkull` | 🟡 | `SkullType`, `Rot`, `Owner`, description packet ✅; `updateGameprofile` lookups and the old `ExtraType` ❌ |
 | `TileEntityBanner` | ✅ | Base and patterns, description packet (action 6; not sent to 1.7 clients, which have no banners) |
 | `TileEntityFlowerPot` | ✅ | Item and data, description packet (action 5, numeric item id) |
 | `TileEntityDaylightDetector` | ❌ | |

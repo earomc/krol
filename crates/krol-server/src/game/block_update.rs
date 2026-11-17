@@ -85,6 +85,7 @@ impl Game {
             .then(|| self.flower_pot_contents(pos))
             .flatten();
         let record = self.jukebox_contents(pos, old, state);
+        let head = self.skull_drop(pos, old, state);
         let w = &mut self.level.overworld;
         if !w.set_block_unmarked(pos.0, pos.1, pos.2, state) {
             return;
@@ -94,6 +95,9 @@ impl Game {
         }
         if let Some(record) = record {
             self.jukebox_broken(pos, record);
+        }
+        if let Some(head) = head {
+            self.spawn_as_entity(pos, head);
         }
         if old >> 4 != state >> 4 {
             self.block_removed(pos, old);

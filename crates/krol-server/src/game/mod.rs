@@ -66,6 +66,7 @@ mod scoreboard;
 mod selector;
 mod shapes;
 mod sign;
+mod skull;
 mod special_recipes;
 pub mod stats;
 mod tile_data;
@@ -1713,6 +1714,7 @@ impl Game {
         self.break_effect(i, pos, state);
         self.bed_harvested_creative(pos, state);
         self.empty_flower_pot(pos);
+        self.skull_harvested_creative(pos);
         // BlockPistonExtension.onBlockHarvested: in creative the base goes first.
         if state >> 4 == ids::block::PISTON_HEAD {
             let base = placement::offset(pos, placement::opposite(pistons::facing(state & 15)));
@@ -1974,6 +1976,10 @@ impl Game {
         }
         if stack.id == ids::item::BANNER {
             self.place_banner(i, pos, face as u8);
+            return;
+        }
+        if stack.id == skull::SKULL_ITEM {
+            self.place_skull(i, pos, face as u8);
             return;
         }
         if jukebox::is_record(stack.id) {
