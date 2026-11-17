@@ -468,6 +468,9 @@ fn data_tag(args: &[&str], error_key: &'static str) -> Result<krol_nbt::Compound
     })
 }
 
+/// The most blocks `/fill` sets at once.
+const MAX_FILL: i64 = 32768;
+
 /// The most items `/give` hands out at once.
 const MAX_GIVE: i8 = 64;
 
@@ -1078,6 +1081,7 @@ impl Game {
             }
             "gamerule" => self.cmd_gamerule(sender, args),
             "setblock" => self.cmd_setblock(sender, args),
+            "fill" => self.cmd_fill(sender, args),
             "effect" => self.cmd_effect(sender, args),
             "enchant" => self.cmd_enchant(sender, args),
             "give" => self.cmd_give(sender, args),
@@ -1897,6 +1901,152 @@ impl Game {
             false,
             "commands.setblock.success",
             vec![],
+        );
+        Ok(())
+    }
+
+    /// Vanilla `CommandFill`: every block of a box, in z, y, x order, set without
+    /// neighbor updates, which follow for every changed block once the box is done.
+    fn cmd_fill(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        if args.len() < 7 {
+            return Err(usage("fill"));
+        }
+        let a = self.parse_block_pos(sender, args)?;
+        let b = self.parse_block_pos(sender, &args[3..])?;
+        let id = block_by_text(args[6])?;
+        let meta = if args.len() >= 8 {
+            parse_int(args[7], 0, 15)?
+        } else {
+            0
+        };
+        let min = (a.0.min(b.0), a.1.min(b.1), a.2.min(b.2));
+        let max = (a.0.max(b.0), a.1.max(b.1), a.2.max(b.2));
+        // Vanilla's int arithmetic; parsed coordinates keep it from overflowing.
+        let volume =
+            (max.0 - min.0 + 1) as i64 * (max.1 - min.1 + 1) as i64 * (max.2 - min.2 + 1) as i64;
+        if volume > MAX_FILL {
+            return Err(err(
+                "commands.fill.tooManyBlocks",
+                vec![s(volume), s(MAX_FILL)],
+            ));
+        }
+        if min.1 < 0 || max.1 >= 256 {
+            return Err(err("commands.fill.outOfWorld", vec![]));
+        }
+        // Vanilla quirk: steps of 16 from the low corner up to 15 past the high one, so
+        // a chunk beyond the box can be checked too.
+        let mut z = min.2;
+        while z < max.2 + 16 {
+            let mut x = min.0;
+            while x < max.0 + 16 {
+                if !self.level.overworld.is_chunk_loaded(x >> 4, z >> 4) {
+                    return Err(err("commands.fill.outOfWorld", vec![]));
+                }
+                x += 16;
+            }
+            z += 16;
+        }
+        let has_te = super::world::has_tile_entity(id);
+        let tag = if args.len() >= 10 && has_te {
+            Some(data_tag(&args[9..], "commands.fill.tagError")?)
+        } else {
+            None
+        };
+        let mode = args.get(8).copied();
+        let filter = match mode {
+            // Vanilla quirk: the filter is ignored for blocks with a tile entity.
+            Some("replace") if !has_te => {
+                let block = args.get(9).map(|a| block_by_text(a)).transpose()?;
+                let meta = args
+                    .get(10)
+                    .map(|a| parse_int(a, i32::MIN, i32::MAX))
+                    .transpose()?;
+                Some((block, meta))
+            }
+            _ => None,
+        };
+        // Block.getStateFromMeta, which throws for some metadata.
+        let Some(meta) = super::world::normalize_meta(id, meta as u8) else {
+            return Err(CommandError::Exception);
+        };
+        let state = id << 4 | u16::from(meta);
+        let mut changed = Vec::new();
+        let mut count = 0;
+        for z in min.2..=max.2 {
+            for y in min.1..=max.1 {
+                for x in min.0..=max.0 {
+                    let pos = (x, y, z);
+                    let edge = x == min.0
+                        || x == max.0
+                        || y == min.1
+                        || y == max.1
+                        || z == min.2
+                        || z == max.2;
+                    let old = self.level.overworld.block(x, y, z);
+                    match mode {
+                        Some("outline" | "hollow") if !edge => {
+                            if mode == Some("hollow") {
+                                self.set_block_flags(pos, 0, super::block_update::flags::SEND);
+                                changed.push(pos);
+                            }
+                            continue;
+                        }
+                        Some("destroy") => {
+                            if old >> 4 != block::AIR {
+                                self.destroy_block(pos, old);
+                            }
+                        }
+                        Some("keep") if old >> 4 != block::AIR => continue,
+                        _ => {}
+                    }
+                    if let Some((block, want)) = filter {
+                        if block.is_some_and(|b| old >> 4 != b) {
+                            continue;
+                        }
+                        if want.is_some_and(|m| i32::from(old & 15) != m) {
+                            continue;
+                        }
+                    }
+                    // An old tile entity is emptied (no drops) and swapped for a barrier.
+                    if let Some(te) = self.level.overworld.tile_entity_mut(pos) {
+                        te.remove("Items");
+                        let flags = if id == block::BARRIER {
+                            super::block_update::flags::SEND
+                        } else {
+                            0
+                        };
+                        self.set_block_flags(pos, block::BARRIER << 4, flags);
+                    }
+                    let before = self.level.overworld.block(x, y, z);
+                    self.set_block_flags(pos, state, super::block_update::flags::SEND);
+                    if before == state || self.level.overworld.block(x, y, z) != state {
+                        continue;
+                    }
+                    changed.push(pos);
+                    count += 1;
+                    if let Some(tag) = &tag
+                        && let Some(fresh) = self.level.overworld.tile_entity(pos).cloned()
+                    {
+                        self.furnace_burn.remove(&pos);
+                        let te = super::tile_data::read_tile_entity(&fresh, tag);
+                        self.level.overworld.set_tile_entity(pos, te);
+                    }
+                }
+            }
+        }
+        for pos in changed {
+            let id = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
+            self.notify_neighbors(pos, id);
+        }
+        if count == 0 {
+            return Err(err("commands.fill.failed", vec![]));
+        }
+        self.notify(
+            sender,
+            "fill",
+            false,
+            "commands.fill.success",
+            vec![s(count)],
         );
         Ok(())
     }

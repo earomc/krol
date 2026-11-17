@@ -197,6 +197,11 @@ pub fn en_us(key: &str) -> Option<&'static str> {
         "commands.setblock.noChange" => "The block couldn't be placed",
         "commands.setblock.tagError" => "Data tag parsing failed: %s",
         "commands.setblock.outOfWorld" => "Cannot place block outside of the world",
+        "commands.fill.outOfWorld" => "Cannot place blocks outside of the world",
+        "commands.fill.tagError" => "Data tag parsing failed: %s",
+        "commands.fill.success" => "%d blocks filled",
+        "commands.fill.failed" => "No blocks filled",
+        "commands.fill.tooManyBlocks" => "Too many blocks in the specified area (%d > %d)",
         "commands.give.block.notFound" => "There is no such block with name %s",
         // Scoreboard and trigger.
         "commands.scoreboard.noMultiWildcard" => "Only one user wildcard allowed",
