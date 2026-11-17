@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-17 (commit `server: silk touch, fortune and the remaining block drops`).
+Status as of 2026-11-17 (commit `server: moving piston blocks drop what they carry`).
 
 **Legend**
 
@@ -22,8 +22,14 @@ Status as of 2026-11-17 (commit `server: silk touch, fortune and the remaining b
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **The remaining M4 items**: maps, the other containers
-   and item-placed blocks, special block drops (see the tables below).
+1. **Close M4**: run the full parity suite in both protocols (milestone run, AGENTS.md
+   §11) and fix what it finds in one go. M4's only open item, maps in item frames,
+   waits for item frames (M5).
+2. **M5 entities without AI**: item frames and paintings (hanging entities), armor
+   stands, projectiles (arrows from bows, snowballs, eggs, ender pearls, splash
+   potions), minecarts and boats, with their spawn packets, tracking and saving.
+3. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
+   mob.
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
 The nether and the end are ❌ (see [world](#netminecraftworld)).
@@ -298,7 +304,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Class | Status | Notes |
 |---|---|---|
-| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Drops of every block (`quantityDroppedWithBonus`, `getItemDropped`, `damageDropped` and the `dropBlockAsItemWithChance` overrides: crops, stems, nether wart, potatoes, spawners' experience), with fortune and silk touch (`canSilkHarvest`, `createStackedBlock`) ✅; heads (`BlockSkull.breakBlock`, `NODROP`) ✅; moving pistons' carried blocks ❌ |
+| `Block` (hardness, resistance, materials, sounds, light, drops, `isNormalCube`/`isFullCube`/`isVisuallyOpaque`/`isFullBlock`) | ✅ | Property tables extracted from vanilla. Drops of every block (`quantityDroppedWithBonus`, `getItemDropped`, `damageDropped` and the `dropBlockAsItemWithChance` overrides: crops, stems, nether wart, potatoes, spawners' experience), with fortune and silk touch (`canSilkHarvest`, `createStackedBlock`) ✅; heads (`BlockSkull.breakBlock`, `NODROP`), moving pistons' carried blocks (no scenario: they last two ticks) ✅ |
 | `BlockAir`, `BlockBarrier`, `BlockStone`, `BlockDirt` (coarse dirt, podzol), `BlockPlanks`, `BlockSand`, `BlockSandStone`, `BlockRedSandstone`, `BlockClay`, `BlockGlowstone`, `BlockObsidian`, `BlockBookshelf`, `BlockNetherBrick`, `BlockNetherrack`, `BlockHardenedClay`, `BlockColored`, `BlockCompressedPowered` (redstone block), `BlockOre`, `BlockPrismarine`, `BlockQuartz`, `BlockSeaLantern`, `BlockStoneBrick`, `BlockMelon`, `BlockHay`, `BlockGlass`, `BlockStainedGlass`, `BlockPackedIce` | ✅ | Drops per block (ores, glowstone, melons, clay, sea lanterns, ...). Hay does not soften falls in 1.8.8 |
 | `BlockGrass`, `BlockMycelium` | ✅ | Spreading/dying, snowy variant, bone meal on grass |
 | `BlockGravel` | ✅ | Falling, flint drop chance, fortune |

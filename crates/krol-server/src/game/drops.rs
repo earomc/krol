@@ -6,7 +6,7 @@
 //! the fortune bonus), then per drop a chance float and the item. Blocks whose quantity
 //! is 1 but drop nothing still roll the chance float.
 //!
-//! TODO(M5): pistons' moving blocks (`BlockPistonMoving` drops the block it carries).
+//! TODO(M5): no scenario breaks a moving piston block (it lasts two ticks).
 
 use krol_protocol::packets::play::ItemStack;
 
@@ -339,6 +339,21 @@ impl Game {
             return;
         }
         match b {
+            // BlockPistonMoving: the carried block's drops, whatever the chance.
+            block::PISTON_EXTENSION => {
+                let carried = self
+                    .level
+                    .overworld
+                    .tile_entity(pos)
+                    .filter(|t| t.get_str("id") == "Piston")
+                    .map(|t| {
+                        (t.get_i32("blockId") as u16) << 4 | (t.get_i32("blockData") as u16 & 15)
+                    });
+                if let Some(state) = carried {
+                    self.drop_block_items(pos, state);
+                }
+                return;
+            }
             block::COCOA => {
                 for _ in 0..super::farming::cocoa_drops(m) {
                     self.spawn_as_entity(pos, super::farming::cocoa_beans());
