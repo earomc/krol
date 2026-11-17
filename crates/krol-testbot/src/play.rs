@@ -348,8 +348,8 @@ fn action_or_chat(
         }
         // !beacon <primary> <secondary>: a beacon's powers (MC|Beacon, two ints).
         Some("beacon") => {
-            let mut data = (num(1) as i32).to_be_bytes().to_vec();
-            data.extend_from_slice(&(num(2) as i32).to_be_bytes());
+            let mut data = num(1).to_be_bytes().to_vec();
+            data.extend_from_slice(&num(2).to_be_bytes());
             vec![ServerboundPlay::PluginMessage {
                 channel: "MC|Beacon".into(),
                 data,
