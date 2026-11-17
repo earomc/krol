@@ -1,0 +1,84 @@
+description = "Splash potions: jeb_ throws harming, healing and swiftness at Dinnerbone 5.1 blocks away (direct hits: full strength; jeb_ is out of reach), spawn object 73 with the potion as data, the 2002 effect with the potion color, indirectMagic damage with knockback from the thrower, healing, the speed effect and its attribute"
+subsystem = "entity"
+
+# Both spawn at -471.5 4 -434.5 (adventure: no spawn offset). Dinnerbone is moved 5.1
+# blocks south; jeb_ looks south 20 degrees up, so the potions (lobbed another 20
+# degrees up) hit Dinnerbone directly in their 13th tick: his box (grown by 0.3 for
+# the hit test) begins mid-step, about 0.18 blocks from either end. The gives reach
+# jeb_ about 3 seconds after he joins, so the throws start later.
+# A direct hit gives the full effect, so the random spread of the throw (the entity's
+# unseeded random) changes nothing observable; the splash point stays over 4 blocks
+# from jeb_, so he gets nothing.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 12
+chat = [
+    "@5000 !look 0 -20",
+    "@5500 !use",
+    "@6500 !hold 1",
+    "@7000 !use",
+    "@8000 !hold 2",
+    "@8500 !use",
+]
+
+[[steps]]
+id = "other"
+action = "play"
+background = true
+protocol = 47
+name = "Dinnerbone"
+seconds = 11
+
+[[steps]]
+action = "console"
+command = "tp Dinnerbone -471.5 4 -429.4"
+
+[[steps]]
+action = "console"
+command = "give jeb_ potion 1 16396"
+
+[[steps]]
+action = "console"
+command = "give jeb_ potion 1 16389"
+
+[[steps]]
+action = "console"
+command = "give jeb_ potion 1 16386"
+wait_ms = 10500
+
+[observe]
+log = true
+# After the swiftness hit: the potion's destroy (sent with the viewers' next update),
+# Dinnerbone's effect color (his next movement packet) and his speed attribute (the
+# player tracker, every 2 ticks) come in an order that depends on the tick phase.
+unordered = [["destroy_entities", "entity_metadata", "entity_properties"]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat.foodTickTimer",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+]
+
+# Dinnerbone's ticks (HurtByTimestamp is his age when hit; the speed effect counts down
+# with his updates until he saves) depend on how long after jeb_ he joined.
+[observe.tolerance]
+"file:world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat.HurtByTimestamp" = 20
+"file:world/playerdata/4d258a81-2358-3084-8166-05b9faccad80.dat.ActiveEffects[0].Duration" = 20

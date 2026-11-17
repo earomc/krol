@@ -512,7 +512,9 @@ impl Game {
                 z: speed(v.motion.2),
             });
         } else if let Some(t) = self.thrown.get(&entity_id) {
-            // Data 0: the spawn packet carries no velocity.
+            // Only splash potions have data (their damage value); data 0 carries no
+            // velocity.
+            let data = t.potion_damage();
             packets.push(ClientboundPlay::SpawnObject {
                 entity_id,
                 kind: t.kind.object_type(),
@@ -521,8 +523,9 @@ impl Game {
                 z: fixed(v.pos.2),
                 pitch: angle(v.pitch) as i8,
                 yaw: angle(v.yaw) as i8,
-                data: 0,
-                velocity: None,
+                data,
+                velocity: (data != 0)
+                    .then(|| (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2))),
             });
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,

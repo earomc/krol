@@ -144,3 +144,9 @@ into server ticks. Rules learned from flaky scenarios:
   something whose hit tick is far from a tick boundary, and leave out anything whose
   outcome is a roll on that random (eggs hatching chicks, endermites from pearls: turn
   off `doMobSpawning`).
+- Projectiles hitting a player directly are exact when the outcome does not depend on
+  where the hit lands (splash potions give a direct hit the full effect): place the
+  target so its box edge (grown by 0.3) falls mid-step, not at a tick boundary of the
+  flight (`play/splash_potions`). Console steps run about 3 seconds after the first
+  background bot joins (each background `play` step waits 1.5 s), so time bot actions
+  that need given items after that.

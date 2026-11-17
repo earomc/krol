@@ -254,6 +254,11 @@ description = "EntityThrowable: ItemSnowball/ItemEnderPearl.onItemRightClick (th
 scenarios = ["play/throwables"]
 
 [[feature]]
+id = "entity.splash_potions"
+description = "EntityPotion: ItemPotion.onItemRightClick for splash potions (thrown like the other throwables: speed 0.5, lobbed 20 degrees, gravity 0.05), spawn object 73 with the potion's damage value as data, the 2002 effect with that value, direct hits at full strength: instant damage (indirectMagic, knockback from the thrower), instant health, a lasting effect with its attribute modifier; potion display names in /give's log line. Not yet in a scenario: splashes reaching entities that were not hit (the share depends on the unpinned throw spread), effects of 20 ticks or less being dropped, saving with the chunk"
+scenarios = ["play/splash_potions"]
+
+[[feature]]
 id = "entity.item_drop"
 description = "Dropping items (Q / Ctrl+Q): toss motion, 40-tick pickup delay, stat.drop, merging, pickup"
 scenarios = ["play/drop_items"]

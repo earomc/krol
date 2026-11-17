@@ -1,6 +1,6 @@
 //! Thrown projectiles (vanilla: `EntityThrowable` with `EntitySnowball`, `EntityEgg`,
-//! `EntityEnderPearl` and `EntityExpBottle`, thrown by `ItemSnowball`, `ItemEgg`,
-//! `ItemEnderPearl` and `ItemExpBottle`).
+//! `EntityEnderPearl`, `EntityExpBottle` and `EntityPotion`, thrown by `ItemSnowball`,
+//! `ItemEgg`, `ItemEnderPearl`, `ItemExpBottle` and `ItemPotion`).
 //!
 //! A throwable flies in a straight step per tick: it ray traces the blocks and the
 //! collidable entities between its position and the next, reacts to the closest hit
@@ -8,8 +8,8 @@
 //! None of these entity kinds survive their impact.
 //!
 //! TODO(M5): eggs hatching chickens and ender pearls spawning endermites (both roll
-//! their chance already; the mobs are missing), splash potions, throwables entering
-//! nether portals, catching fire in lava, dispensers firing them.
+//! their chance already; the mobs are missing), splash potions affecting mobs,
+//! throwables entering nether portals, catching fire in lava, dispensers firing them.
 
 use krol_java::math::{atan2, cos, floor_f64, sin, sqrt_f64};
 use krol_nbt::{Compound, Tag, TagType};
@@ -70,6 +70,17 @@ const BOTTLE_XP_BASE: i32 = 3;
 const BOTTLE_XP_ROLL: i32 = 5;
 /// The creative game mode.
 const CREATIVE: i32 = 1;
+/// A splash potion reaches living entities in its box grown by this much
+/// (`expand(4.0, 2.0, 4.0)`)...
+const SPLASH_REACH: [f64; 3] = [4.0, 2.0, 4.0];
+/// ...and closer than this (squared distance between positions below 16).
+const SPLASH_RADIUS: f64 = 4.0;
+/// A splash potion's effect lasting this many ticks or less is not given.
+const SPLASH_MIN_DURATION: i32 = 20;
+/// Instant health heals `4 << amplifier`, instant damage hurts `6 << amplifier`, scaled
+/// by the share of the splash.
+const HEAL_BASE: i32 = 4;
+const HARM_BASE: i32 = 6;
 
 /// What was thrown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,7 +93,18 @@ pub enum Kind {
     EnderPearl,
     /// `EntityExpBottle`.
     ExpBottle,
+    /// `EntityPotion` (splash potions).
+    Potion,
 }
+
+/// Every kind, in a fixed order.
+const KINDS: [Kind; 5] = [
+    Kind::Snowball,
+    Kind::Egg,
+    Kind::EnderPearl,
+    Kind::ExpBottle,
+    Kind::Potion,
+];
 
 impl Kind {
     /// The saved entity id (`EntityList` name).
@@ -92,14 +114,13 @@ impl Kind {
             Self::Egg => "ThrownEgg",
             Self::EnderPearl => "ThrownEnderpearl",
             Self::ExpBottle => "ThrownExpBottle",
+            Self::Potion => "ThrownPotion",
         }
     }
 
     /// The kind saved under `id`.
     pub fn from_saved_id(id: &str) -> Option<Self> {
-        [Self::Snowball, Self::Egg, Self::EnderPearl, Self::ExpBottle]
-            .into_iter()
-            .find(|k| k.saved_id() == id)
+        KINDS.into_iter().find(|k| k.saved_id() == id)
     }
 
     /// The entity's name (`getName`: the translated `entity.<id>.name`; en_US only
@@ -118,16 +139,21 @@ impl Kind {
             Self::Egg => 62,
             Self::EnderPearl => 65,
             Self::ExpBottle => 75,
+            Self::Potion => 73,
         }
     }
 
-    /// The item that throws it.
-    fn from_item(id: i16) -> Option<Self> {
-        match id {
+    /// The item stack that throws it (potions only when they are splash potions,
+    /// `ItemPotion.isSplash`).
+    fn from_item(stack: &ItemStack) -> Option<Self> {
+        match stack.id {
             item::SNOWBALL => Some(Self::Snowball),
             item::EGG => Some(Self::Egg),
             item::ENDER_PEARL => Some(Self::EnderPearl),
             item::EXPERIENCE_BOTTLE => Some(Self::ExpBottle),
+            item::POTION if i32::from(stack.damage) & super::potion_helper::SPLASH != 0 => {
+                Some(Self::Potion)
+            }
             _ => None,
         }
     }
@@ -136,6 +162,7 @@ impl Kind {
     fn velocity(self) -> f32 {
         match self {
             Self::ExpBottle => 0.7,
+            Self::Potion => 0.5,
             _ => 1.5,
         }
     }
@@ -143,7 +170,7 @@ impl Kind {
     /// Extra pitch of the launch, in degrees (`getInaccuracy`; bottles are lobbed).
     fn launch_pitch(self) -> f32 {
         match self {
-            Self::ExpBottle => -20.0,
+            Self::ExpBottle | Self::Potion => -20.0,
             _ => 0.0,
         }
     }
@@ -152,6 +179,7 @@ impl Kind {
     fn gravity(self) -> f32 {
         match self {
             Self::ExpBottle => 0.07,
+            Self::Potion => 0.05,
             _ => 0.03,
         }
     }
@@ -192,6 +220,9 @@ pub struct Throwable {
     pub dead: bool,
     /// The chunk the entity was last added to.
     pub chunk: (i32, i32),
+    /// A splash potion's item (`potionDamage`). Vanilla keeps the thrown stack itself,
+    /// so a survival throw leaves it with a count of 0, which is also saved.
+    pub potion: Option<ItemStack>,
 }
 
 impl Throwable {
@@ -211,6 +242,22 @@ impl Throwable {
             Some(krol_world::items::name_for_id(id).map_or(block::AIR, |_| id as u16))
         };
         let owner = c.get_str("ownerName");
+        // EntityPotion: the `Potion` item, else an old `potionValue`; a potion whose item
+        // does not load is removed.
+        let potion = (kind == Kind::Potion).then(|| {
+            if c.contains_key_of("Potion", Some(TagType::Compound)) {
+                c.get_compound("Potion")
+                    .and_then(super::player::item_from_nbt)
+            } else {
+                Some(ItemStack {
+                    id: item::POTION,
+                    count: 1,
+                    damage: c.get_i32("potionValue").max(0) as i16,
+                    nbt: None,
+                })
+            }
+        });
+        let dead = potion.as_ref().is_some_and(Option::is_none);
         Self {
             kind,
             body,
@@ -229,8 +276,9 @@ impl Throwable {
             ticks_in_ground: 0,
             ticks_in_air: 0,
             first_update: true,
-            dead: false,
+            dead,
             chunk: (floor_f64(p.0) >> 4, floor_f64(p.2) >> 4),
+            potion: potion.flatten(),
         }
     }
 
@@ -250,6 +298,14 @@ impl Throwable {
             "ownerName",
             Tag::String(self.owner_name.clone().unwrap_or_default()),
         );
+        if let Some(potion) = &self.potion {
+            c.insert("Potion", Tag::Compound(super::item_data::stack_nbt(potion)));
+        }
+    }
+
+    /// `EntityPotion.getPotionDamage`: the potion's damage value (its spawn data).
+    pub fn potion_damage(&self) -> i32 {
+        self.potion.as_ref().map_or(0, |p| i32::from(p.damage))
     }
 }
 
@@ -294,7 +350,7 @@ impl Game {
         i: usize,
         held: &ItemStack,
     ) -> Option<super::buckets::UseResult> {
-        let kind = Kind::from_item(held.id)?;
+        let kind = Kind::from_item(held)?;
         let creative = self.players[i].gamemode == CREATIVE;
         if kind == Kind::EnderPearl && creative {
             return Some(super::buckets::UseResult::Unchanged);
@@ -308,7 +364,15 @@ impl Game {
         let pitch = 0.4 / (r.next_float() * 0.4 + 0.8);
         let pos = self.players[i].pos;
         self.play_sound_near_except(None, THROW_SOUND, pos, THROW_VOLUME, pitch);
-        self.spawn_thrown(i, kind);
+        // The potion entity keeps the (already shrunk) stack.
+        let potion = (kind == Kind::Potion).then(|| {
+            let mut stack = held.clone();
+            if !creative {
+                stack.count -= 1;
+            }
+            stack
+        });
+        self.spawn_thrown(i, kind, potion);
         if let Some(stat) = super::digging::use_stat(held.id) {
             self.add_stat(i, &stat, 1);
         }
@@ -322,7 +386,7 @@ impl Game {
     /// `new EntityThrowable(world, thrower)` + `spawnEntityInWorld`: the throwable
     /// starts at the player's eyes, a little to the side and below, flying where the
     /// player looks with a small random spread.
-    fn spawn_thrown(&mut self, i: usize, kind: Kind) -> i32 {
+    fn spawn_thrown(&mut self, i: usize, kind: Kind, potion: Option<ItemStack>) -> i32 {
         let entity_id = self.next_entity_id();
         let p = &self.players[i];
         let (yaw, pitch) = p.rotation;
@@ -375,6 +439,7 @@ impl Game {
                 first_update: true,
                 dead: false,
                 chunk: (floor_f64(pos.0) >> 4, floor_f64(pos.2) >> 4),
+                potion,
             },
         );
         self.spawn_entity_in_world(entity_id);
@@ -605,6 +670,7 @@ impl Game {
             return;
         };
         let (kind, pos, launched_by) = (t.kind, t.body.pos, t.launched_by);
+        let (bb, potion, potion_damage) = (t.body.bb(), t.potion.clone(), t.potion_damage());
         let source = DamageSource::Thrown(thrower);
         let entity_hit = match hit {
             Hit::Entity(other, target) => Some((other, target)),
@@ -661,9 +727,93 @@ impl Game {
                     + r.next_int_bounded(BOTTLE_XP_ROLL);
                 self.spawn_orbs(pos, xp);
             }
+            Kind::Potion => {
+                let direct = entity_hit.map(|(other, _)| other);
+                self.splash(pos, &bb, potion.as_ref(), direct, thrower);
+                self.block_effect_data(
+                    BOTTLE_BREAK_EFFECT,
+                    (floor_f64(pos.0), floor_f64(pos.1), floor_f64(pos.2)),
+                    potion_damage,
+                );
+            }
         }
         if let Some(t) = self.thrown.get_mut(&id) {
             t.dead = true;
+        }
+    }
+
+    /// `EntityPotion.onImpact`'s area effect: every living entity (not spectating) in
+    /// reach gets the potion's effects, scaled by its distance (fully for the entity hit
+    /// directly). Instant effects act at once; the others last that share of their
+    /// duration when it is over a second.
+    ///
+    /// TODO(M5): mobs (undead are healed by harming and hurt by healing).
+    fn splash(
+        &mut self,
+        pos: (f64, f64, f64),
+        bb: &super::physics::Aabb,
+        potion: Option<&ItemStack>,
+        direct: Option<i32>,
+        thrower: Option<i32>,
+    ) {
+        use super::potions::{Effect, effect, effect_type};
+        let effects = potion.map_or_else(Vec::new, super::food::potion_item_effects);
+        if effects.is_empty() {
+            return;
+        }
+        let area = bb.expand(SPLASH_REACH);
+        for (other, target) in self.entities_within(&area, None) {
+            let Target::Player(i) = target else {
+                continue;
+            };
+            if self.players[i].removed {
+                continue;
+            }
+            let at = self.players[i].pos;
+            let d2 = (pos.0 - at.0).powi(2) + (pos.1 - at.1).powi(2) + (pos.2 - at.2).powi(2);
+            if d2 >= SPLASH_RADIUS * SPLASH_RADIUS {
+                continue;
+            }
+            let share = if Some(other) == direct {
+                1.0
+            } else {
+                // Math.sqrt (double precision, not MathHelper).
+                1.0 - d2.sqrt() / SPLASH_RADIUS
+            };
+            for e in &effects {
+                if effect_type(i32::from(e.id)).is_some_and(|t| t.instant) {
+                    // Potion.affectEntity (players are never undead).
+                    let amount = |base: i32| {
+                        (share * f64::from(base.wrapping_shl(u32::from(e.amplifier))) + 0.5) as i32
+                    };
+                    match e.id {
+                        effect::HEAL => self.heal_player(i, amount(HEAL_BASE) as f32),
+                        effect::HARM => {
+                            let source = match thrower {
+                                Some(by) => DamageSource::IndirectMagic(by),
+                                None => DamageSource::Magic,
+                            };
+                            self.attack_player(i, source, amount(HARM_BASE) as f32);
+                        }
+                        // Saturation is instant too, but does nothing from a splash.
+                        _ => {}
+                    }
+                } else {
+                    let duration = (share * f64::from(e.duration) + 0.5) as i32;
+                    if duration > SPLASH_MIN_DURATION {
+                        self.add_effect(
+                            i,
+                            Effect {
+                                id: e.id,
+                                amplifier: e.amplifier,
+                                duration,
+                                ambient: false,
+                                particles: true,
+                            },
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -711,7 +861,7 @@ mod tests {
 
     #[test]
     fn kinds_round_trip_their_saved_ids() {
-        for kind in [Kind::Snowball, Kind::Egg, Kind::EnderPearl, Kind::ExpBottle] {
+        for kind in KINDS {
             assert_eq!(Kind::from_saved_id(kind.saved_id()), Some(kind));
         }
         assert_eq!(Kind::from_saved_id("Arrow"), None);

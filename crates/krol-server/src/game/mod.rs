@@ -1861,7 +1861,7 @@ impl Game {
                 self.start_drinking(i, &held);
                 buckets::UseResult::Kept
             }
-            // TODO(M5): splash potions are thrown.
+            // Splash potions are thrown (below).
             ids::item::POTION if i32::from(held.damage) & potion_helper::SPLASH == 0 => {
                 self.start_drinking(i, &held);
                 buckets::UseResult::Kept
@@ -1874,7 +1874,7 @@ impl Game {
                 }
                 buckets::UseResult::Kept
             }
-            // TODO(M5): bows, splash potions and the other usable items.
+            // TODO(M5): bows and the other usable items.
             _ => match self.throw_held(i, &held) {
                 Some(result) => result,
                 None => buckets::UseResult::Unchanged,

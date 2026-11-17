@@ -56,6 +56,9 @@ pub enum DamageSource {
     Thrown(Option<i32>),
     /// Another falling block that hurts entities (`DamageSource.fallingBlock`).
     FallingBlock,
+    /// A splash potion of harming, with the thrower's entity id
+    /// (`DamageSource.causeIndirectMagicDamage`: bypasses armor, magic).
+    IndirectMagic(i32),
 }
 
 impl DamageSource {
@@ -79,6 +82,7 @@ impl DamageSource {
             Self::Anvil => "anvil",
             Self::Thrown(_) => "thrown",
             Self::FallingBlock => "fallingBlock",
+            Self::IndirectMagic(_) => "indirectMagic",
         }
     }
 
@@ -90,6 +94,7 @@ impl DamageSource {
                 | Self::Drown
                 | Self::OnFire
                 | Self::Magic
+                | Self::IndirectMagic(_)
                 | Self::Wither
                 | Self::InWall
                 | Self::OutOfWorld
@@ -115,7 +120,10 @@ impl DamageSource {
     /// back.
     pub fn attacker(self) -> Option<i32> {
         match self {
-            Self::ExplosionBy(id) | Self::Player(id) | Self::Thorns(id) => Some(id),
+            Self::ExplosionBy(id)
+            | Self::Player(id)
+            | Self::Thorns(id)
+            | Self::IndirectMagic(id) => Some(id),
             Self::Thrown(thrower) => thrower,
             _ => None,
         }
@@ -133,6 +141,7 @@ impl DamageSource {
             | Self::Drown
             | Self::OnFire
             | Self::Magic
+            | Self::IndirectMagic(_)
             | Self::Wither
             | Self::InWall
             | Self::OutOfWorld => 0.0,

@@ -109,14 +109,16 @@ pub fn custom_name(stack: &krol_protocol::packets::play::ItemStack) -> Option<&s
 /// `ItemStack.getDisplayName`: the custom name, else the item's en_US name as the
 /// server translates it.
 ///
-/// TODO(M4): names that depend on NBT (written book titles) and potion damage values
-/// above 255 fall back to the base name.
+/// TODO(M4): names that depend on NBT (written book titles) fall back to the base name.
 pub fn display_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
     if let Some(name) = custom_name(stack) {
         return name.to_owned();
     }
     if let Some(owner) = skull_owner_name(stack) {
         return format!("{owner}'s Head");
+    }
+    if stack.id == super::ids::item::POTION && stack.damage != 0 {
+        return potion_name(stack);
     }
     let damage = if has_subtypes(stack.id) {
         stack.damage
@@ -128,6 +130,101 @@ pub fn display_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
         .get(&(stack.id, damage))
         .or_else(|| names.get(&(stack.id, 0)))
         .map_or_else(String::new, |n| (*n).to_owned())
+}
+
+/// The en_US names of the potion prefixes (`PotionHelper.potionPrefixes`), by
+/// `getPotionPrefixIndex`.
+const POTION_PREFIXES: [&str; 32] = [
+    "Mundane",
+    "Uninteresting",
+    "Bland",
+    "Clear",
+    "Milky",
+    "Diffuse",
+    "Artless",
+    "Thin",
+    "Awkward",
+    "Flat",
+    "Bulky",
+    "Bungling",
+    "Buttered",
+    "Smooth",
+    "Suave",
+    "Debonair",
+    "Thick",
+    "Elegant",
+    "Fancy",
+    "Charming",
+    "Dashing",
+    "Refined",
+    "Cordial",
+    "Sparkling",
+    "Potent",
+    "Foul",
+    "Odorless",
+    "Rank",
+    "Harsh",
+    "Acrid",
+    "Gross",
+    "Stinky",
+];
+
+/// The en_US `potion.<name>.postfix` of an effect id.
+fn potion_postfix(id: u8) -> Option<&'static str> {
+    Some(match id {
+        1 => "Potion of Swiftness",
+        2 => "Potion of Slowness",
+        3 => "Potion of Haste",
+        4 => "Potion of Dullness",
+        5 => "Potion of Strength",
+        6 => "Potion of Healing",
+        7 => "Potion of Harming",
+        8 => "Potion of Leaping",
+        9 => "Potion of Nausea",
+        10 => "Potion of Regeneration",
+        11 => "Potion of Resistance",
+        12 => "Potion of Fire Resistance",
+        13 => "Potion of Water Breathing",
+        14 => "Potion of Invisibility",
+        15 => "Potion of Blindness",
+        16 => "Potion of Night Vision",
+        17 => "Potion of Hunger",
+        18 => "Potion of Weakness",
+        19 => "Potion of Poison",
+        20 => "Potion of Decay",
+        21 => "Potion of Health Boost",
+        22 => "Potion of Absorption",
+        23 => "Potion of Saturation",
+        _ => return None,
+    })
+}
+
+/// `ItemPotion.getItemStackDisplayName` for a potion with a damage value: "Splash "
+/// for splash potions, then the first effect's "Potion of ..." name, or without
+/// effects the prefix of bits 5 to 1 ("Thin Potion").
+fn potion_name(stack: &krol_protocol::packets::play::ItemStack) -> String {
+    let damage = i32::from(stack.damage);
+    let splash = if damage & super::potion_helper::SPLASH != 0 {
+        "Splash "
+    } else {
+        ""
+    };
+    if let Some(first) = super::food::potion_item_effects(stack).first() {
+        // A missing translation shows the key.
+        let name = potion_postfix(first.id).map_or_else(
+            || {
+                let key = super::potions::effect_type(i32::from(first.id)).map_or("", |t| t.name);
+                format!("{key}.postfix")
+            },
+            str::to_owned,
+        );
+        return format!("{splash}{name}");
+    }
+    // getPotionPrefixIndex: bits 5, 4, 3, 2 and 1, highest first.
+    let index = [5, 4, 3, 2, 1]
+        .iter()
+        .fold(0, |acc, bit| acc << 1 | (damage >> bit & 1)) as usize;
+    format!("{splash}{} Potion", POTION_PREFIXES[index])
 }
 
 /// `ItemSkull.getItemStackDisplayName`: a player head's owner, from a `SkullOwner`
@@ -347,6 +444,27 @@ pub fn enchantment_level(stack: Option<&krol_protocol::packets::play::ItemStack>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn potion_names_match_the_vanilla_table() {
+        let stack = |damage: i16| krol_protocol::packets::play::ItemStack {
+            id: super::super::ids::item::POTION,
+            count: 1,
+            damage,
+            nbt: None,
+        };
+        // item_names.txt holds vanilla's names of damage values 0 to 255.
+        for damage in 1..256 {
+            assert_eq!(
+                potion_name(&stack(damage)),
+                names()[&(super::super::ids::item::POTION, damage)],
+                "damage {damage}"
+            );
+        }
+        assert_eq!(display_name(&stack(0)), "Water Bottle");
+        assert_eq!(display_name(&stack(16396)), "Splash Potion of Harming");
+        assert_eq!(display_name(&stack(16384)), "Splash Mundane Potion");
+    }
 
     #[test]
     fn vanilla_values() {
