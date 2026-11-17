@@ -986,6 +986,16 @@ impl Game {
             }
         }
         self.scatter(i, flat);
+        // ItemMap.onCreated for a zoomed map taken onto the cursor.
+        if let Some(b) = before
+            && b.id == super::maps::FILLED_MAP
+            && let Some(mut c) = self.players[i].window.cursor.take()
+        {
+            if c.id == b.id && c.damage == b.damage {
+                self.zoom_crafted_map(&mut c);
+            }
+            self.players[i].window.cursor = Some(c);
+        }
         for mut c in extra {
             let creative = self.players[i].is_creative();
             if !super::item_entity::add_to_inventory(
@@ -1014,6 +1024,9 @@ impl Game {
 
     /// A map's saved scale (`data/map_<id>.dat`, `MapStorage.loadData`), if it exists.
     fn map_scale(&self, map: i16) -> Option<i8> {
+        if let Some(scale) = self.maps.loaded_scale(map) {
+            return Some(scale);
+        }
         let path = self.level.dir.join("data").join(format!("map_{map}.dat"));
         let file = std::fs::File::open(path).ok()?;
         let (_, root) = krol_nbt::read_gzip(std::io::BufReader::new(file)).ok()?;

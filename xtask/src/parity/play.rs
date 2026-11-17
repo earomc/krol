@@ -645,6 +645,20 @@ pub fn v5_view(summary: &Value, from_v5: bool) -> Value {
                 (Ok(_), Ok(n)) => n.max(0) as usize,
                 _ => 1,
             }
+        } else if packet["debug"]
+            .as_str()
+            .is_some_and(|d| d.starts_with("Maps {"))
+            && !from_v5
+        {
+            // 1.7 gets a map packet as an icon list, then with colors the scale and one
+            // packet per column.
+            let columns = packet["debug"]
+                .as_str()
+                .and_then(|d| d.split("columns: ").nth(1))
+                .and_then(|d| d.split(',').next())
+                .and_then(|n| n.trim().parse::<usize>().ok())
+                .unwrap_or(0);
+            if columns > 0 { 2 + columns } else { 1 }
         } else {
             1
         };

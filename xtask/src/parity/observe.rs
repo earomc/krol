@@ -474,13 +474,24 @@ fn normalize_file(name: &str, text: &str) -> Value {
     Value::Array(lines)
 }
 
-/// A gzip NBT file as JSON with sorted compound keys (vanilla writes compounds in
+/// A gzip (or uncompressed) NBT file as JSON with sorted compound keys (vanilla writes compounds in
 /// `HashMap` order, which carries no meaning). Values are tagged with their NBT type.
 fn nbt_file_json(bytes: &[u8]) -> Value {
     match krol_nbt::read_gzip(bytes) {
         Ok((_, root)) => compound_json(&root),
-        Err(e) => json!({ "error": e.to_string() }),
+        // Some files are written uncompressed (data/idcounts.dat).
+        Err(e) => match krol_nbt::read(&mut &bytes[..]) {
+            Ok((_, root)) => compound_json(&root),
+            Err(_) => json!({ "error": e.to_string() }),
+        },
     }
+}
+
+/// A byte array's FNV-1a hash, so large arrays (map colors) compare by content.
+fn fnv1a(bytes: &[i8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |h, &b| {
+        (h ^ u64::from(b as u8)).wrapping_mul(0x0100_0000_01b3)
+    })
 }
 
 fn compound_json(c: &krol_nbt::Compound) -> Value {
@@ -502,7 +513,7 @@ fn tag_json(t: &krol_nbt::Tag) -> Value {
         Tag::Long(v) => json!(format!("{v}L")),
         Tag::Float(v) => json!(format!("{v}f")),
         Tag::Double(v) => json!(format!("{v}d")),
-        Tag::ByteArray(a) => json!(format!("<{} bytes>", a.len())),
+        Tag::ByteArray(a) => json!(format!("<{} bytes, fnv {:016x}>", a.len(), fnv1a(a))),
         Tag::String(s) => json!(s),
         Tag::List(l) => Value::Array(l.iter().map(tag_json).collect()),
         Tag::Compound(c) => compound_json(c),

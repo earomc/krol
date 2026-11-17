@@ -943,8 +943,10 @@ impl Game {
         // TODO(M5): riding.
         if player.sleeping {
             // A sleeping player updates but stays where it lies.
+            self.update_carried_maps(i);
             self.living_move(i);
             self.player_update(i);
+            self.send_map_packets(i);
             self.send_health_if_changed(i);
             let p = &mut self.players[i];
             p.pos = p.movement.last_pos;
@@ -966,8 +968,10 @@ impl Game {
         let rot = rotation.unwrap_or(self.players[i].rotation);
 
         // onUpdateEntity, then back to the last accepted position.
+        self.update_carried_maps(i);
         self.living_move(i);
         self.player_update(i);
+        self.send_map_packets(i);
         self.send_health_if_changed(i);
         let player = &mut self.players[i];
         player.pos = last;

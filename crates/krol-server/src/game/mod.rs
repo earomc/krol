@@ -44,6 +44,7 @@ mod jukebox;
 mod leaves;
 mod light_data;
 mod liquids;
+mod maps;
 mod movement;
 mod mushrooms;
 mod noise;
@@ -340,6 +341,8 @@ struct Game {
     items: std::collections::BTreeMap<i32, item_entity::ItemEntity>,
     /// The world's scoreboard (`data/scoreboard.dat`).
     scoreboard: scoreboard::Scoreboard,
+    /// The world's maps (`data/map_*.dat`, `data/idcounts.dat`).
+    maps: maps::MapStorage,
     /// Chests that are open or closing.
     chests: Vec<chest::ChestRuntime>,
     /// Signs that can be edited, and by whom (`TileEntitySign.isEditable` and
@@ -391,6 +394,7 @@ pub fn start(
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let (stopped_tx, stopped_rx) = tokio::sync::oneshot::channel();
     let scoreboard = scoreboard::Scoreboard::load(&level.dir);
+    let maps = maps::MapStorage::load(&level.dir);
     let game = Game {
         level,
         config,
@@ -406,6 +410,7 @@ pub fn start(
         tracker: Default::default(),
         items: Default::default(),
         scoreboard,
+        maps,
         orbs: Default::default(),
         falling: Default::default(),
         tnt: Default::default(),
@@ -569,6 +574,7 @@ impl Game {
             }
             self.save_level(false);
             self.scoreboard.save(&self.level.dir);
+            self.maps.save(&self.level.dir);
         }
         let radius = self.config.view_distance;
         self.tick_active_chunks(radius);
@@ -1842,6 +1848,7 @@ impl Game {
                 buckets::UseResult::Kept
             }
             ids::item::GLASS_BOTTLE => self.fill_bottle(i, &held),
+            maps::EMPTY_MAP => self.use_empty_map(i, &held),
             id if food::food(id, held.damage).is_some() => {
                 if let Some(f) = food::food(id, held.damage) {
                     self.start_eating(i, &held, f);
@@ -2484,6 +2491,7 @@ impl Game {
         info!("Saving worlds");
         self.save_level(true);
         self.scoreboard.save(&self.level.dir);
+        self.maps.save(&self.level.dir);
     }
 }
 

@@ -147,7 +147,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x2C Spawn Global Entity | ❌ | Lightning |
 | 0x2D Open Window · 0x2E Close Window · 0x2F Set Slot · 0x30 Window Items · 0x31 Window Property · 0x32 Confirm Transaction | ✅ | For the implemented windows |
 | 0x33 Update Sign · 0x36 Sign Editor Open | ✅ | |
-| 0x34 Maps | ❌ | |
+| 0x34 Maps | ✅ | Whole map, changed rectangles, icons; 1.7: an icon list, the scale and one packet per column |
 | 0x35 Update Block Entity | 🟡 | Signs, note blocks (via chunk), banners, flower pots, skulls, beacons; mob spawners missing |
 | 0x37 Statistics | ✅ | |
 | 0x38 Player List Item | 🟡 | Add, game mode, remove, latency (keep-alive round trips, every 600 ticks) ✅; display names ❌ |
@@ -213,7 +213,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | `World.getCollidingBoundingBoxes`, `isAABBInMaterial`, `handleMaterialAcceleration` | ✅ | Collision shapes of every block, including neighbor-dependent ones; anvils and double chests use their constructor bounds (vanilla uses whatever a ray trace last left) |
 | `World.rayTraceBlocks` | 🟡 | Buckets; selection boxes of stairs, fences and other shaped blocks missing |
 | Village collection (`VillageCollection`, `villages.dat`) | ❌ | See village |
-| Map data (`MapData`, `data/map_*.dat`, `idcounts.dat`) | ❌ | |
+| Map data (`MapData`, `data/map_*.dat`, `idcounts.dat`) | ✅ | Read (old smaller maps centered), written on save; the id counter written at once |
 | Scoreboard data (`data/scoreboard.dat`) | ✅ | |
 | Structure data (`data/Village.dat`, `Mineshaft.dat`, `Temple.dat`, `Fortress.dat`, `Stronghold.dat`) | ❌ | Arrives with structure generation |
 | `WorldInfo` / `level.dat`: read, write (all fields, game rules, border, weather, time) | ✅ | |
@@ -400,7 +400,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemHangingEntity` (paintings, item frames), `ItemArmorStand` | ❌ | |
 | `ItemMonsterPlacer` (spawn eggs) | ❌ | |
 | `ItemSaddle`, `ItemLead`, `ItemNameTag`, `ItemCarrotOnAStick` | ❌ | |
-| `ItemMap`, `ItemEmptyMap` | ❌ | Map cloning/extending recipes ✅ |
+| `ItemMap`, `ItemEmptyMap` | 🟡 | Making maps, drawing the held map (block map colors extracted from vanilla, height shading, water depth, the rim), player icons and the off-map icon, map packets, maps without data recreated around the spawn, zoomed maps from the crafting grid (cursor pickup), cloning/extending recipes ✅; item frames, `Decorations` lists, shift-clicked zoom results, unloaded chunks, color ties at larger scales, the nether ❌ |
 | `ItemBook`, `ItemWritableBook`, `ItemEditableBook`, `ItemEnchantedBook` | 🟡 | Book cloning recipe ✅; editing/signing books (`MC|BEdit`, `MC|BSign`) ❌ |
 | `ItemRecord` | ✅ | `stat.recordPlayed` |
 | `ItemCoal`, `ItemSimpleFoiled` | ✅ | |
@@ -690,7 +690,7 @@ example plugin, `docs/bukkit-to-rust.md`.
 | Feature | Status | Notes |
 |---|---|---|
 | CI: fmt, clippy, tests, docs, `cargo-deny` | ✅ | Manual trigger |
-| Data generators (`tools/datagen/*.java`): biomes, block light and shape flags, foods, items, noise vectors, potions, recipes | ✅ | |
+| Data generators (`tools/datagen/*.java`): biomes, block light and shape flags, foods, items, noise vectors, potions, recipes, map colors | ✅ | |
 | Player fixture generator (`tools/fixtures/players.py`) | ✅ | |
 | `docs/third-party.md` | ✅ | |
 | ADRs (`docs/adr/`), `docs/bukkit-compat.md`, `docs/bukkit-to-rust.md` | ❌ | Created with the plugin milestones |

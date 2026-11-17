@@ -1112,6 +1112,7 @@ impl Game {
                 }
                 self.save_level(false);
                 self.scoreboard.save(&self.level.dir);
+                self.maps.save(&self.level.dir);
                 self.notify(sender, name, false, "commands.save.success", vec![]);
                 Ok(())
             }

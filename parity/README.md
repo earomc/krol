@@ -45,7 +45,7 @@ until close), `login_start` (`protocol`, `name`), `restart` (stop the server, wh
 everything, and start it again in the same directory; background play steps are collected
 first and the log runs on). `[observe] entities = [[cx, cz]]` compares the chunks' saved
 `Entities` lists after the final stop, with each `UUIDMost`/`UUIDLeast` pair shown as one
-UUID string (so random ones compare as `<uuid-N>`). Observation paths listed in
+UUID string (so random ones compare as `<uuid-N>`). `[observe] files` reads NBT files gzipped or uncompressed (`data/idcounts.dat`); byte arrays show as their length and an FNV-1a hash, so map colors compare by content. Observation paths listed in
 `observe.ignore` are excluded — use only for documented, deliberate deviations.
 
 ## Pinning vanilla's randoms
@@ -76,7 +76,9 @@ into server ticks. Rules learned from flaky scenarios:
   the bot itself, or to console steps *before* the `play` step. Prefer a fixture player
   file (`tools/fixtures/players.py`) over a console `/gamemode` switch.
 - **`wait_ms` waits after a console command**, not before; use a `wait` step to delay
-  one. A `background = true` play step is followed by a 1.5 s pause before the next step.
+  one. A `background = true` play step is followed by a 1.5 s pause before the next step,
+  so console steps after it run 1.5 s later than their own waits suggest: a `/give`
+  after a 1.5 s `wait` lands about 3 s into the bot's timeline (`play/maps`).
   The bot's `@ms` clock starts with its connection, and vanilla logs in more slowly than
   krol, so leave a second or more between bot actions and console steps they race with.
 - **Turn off random block ticks** (`gamerule randomTickSpeed 0` before the player

@@ -1,0 +1,69 @@
+description = "Maps: an empty map used from a stack of two (map 0 centered on the 128-block cell around the player, idcounts.dat, the filled map added to the inventory, the use counted), the filled map held while standing still: the world drawn a sixteenth of the columns per movement packet (block map colors, height shading, the checkered rim), the map packets (the whole map first, then the changed rectangles, the player icon every fifth packet), and map_0.dat saved with the colors"
+subsystem = "items"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and stands still; the
+# bot sends a movement packet every tick, and each one runs the map update. The give
+# lands about 3 s in (the harness waits 1.5 s after starting the bot, then the wait
+# step), and /give hands the maps over a tick later, so the use waits until 5 s. The map
+# reaches 4 chunks around him, all within the view distance (vanilla would load chunks
+# it reaches otherwise).
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Something to draw besides grass: water two deep, a stone wall, and wool.
+[[steps]]
+action = "console"
+command = "fill -480 2 -440 -476 3 -436 water"
+
+[[steps]]
+action = "console"
+command = "fill -470 4 -445 -460 6 -445 stone"
+
+[[steps]]
+action = "console"
+command = "fill -500 4 -400 -490 4 -390 wool 14"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 12
+chat = [
+    "@5000 !use",
+    "@5600 !hold 1",
+]
+
+[[steps]]
+action = "wait"
+ms = 1500
+
+[[steps]]
+action = "console"
+command = "give jeb_ map 2"
+wait_ms = 9500
+
+[observe]
+log = true
+files = [
+    "world/data/idcounts.dat",
+    "world/data/map_0.dat",
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+# Once drawn, the map only resends the icon every fifth movement packet, a number of
+# times that depends on when the session ends.
+dedupe_runs = ["0x34"]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+]

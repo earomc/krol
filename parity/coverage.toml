@@ -229,6 +229,11 @@ description = "Item entities: block drops, spawn/metadata/velocity, physics, pic
 scenarios = ["play/survival_mining", "play/jukeboxes"]
 
 [[feature]]
+id = "items.maps"
+description = "Maps: ItemEmptyMap from a stack of two (map 0 centered on its cell, idcounts.dat, the filled map added, the use counted), the held map drawn per movement packet (block map colors, height shading, water depth, the checkered rim), S34PacketMaps (the whole map, changed rectangles, the player icon every fifth call), map_0.dat with the colors (compared by hash). Not yet: zooming in a scenario, item frames, larger scales"
+scenarios = ["play/maps"]
+
+[[feature]]
 id = "blocks.beacon"
 description = "Beacons: pyramid levels and the beam check (updateBeacon on a neighbor change and every 80 ticks), the window (container.beacon, window properties once, stat.beaconInteraction), the payment slot by shift-click, MC|Beacon setting the powers and using up the payment, ambient effects for players in range. Not yet: stained glass above, custom names, the payment dropped on close"
 scenarios = ["play/beacons"]

@@ -385,7 +385,7 @@ impl World {
     }
 
     /// `World.getHeight`: the height map value, 0 in unloaded chunks.
-    fn height_at(&self, x: i32, z: i32) -> i32 {
+    pub fn height_at(&self, x: i32, z: i32) -> i32 {
         self.chunks.get(&(x >> 4, z >> 4)).map_or(0, |c| {
             c.chunk.height_map[((z & 15) << 4 | (x & 15)) as usize]
         })
