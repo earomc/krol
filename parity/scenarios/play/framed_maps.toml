@@ -1,0 +1,104 @@
+description = "Maps in item frames: map 0 made from an empty map, a second copy given, one copy put into an item frame (the frame icon on the map, the map packets the tracker sends every 10 ticks alongside the carried copy's), then knocked out of the frame (the frame icon removed); the empty frame saved with its chunk and map_0.dat"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, facing south, and is
+# switched to survival from the console. Entity ids: jeb_ 0, then each /give uses one
+# (1 for the empty map, 2 for the second filled map, 3 for the frame), so the frame is
+# 4. The frame hangs at x = -472 (within the 3 blocks allowed without line of sight)
+# on the north face of a stone wall at z = -432; a glass wall at
+# z = -434 (with the corridor's ends closed, as in play/hanging) keeps the knocked-out
+# map from reaching jeb_, who uses and hits the frame through it. jeb_ keeps holding his
+# copy of map 0, so his map packets show the frame icon coming and going. The second
+# copy is given once map_0 exists and joins the first in slot 0.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -476 4 -432 -466 6 -432 stone"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -434 -465 8 -434 glass"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -433 -477 8 -433 glass"
+
+[[steps]]
+action = "console"
+command = "fill -465 4 -433 -465 8 -433 glass"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+chat = [
+    "@5000 !use",
+    "@7500 !hold 1",
+    "@7800 !place -472 5 -432 2",
+    "@8300 !hold 0",
+    "@8600 !interact 4",
+    "@12000 !attack 4",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "wait"
+ms = 1500
+
+[[steps]]
+action = "console"
+command = "give jeb_ map 1"
+wait_ms = 3500
+
+[[steps]]
+action = "console"
+command = "give jeb_ filled_map 1 0"
+
+[[steps]]
+action = "console"
+command = "give jeb_ item_frame 1"
+wait_ms = 9500
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+files = [
+    "world/data/idcounts.dat",
+    "world/data/map_0.dat",
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+# Once drawn, the map resends its icons unchanged every fifth call, in between the
+# other packets at places that depend on timing (the tracker and the movement packets
+# both call it); only the changes are compared.
+drop_repeated = ["0x34"]
+# Which tick's movement packet sends the first icons without the frame icon depends on
+# where the knock-out lands in the every-fifth-call cycle: before or after the
+# tracker pass that sends the frame's and the dropped map's metadata.
+unordered = [["0x34", "entity_metadata"]]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+]

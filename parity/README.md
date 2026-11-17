@@ -135,6 +135,10 @@ into server ticks. Rules learned from flaky scenarios:
   count once, so the distinct packets and their order are still compared.
 - `[observe] dedupe_runs` does the same for packets a server resends every tick while
   something stays open (e.g. the enchanting table's window properties, `"0x31"`).
+- `[observe] drop_repeated` drops a packet equal to the last one of its type even with
+  other packets in between, for packets resent unchanged on a timer while the scenario
+  does other things (a carried map's icon packets, `"0x34"` in `play/framed_maps`):
+  what changes still shows, in order.
 - **Tolerances on NBT lists go on the list itself** (`"file:<path>.dat.Pos" = 0.1`):
   lists of values are otherwise diffed line by line, where element tolerances never
   apply. Packet tolerances name a packet index, and the 1.7 view (`--protocol 5`) drops

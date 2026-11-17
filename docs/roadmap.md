@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-17 (commit `server: paintings and item frames`).
+Status as of 2026-11-18 (commit `server: maps in item frames`).
 
 **Legend**
 
@@ -22,9 +22,9 @@ Status as of 2026-11-17 (commit `server: paintings and item frames`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 entities without AI**: maps shown in item frames, armor stands, minecarts and
-   boats, with their spawn packets, tracking and saving (done: projectiles from
-   players, paintings and item frames).
+1. **M5 entities without AI**: armor stands, minecarts and boats, with their spawn
+   packets, tracking and saving (done: projectiles from players, paintings and item
+   frames with the maps they show).
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
 
@@ -405,7 +405,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemArmorStand` | ❌ | |
 | `ItemMonsterPlacer` (spawn eggs) | ❌ | |
 | `ItemSaddle`, `ItemLead`, `ItemNameTag`, `ItemCarrotOnAStick` | ❌ | |
-| `ItemMap`, `ItemEmptyMap` | 🟡 | Making maps, drawing the held map (block map colors extracted from vanilla, height shading, water depth, the rim), player icons and the off-map icon, map packets, maps without data recreated around the spawn, zoomed maps from the crafting grid (cursor pickup), cloning/extending recipes ✅; item frames, `Decorations` lists, shift-clicked zoom results, unloaded chunks, color ties at larger scales, the nether ❌ |
+| `ItemMap`, `ItemEmptyMap` | 🟡 | Making maps, drawing the held map (block map colors extracted from vanilla, height shading, water depth, the rim), player icons and the off-map icon, map packets, maps without data recreated around the spawn, zoomed maps from the crafting grid (cursor pickup), cloning/extending recipes, maps in item frames (the frame icon, map packets from the tracker to every player in the world), `Decorations` lists on items ✅ (`Decorations` lists and nether icon spin not in a scenario); shift-clicked zoom results, unloaded chunks, color ties at larger scales, the nether ❌ |
 | `ItemBook`, `ItemWritableBook`, `ItemEditableBook`, `ItemEnchantedBook` | 🟡 | Book cloning recipe ✅; editing/signing books (`MC|BEdit`, `MC|BSign`) ❌ |
 | `ItemRecord` | ✅ | `stat.recordPlayed` |
 | `ItemCoal`, `ItemSimpleFoiled` | ✅ | |
@@ -519,7 +519,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
 | `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | ❌ | |
 | `EntityBoat` | ❌ | |
-| `EntityItemFrame`, `EntityPainting` | 🟡 | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`. Maps shown in frames (decorations, map packets every 10 ticks) ❌; invulnerable frames, `/tp` and old saves are not in a scenario |
+| `EntityItemFrame`, `EntityPainting` | ✅ | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`, maps shown in frames (the frame icon, map packets every 10 ticks, the icon removed with the map). Invulnerable frames, `/tp` and old saves are not in a scenario |
 | `EntityLeashKnot` | ❌ | |
 | `EntityArmorStand` | ❌ | |
 | `EntityEnderCrystal` | ❌ | |

@@ -776,18 +776,23 @@ impl Game {
             self.update_player_entities(entity_id);
         }
 
-        // Item frames send changed metadata every 10 ticks (and, TODO(M5), the map they
-        // show).
+        // Item frames send the map they show and changed metadata every 10 ticks.
         let mut v = v;
-        if self
-            .hanging
-            .get(&entity_id)
-            .is_some_and(|h| matches!(h.kind, super::hanging::Kind::ItemFrame { .. }))
+        let frame = self.hanging.get(&entity_id).and_then(|h| match h.kind {
+            super::hanging::Kind::ItemFrame { .. } => Some(super::maps::FramedMap {
+                entity_id,
+                tile: h.tile,
+                facing: h.facing,
+            }),
+            super::hanging::Kind::Painting { .. } => None,
+        });
+        if let Some(frame) = frame
             && self
                 .tracker
                 .get(&entity_id)
                 .is_some_and(|e| e.update_counter % ITEM_FRAME_METADATA_INTERVAL == 0)
         {
+            self.update_framed_map(&frame);
             self.send_dirty_data(entity_id, &v);
             v.metadata_changed = false;
         }

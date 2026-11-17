@@ -122,6 +122,41 @@ fn remap_uuids_in_str(s: &str, seen: &mut Vec<String>) -> Option<String> {
     })
 }
 
+/// Drops every packet of a type in `types` that equals the last packet of the same type
+/// before it, wherever that one is, in each bot stream of `observations`.
+pub fn drop_repeated(observations: &mut Value, types: &[String]) {
+    let Some(streams) = observations.as_object_mut() else {
+        return;
+    };
+    for stream in streams.values_mut() {
+        let Some(obj) = stream.as_object_mut() else {
+            continue;
+        };
+        let (Some(Value::Array(sequence)), Some(Value::Array(packets))) =
+            (obj.get("sequence").cloned(), obj.get("packets").cloned())
+        else {
+            continue;
+        };
+        if sequence.len() != packets.len() {
+            continue;
+        }
+        let mut last: std::collections::BTreeMap<String, Value> = Default::default();
+        let mut kept: Vec<(Value, Value)> = Vec::new();
+        for (t, p) in sequence.into_iter().zip(packets) {
+            if let Some(name) = t.as_str().filter(|t| types.iter().any(|x| x == t)) {
+                if last.get(name) == Some(&p) {
+                    continue;
+                }
+                last.insert(name.to_owned(), p.clone());
+            }
+            kept.push((t, p));
+        }
+        let (sequence, packets): (Vec<Value>, Vec<Value>) = kept.into_iter().unzip();
+        obj.insert("sequence".into(), Value::Array(sequence));
+        obj.insert("packets".into(), Value::Array(packets));
+    }
+}
+
 /// Drops every packet of a type in `types` that equals the packet right before it, in
 /// each bot stream of `observations`.
 pub fn collapse_repeats(observations: &mut Value, types: &[String]) {
@@ -398,6 +433,31 @@ mod tests {
         assert_eq!(
             x,
             stream(&[("a", 1), ("a", 2), ("b", 0), ("b", 0), ("a", 2)])
+        );
+    }
+
+    #[test]
+    fn repeats_dropped_across_other_packets() {
+        let types = vec!["p".to_owned()];
+        let stream = |seq: &[(&str, i32)]| {
+            json!({ "bot": {
+                "sequence": seq.iter().map(|(t, _)| t).collect::<Vec<_>>(),
+                "packets": seq.iter().map(|(t, v)| json!({ "packet": t, "v": v })).collect::<Vec<_>>(),
+            }})
+        };
+        let mut x = stream(&[
+            ("p", 0),
+            ("s", 0),
+            ("p", 0),
+            ("p", 1),
+            ("s", 1),
+            ("p", 1),
+            ("p", 0),
+        ]);
+        drop_repeated(&mut x, &types);
+        assert_eq!(
+            x,
+            stream(&[("p", 0), ("s", 0), ("p", 1), ("s", 1), ("p", 0)])
         );
     }
 

@@ -365,6 +365,8 @@ impl Game {
     /// Vanilla `recreatePlayerEntity` (same dimension, not from the End).
     fn respawn(&mut self, i: usize) {
         let entity_id = self.players[i].entity_id;
+        // The old entity stays a dead viewer of the maps it saw.
+        self.maps.player_entity_replaced(entity_id);
         // removePlayerFromTrackers: the player stops seeing everything (players are
         // destroyed on its client right away).
         let seen: Vec<i32> = self

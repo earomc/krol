@@ -3,7 +3,10 @@
 //! `data/idcounts.dat`, drawing the world onto a held map column by column, the player
 //! markers, and the map packets.
 //!
-//! TODO(M4): maps in item frames, `Decorations` lists on map items, zoomed maps taken
+//! Maps in item frames get their viewers and packets from the tracker
+//! ([`Game::update_framed_map`]), with an icon for the frame.
+//!
+//! TODO(M4): zoomed maps taken
 //! from the crafting grid by shift-click (`onCreated` runs only for the cursor), chunks the map reaches that are not loaded (vanilla
 //! loads them), ties between colors when a pixel covers several blocks (vanilla picks by
 //! `MapColor` identity hash order), the nether's maps.
@@ -40,6 +43,25 @@ const ICON_PERIOD: i32 = 5;
 const MAX_SCALE: i8 = 4;
 /// A map made without data: centered on the spawn at this scale.
 const LOST_MAP_SCALE: i8 = 3;
+/// Icon types: a player, and an item frame showing the map.
+const PLAYER_ICON: u8 = 0;
+const FRAME_ICON: u8 = 1;
+
+/// An item frame showing a filled map, as its map icon needs it.
+#[derive(Debug, Clone, Copy)]
+pub struct FramedMap {
+    /// The frame's entity id (its icon is named after it).
+    pub entity_id: i32,
+    /// Its hanging position.
+    pub tile: (i32, i32, i32),
+    /// Its facing as a horizontal index.
+    pub facing: u8,
+}
+
+/// The icon name of an item frame (`"frame-" + getEntityId()`).
+fn frame_icon_name(entity_id: i32) -> String {
+    format!("frame-{entity_id}")
+}
 
 /// `Block.getMapColor` for every block state, extracted from vanilla
 /// (`tools/datagen/MapColorDump.java`).
@@ -80,6 +102,10 @@ struct Viewer {
     calls: i32,
     /// Updates of the held map (`field_82569_d`): picks the columns redrawn.
     step: i32,
+    /// The player entity it belongs to died and respawned as a new entity
+    /// (`entityplayerObj.isDead`): it no longer matches the player and is removed by
+    /// the next viewer update.
+    stale: bool,
 }
 
 impl Viewer {
@@ -93,6 +119,7 @@ impl Viewer {
             max_y: SIZE - 1,
             calls: 0,
             step: 0,
+            stale: false,
         }
     }
 
@@ -203,8 +230,15 @@ impl MapData {
         c
     }
 
+    /// The viewer of a player (`playersHashMap.get`).
+    fn viewer_index(&self, entity_id: i32) -> Option<usize> {
+        self.viewers
+            .iter()
+            .position(|v| v.entity_id == entity_id && !v.stale)
+    }
+
     fn viewer_mut(&mut self, entity_id: i32) -> &mut Viewer {
-        if let Some(k) = self.viewers.iter().position(|v| v.entity_id == entity_id) {
+        if let Some(k) = self.viewer_index(entity_id) {
             &mut self.viewers[k]
         } else {
             self.viewers.push(Viewer::new(entity_id));
@@ -221,8 +255,9 @@ impl MapData {
         }
     }
 
-    /// `updateDecorations`: the icon of `name` at a position and rotation.
-    fn put_icon(&mut self, kind: u8, name: &str, x: f64, z: f64, rotation: f64) {
+    /// `updateDecorations`: the icon of `name` at a position and rotation (on nether
+    /// maps the rotation spins with the world time).
+    fn put_icon(&mut self, kind: u8, name: &str, x: f64, z: f64, rotation: f64, time: i64) {
         let factor = (1 << self.scale) as f32;
         let fx = (x - f64::from(self.x_center)) as f32 / factor;
         let fz = (z - f64::from(self.z_center)) as f32 / factor;
@@ -232,7 +267,16 @@ impl MapData {
         let turn;
         if fx >= -EDGE && fz >= -EDGE && fx <= EDGE && fz <= EDGE {
             let r = rotation + if rotation < 0.0 { -8.0 } else { 8.0 };
-            turn = (r * 16.0 / 360.0) as i32 as i8;
+            let mut t = (r * 16.0 / 360.0) as i32 as i8;
+            if self.dimension < 0 {
+                let n = (time / 10) as i32;
+                let spin = n
+                    .wrapping_mul(n)
+                    .wrapping_mul(34_187_121)
+                    .wrapping_add(n.wrapping_mul(121));
+                t = ((spin >> 15) & 15) as i8;
+            }
+            turn = t;
         } else {
             if !(fx.abs() < ICON_RANGE && fz.abs() < ICON_RANGE) {
                 self.icons.retain(|(n, _)| n != name);
@@ -338,6 +382,18 @@ impl MapStorage {
         self.maps.get_mut(&id)
     }
 
+    /// A player entity left the world for good (it respawned as a new entity): its
+    /// viewers on every loaded map go stale.
+    pub(super) fn player_entity_replaced(&mut self, entity_id: i32) {
+        for m in self.maps.values_mut() {
+            for v in &mut m.viewers {
+                if v.entity_id == entity_id {
+                    v.stale = true;
+                }
+            }
+        }
+    }
+
     /// A loaded map's scale, if it is loaded.
     pub fn loaded_scale(&self, id: i16) -> Option<i8> {
         self.maps.get(&id).map(|m| m.scale)
@@ -412,25 +468,29 @@ impl Game {
     }
 
     /// `ItemMap.getMapData`: the map a filled map item shows; without data, a new map
-    /// around the spawn takes the item.
-    fn map_of_slot(&mut self, i: usize, slot: usize) -> Option<i16> {
-        let stack = self.players[i].inventory[slot].as_ref()?;
+    /// around the spawn takes the item (its damage changes to the new id).
+    fn map_data_id(&mut self, stack: &mut ItemStack) -> Option<i16> {
         if stack.id != FILLED_MAP {
             return None;
         }
-        let id = stack.damage;
         let dir = self.level.dir.clone();
-        if self.maps.get(&dir, id).is_some() {
-            return Some(id);
+        if self.maps.get(&dir, stack.damage).is_some() {
+            return Some(stack.damage);
         }
         let new = self.maps.next_id(&dir);
         let (sx, sz) = (self.level.data.spawn_x(), self.level.data.spawn_z());
         let data = MapData::new(LOST_MAP_SCALE, f64::from(sx), f64::from(sz));
         self.maps.maps.insert(new, data);
-        if let Some(s) = self.players[i].inventory[slot].as_mut() {
-            s.damage = new;
-        }
+        stack.damage = new;
         Some(new)
+    }
+
+    /// [`Self::map_data_id`] of an inventory slot.
+    fn map_of_slot(&mut self, i: usize, slot: usize) -> Option<i16> {
+        let mut stack = self.players[i].inventory[slot].take()?;
+        let id = self.map_data_id(&mut stack);
+        self.players[i].inventory[slot] = Some(stack);
+        id
     }
 
     /// `InventoryPlayer.decrementAnimations` for maps (`ItemMap.onUpdate`), run with the
@@ -442,30 +502,44 @@ impl Game {
             let Some(id) = self.map_of_slot(i, slot) else {
                 continue;
             };
-            let damage = id;
-            self.update_map_viewers(i, id, damage);
+            let nbt = self.players[i].inventory[slot]
+                .as_ref()
+                .and_then(|s| s.nbt.clone());
+            self.update_map_viewers(i, id, nbt.as_ref(), None);
             if index == self.players[i].selected {
                 self.draw_map(i, id);
             }
         }
     }
 
-    /// `MapData.updateVisiblePlayers` for a player carrying map `id`.
-    fn update_map_viewers(&mut self, i: usize, id: i16, damage: i16) {
+    /// `MapData.updateVisiblePlayers` for player `i` and a stack of map `id`: carried
+    /// by the player, or shown in an item frame (`frame`).
+    fn update_map_viewers(
+        &mut self,
+        i: usize,
+        id: i16,
+        nbt: Option<&Compound>,
+        frame: Option<&FramedMap>,
+    ) {
         let entity_id = self.players[i].entity_id;
-        // Who still carries the map, where they are.
-        let carriers: Vec<(i32, String, f64, f64, f64)> = self
+        // `InventoryPlayer.hasItemStack`: armor or main inventory, same item and damage.
+        let carries = |p: &super::player::Player| {
+            p.inventory[5..45]
+                .iter()
+                .flatten()
+                .any(|s| s.id == FILLED_MAP && s.damage == id)
+        };
+        let viewer_name = self.players[i].profile.name.clone();
+        let viewer_carries = carries(&self.players[i]);
+        // The living players (`!isDead`), whether they carry the map, where they are.
+        let alive: Vec<(i32, bool, String, f64, f64, f64)> = self
             .players
             .iter()
-            .filter(|p| {
-                p.inventory[5..45]
-                    .iter()
-                    .flatten()
-                    .any(|s| s.id == FILLED_MAP && s.damage == damage)
-            })
+            .filter(|p| !p.dead_marked && !p.removed)
             .map(|p| {
                 (
                     p.entity_id,
+                    carries(p),
                     p.profile.name.clone(),
                     p.pos.0,
                     p.pos.2,
@@ -473,29 +547,113 @@ impl Game {
                 )
             })
             .collect();
+        let time = self.level.data.day_time();
         let dir = self.level.dir.clone();
         let Some(m) = self.maps.get(&dir, id) else {
             return;
         };
-        if !m.viewers.iter().any(|v| v.entity_id == entity_id) {
+        if m.viewer_index(entity_id).is_none() {
             m.viewers.push(Viewer::new(entity_id));
+        }
+        if !viewer_carries {
+            m.icons.retain(|(n, _)| *n != viewer_name);
         }
         // Vanilla quirk: removing a viewer skips the one after it.
         let mut k = 0;
         while k < m.viewers.len() {
-            let viewer = m.viewers[k].entity_id;
-            match carriers.iter().find(|c| c.0 == viewer) {
-                Some((_, name, x, z, yaw)) => {
-                    if m.dimension == 0 {
+            let viewer = &m.viewers[k];
+            let found = alive
+                .iter()
+                .find(|c| c.0 == viewer.entity_id)
+                .filter(|_| !viewer.stale);
+            match found {
+                Some((_, carrying, name, x, z, yaw)) if *carrying || frame.is_some() => {
+                    if frame.is_none() && m.dimension == 0 {
                         let (name, x, z, yaw) = (name.clone(), *x, *z, *yaw);
-                        m.put_icon(0, &name, x, z, yaw);
+                        m.put_icon(PLAYER_ICON, &name, x, z, yaw, time);
                     }
                 }
-                None => {
+                _ => {
                     m.viewers.remove(k);
                 }
             }
             k += 1;
+        }
+        if let Some(f) = frame {
+            let rotation = f64::from(i32::from(f.facing) * 90);
+            m.put_icon(
+                FRAME_ICON,
+                &frame_icon_name(f.entity_id),
+                f64::from(f.tile.0),
+                f64::from(f.tile.2),
+                rotation,
+                time,
+            );
+        }
+        // Icons the item itself carries (`Decorations`), unless one of that name is shown.
+        if let Some(list) = nbt.and_then(|n| n.get_list("Decorations", TagType::Compound)) {
+            for tag in list.iter() {
+                let Tag::Compound(d) = tag else { continue };
+                let name = d.get_str("id");
+                if m.icons.iter().any(|(n, _)| n == name) {
+                    continue;
+                }
+                let name = name.to_owned();
+                m.put_icon(
+                    d.get_i8("type") as u8,
+                    &name,
+                    d.get_f64("x"),
+                    d.get_f64("z"),
+                    d.get_f64("rot"),
+                    time,
+                );
+            }
+        }
+    }
+
+    /// `EntityTrackerEntry.updatePlayerList` every 10 ticks for an item frame showing a
+    /// filled map: every player in the world becomes a viewer and gets the map packet
+    /// due (before the frame's metadata).
+    pub(super) fn update_framed_map(&mut self, frame: &FramedMap) {
+        let Some(h) = self.hanging.get(&frame.entity_id) else {
+            return;
+        };
+        let super::hanging::Kind::ItemFrame {
+            item: Some(stack), ..
+        } = &h.kind
+        else {
+            return;
+        };
+        let mut stack = stack.clone();
+        let Some(id) = self.map_data_id(&mut stack) else {
+            return;
+        };
+        // A map without data took a new id: the frame's item changes in place.
+        if let Some(h) = self.hanging.get_mut(&frame.entity_id)
+            && let super::hanging::Kind::ItemFrame {
+                item: Some(shown), ..
+            } = &mut h.kind
+        {
+            shown.damage = id;
+        }
+        for i in 0..self.players.len() {
+            self.update_map_viewers(i, id, stack.nbt.as_ref(), Some(frame));
+            if let Some(packet) = self.map_packet(i, id) {
+                self.players[i].send(packet);
+            }
+        }
+    }
+
+    /// `EntityItemFrame.removeFrameFromMap`: a filled map leaving a frame takes the
+    /// frame's icon off its map.
+    pub(super) fn remove_frame_icon(&mut self, stack: &mut ItemStack, frame_id: i32) {
+        let Some(id) = self.map_data_id(stack) else {
+            return;
+        };
+        let dir = self.level.dir.clone();
+        if let Some(m) = self.maps.get(&dir, id) {
+            let name = frame_icon_name(frame_id);
+            m.icons.retain(|(n, _)| *n != name);
         }
     }
 
@@ -631,61 +789,60 @@ impl Game {
         }
     }
 
-    /// `EntityPlayerMP.onUpdateEntity`: the packet of every map the player carries
-    /// (`getMapPacket`: the changed rectangle, or every fifth time just the icons).
+    /// `EntityPlayerMP.onUpdateEntity`: the packet of every map the player carries.
     pub(super) fn send_map_packets(&mut self, i: usize) {
         for index in 0..40 {
             let slot = window_slot(index);
             let Some(id) = self.map_of_slot(i, slot) else {
                 continue;
             };
-            let entity_id = self.players[i].entity_id;
-            let dir = self.level.dir.clone();
-            let Some(m) = self.maps.get(&dir, id) else {
-                continue;
-            };
-            let Some(k) = m.viewers.iter().position(|v| v.entity_id == entity_id) else {
-                continue;
-            };
-            let icons: Vec<MapIcon> = m.icons.iter().map(|(_, icon)| *icon).collect();
-            let v = &mut m.viewers[k];
-            let packet = if v.pending {
-                v.pending = false;
-                let (columns, rows) = (v.max_x + 1 - v.min_x, v.max_y + 1 - v.min_y);
-                let mut data = Vec::with_capacity((columns * rows).max(0) as usize);
-                for r in 0..rows {
-                    for c in 0..columns {
-                        data.push(m.colors[(v.min_x + c + (v.min_y + r) * SIZE) as usize]);
-                    }
+            if let Some(packet) = self.map_packet(i, id) {
+                self.players[i].send(packet);
+            }
+        }
+    }
+
+    /// `MapData.getMapPacket`: for a viewer of the map, the changed rectangle, or every
+    /// fifth time without changes just the icons.
+    fn map_packet(&mut self, i: usize, id: i16) -> Option<ClientboundPlay> {
+        let entity_id = self.players[i].entity_id;
+        let dir = self.level.dir.clone();
+        let m = self.maps.get(&dir, id)?;
+        let k = m.viewer_index(entity_id)?;
+        let icons: Vec<MapIcon> = m.icons.iter().map(|(_, icon)| *icon).collect();
+        let v = &mut m.viewers[k];
+        if v.pending {
+            v.pending = false;
+            let (columns, rows) = (v.max_x + 1 - v.min_x, v.max_y + 1 - v.min_y);
+            let mut data = Vec::with_capacity((columns * rows).max(0) as usize);
+            for r in 0..rows {
+                for c in 0..columns {
+                    data.push(m.colors[(v.min_x + c + (v.min_y + r) * SIZE) as usize]);
                 }
-                ClientboundPlay::Maps {
-                    map: i32::from(id),
-                    scale: m.scale,
-                    icons,
-                    columns: columns as u8,
-                    rows: rows as u8,
-                    x: v.min_x as u8,
-                    z: v.min_y as u8,
-                    data,
-                }
-            } else {
-                let call = v.calls;
-                v.calls += 1;
-                if call % ICON_PERIOD != 0 {
-                    continue;
-                }
-                ClientboundPlay::Maps {
-                    map: i32::from(id),
-                    scale: m.scale,
-                    icons,
-                    columns: 0,
-                    rows: 0,
-                    x: 0,
-                    z: 0,
-                    data: Vec::new(),
-                }
-            };
-            self.players[i].send(packet);
+            }
+            Some(ClientboundPlay::Maps {
+                map: i32::from(id),
+                scale: m.scale,
+                icons,
+                columns: columns as u8,
+                rows: rows as u8,
+                x: v.min_x as u8,
+                z: v.min_y as u8,
+                data,
+            })
+        } else {
+            let call = v.calls;
+            v.calls += 1;
+            (call % ICON_PERIOD == 0).then(|| ClientboundPlay::Maps {
+                map: i32::from(id),
+                scale: m.scale,
+                icons,
+                columns: 0,
+                rows: 0,
+                x: 0,
+                z: 0,
+                data: Vec::new(),
+            })
         }
     }
 
@@ -722,7 +879,7 @@ mod tests {
         let m = MapData::new(0, -471.5, -434.5);
         assert_eq!((m.x_center, m.z_center), (-512, -384));
         let mut m = MapData::new(0, 0.0, 0.0);
-        m.put_icon(0, "a", 10.0, -3.0, 90.0);
+        m.put_icon(0, "a", 10.0, -3.0, 90.0, 0);
         assert_eq!(
             m.icons[0].1,
             MapIcon {
@@ -733,9 +890,9 @@ mod tests {
             }
         );
         // Off the west edge: the edge icon, at -128.
-        m.put_icon(0, "a", -100.0, 0.0, 0.0);
+        m.put_icon(0, "a", -100.0, 0.0, 0.0, 0);
         assert_eq!((m.icons[0].1.kind, m.icons[0].1.x), (OFF_MAP_ICON, -128));
-        m.put_icon(0, "a", -1000.0, 0.0, 0.0);
+        m.put_icon(0, "a", -1000.0, 0.0, 0.0, 0);
         assert!(m.icons.is_empty());
         assert_eq!(map_color(2 << 4), 1);
         assert_eq!(map_color(9 << 4), WATER_COLOR);

@@ -191,6 +191,14 @@ pub struct Observe {
     /// comment in the TOML saying why.
     #[serde(default)]
     pub dedupe_runs: Vec<String>,
+    /// Packet types (as named in a bot's `sequence`) whose copies equal to the last
+    /// packet of the same type are dropped, even with other packets in between, for
+    /// packets a server repeats unchanged on a timer that interleaves with everything
+    /// else depending on timing (in vanilla too: a carried map's icons every fifth
+    /// update). Changes still show. Each entry should carry a comment in the TOML
+    /// saying why.
+    #[serde(default)]
+    pub drop_repeated: Vec<String>,
 }
 
 /// Loads all scenarios under `root`, optionally filtered by a name substring.

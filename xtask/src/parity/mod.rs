@@ -395,6 +395,10 @@ fn run_one(
             diff::collapse_repeats(&mut expected, &sc.observe.collapse_repeats);
             diff::collapse_repeats(&mut actual, &sc.observe.collapse_repeats);
         }
+        if !sc.observe.drop_repeated.is_empty() {
+            diff::drop_repeated(&mut expected, &sc.observe.drop_repeated);
+            diff::drop_repeated(&mut actual, &sc.observe.drop_repeated);
+        }
         let diffs = diff::diff(
             &expected,
             &actual,

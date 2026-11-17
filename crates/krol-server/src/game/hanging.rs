@@ -8,8 +8,10 @@
 //! dropping its item unless the game rule `doEntityDrops` is off or a creative player
 //! broke it.
 //!
-//! TODO(M5): maps shown in item frames (map decorations and map packets every 10
-//! ticks), leash knots, hanging entities pushed by pistons.
+//! A filled map in a frame is shown to every player by the tracker (see
+//! [`super::maps`]).
+//!
+//! TODO(M5): leash knots, hanging entities pushed by pistons.
 
 use std::collections::BTreeSet;
 
@@ -562,14 +564,24 @@ impl Game {
         };
         let (pos, shown, chance) = (h.body.pos, item.clone(), *drop_chance);
         if self.creative_attacker(by) {
+            // The frame keeps showing its item (vanilla mutates the shown stack).
+            if let Some(mut shown) = shown {
+                self.remove_frame_icon(&mut shown, id);
+                if let Some(h) = self.hanging.get_mut(&id)
+                    && let Kind::ItemFrame { item: Some(s), .. } = &mut h.kind
+                {
+                    s.damage = shown.damage;
+                }
+            }
             return;
         }
         if with_frame {
             self.spawn_item(pos, single(item::ITEM_FRAME), DROP_PICKUP_DELAY);
         }
-        if let Some(shown) = shown
+        if let Some(mut shown) = shown
             && self.entity_rand.next_float() < chance
         {
+            self.remove_frame_icon(&mut shown, id);
             self.spawn_item(pos, shown, DROP_PICKUP_DELAY);
         }
     }
