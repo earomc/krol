@@ -379,6 +379,11 @@ pub fn placed_state(
                     || is_normal_cube(below));
             ok.then_some(id << 4)
         }
+        // BlockRailBase.canPlaceBlockAt: a solid top below; the shape comes when added.
+        ids::block::RAIL
+        | ids::block::GOLDEN_RAIL
+        | ids::block::DETECTOR_RAIL
+        | ids::block::ACTIVATOR_RAIL => solid_top(below).then_some(id << 4),
         // Carpet needs something below; pressure plates a solid top or a fence.
         171 => (below >> 4 != 0).then(|| id << 4 | u16::from(meta)),
         70 | 72 | 147 | 148 => {

@@ -146,6 +146,7 @@ impl Game {
                 super::pressure_plates::plate_strength(state)
             }
             block::TRAPPED_CHEST => self.trapped_chest_power(pos),
+            block::DETECTOR_RAIL if state & super::rails::POWERED_BIT != 0 => MAX_POWER,
             _ => 0,
         }
     }
@@ -174,6 +175,9 @@ impl Game {
                 super::pressure_plates::plate_strength(state)
             }
             block::TRAPPED_CHEST if side == UP => self.trapped_chest_power(pos),
+            block::DETECTOR_RAIL if side == UP && state & super::rails::POWERED_BIT != 0 => {
+                MAX_POWER
+            }
             _ => 0,
         }
     }

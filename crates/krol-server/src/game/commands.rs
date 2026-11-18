@@ -2018,9 +2018,9 @@ impl Game {
                         };
                         self.set_block_flags(pos, block::BARRIER << 4, flags);
                     }
-                    let before = self.level.overworld.block(x, y, z);
-                    self.set_block_flags(pos, state, super::block_update::flags::SEND);
-                    if before == state || self.level.overworld.block(x, y, z) != state {
+                    // Counted when set, even if the block changed itself right away
+                    // (rails take their shape in onBlockAdded).
+                    if !self.set_block_flags(pos, state, super::block_update::flags::SEND) {
                         continue;
                     }
                     changed.push(pos);

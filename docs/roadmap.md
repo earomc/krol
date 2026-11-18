@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: armor stands`).
+Status as of 2026-11-18 (commit `server: rails`).
 
 **Legend**
 
@@ -368,7 +368,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `BlockRedstoneOre` | ✅ | Lighting up on left-click, right-click and walking (with the particle draws on the world random), reverting on random ticks, drops, XP |
 | `BlockDaylightDetector` | ❌ | |
 | `BlockTripWire`, `BlockTripWireHook` | ❌ | |
-| `BlockRail`, `BlockRailBase`, `BlockRailDetector`, `BlockRailPowered` | ❌ | Shapes, powering, minecarts |
+| `BlockRail`, `BlockRailBase`, `BlockRailDetector`, `BlockRailPowered` | 🟡 | Placing (solid top below), shapes from the neighbors that connect (curves, slopes, T-junctions by power), bending the neighbors, popping off without support, powered and activator rails passing power along 8 rails, detector rail power and comparator updates (`play/rails`). Missing: detector rails seeing minecarts (no minecarts yet) |
 
 ## net.minecraft.item
 

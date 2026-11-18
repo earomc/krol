@@ -1,0 +1,116 @@
+description = "Rails placed with /setblock (onBlockAdded like a player's placement): a rail bending into a curve when a third joins, a rail sloping up to one a block higher, a T-junction, a line of 10 powered rails fed by a redstone block (power reaches 8 rails on), activator rails, a detector rail with no minecart, a powered rail losing power when its redstone block goes, a rail popping off when the block under it goes"
+subsystem = "blocks"
+
+# Everything sits on the grass of the flat world (top at y = 3) near the spawn
+# (-471.5, 4, -434.5), in the spawn chunks, with nobody online.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# A curve: east-west pair, then a rail south of the first.
+[[steps]]
+action = "console"
+command = "setblock -470 4 -440 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -469 4 -440 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -439 rail"
+
+# A slope: a rail next to a block with a rail on top.
+[[steps]]
+action = "console"
+command = "setblock -465 4 -440 stone"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -440 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -465 5 -440 rail"
+
+# A T-junction.
+[[steps]]
+action = "console"
+command = "setblock -460 4 -440 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -460 4 -441 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -460 4 -439 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -459 4 -440 rail"
+
+# Ten powered rails in a row, then the redstone block at their west end.
+[[steps]]
+action = "console"
+command = "fill -470 4 -436 -461 4 -436 golden_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -436 redstone_block"
+
+# Activator rails, powered the same way.
+[[steps]]
+action = "console"
+command = "fill -470 4 -430 -467 4 -430 activator_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -430 redstone_block"
+
+# A detector rail with no minecart on it.
+[[steps]]
+action = "console"
+command = "setblock -460 4 -430 detector_rail"
+
+# Two powered rails whose redstone block is taken away again.
+[[steps]]
+action = "console"
+command = "fill -470 4 -426 -469 4 -426 golden_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -426 redstone_block"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -426 air"
+
+# A rail losing the block under it.
+[[steps]]
+action = "console"
+command = "setblock -465 4 -426 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -465 3 -426 air"
+wait_ms = 1000
+
+[observe]
+log = true
+blocks = [
+    [-470, 4, -440], [-469, 4, -440], [-470, 4, -439],
+    [-466, 4, -440], [-465, 5, -440],
+    [-460, 4, -440], [-460, 4, -441], [-460, 4, -439], [-459, 4, -440],
+    [-470, 4, -436], [-469, 4, -436], [-468, 4, -436], [-467, 4, -436], [-466, 4, -436],
+    [-465, 4, -436], [-464, 4, -436], [-463, 4, -436], [-462, 4, -436], [-461, 4, -436],
+    [-470, 4, -430], [-469, 4, -430], [-468, 4, -430], [-467, 4, -430],
+    [-460, 4, -430],
+    [-470, 4, -426], [-469, 4, -426],
+    [-465, 4, -426],
+]

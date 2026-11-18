@@ -68,15 +68,16 @@ fn plant_soil(plant: u16, below: u16) -> Option<bool> {
 impl Game {
     /// `World.setBlockState(pos, state, flags)`: sets the block, runs the old block's
     /// `breakBlock` and, with [`flags::NOTIFY`], notifies the neighbors with the old
-    /// block.
-    pub(super) fn set_block_flags(&mut self, pos: (i32, i32, i32), state: u16, flags: u8) {
+    /// block. Returns whether the block was set (it may have changed again since, in
+    /// the new block's `onBlockAdded`).
+    pub(super) fn set_block_flags(&mut self, pos: (i32, i32, i32), state: u16, flags: u8) -> bool {
         let w = &mut self.level.overworld;
         if !(0..256).contains(&pos.1) {
-            return;
+            return false;
         }
         let old = w.block(pos.0, pos.1, pos.2);
         if old == state {
-            return;
+            return false;
         }
         // BlockFlowerPot.breakBlock needs the plant from the tile entity that goes with
         // the block.
@@ -88,7 +89,7 @@ impl Game {
         let head = self.skull_drop(pos, old, state);
         let w = &mut self.level.overworld;
         if !w.set_block_unmarked(pos.0, pos.1, pos.2, state) {
-            return;
+            return false;
         }
         if let Some(plant) = potted {
             self.spawn_as_entity(pos, plant);
@@ -118,10 +119,12 @@ impl Game {
                 || super::ids::block::is_furnace(id)
                 || id == super::ids::block::HOPPER
                 || super::dispenser::is_dispenser(id)
+                || id == super::ids::block::DETECTOR_RAIL
             {
                 self.update_comparators(pos);
             }
         }
+        true
     }
 
     /// `setBlockState(pos, state)` with the default flags.
@@ -253,6 +256,10 @@ impl Game {
                 return;
             }
             block::PISTON_EXTENSION => return,
+            _ if super::rails::is_rail(id) => {
+                self.rail_neighbor_changed(pos, state, source);
+                return;
+            }
             // BlockFarmland: a solid block on top turns it into dirt.
             block::FARMLAND => {
                 let above = self.level.overworld.block(pos.0, pos.1 + 1, pos.2) >> 4;
@@ -365,6 +372,7 @@ impl Game {
             // BlockPistonBase.onBlockAdded (pistons never have a tile entity).
             block::PISTON | block::STICKY_PISTON => self.piston_check(pos, state),
             block::HOPPER => self.hopper_update_state(pos, state),
+            _ if super::rails::is_rail(id) => self.rail_added(pos, state),
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR
@@ -393,6 +401,7 @@ impl Game {
             block::PISTON_HEAD => self.piston_head_removed(pos, old),
             _ if super::pressure_plates::is_plate(id) => self.plate_removed(pos, old),
             block::PISTON_EXTENSION => self.moving_removed(pos),
+            _ if super::rails::is_rail(id) => self.rail_removed(pos, old),
             block::UNPOWERED_REPEATER
             | block::POWERED_REPEATER
             | block::UNPOWERED_COMPARATOR
@@ -511,6 +520,7 @@ impl Game {
             block::REDSTONE_LAMP | block::LIT_REDSTONE_LAMP => self.lamp_tick(pos, id),
             _ if super::pressure_plates::is_plate(id) => self.plate_tick(pos, state),
             block::DISPENSER | block::DROPPER => self.dispense(pos, state),
+            block::DETECTOR_RAIL => self.detector_tick(pos, state),
             block::UNPOWERED_REPEATER | block::POWERED_REPEATER => self.repeater_tick(pos, state),
             block::UNPOWERED_COMPARATOR | block::POWERED_COMPARATOR => {
                 self.comparator_tick(pos, state);

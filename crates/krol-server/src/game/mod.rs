@@ -61,6 +61,7 @@ mod potion_helper;
 mod potions;
 mod powered_blocks;
 mod pressure_plates;
+mod rails;
 mod random_ticks;
 mod raytrace;
 mod recipes;

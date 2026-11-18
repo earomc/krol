@@ -572,3 +572,8 @@ scenarios = ["play/flower_pots"]
 id = "blocks.cauldrons"
 description = "Cauldrons: placement (ItemReed), water bucket, bottles (inventory resent), washing dyed leather armor and banner patterns, clicks that change nothing, the levels sent to the client. Not in a scenario: rain, putting out burning players, comparators"
 scenarios = ["play/cauldrons"]
+
+[[feature]]
+id = "blocks.rails"
+description = "BlockRailBase, BlockRail, BlockRailPowered, BlockRailDetector: placing with onBlockAdded (shapes from the neighbors that would connect, the neighbors bent towards the new rail), a curve, a slope up to a rail a block higher, a T-junction, powered rails passing power along 8 rails from a redstone block (the ninth on stays off), activator rails, losing power when the source goes, a detector rail with no minecart, a rail popping off without its support; /fill counting rails that reshaped themselves. Not yet in a scenario: placing by players, T-junctions decided by power, slopes losing their high side, detector rails with minecarts"
+scenarios = ["play/rails"]
