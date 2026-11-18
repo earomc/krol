@@ -538,9 +538,9 @@ impl Game {
         let own = Aabb::at(p.pos, 0.6, 1.8);
         let vehicle = p
             .riding
-            .and_then(|v| self.minecarts.get(&v))
-            .filter(|m| !m.dead)
-            .map(|m| m.body.bb());
+            .filter(|&v| !self.vehicle_dead(v))
+            .and_then(|v| self.vehicle_state(v))
+            .map(|(body, _)| body.bb());
         let area = match vehicle {
             Some(v) => Aabb::new(
                 [

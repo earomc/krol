@@ -212,3 +212,8 @@ into server ticks. Rules learned from flaky scenarios:
   `play/tnt_minecarts`). Leave seconds of margin, or avoid the console step. Explosions
   centered inside a rail (TNT minecarts) give every entity exposure 0: the rail's
   selection box stops each `getBlockDensity` ray.
+- **Floating boats never settle**: the share of a boat under water comes in fifths, so
+  it bobs forever, and its handleWaterMovement box is inside out, so its fall distance
+  keeps growing. Give its height, vertical motion, fall distance, the boat distance stat
+  and where its rider gets out small tolerances. Steer it into a bank below the crash
+  speed (0.2975) so its horizontal resting place is exact (`play/boats`).

@@ -45,6 +45,7 @@ pub(super) enum Target {
     Hanging(i32),
     ArmorStand(i32),
     Minecart(i32),
+    Boat(i32),
 }
 
 impl Game {
@@ -288,6 +289,11 @@ impl Game {
                         add(&mut m.body.motion);
                     }
                 }
+                Target::Boat(id) => {
+                    if let Some(b) = self.boats.get_mut(&id) {
+                        add(&mut b.body.motion);
+                    }
+                }
             }
         }
         knockback
@@ -346,6 +352,11 @@ impl Game {
                 add(id, m.body.bb(), Target::Minecart(id));
             }
         }
+        for (&id, b) in &self.boats {
+            if !b.dead {
+                add(id, b.body.bb(), Target::Boat(id));
+            }
+        }
         // Chunk entity lists keep insertion order, which follows entity ids here.
         targets.sort_by_key(|(id, _)| *id);
         targets
@@ -364,6 +375,7 @@ impl Game {
             Target::Hanging(id) => return self.attack_hanging(id, source),
             Target::ArmorStand(id) => self.attack_armor_stand(id, source),
             Target::Minecart(id) => return self.attack_minecart(id, source, damage),
+            Target::Boat(id) => return self.attack_boat(id, source, damage),
             Target::Item(id) => {
                 if let Some(it) = self.items.get_mut(&id) {
                     // Nether stars survive explosions.
@@ -440,6 +452,7 @@ impl Game {
                 return Some((s.body.pos, s.eye_height(), s.body.bb()));
             }
             Target::Minecart(id) => &self.minecarts.get(&id)?.body,
+            Target::Boat(id) => &self.boats.get(&id)?.body,
         };
         // Entity.getEyeHeight: 85% of the height.
         Some((body.pos, body.height * 0.85, body.bb()))

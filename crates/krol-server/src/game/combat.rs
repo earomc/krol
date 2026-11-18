@@ -197,6 +197,11 @@ impl Game {
                 self.minecarts
                     .get(&target)
                     .map(|m| (m.body.pos, m.body.height * 0.85))
+            })
+            .or_else(|| {
+                self.boats
+                    .get(&target)
+                    .map(|b| (b.body.pos, b.body.height * 0.85))
             });
         let pos = if let Some(t) = target_player {
             Some(self.players[t].pos)
@@ -230,6 +235,16 @@ impl Game {
         if self.minecarts.contains_key(&target) {
             match action {
                 INTERACT => self.interact_minecart(i, target),
+                ATTACK if self.players[i].gamemode != SPECTATOR => {
+                    self.player_attacks_minecart(i, target);
+                }
+                _ => {}
+            }
+            return;
+        }
+        if self.boats.contains_key(&target) {
+            match action {
+                INTERACT => self.interact_boat(i, target),
                 ATTACK if self.players[i].gamemode != SPECTATOR => {
                     self.player_attacks_minecart(i, target);
                 }

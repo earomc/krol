@@ -31,7 +31,7 @@ pub enum UseResult {
 impl Game {
     /// `Item.getMovingObjectPositionFromPlayer`: the block the player looks at within
     /// [`BUCKET_REACH`].
-    fn view_ray_trace(&mut self, i: usize, liquids: bool) -> Option<raytrace::Hit> {
+    pub(super) fn view_ray_trace(&mut self, i: usize, liquids: bool) -> Option<raytrace::Hit> {
         use krol_java::math::{cos, sin};
         let p = &self.players[i];
         let (yaw, pitch) = p.rotation;

@@ -277,6 +277,20 @@ impl Game {
                 player: None,
             });
         }
+        if let Some(b) = self.boats.get(&entity_id) {
+            return Some(View {
+                pos: b.body.pos,
+                yaw: b.base.yaw,
+                pitch: b.base.pitch,
+                head: 0.0,
+                on_ground: b.body.on_ground,
+                motion: b.body.motion,
+                chunk: b.chunk,
+                airborne: b.airborne,
+                metadata_changed: b.metadata_changed,
+                player: None,
+            });
+        }
         if let Some(m) = self.minecarts.get(&entity_id) {
             return Some(View {
                 pos: m.body.pos,
@@ -381,7 +395,8 @@ impl Game {
             (HANGING_RANGE, HANGING_FREQUENCY, false)
         } else if self.armor_stands.contains_key(&entity_id) {
             (ARMOR_STAND_RANGE, ARMOR_STAND_FREQUENCY, true)
-        } else if self.minecarts.contains_key(&entity_id) {
+        } else if self.minecarts.contains_key(&entity_id) || self.boats.contains_key(&entity_id) {
+            // Boats are tracked like minecarts.
             (MINECART_RANGE, MINECART_FREQUENCY, true)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
@@ -748,6 +763,29 @@ impl Game {
                 y: speed(v.motion.1),
                 z: speed(v.motion.2),
             });
+        } else if let Some(b) = self.boats.get(&entity_id) {
+            // Data 0 brings no velocity, so a velocity packet follows.
+            packets.push(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind: super::boat::OBJECT_TYPE,
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                pitch: angle(v.pitch) as i8,
+                yaw: angle(v.yaw) as i8,
+                data: 0,
+                velocity: None,
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: b.metadata(),
+            });
+            packets.push(ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: speed(v.motion.0),
+                y: speed(v.motion.1),
+                z: speed(v.motion.2),
+            });
         } else if let Some(o) = self.orbs.get(&entity_id) {
             packets.push(ClientboundPlay::SpawnExperienceOrb {
                 entity_id,
@@ -1087,6 +1125,8 @@ impl Game {
                 h.airborne = false;
             } else if let Some(m) = self.minecarts.get_mut(&entity_id) {
                 m.airborne = false;
+            } else if let Some(b) = self.boats.get_mut(&entity_id) {
+                b.airborne = false;
             }
         }
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
@@ -1135,6 +1175,8 @@ impl Game {
             &mut s.body
         } else if let Some(m) = self.minecarts.get_mut(&entity_id) {
             &mut m.body
+        } else if let Some(b) = self.boats.get_mut(&entity_id) {
+            &mut b.body
         } else {
             &mut self.tnt.get_mut(&entity_id)?.body
         };
@@ -1191,6 +1233,20 @@ impl Game {
                 .metadata()
                 .into_iter()
                 .filter(|m| dirty.contains(&m.index))
+                .collect();
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata,
+            });
+        } else if let Some(b) = self.boats.get_mut(&entity_id)
+            && std::mem::take(&mut b.metadata_changed)
+        {
+            // DataWatcher.getChanged: every entry still watched.
+            let dirty = std::mem::take(&mut b.dirty_metadata);
+            let metadata = b
+                .metadata()
+                .into_iter()
+                .filter(|e| dirty.contains(&e.index))
                 .collect();
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,

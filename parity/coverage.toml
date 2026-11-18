@@ -602,3 +602,8 @@ scenarios = ["play/furnace_minecarts"]
 id = "entity.tnt_minecarts"
 description = "EntityMinecartTNT: placed by ItemMinecart (spawn object 10, type 3); broken at rest by a sword (a minecart and TNT dropped, no explosion); lit by its activator rail getting powered (entity status 10, game.tnt.primed) and exploding 80 ticks later with strength 4 at rest, sparing rails and the blocks under them (getExplosionResistance and verifyExplosion of a lit cart); exposure 0 for entities around a blast centered inside a rail (a second TNT cart wobbling but surviving, the player taking the minimum damage); the surviving cart saved with its chunk (TNTFuse). Not yet in a scenario: crashing, falling, fire, explosions and burning arrows setting carts off, moving carts breaking, chain reactions, loading"
 scenarios = ["play/tnt_minecarts"]
+
+[[feature]]
+id = "entity.boats"
+description = "EntityBoat and ItemBoat: placed by using a boat at the grass or water in sight (spawn object 1, metadata, facing away from the player); a boat on grass resting and broken by a sword (the boat dropped); a boat on water floating (bobbing), ridden (Attach Entity, a teleport), steered forward (speed multiplier, turning towards where it goes) into a bank below the crash speed, left with the unmount input; the boat distance stat; saved with its chunk. Not yet in a scenario: crashes and hard landings (planks and sticks), lily pads and snow, boats pushing each other, players walking on and into boats, fire and lava, creative players breaking boats, the rider's projectiles, Riding tags with boats, loading"
+scenarios = ["play/boats"]

@@ -92,6 +92,11 @@ impl Game {
                 .filter(|m| !m.dead && m.body.bb().intersects(area))
                 .count()
             + self
+                .boats
+                .values()
+                .filter(|b| !b.dead && b.body.bb().intersects(area))
+                .count()
+            + self
                 .items
                 .values()
                 .filter(|it| !it.dead && it.body.bb().intersects(area))

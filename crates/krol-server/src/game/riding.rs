@@ -1,4 +1,4 @@
-//! Players riding minecarts (vanilla: `Entity.mountEntity`, `updateRidden`,
+//! Players riding minecarts and boats (vanilla: `Entity.mountEntity`, `updateRidden`,
 //! `updateRiderPosition`, `EntityLivingBase.dismountEntity`, `EntityPlayerMP.mountEntity`,
 //! the riding branch of `NetHandlerPlayServer.processPlayer`, `processInput`, and the
 //! `Riding` tag of player data).
@@ -6,19 +6,19 @@
 //! A rider leaves the entity loop: right after its vehicle updates, it updates itself
 //! (`updateRidden`) and is put back on the vehicle. Its movement packets only bring its
 //! look and its own update; its position follows the vehicle. Sneaking gets it out, onto
-//! a free spot next to the vehicle. A player who logs out in a minecart takes it along:
-//! the cart is saved in the player's data and comes back when the player does.
+//! a free spot next to the vehicle. A player who logs out in a vehicle takes it along:
+//! it is saved in the player's data and comes back when the player does.
 //!
-//! TODO(M5): mobs and armor stands riding (moving rideable carts pick them up), boats,
-//! pigs and horses, a rider steering (`moveForward` only starts a resting cart), the
-//! rider's own move while riding (block collisions under the cart).
+//! TODO(M5): mobs and armor stands riding (moving rideable carts pick them up), pigs and
+//! horses, the rider's own move while riding (block collisions under the vehicle).
 
 use krol_nbt::{Compound, Tag};
 use krol_protocol::packets::play::ClientboundPlay;
 
 use super::Game;
-use super::physics::Aabb;
+use super::physics::{Aabb, Body};
 use super::placement::solid_top;
+use super::saved_entities::EntityBase;
 
 /// `EntityPlayer.getYOffset`: a riding player sits this far below the mount point.
 const PLAYER_Y_OFFSET: f64 = -0.35;
@@ -36,16 +36,61 @@ const WATER: u16 = 8;
 const FLOWING: u16 = 9;
 
 impl Game {
-    /// Where a rider of the cart `cart` sits (`updateRiderPosition`).
-    fn rider_spot(&self, cart: i32) -> Option<(f64, f64, f64)> {
-        let m = self.minecarts.get(&cart)?;
+    /// The rider of the vehicle `v` (a minecart or a boat).
+    pub(super) fn vehicle_rider(&self, v: i32) -> Option<i32> {
+        match self.minecarts.get(&v) {
+            Some(m) => m.rider,
+            None => self.boats.get(&v).and_then(|b| b.rider),
+        }
+    }
+
+    /// Sets the rider of the vehicle `v`.
+    pub(super) fn set_vehicle_rider(&mut self, v: i32, rider: Option<i32>) {
+        if let Some(m) = self.minecarts.get_mut(&v) {
+            m.rider = rider;
+        } else if let Some(b) = self.boats.get_mut(&v) {
+            b.rider = rider;
+        }
+    }
+
+    /// Whether the vehicle `v` is dead (or gone).
+    pub(super) fn vehicle_dead(&self, v: i32) -> bool {
+        match self.minecarts.get(&v) {
+            Some(m) => m.dead,
+            None => self.boats.get(&v).is_none_or(|b| b.dead),
+        }
+    }
+
+    /// The body and base state of the vehicle `v`.
+    pub(super) fn vehicle_state(&self, v: i32) -> Option<(&Body, &EntityBase)> {
+        match self.minecarts.get(&v) {
+            Some(m) => Some((&m.body, &m.base)),
+            None => self.boats.get(&v).map(|b| (&b.body, &b.base)),
+        }
+    }
+
+    /// Marks the vehicle `v` airborne (its move goes out at once).
+    fn set_vehicle_airborne(&mut self, v: i32) {
+        if let Some(m) = self.minecarts.get_mut(&v) {
+            m.airborne = true;
+        } else if let Some(b) = self.boats.get_mut(&v) {
+            b.airborne = true;
+        }
+    }
+
+    /// Where a rider of the vehicle `v` sits (`updateRiderPosition`).
+    fn rider_spot(&self, v: i32) -> Option<(f64, f64, f64)> {
+        if let Some(b) = self.boats.get(&v) {
+            return Some(b.seat(PLAYER_Y_OFFSET));
+        }
+        let m = self.minecarts.get(&v)?;
         let p = m.body.pos;
         Some((p.0, p.1 + MINECART_MOUNT_OFFSET + PLAYER_Y_OFFSET, p.2))
     }
 
-    /// `updateRiderPosition`: the cart's rider sits on it.
+    /// `updateRiderPosition`: the vehicle's rider sits on it.
     pub(super) fn update_rider_position(&mut self, cart: i32) {
-        let Some(rider) = self.minecarts.get(&cart).and_then(|m| m.rider) else {
+        let Some(rider) = self.vehicle_rider(cart) else {
             return;
         };
         let Some(spot) = self.rider_spot(cart) else {
@@ -96,15 +141,11 @@ impl Game {
     /// told with Attach Entity and a teleport to where it is.
     pub(super) fn mount_player(&mut self, i: usize, cart: i32) {
         let old = self.players[i].riding;
-        if let Some(prev) = old
-            && let Some(m) = self.minecarts.get_mut(&prev)
-        {
-            m.rider = None;
+        if let Some(prev) = old {
+            self.set_vehicle_rider(prev, None);
         }
         let me = self.players[i].entity_id;
-        if let Some(m) = self.minecarts.get_mut(&cart) {
-            m.rider = Some(me);
-        }
+        self.set_vehicle_rider(cart, Some(me));
         self.players[i].riding = Some(cart);
         if old != Some(cart) {
             self.players[i].send(ClientboundPlay::AttachEntity {
@@ -124,17 +165,15 @@ impl Game {
         let Some(cart) = self.players[i].riding else {
             return;
         };
-        if let Some(m) = self.minecarts.get(&cart) {
-            let (vpos, vbb, vheight) = (m.body.pos, m.body.bb(), m.body.height);
+        if let Some((body, _)) = self.vehicle_state(cart) {
+            let (vpos, vbb, vheight) = (body.pos, body.bb(), body.height);
             let spot = self.dismount_spot(i, vpos, vbb.min[1] + f64::from(vheight));
             let p = &mut self.players[i];
             let rot = p.rotation;
             // setPositionAndUpdate.
             Self::set_player_location(p, spot, rot);
         }
-        if let Some(m) = self.minecarts.get_mut(&cart) {
-            m.rider = None;
-        }
+        self.set_vehicle_rider(cart, None);
         let p = &mut self.players[i];
         p.riding = None;
         let me = p.entity_id;
@@ -150,16 +189,12 @@ impl Game {
     /// `riddenByEntity.mountEntity(null)` from the vehicle's side (it breaks, or an
     /// activator rail throws the rider out).
     pub(super) fn dismount_rider_of(&mut self, cart: i32) {
-        let Some(rider) = self.minecarts.get(&cart).and_then(|m| m.rider) else {
+        let Some(rider) = self.vehicle_rider(cart) else {
             return;
         };
         match self.players.iter().position(|p| p.entity_id == rider) {
             Some(i) if self.players[i].riding == Some(cart) => self.dismount_player(i),
-            _ => {
-                if let Some(m) = self.minecarts.get_mut(&cart) {
-                    m.rider = None;
-                }
-            }
+            _ => self.set_vehicle_rider(cart, None),
         }
     }
 
@@ -253,25 +288,23 @@ impl Game {
         self.update_player_chunks(i);
         if let Some(cart) = self.players[i].riding {
             if moved_sq > 4.0
-                && let Some(m) = self.minecarts.get(&cart)
+                && let Some((body, base)) = self.vehicle_state(cart)
             {
                 let packet = ClientboundPlay::EntityTeleport {
                     entity_id: cart,
-                    x: krol_java::math::floor_f64(m.body.pos.0 * 32.0),
-                    y: krol_java::math::floor_f64(m.body.pos.1 * 32.0),
-                    z: krol_java::math::floor_f64(m.body.pos.2 * 32.0),
-                    yaw: (m.base.yaw * 256.0 / 360.0) as i32 as i8,
-                    pitch: (m.base.pitch * 256.0 / 360.0) as i32 as i8,
-                    on_ground: m.body.on_ground,
+                    x: krol_java::math::floor_f64(body.pos.0 * 32.0),
+                    y: krol_java::math::floor_f64(body.pos.1 * 32.0),
+                    z: krol_java::math::floor_f64(body.pos.2 * 32.0),
+                    yaw: (base.yaw * 256.0 / 360.0) as i32 as i8,
+                    pitch: (base.pitch * 256.0 / 360.0) as i32 as i8,
+                    on_ground: body.on_ground,
                 };
                 let p = &mut self.players[i];
                 p.send(packet);
                 let (pos, rot) = (p.pos, p.rotation);
                 Self::set_player_location(p, pos, rot);
             }
-            if let Some(m) = self.minecarts.get_mut(&cart) {
-                m.airborne = true;
-            }
+            self.set_vehicle_airborne(cart);
         }
         let p = &mut self.players[i];
         p.movement.last_pos = p.pos;
@@ -294,19 +327,17 @@ impl Game {
     /// still rides it (one whose vehicle died in its update just gets off), else both
     /// let go silently.
     pub(super) fn update_vehicle_rider(&mut self, cart: i32) {
-        let Some(rider) = self.minecarts.get(&cart).and_then(|m| m.rider) else {
+        let Some(rider) = self.vehicle_rider(cart) else {
             return;
         };
         let i = self.players.iter().position(|p| {
             p.entity_id == rider && !p.removed && !p.dead_marked && p.riding == Some(cart)
         });
         let Some(i) = i else {
-            if let Some(m) = self.minecarts.get_mut(&cart) {
-                m.rider = None;
-            }
+            self.set_vehicle_rider(cart, None);
             return;
         };
-        if self.minecarts.get(&cart).is_some_and(|m| m.dead) {
+        if self.vehicle_dead(cart) {
             // Entity.updateRidden: a dead vehicle is let go.
             self.players[i].riding = None;
             return;
@@ -337,7 +368,9 @@ impl Game {
         let d = (p.pos.0 - start.0, p.pos.1 - start.1, p.pos.2 - start.2);
         let cm =
             (krol_java::math::sqrt_f64(d.0 * d.0 + d.1 * d.1 + d.2 * d.2) * 100.0).round() as i32;
-        if cm > 0 {
+        if cm > 0 && self.boats.contains_key(&cart) {
+            self.add_stat(i, "stat.boatOneCm", cm);
+        } else if cm > 0 {
             self.add_stat(i, "stat.minecartOneCm", cm);
             let p = &mut self.players[i];
             let block = (
@@ -368,9 +401,16 @@ impl Game {
     /// one that is alive.
     fn riding_nbt(&self, i: usize) -> Option<Compound> {
         let cart = self.players[i].riding?;
-        let m = self.minecarts.get(&cart).filter(|m| !m.dead)?;
         let uuid = self.entity_uuids.get(&cart).copied().unwrap_or_default();
         let mut c = Compound::new();
+        if let Some(b) = self.boats.get(&cart) {
+            if b.dead {
+                return None;
+            }
+            self.boat_nbt(b, uuid, &mut c);
+            return Some(c);
+        }
+        let m = self.minecarts.get(&cart).filter(|m| !m.dead)?;
         self.minecart_nbt(m, uuid, &mut c);
         Some(c)
     }
@@ -395,7 +435,7 @@ impl Game {
         let Some(cart) = self.players[i].riding.take() else {
             return;
         };
-        if self.minecarts.remove(&cart).is_some() {
+        if self.minecarts.remove(&cart).is_some() || self.boats.remove(&cart).is_some() {
             self.remove_entity_from_chunk(cart);
             self.untrack_entity(cart);
         }
@@ -407,16 +447,25 @@ impl Game {
         let Some(Tag::Compound(saved)) = self.players[i].data.remove("Riding") else {
             return;
         };
-        if saved.get_str("id") != super::minecart::RIDEABLE_ID {
-            // TODO(M5): other vehicles.
+        let saved_id = saved.get_str("id");
+        if saved_id != super::minecart::RIDEABLE_ID && saved_id != super::boat::SAVED_ID {
+            // TODO(M5): other vehicles (pigs, horses).
             return;
         }
         let id = self.next_entity_id();
-        let (cart, uuid) = self.minecart_from_nbt(&saved);
-        if let Some(uuid) = uuid {
-            self.entity_uuids.insert(id, uuid);
+        if saved_id == super::boat::SAVED_ID {
+            let (boat, uuid) = self.boat_from_nbt(&saved);
+            if let Some(uuid) = uuid {
+                self.entity_uuids.insert(id, uuid);
+            }
+            self.boats.insert(id, boat);
+        } else {
+            let (cart, uuid) = self.minecart_from_nbt(&saved);
+            if let Some(uuid) = uuid {
+                self.entity_uuids.insert(id, uuid);
+            }
+            self.minecarts.insert(id, cart);
         }
-        self.minecarts.insert(id, cart);
         self.force_spawn = Some(id);
         self.spawn_entity_in_world(id);
         self.mount_player(i, id);

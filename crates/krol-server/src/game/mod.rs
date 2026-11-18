@@ -16,6 +16,7 @@ mod biome;
 pub mod block_data;
 mod block_update;
 pub mod blocks;
+mod boat;
 mod brewing;
 mod buckets;
 mod cauldron;
@@ -348,6 +349,8 @@ struct Game {
     armor_stands: std::collections::BTreeMap<i32, armor_stand::ArmorStand>,
     /// Minecarts, by entity id.
     minecarts: std::collections::BTreeMap<i32, minecart::Minecart>,
+    /// Boats, by entity id.
+    boats: std::collections::BTreeMap<i32, boat::Boat>,
     /// An entity being spawned with `forceSpawn` (shown to players whose chunk is not
     /// sent yet).
     force_spawn: Option<i32>,
@@ -441,6 +444,7 @@ pub fn start(
         hanging: Default::default(),
         armor_stands: Default::default(),
         minecarts: Default::default(),
+        boats: Default::default(),
         force_spawn: None,
         all_sleeping: false,
         ping_index: 0,
@@ -630,6 +634,7 @@ impl Game {
         order.extend(self.hanging.keys().copied());
         order.extend(self.armor_stands.keys().copied());
         order.extend(self.minecarts.keys().copied());
+        order.extend(self.boats.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
@@ -653,6 +658,7 @@ impl Game {
                     .chain(self.hanging.keys())
                     .chain(self.armor_stands.keys())
                     .chain(self.minecarts.keys())
+                    .chain(self.boats.keys())
                     .copied()
                     .filter(|&e| e > newest)
                     .collect();
@@ -702,6 +708,10 @@ impl Game {
                 self.update_minecart(id, prev_yaw);
                 continue;
             }
+            if self.boats.contains_key(&id) {
+                self.update_boat(id);
+                continue;
+            }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
                 continue;
             };
@@ -710,19 +720,13 @@ impl Game {
             }
             // A rider updates right after its vehicle; one whose vehicle is gone or
             // has let go of it gets off silently.
-            if let Some(cart) = self.players[i].riding {
+            if let Some(vehicle) = self.players[i].riding {
                 let me = self.players[i].entity_id;
-                if self
-                    .minecarts
-                    .get(&cart)
-                    .is_some_and(|m| !m.dead && m.rider == Some(me))
-                {
+                if !self.vehicle_dead(vehicle) && self.vehicle_rider(vehicle) == Some(me) {
                     continue;
                 }
-                if let Some(m) = self.minecarts.get_mut(&cart)
-                    && m.rider == Some(me)
-                {
-                    m.rider = None;
+                if self.vehicle_rider(vehicle) == Some(me) {
+                    self.set_vehicle_rider(vehicle, None);
                 }
                 self.players[i].riding = None;
             }
@@ -1939,6 +1943,7 @@ impl Game {
                 buckets::UseResult::Kept
             }
             ids::item::GLASS_BOTTLE => self.fill_bottle(i, &held),
+            ids::item::BOAT => self.use_boat(i),
             ids::item::BOW => {
                 self.start_drawing_bow(i, &held);
                 buckets::UseResult::Kept
@@ -2280,6 +2285,10 @@ impl Game {
             || self.minecarts.values().any(|m| {
                 let bb = m.body.bb();
                 !m.dead && boxes.iter().any(|b| b.intersects(&bb))
+            })
+            || self.boats.values().any(|b| {
+                let bb = b.body.bb();
+                !b.dead && boxes.iter().any(|x| x.intersects(&bb))
             })
     }
 

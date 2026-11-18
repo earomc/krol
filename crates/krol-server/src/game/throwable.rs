@@ -695,6 +695,7 @@ impl Game {
                 .get(&id)
                 .is_some_and(|s| !s.dead && !s.is_marker()),
             Target::Minecart(id) => self.minecarts.get(&id).is_some_and(|m| !m.dead),
+            Target::Boat(id) => self.boats.get(&id).is_some_and(|b| !b.dead),
             Target::Item(_) | Target::Orb(_) | Target::Thrown(_) | Target::Arrow(_) => false,
         }
     }
@@ -890,6 +891,7 @@ impl Game {
             Target::Hanging(id) => self.hanging.get(&id)?.bb,
             Target::ArmorStand(id) => self.armor_stands.get(&id)?.body.bb(),
             Target::Minecart(id) => self.minecarts.get(&id)?.body.bb(),
+            Target::Boat(id) => self.boats.get(&id)?.body.bb(),
         })
     }
 }

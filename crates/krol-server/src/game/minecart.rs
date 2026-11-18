@@ -1096,6 +1096,8 @@ impl Game {
                 .map(|(_, c)| c.body.bb())
                 .filter(|b| b.intersects(&near)),
         );
+        // Boats are solid for everyone (getCollisionBoundingBox).
+        boxes.extend(self.boat_boxes(area, None));
         boxes
     }
 
@@ -1722,17 +1724,32 @@ impl Game {
         }
         damage += bonus;
         let attacker = self.players[i].entity_id;
-        if !self.attack_minecart(id, DamageSource::Player(attacker), damage) {
+        let hurt = if self.boats.contains_key(&id) {
+            self.attack_boat(id, DamageSource::Player(attacker), damage)
+        } else {
+            self.attack_minecart(id, DamageSource::Player(attacker), damage)
+        };
+        if !hurt {
             return;
         }
         if knockback > 0 {
             let yaw = self.players[i].rotation.0 * std::f32::consts::PI / 180.0;
             let k = knockback as f32 * 0.5;
+            let push = (
+                f64::from(-krol_java::math::sin(yaw) * k),
+                0.1,
+                f64::from(krol_java::math::cos(yaw) * k),
+            );
             if let Some(m) = self.minecarts.get_mut(&id) {
-                m.body.motion.0 += f64::from(-krol_java::math::sin(yaw) * k);
-                m.body.motion.1 += 0.1;
-                m.body.motion.2 += f64::from(krol_java::math::cos(yaw) * k);
+                m.body.motion.0 += push.0;
+                m.body.motion.1 += push.1;
+                m.body.motion.2 += push.2;
                 m.airborne = true;
+            } else if let Some(b) = self.boats.get_mut(&id) {
+                b.body.motion.0 += push.0;
+                b.body.motion.1 += push.1;
+                b.body.motion.2 += push.2;
+                b.airborne = true;
             }
             let a = &mut self.players[i];
             a.motion.0 *= 0.6;

@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: TNT minecarts`).
+Status as of 2026-11-18 (commit `server: boats`).
 
 **Legend**
 
@@ -22,13 +22,13 @@ Status as of 2026-11-18 (commit `server: TNT minecarts`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 entities without AI**: boats, with their spawn
-   packets, tracking and saving (done: projectiles from players, paintings and item
-   frames with the maps they show, armor stands, rails, rideable minecarts, players
-   riding minecarts, chest, hopper, furnace and TNT minecarts). Implementing `/summon`
-   would make entity scenarios much easier to set up.
-2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
-   mob.
+1. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
+   mob. (The entities without AI are done: projectiles from players, paintings and item
+   frames, armor stands, every minecart but spawner and command block ones, boats.)
+   Implementing `/summon` first would make entity scenarios much easier to set up.
+2. **Entity collisions with boats**: items, orbs, arrows, falling blocks and primed TNT
+   moving into boats (only players, minecarts and boats collide with them so far), and
+   armor stands bumping into boats.
 3. **Parity robustness**: `play/tnt_pinned` replayed as 1.7 clients failed once in a
    parallel full run (a health update arriving after the explosion's block changes) and
    passed alone; make its timing robust.
@@ -131,7 +131,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
-| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands, rideable, chest, hopper, furnace and TNT minecarts. Missing: boats, spawner and command block minecarts, fireballs, leash knots, fishing hooks, ... |
+| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands, rideable, chest, hopper, furnace and TNT minecarts, boats. Missing: spawner and command block minecarts, fireballs, leash knots, fishing hooks, ... |
 | 0x0F Spawn Mob | ❌ | No mobs |
 | 0x10 Spawn Painting | ✅ | |
 | 0x11 Spawn Experience Orb | ✅ | |
@@ -180,7 +180,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 |---|---|---|
 | 0x00 Keep Alive · 0x01 Chat · 0x03–0x06 Player/Position/Look · 0x07 Player Digging · 0x08 Block Placement · 0x09 Held Item Change · 0x0A Animation · 0x0B Entity Action · 0x0D Close Window · 0x0E Click Window · 0x0F Confirm Transaction · 0x10 Creative Inventory Action · 0x12 Update Sign · 0x13 Player Abilities · 0x15 Client Settings · 0x16 Client Status | ✅ | |
 | 0x02 Use Entity (attack, interact, interact at) | 🟡 | Attacking players, hanging entities and armor stands, interacting with item frames, interacting at armor stands ✅ (items, orbs and oneself kick like vanilla); mobs ❌ |
-| 0x0C Steer Vehicle | 🟡 | The unmount flag gets a rider out; forward input starts a resting minecart (`play/riding`). Steering boats, pigs and horses ❌ |
+| 0x0C Steer Vehicle | 🟡 | The unmount flag gets a rider out; forward input starts a resting minecart (`play/riding`) and steers boats (`play/boats`). Pigs and horses ❌ |
 | 0x11 Enchant Item | ✅ | |
 | 0x14 Tab-Complete | ❌ | |
 | 0x17 Plugin Message | 🟡 | Received; `MC|ItemName` ✅ (1.7's raw text translated), `MC|Beacon` ✅; `MC|BEdit`, `MC|BSign`, `MC|TrSel`, `MC|AdvCdm`, `MC|AutoCmd`, `MC|PickItem` unhandled |
@@ -405,7 +405,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemFishingRod` | ❌ | |
 | `ItemSnowball`, `ItemEgg`, `ItemEnderPearl`, `ItemExpBottle` | ✅ | Throwing (see [entity.projectile](#entityprojectile)): the stack shrinks unless creative (creative players cannot throw pearls), `random.bow` with `Item.itemRand`, the use statistic |
 | `ItemEnderEye`, `ItemFireball`, `ItemFirework`, `ItemFireworkCharge` | ❌ | |
-| `ItemMinecart`, `ItemBoat` | 🟡 | Minecarts, chest, hopper, furnace and TNT minecarts placed on rails (`play/minecarts`, `play/container_minecarts`, `play/furnace_minecarts`, `play/tnt_minecarts`). Command block minecarts, boats ❌ |
+| `ItemMinecart`, `ItemBoat` | 🟡 | Minecarts, chest, hopper, furnace and TNT minecarts placed on rails (`play/minecarts`, `play/container_minecarts`, `play/furnace_minecarts`, `play/tnt_minecarts`). Boats placed at the block or water in sight, facing away from the player, unless the player's eyes are in an entity or the boat does not fit (`play/boats`). Command block minecarts ❌ |
 | `ItemHangingEntity` (paintings, item frames) | ✅ | The random art among those that fit, the use statistic even when nothing fits |
 | `ItemArmorStand` | ✅ | On top of or in a replaceable block, both spaces free of blocks and entities (`play/armor_stands`), facing the player in eighths with a random head and body turn from the world random, `EntityTag` merged into the new stand (`play/armor_stand_equipment`) |
 | `ItemMonsterPlacer` (spawn eggs) | ❌ | |
@@ -508,7 +508,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Sleeping | 🟡 | Use bed, sleep timer, waking (day, bed gone, leaving, night skipped), spawn point, respawning at the bed or being told it is missing ✅; the 0.2 x 0.2 sleeping box, players saved asleep moved out of the bed ❌ |
 | Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ✅ | Players only. Held item attack modifiers (also saved), sword blocking, thorns, tool wear and use stats, killers (combat tracker, `attackingPlayer`), revenge target (`HurtByTimestamp`), PvP death messages. Critical hits, sprint knockback, fire aspect (the burning flag follows on the victim's own update) and thorns (the sound at the attacker) are covered by `play/pvp_effects`; the overkill achievement ❌ |
 | Interacting with entities (`interactWith`) | ❌ | |
-| Riding (`mountEntity`) | 🟡 | Players in rideable minecarts: getting in by interacting, riders updating right after their vehicle (and once more with each movement packet), sitting on the cart, sneaking or the unmount input getting out onto a free spot, getting out when the cart breaks or passes a powered activator rail, letting go silently of dead carts, the cart saved in the player's `Riding` tag (not with its chunk) and taken along on logout, back with the player on login (spawned at once), riders sending only looks to viewers (a teleport after getting off), carts moving slower and with less drag with a rider, the rider's push starting a resting cart, the distance ridden (`play/riding`). Missing: mobs and armor stands riding (moving carts picking them up), boats, pigs, horses, the onARail achievement, the rider's own move under the cart (block collisions) |
+| Riding (`mountEntity`) | 🟡 | Players in rideable minecarts: getting in by interacting, riders updating right after their vehicle (and once more with each movement packet), sitting on the cart, sneaking or the unmount input getting out onto a free spot, getting out when the cart breaks or passes a powered activator rail, letting go silently of dead carts, the cart saved in the player's `Riding` tag (not with its chunk) and taken along on logout, back with the player on login (spawned at once), riders sending only looks to viewers (a teleport after getting off), carts moving slower and with less drag with a rider, the rider's push starting a resting cart, the distance ridden (`play/riding`). Players in boats: getting in, sitting ahead of the middle along the boat's yaw, steering, getting out, the boat distance, staying "in" a broken boat until it is gone (`play/boats`). Missing: mobs and armor stands riding (moving carts picking them up), pigs, horses, the onARail achievement, the rider's own move under the cart (block collisions) |
 | Spectator mode: camera, teleport via `Spectate` | 🟡 | Game mode and noclip ✅; camera/spectate packets ❌ |
 | Achievements awarded during play | 🟡 | `exploreAllBiomes` ✅; `openInventory`, `mineWood`, crafting and pickup achievements ❌ |
 | Chat visibility and other client settings | 🟡 | Skin parts ✅; chat visibility filtering ❌ |
@@ -523,7 +523,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random), saving with the chunk (`TileEntityData` kept); dragon eggs, piston extensions, placing `TileEntityData` ❌ |
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
 | `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | 🟡 | Rideable minecarts: placed on rails by `ItemMinecart` (adventure players too), following rails (snapping onto the line, at most 0.4 a tick, drag, slopes, powered rails boosting and kicking off from a wall, unpowered ones braking), derailed movement, bumping into each other (lined up, sharing motion), players pushing them, colliding with pushable entities while moving, hits (wobble and damage metadata, sharpness, knockback, exhaustion, broken past 40 damage or by creative players, the minecart dropped with its name), fire, water, activator rails, detector rails, tracking (spawn object 10, metadata in `HashMap` order), saving (custom display tiles kept), selectors, `/tp`, `/kill`, explosions, projectiles, pressure plates, blocking block placement (`play/minecarts`), riders (`play/riding`). Chest and hopper minecarts: windows titled with the cart's display name (spectators open them too), contents saved, spilled when the cart dies (`setDead`, twice when broken), the chest or hopper dropped, drag by fullness, hopper carts pulling every tick (the cooldown quirk) from the inventory above or item entities, turned off by powered activator rails, hoppers and droppers reaching cart inventories (a random cart from the world random), detector rail comparator signal (`play/container_minecarts`). Furnace minecarts: coal adding 3600 ticks of fuel, the push away from the player (renormalized along the rail each tick, dropped when moving against it), half speed, their own drag, handing their motion to carts they bump into, burning metadata, the furnace dropped unless an explosion killed them, saving (the fuel wrapping as a short) (`play/furnace_minecarts`). TNT minecarts: lit by powered activator rails (entity status 10, the fuse sound, 80 ticks), exploding with strength `4 + random * 1.5 * min(speed, 5)` from the cart's own random (resting carts always 4), a lit cart's explosion sparing rails and the blocks under them, exploding when crashing fast, landing from 3 blocks, killed by fire, explosions or while moving, hit by burning arrows, the TNT dropped unless an explosion killed them, `TNTFuse` saved (`play/tnt_minecarts`). Missing: spawner and command block minecarts, dispensers placing minecarts, nether portals, custom display tiles for 1.7 clients (their metadata 20 encodes the state differently). Riding: see Riding |
-| `EntityBoat` | ❌ | |
+| `EntityBoat` | 🟡 | Placed by `ItemBoat`, tracked (spawn object 1, metadata 17-19 in `HashMap` order), floating by the share of its height in water, steered by its rider (speed multiplier, 0.35 top speed), turning at most 20 degrees a tick, drag, breaking lily pads and snow, wrecked into planks and sticks by crashes faster than 0.2975 or landings from more than 3 blocks (the fall distance kept on softer landings), hits (wobble and damage metadata, broken past 40 damage or by creative players, the boat dropped unless a creative player broke it, the rider's own projectiles ignored), fire, lava, water, the void, pushing other boats, solid for players and minecarts, colliding with every entity, saving, selectors, `/kill`, explosions, projectiles, wooden pressure plates, blocking block placement (`play/boats`). Missing: items, orbs, arrows, falling blocks and primed TNT colliding with boats, armor stands bumping into them, the rider's fall damage when a boat lands hard |
 | `EntityItemFrame`, `EntityPainting` | ✅ | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`, maps shown in frames (the frame icon, map packets every 10 ticks, the icon removed with the map). Invulnerable frames, `/tp` and old saves are not in a scenario |
 | `EntityLeashKnot` | ❌ | |
 | `EntityArmorStand` | 🟡 | The living update without input (gravity, water and lava with depth strider, ladders, falls with landing dust and farmland trampling, fire and lava setting it on fire, air under water with respiration, the void), punches (a second within 5 ticks knocks it over with its drops, adventure players cannot), creative players removing it, fire burning it down (`play/armor_stands`), equipment put on and taken off by interacting at a point with disabled slots, small stands, arms (`play/armor_stand_equipment`), arrows and explosions (drops only the contents; invisible stands are immune, blast protection on what it wears), markers (no size, no hits), tracking (spawn object 78, metadata with the pose, attributes, velocity, equipment), saving with the chunk, selectors, `/tp`, `/kill`, pressure plates, blocking block placement. Arrows, explosions, markers, loading and `/tp` are not in a scenario. Missing: status effects (`ActiveEffects` kept as saved), sounds of stands loaded without `Silent`, riding minecarts pushing them, dispensers putting armor on them, death at 0 health set by commands, saved attribute modifiers (kept, not applied) |
@@ -639,7 +639,7 @@ krol notice.
 | Feature | Status | Notes |
 |---|---|---|
 | `stats/<uuid>.json`: format, key order, saving | ✅ | |
-| General stats (play time, walking/swimming/falling/climbing/flying/diving/sprinting/crouching distances, jumps, deaths, drops, damage taken, time since death, leave game, cake slices, minecart distance) | 🟡 | Boat, pig, horse distances, mob kills, damage dealt, animals bred, fish caught, trading, talking to villagers ❌ (with their features) |
+| General stats (play time, walking/swimming/falling/climbing/flying/diving/sprinting/crouching distances, jumps, deaths, drops, damage taken, time since death, leave game, cake slices, minecart and boat distances) | 🟡 | Pig, horse distances, mob kills, damage dealt, animals bred, fish caught, trading, talking to villagers ❌ (with their features) |
 | Block mining, item crafting, item use, item break stats | ✅ | For implemented actions |
 | Statistics packet (client request) | ✅ | |
 | Achievements (`AchievementList`, requirements, chat announcements) | 🟡 | Storage and `exploreAllBiomes` ✅; awarding the others ❌ |

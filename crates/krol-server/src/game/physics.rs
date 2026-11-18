@@ -79,6 +79,12 @@ impl Aabb {
         (0..3).all(|i| o.max[i] > self.min[i] && o.min[i] < self.max[i])
     }
 
+    /// Whether the point lies strictly inside (`isVecInside`).
+    pub fn contains(&self, p: (f64, f64, f64)) -> bool {
+        let p = [p.0, p.1, p.2];
+        (0..3).all(|i| p[i] > self.min[i] && p[i] < self.max[i])
+    }
+
     /// How far `other` may move by `d` along `axis` before hitting this box
     /// (`calculateXOffset` / `Y` / `Z`).
     pub fn axis_offset(&self, other: &Aabb, axis: usize, mut d: f64) -> f64 {
@@ -366,6 +372,17 @@ fn clip(boxes: &[Aabb], bb: &Aabb, axis: usize, mut d: f64) -> f64 {
 /// sneak edge check.
 pub fn move_entity(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64) -> MoveOutcome {
     move_entity_inner(world, body, dx, dy, dz, true, &[])
+}
+
+/// [`move_entity`] that also collides with the boxes of nearby entities (a player
+/// walking into boats).
+pub fn move_entity_walking_among(
+    world: &mut World,
+    body: &mut Body,
+    d: (f64, f64, f64),
+    entities: &[Aabb],
+) -> MoveOutcome {
+    move_entity_inner(world, body, d.0, d.1, d.2, true, entities)
 }
 
 /// `moveEntity` for entities that do not trigger walking (`canTriggerWalking` false,

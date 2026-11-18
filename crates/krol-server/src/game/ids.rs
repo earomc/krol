@@ -151,6 +151,10 @@ pub mod block {
     pub const STONE_BUTTON: u16 = 77;
     /// `snow_layer`.
     pub const SNOW_LAYER: u16 = 78;
+    /// `planks`.
+    pub const PLANKS: u16 = 5;
+    /// `waterlily` (lily pad).
+    pub const WATERLILY: u16 = 111;
     /// `ice`.
     pub const ICE: u16 = 79;
     /// `snow` (the block).
@@ -296,6 +300,8 @@ pub mod item {
     pub const ARMOR_STAND: i16 = 416;
     /// `minecart`.
     pub const MINECART: i16 = 328;
+    /// `boat`.
+    pub const BOAT: i16 = 333;
     /// `chest_minecart`.
     pub const CHEST_MINECART: i16 = 342;
     /// `furnace_minecart`.

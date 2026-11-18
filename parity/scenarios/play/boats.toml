@@ -1,0 +1,108 @@
+description = "Boats: placed by using a boat item at a block in sight (spawn object 1, metadata; facing away from the player), one on grass broken by a sword (the boat dropped), one on water floating, ridden (Attach Entity, a teleport), steered forward into the bank (turning towards where it goes, too slow to crash), left with the unmount input; the boat saved with its chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn in adventure mode, is switched to survival and teleported to
+# (-470.5, 4, -436.5) on the grass east of a pool (water at y = 3, x = -474..-472,
+# z = -437..-434), and gets two boats (hotbar slots 0 and 1, they do not stack) and a
+# sword (slot 2) as /give drops 1 and 2. Looking east and down he puts boat A
+# (entity 3) on the grass at (-468.5, 4, -436.5), where it rests, and breaks it with the
+# sword (the dropped boat, entity 4, lands at random and is killed at the end). Looking
+# west and down he puts boat B (entity 5) on the water at (-472.5, 4, -436.5), gets in,
+# looks south and steers forward: B speeds up along the pool and stops against the bank
+# at z = -433 well below the crash speed, staying pressed there while he steers, then
+# he gets out. Boat physics draws no random numbers and B's path starts from rest, so
+# where it ends up compares exactly but for its height: a floating boat never settles,
+# as the share of it under water comes in fifths, so its height, vertical motion, the
+# distance ridden and where jeb_ gets out (by his seat's height) get small tolerances.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -474 3 -437 -472 3 -434 water"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 17
+chat = [
+    "@4500 !hold 0",
+    "@4700 !look 270 45",
+    "@5000 !use",
+    "@5700 !hold 2",
+    "@6000 !attack 3",
+    "@6700 !hold 1",
+    "@6900 !look 90 45",
+    "@7200 !use",
+    "@8000 !interact 5",
+    "@8800 !look 0 0",
+    "@9100 !steer 0 1 0",
+    "@13500 !steer 0 0 2",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "tp jeb_ -470.5 4 -436.5"
+
+[[steps]]
+action = "console"
+command = "give jeb_ boat 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword 1"
+wait_ms = 11500
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin), and
+# where the dropped boat ends up is random.
+log_ignore_prefixes = ["Killed item."]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+]
+
+[observe.tolerance]
+# The floating boat bobs (see above). Its handleWaterMovement box is turned inside out
+# (expand by -0.4), so it never counts as in water and its fall distance keeps adding
+# up every downward bob.
+"entities.-30,-28[0].Pos" = 0.05
+"entities.-30,-28[0].Motion" = 0.05
+"entities.-30,-28[0].FallDistance" = 1.0
+"file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.boatOneCm" = 100
+# Where jeb_ gets out follows his seat's height: the teleports and his saved position.
+"player.packets[48].y" = 0.1
+"player.packets[50].y" = 0.1
+# The same teleports in the 1.7 view, which drops three 1.8-only packets before them.
+"player.packets[45].y" = 0.1
+"player.packets[47].y" = 0.1
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Pos" = 0.1
+# The bot hovers where it got out, so the player's own fall restarts with every movement
+# packet and the saved vertical motion depends on how they fall into ticks.
+"file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Motion" = 1.0

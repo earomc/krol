@@ -72,7 +72,13 @@ impl Game {
     /// resulting step sound to the players nearby.
     fn move_player(&mut self, i: usize, d: (f64, f64, f64)) -> MoveOutcome {
         let mut body = self.body(i);
-        let outcome = physics::move_entity(&mut self.level.overworld, &mut body, d.0, d.1, d.2);
+        // Boats are solid (getCollisionBoundingBox), but for the player's own.
+        let boats = self.boat_boxes(
+            &body.bb().add_coord([d.0, d.1, d.2]),
+            self.players[i].riding,
+        );
+        let outcome =
+            physics::move_entity_walking_among(&mut self.level.overworld, &mut body, d, &boats);
         // Block.onEntityCollidedWithBlock(world, pos, entity) of the block walked on.
         if let Some((pos, state)) = outcome.walked_on
             && matches!(
@@ -589,6 +595,15 @@ impl Game {
             .collect();
         for id in carts {
             self.minecart_collision(id, super::minecart::CartPusher::Player(i));
+        }
+        let boats: Vec<i32> = self
+            .boats
+            .iter()
+            .filter(|&(_, b)| !b.dead && area.intersects(&b.body.bb()))
+            .map(|(&id, _)| id)
+            .collect();
+        for id in boats {
+            self.boat_pushed_by_player(id, i);
         }
     }
 

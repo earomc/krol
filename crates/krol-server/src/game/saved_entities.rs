@@ -442,6 +442,8 @@ impl Game {
             Some(s.body.pos)
         } else if let Some(m) = self.minecarts.get(&id) {
             Some(m.body.pos)
+        } else if let Some(b) = self.boats.get(&id) {
+            Some(b.body.pos)
         } else {
             self.tnt.get(&id).map(|t| t.body.pos)
         }
@@ -614,6 +616,14 @@ impl Game {
                 self.minecarts.insert(id, m);
                 pos
             }
+            super::boat::SAVED_ID => {
+                let (base, uuid) = EntityBase::read(c, &mut body);
+                self.set_saved_uuid(id, uuid);
+                let b = super::boat::Boat::load(body, base);
+                let pos = b.body.pos;
+                self.boats.insert(id, b);
+                pos
+            }
             super::armor_stand::SAVED_ID => {
                 let head = self.new_stand_head();
                 let (stand, uuid) = self.armor_stand_from_nbt(c, head);
@@ -681,6 +691,14 @@ impl Game {
         let kind = super::minecart::CartKind::from_saved_id(c.get_str("id"))
             .unwrap_or(super::minecart::CartKind::Rideable);
         (super::minecart::Minecart::load(kind, body, base, c), uuid)
+    }
+
+    /// `readFromNBT` of a boat (a player's `Riding` tag); returns the boat and its saved
+    /// UUID.
+    pub(super) fn boat_from_nbt(&self, c: &Compound) -> (super::boat::Boat, Option<u128>) {
+        let mut body = Body::player((0.0, 0.0, 0.0), false);
+        let (base, uuid) = EntityBase::read(c, &mut body);
+        (super::boat::Boat::load(body, base), uuid)
     }
 
     /// Replaces the random UUID a loaded entity got in its constructor with the saved
@@ -769,6 +787,11 @@ impl Game {
                 return None;
             }
             self.minecart_nbt(m, uuid, &mut c);
+        } else if let Some(b) = self.boats.get(&id) {
+            if b.dead || b.rider.is_some() {
+                return None;
+            }
+            self.boat_nbt(b, uuid, &mut c);
         } else {
             let t = self.tnt.get(&id).filter(|t| !t.dead)?;
             c.insert("id", Tag::String(TNT_ID.into()));
