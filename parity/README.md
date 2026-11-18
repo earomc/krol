@@ -68,7 +68,15 @@ Issue `krolpin` from the console right before the behavior to compare, once ever
 has joined: each active chunk draws from the world random every tick, so a player
 arriving later changes the draws. Start and stop random ticks, and trigger what should be
 compared, through `krolpin` itself rather than separate commands, whose tick depends on
-timing. Per-entity randoms (`Entity.rand`: sound pitches, knockback rolls) are not pinned.
+timing. After the command, `krolpin` also seeds every mob's own random (`Entity.rand` of
+each `EntityLiving`) with the seed plus its entity id, so a mob summoned by the command
+starts pinned. Mobs draw from their random every tick (the ambient sound roll), so what
+a bot does to a mob at some wall-clock moment would meet an unknown state;
+`krolpin mobs <seed> <ticks>` seeds every mob's random again at the end of each of the
+next ticks, so the bot's action meets the same state whichever tick it lands in (mob
+ambient rolls then repeat the same value every tick: pick the seed so the sound comes at
+a quiet time). Other entities' randoms (sound pitches, knockback rolls of players, item
+pushes) are not pinned.
 
 ## Writing race-free scenarios
 
@@ -217,3 +225,11 @@ into server ticks. Rules learned from flaky scenarios:
   keeps growing. Give its height, vertical motion, fall distance, the boat distance stat
   and where its rider gets out small tolerances. Steer it into a bank below the crash
   speed (0.2975) so its horizontal resting place is exact (`play/boats`).
+- **Animals need `spawn-animals=true`**: with it off (the usual scenario setup), vanilla
+  sets every animal dead at its next update. Turn natural spawning off instead with
+  `gamerule doMobSpawning false` (`play/mobs_no_ai`; `play/mobs_animals_off` covers the
+  removal).
+- **Knockback velocities follow the tracker's beat**: a knocked-back entity sends its
+  decaying velocity every third tick, counted from when it started being tracked, so the
+  values depend on which tick a bot's hit lands in. Give a mob a knockback resistance of
+  1 through its `Attributes` tag when the hit itself is what matters (`play/mobs_no_ai`).

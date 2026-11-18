@@ -455,6 +455,8 @@ impl Game {
             Some(m.body.pos)
         } else if let Some(b) = self.boats.get(&id) {
             Some(b.body.pos)
+        } else if let Some(m) = self.mobs.get(&id) {
+            Some(m.body.pos)
         } else {
             self.tnt.get(&id).map(|t| t.body.pos)
         }
@@ -490,6 +492,8 @@ impl Game {
             m.chunk = chunk;
         } else if let Some(b) = self.boats.get_mut(&id) {
             b.chunk = chunk;
+        } else if let Some(m) = self.mobs.get_mut(&id) {
+            m.chunk = chunk;
         } else if let Some(t) = self.tnt.get_mut(&id) {
             t.chunk = chunk;
         }
@@ -691,6 +695,19 @@ impl Game {
                 self.armor_stands.insert(id, stand);
                 pos
             }
+            // TODO(M5): mobs with AI (only those without are simulated so far).
+            saved if c.get_bool("NoAI") && super::mob::MobKind::from_saved_id(saved).is_some() => {
+                let mob_kind =
+                    super::mob::MobKind::from_saved_id(saved).unwrap_or(super::mob::MobKind::Pig);
+                let head = self.new_stand_head();
+                let seed = self.new_mob_seed();
+                let (base, uuid) = EntityBase::read(c, &mut body);
+                self.set_saved_uuid(id, uuid);
+                let m = super::mob::Mob::load(mob_kind, body, base, c, head, seed);
+                let pos = m.body.pos;
+                self.mobs.insert(id, m);
+                pos
+            }
             saved => match super::throwable::Kind::from_saved_id(saved) {
                 Some(thrown_kind) => {
                     body.width = super::throwable::SIZE;
@@ -758,6 +775,8 @@ impl Game {
             &m.base
         } else if let Some(b) = self.boats.get(&id) {
             &b.base
+        } else if let Some(m) = self.mobs.get(&id) {
+            &m.base
         } else if let Some(t) = self.tnt.get(&id) {
             &t.base
         } else {
@@ -893,6 +912,11 @@ impl Game {
                 return None;
             }
             self.boat_nbt(b, uuid, &mut c);
+        } else if let Some(m) = self.mobs.get(&id) {
+            if m.dead {
+                return None;
+            }
+            c = self.mob_nbt(m, uuid);
         } else {
             let t = self.tnt.get(&id).filter(|t| !t.dead)?;
             c.insert("id", Tag::String(TNT_ID.into()));

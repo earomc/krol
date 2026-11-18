@@ -534,6 +534,16 @@ description = "/summon: usage, outOfWorld (unloaded chunk, outside the build hei
 scenarios = ["commands/summon"]
 
 [[feature]]
+id = "entity.mobs.no_ai"
+description = "Mobs without AI (pigs with NoAI): spawn mob packet with the watcher's HashMap order, metadata and attributes resent at the first update, the ambient sound on the mob's own random, a player's hit (hurt status and sound, sword wear, health metadata, recentlyHit), knockback resistance from the Attributes tag, /kill (death sound and status, raw porkchops, experience 20 ticks later from the world random, stat.mobKills), death by burning (fire damage, burning flag, cooked porkchops, no experience), custom names, Saddle, Silent and NoAI saved with the chunk. Not yet: knockback velocities (their tracker phase depends on timing), looting, equipment drops"
+scenarios = ["play/mobs_no_ai"]
+
+[[feature]]
+id = "entity.mobs.spawn_animals_off"
+description = "spawn-animals=false: animals are set dead in WorldServer.updateEntityWithOptionalForce and still run that update (a burning pig takes its first fire damage)"
+scenarios = ["play/mobs_animals_off"]
+
+[[feature]]
 id = "item.potions"
 description = "Potions: drinking (32 updates, drink sounds, status 9) with effects from PotionHelper.getPotionEffects (port checked against every damage value) or CustomPotionEffects, the empty bottle (in the slot or added elsewhere; none in creative), glass bottles filled at water (in creative too, the water bottle added or tossed). Not yet: splash potions, brewing"
 scenarios = ["play/potions"]

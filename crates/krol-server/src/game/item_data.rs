@@ -397,6 +397,9 @@ pub const DEPTH_STRIDER: i16 = 8;
 /// `Enchantment.fireAspect`'s id.
 pub const FIRE_ASPECT: i16 = 20;
 
+/// `Enchantment.looting`'s id.
+pub const LOOTING: i16 = 21;
+
 /// `Enchantment.aquaAffinity`'s id.
 pub const AQUA_AFFINITY: i16 = 6;
 

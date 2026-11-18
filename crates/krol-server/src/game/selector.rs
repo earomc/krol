@@ -422,6 +422,10 @@ impl Game {
             b.body.pos = pos;
             b.base.yaw = rotation.0;
             b.base.pitch = rotation.1;
+        } else if let Some(m) = self.mobs.get_mut(&id) {
+            m.body.pos = pos;
+            m.base.yaw = rotation.0;
+            m.base.pitch = rotation.1;
         }
     }
 
@@ -448,6 +452,8 @@ impl Game {
             self.set_minecart_dead(id);
         } else if let Some(b) = self.boats.get_mut(&id) {
             b.dead = true;
+        } else if let Some(m) = self.mobs.get_mut(&id) {
+            m.dead = true;
         }
     }
 
@@ -595,6 +601,19 @@ impl Game {
                 type_name: super::boat::SAVED_ID,
                 name: Some(b.name()),
                 rotation: (b.base.yaw, b.base.pitch),
+                entity_id: id,
+            });
+        }
+        for (&id, m) in &self.mobs {
+            all.push(Candidate {
+                target: Target::Entity(id),
+                pos: m.body.pos,
+                size: (m.body.width, m.body.height),
+                bb: None,
+                alive: m.alive(),
+                type_name: m.kind.saved_id(),
+                name: Some(m.name()),
+                rotation: (m.base.yaw, m.base.pitch),
                 entity_id: id,
             });
         }

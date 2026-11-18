@@ -57,6 +57,9 @@ const ITEM_FRAME_METADATA_INTERVAL: u32 = 10;
 /// Armor stands: range 160, every 3 ticks, with velocity updates.
 const ARMOR_STAND_RANGE: i32 = 160;
 const ARMOR_STAND_FREQUENCY: u32 = 3;
+/// Mobs (`IAnimals`): range 80, every 3 ticks, with velocity updates.
+const MOB_RANGE: i32 = 80;
+const MOB_FREQUENCY: u32 = 3;
 /// Minecarts: range 80, every 3 ticks, with velocity updates.
 const MINECART_RANGE: i32 = 80;
 const MINECART_FREQUENCY: u32 = 3;
@@ -305,6 +308,20 @@ impl Game {
                 player: None,
             });
         }
+        if let Some(m) = self.mobs.get(&entity_id) {
+            return Some(View {
+                pos: m.body.pos,
+                yaw: m.base.yaw,
+                pitch: m.base.pitch,
+                head: m.head_yaw,
+                on_ground: m.body.on_ground,
+                motion: m.body.motion,
+                chunk: m.chunk,
+                airborne: m.airborne,
+                metadata_changed: m.metadata_changed,
+                player: None,
+            });
+        }
         if let Some(s) = self.armor_stands.get(&entity_id) {
             return Some(View {
                 pos: s.body.pos,
@@ -395,6 +412,9 @@ impl Game {
             (HANGING_RANGE, HANGING_FREQUENCY, false)
         } else if self.armor_stands.contains_key(&entity_id) {
             (ARMOR_STAND_RANGE, ARMOR_STAND_FREQUENCY, true)
+        } else if self.mobs.contains_key(&entity_id) {
+            // IAnimals.
+            (MOB_RANGE, MOB_FREQUENCY, true)
         } else if self.minecarts.contains_key(&entity_id) || self.boats.contains_key(&entity_id) {
             // Boats are tracked like minecarts.
             (MINECART_RANGE, MINECART_FREQUENCY, true)
@@ -700,6 +720,38 @@ impl Game {
                 entity_id,
                 metadata: h.metadata(),
             });
+        } else if let Some(m) = self.mobs.get(&entity_id) {
+            // The spawn packet carries the motion and metadata; the metadata follows
+            // again, then the watched attributes and what it holds and wears.
+            packets.push(ClientboundPlay::SpawnMob {
+                entity_id,
+                kind: m.kind.type_id(),
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                yaw: angle(v.yaw) as i8,
+                pitch: angle(v.pitch) as i8,
+                head_pitch: angle(v.head) as i8,
+                velocity: (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2)),
+                metadata: m.metadata(),
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: m.metadata(),
+            });
+            packets.push(ClientboundPlay::EntityProperties {
+                entity_id,
+                properties: m.properties(),
+            });
+            for (slot, item) in m.equipment.iter().enumerate() {
+                if item.is_some() {
+                    packets.push(ClientboundPlay::EntityEquipment {
+                        entity_id,
+                        slot: slot as i16,
+                        item: item.clone(),
+                    });
+                }
+            }
         } else if let Some(s) = self.armor_stands.get(&entity_id) {
             // Data 0: no velocity in the spawn packet, a velocity packet follows the
             // attributes. Then what it wears, like any living entity.
@@ -1127,6 +1179,8 @@ impl Game {
                 m.airborne = false;
             } else if let Some(b) = self.boats.get_mut(&entity_id) {
                 b.airborne = false;
+            } else if let Some(m) = self.mobs.get_mut(&entity_id) {
+                m.airborne = false;
             }
         }
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
@@ -1177,6 +1231,8 @@ impl Game {
             &mut m.body
         } else if let Some(b) = self.boats.get_mut(&entity_id) {
             &mut b.body
+        } else if let Some(m) = self.mobs.get_mut(&entity_id) {
+            &mut m.body
         } else {
             &mut self.tnt.get_mut(&entity_id)?.body
         };
@@ -1266,6 +1322,28 @@ impl Game {
                 entity_id,
                 metadata,
             });
+        } else if let Some(m) = self.mobs.get_mut(&entity_id) {
+            if std::mem::take(&mut m.metadata_changed) {
+                // DataWatcher.getChanged: every entry still watched.
+                let dirty = std::mem::take(&mut m.dirty_metadata);
+                let metadata = m
+                    .metadata()
+                    .into_iter()
+                    .filter(|e| dirty.contains(&e.index))
+                    .collect();
+                packets.push(ClientboundPlay::EntityMetadata {
+                    entity_id,
+                    metadata,
+                });
+            }
+            // ServersideAttributeMap.getAttributeInstanceSet: the changed watched
+            // attributes.
+            if std::mem::take(&mut m.dirty_attributes) {
+                packets.push(ClientboundPlay::EntityProperties {
+                    entity_id,
+                    properties: m.properties(),
+                });
+            }
         } else if let Some(s) = self.armor_stands.get_mut(&entity_id)
             && std::mem::take(&mut s.metadata_changed)
         {

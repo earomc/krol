@@ -782,6 +782,19 @@ pub enum ClientboundPlay {
         data: i32,
         velocity: Option<(i16, i16, i16)>,
     },
+    /// `0x0F` (`kind` is the `EntityList` id; `head_pitch` is the head's yaw)
+    SpawnMob {
+        entity_id: i32,
+        kind: u8,
+        x: i32,
+        y: i32,
+        z: i32,
+        yaw: i8,
+        pitch: i8,
+        head_pitch: i8,
+        velocity: (i16, i16, i16),
+        metadata: Vec<Metadata>,
+    },
     /// `0x0D`
     CollectItem { collected: i32, collector: i32 },
     /// `0x1B` (`vehicle_id` -1 to get off; `leash` for leads)
@@ -1072,6 +1085,7 @@ impl ClientboundPlay {
             Self::UseBed { .. } => 0x0a,
             Self::Explosion { .. } => 0x27,
             Self::SpawnObject { .. } => 0x0e,
+            Self::SpawnMob { .. } => 0x0f,
             Self::CollectItem { .. } => 0x0d,
             Self::AttachEntity { .. } => 0x1b,
             Self::Respawn { .. } => 0x07,
@@ -1417,6 +1431,31 @@ impl ClientboundPlay {
                     let v = velocity.unwrap_or_default();
                     w.i16(v.0).i16(v.1).i16(v.2);
                 }
+            }
+            Self::SpawnMob {
+                entity_id,
+                kind,
+                x,
+                y,
+                z,
+                yaw,
+                pitch,
+                head_pitch,
+                velocity,
+                metadata,
+            } => {
+                w.varint(*entity_id)
+                    .u8(*kind)
+                    .i32(*x)
+                    .i32(*y)
+                    .i32(*z)
+                    .i8(*yaw)
+                    .i8(*pitch)
+                    .i8(*head_pitch)
+                    .i16(velocity.0)
+                    .i16(velocity.1)
+                    .i16(velocity.2);
+                write_metadata(&mut w, metadata)?;
             }
             Self::CollectItem {
                 collected,
@@ -2079,7 +2118,7 @@ fn read_explosion(r: &mut PacketReader<'_>) -> Result<ClientboundPlay, DecodeErr
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     const V: ProtocolVersion = ProtocolVersion::V47;
@@ -2444,6 +2483,46 @@ mod tests {
             state: 48,
         };
         assert_eq!(hex(&change.encode(V).unwrap()[1..]), "ffff8ac00bfffe4d30");
+    }
+
+    /// A pig summoned with `{NoAI:1b}` and Air 0 (parity/golden/play/mobs_no_ai.json).
+    pub(crate) fn summoned_pig() -> ClientboundPlay {
+        use MetadataValue::*;
+        let md = |index, value| Metadata { index, value };
+        ClientboundPlay::SpawnMob {
+            entity_id: 2,
+            kind: 90,
+            x: -15024,
+            y: 128,
+            z: -13904,
+            yaw: 0,
+            pitch: 0,
+            head_pitch: 0,
+            velocity: (0, 0, 0),
+            metadata: vec![
+                md(0, Byte(0)),
+                md(16, Byte(0)),
+                md(1, Short(0)),
+                md(2, String(std::string::String::new())),
+                md(3, Byte(0)),
+                md(4, Byte(0)),
+                md(6, Float(10.0)),
+                md(7, Int(0)),
+                md(8, Byte(0)),
+                md(9, Byte(0)),
+                md(12, Byte(0)),
+                md(15, Byte(1)),
+            ],
+        }
+    }
+
+    /// Bytes recorded from vanilla 1.8.8 (parity/golden/play/mobs_no_ai.json).
+    #[test]
+    fn vanilla_spawn_mob() {
+        assert_eq!(
+            hex(&summoned_pig().encode(V).unwrap()),
+            "0f025affffc55000000080ffffc9b00000000000000000000000100021000082000300040066412000004700000000080009000c000f017f"
+        );
     }
 
     /// Bytes recorded from vanilla 1.8.8 (parity/golden/play/two_players.json).

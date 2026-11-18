@@ -4,13 +4,17 @@
 // (AGENTS.md section 10.2). It adds one console command,
 // `krolpin <seed> [randomTickSpeed] [ticks] [-- <command>]`, which seeds
 // every world's random (World.rand), random block tick generator (World.updateLCG) and
-// the generator behind Math.random(),
+// the generator behind Math.random(), then (after the command below) every mob's own
+// random (Entity.rand of each EntityLiving, with the seed plus its entity id),
 // and sets the cave mood countdown to 12000 (World.ambientTickCountdown). With a speed it
 // also sets the randomTickSpeed game rule in the same tick, and with a tick count it sets
 // the rule back to 0 at the end of that many ticks (through a tickable, which runs after
 // the worlds' ticks), so a scenario can run random ticks for an exact number of ticks
 // so that behavior driven by them can be compared with krol exactly. A command after
-// `--` runs right after pinning, in the same tick (e.g. one that primes TNT). krol answers the
+// `--` runs right after pinning, in the same tick (e.g. one that primes TNT).
+// `krolpin mobs <seed> <ticks>` pins only the mobs' randoms, now and again at the end of
+// each of the next ticks (through a tickable), so that what a bot does to a mob meets the
+// same random state whichever tick it lands in. krol answers the
 // same command in builds with the `parity` feature.
 //
 // The server jar is obfuscated, so the agent works through reflection on the official
@@ -24,6 +28,8 @@
 //   adm.L                                      World.ambientTickCountdown
 //   adm.Q() / adk.a(String, String)            World.getGameRules / GameRules.setOrCreateGameRule
 //   MinecraftServer.a(km), km.c()              registerTickable(ITickable), ITickable.update
+//   adm.f / pk / ps                            World.loadedEntityList / Entity / EntityLiving
+//   pk.V / pk.F()                              Entity.rand / Entity.getEntityId
 //
 // Built by `cargo xtask parity` (javac --release 8) and loaded with -javaagent only for
 // scenarios that set `pin_random`.
@@ -95,6 +101,15 @@ public final class KrolAgent {
         if (n.equals("a") && params == 1 && ret == boolean.class) {
             return true; // canCommandSenderUseCommand
         }
+        if (n.equals("a") && params == 2 && ((String[]) a[1]).length >= 3 && ((String[]) a[1])[0].equals("mobs")) {
+            // krolpin mobs <seed> <ticks>: pin every mob's random now and at the end of
+            // each of the next ticks.
+            String[] args = (String[]) a[1];
+            long seed = Long.parseLong(args[1]);
+            pinMobs(server, seed);
+            repinMobs(server, seed, Integer.parseInt(args[2]));
+            return null;
+        }
         if (n.equals("a") && params == 2) {
             String[] all = (String[]) a[1]; // processCommand
             // Everything after "--" is a command to run right after pinning.
@@ -111,6 +126,7 @@ public final class KrolAgent {
                 String then = String.join(" ", java.util.Arrays.copyOfRange(all, dash + 1, all.length));
                 Class.forName("j").getMethod("a", Class.forName("m"), String.class).invoke(commands, a[0], then);
             }
+            pinMobs(server, Long.parseLong(args[0]));
             return null;
         }
         if (n.equals("a") && params == 3) {
@@ -159,6 +175,53 @@ public final class KrolAgent {
             return null;
         };
         Object hook = Proxy.newProxyInstance(tickable.getClassLoader(), new Class<?>[] {tickable}, count);
+        Class.forName("net.minecraft.server.MinecraftServer").getMethod("a", tickable).invoke(server, hook);
+    }
+
+    /**
+     * Seeds the own random (Entity.rand) of every mob (EntityLiving) in every world with
+     * the seed plus its entity id, after the command that follows "--" (which may
+     * summon it).
+     */
+    private static void pinMobs(Object server, long seed) throws Exception {
+        Class<?> world = Class.forName("adm");
+        Field loaded = world.getDeclaredField("f");
+        loaded.setAccessible(true);
+        Class<?> entity = Class.forName("pk");
+        Class<?> mob = Class.forName("ps");
+        Field rand = entity.getDeclaredField("V");
+        rand.setAccessible(true);
+        Method entityId = entity.getMethod("F");
+        for (Object w : worlds(server)) {
+            if (w == null) {
+                continue;
+            }
+            for (Object e : (java.util.List<?>) loaded.get(w)) {
+                if (mob.isInstance(e)) {
+                    ((Random) rand.get(e)).setSeed(seed + (int) entityId.invoke(e));
+                }
+            }
+        }
+    }
+
+    /** Pins every mob's random at the end of each of the next `ticks` ticks. */
+    private static void repinMobs(Object server, long seed, int ticks) throws Exception {
+        Class<?> tickable = Class.forName("km");
+        final int[] left = {ticks};
+        InvocationHandler repin = (proxy, method, a) -> {
+            if (method.getName().equals("c") && left[0] > 0) {
+                left[0]--;
+                pinMobs(server, seed);
+            }
+            if (method.getName().equals("hashCode")) {
+                return System.identityHashCode(proxy);
+            }
+            if (method.getName().equals("equals")) {
+                return proxy == a[0];
+            }
+            return null;
+        };
+        Object hook = Proxy.newProxyInstance(tickable.getClassLoader(), new Class<?>[] {tickable}, repin);
         Class.forName("net.minecraft.server.MinecraftServer").getMethod("a", tickable).invoke(server, hook);
     }
 

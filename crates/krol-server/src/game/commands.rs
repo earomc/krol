@@ -1220,9 +1220,14 @@ impl Game {
                 name
             }
             Target::Entity(id) => {
-                // Entity.onKillCommand: setDead.
                 let name = Arg::Component(self.entity_display_name(id));
-                self.set_entity_dead(id);
+                if self.mobs.contains_key(&id) {
+                    // EntityLivingBase.onKillCommand.
+                    self.attack_mob(id, super::damage::DamageSource::OutOfWorld, f32::MAX);
+                } else {
+                    // Entity.onKillCommand: setDead.
+                    self.set_entity_dead(id);
+                }
                 name
             }
         };

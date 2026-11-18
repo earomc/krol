@@ -1,0 +1,95 @@
+description = "Mobs without AI (pigs saved or summoned with NoAI): attributes from NBT (knockback resistance), spawn mob packet (metadata in the watcher's HashMap order, then again, then the watched attributes), the ambient sound on the mob's own random, a player's sword hit (hurt status and sound, knockback velocity, recentlyHit), /kill after it (death sound and status, raw porkchops dropped, experience 20 ticks later, the killer's stat.mobKills), death by burning (fire damage every second, the burning flag, cooked porkchops, no experience), custom names, Saddle and Silent saved with the chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and stands still, gets a
+# diamond sword (/give's fake item is entity 1) and holds it. Pig A (entity 2) is
+# summoned 2 blocks east of him under `krolpin 1`, then every mob's own random is pinned
+# with seed 103 (plus the entity id) at the end of every tick (`krolpin mobs`), so the
+# bot's hit meets the same random state in whichever tick it lands. With seed 1 the
+# pig's first ambient rolls never succeed before the per-tick pin starts; with seed 103
+# its roll is 42 every tick, so it says "mob.pig.say" once, 44 ticks after its summon:
+# well after the bot's hit (about 15 ticks in) and before /kill (about 70).
+# Its full knockback resistance (from its Attributes tag) keeps the hit from moving it:
+# knockback velocities go out on the tracker's 3-tick beat, whose phase at the hit
+# depends on timing. jeb_ hits it once (8 of its 10 health); /kill finishes it under `krolpin 9`, so the
+# world random that picks its experience 20 ticks later is pinned too. Pig B is
+# summoned burning with 3 health and burns to death. Pig C, silent, saddled and named,
+# stays and is saved with the chunk. The dropped porkchops are killed before the end;
+# the experience orbs fly to jeb_.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+chat = [
+    "@3500 !hold 0",
+    "@3700 !look 270 0",
+    "@5000 !attack 2",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "krolpin 1 -- summon Pig -469.5 4 -434.5 {NoAI:1b,Attributes:[{Name:\"generic.knockbackResistance\",Base:1.0d}]}"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "krolpin mobs 103 400"
+wait_ms = 3400
+
+[[steps]]
+action = "console"
+command = "krolpin 9 -- kill @e[type=Pig]"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "krolpin 6 -- summon Pig -468.5 4 -438.5 {NoAI:1b,Fire:100s,Health:3s}"
+wait_ms = 4000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "krolpin 8 -- summon Pig -466.5 4 -432.5 {NoAI:1b,Silent:1b,Saddle:1b,CustomName:\"Bob\",CustomNameVisible:1b}"
+wait_ms = 2000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin).
+log_ignore_prefixes = ["Killed item."]
+entities = [[-30, -28]]
+files = ["world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json"]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+]

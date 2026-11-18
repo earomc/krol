@@ -1,0 +1,41 @@
+description = "spawn-animals=false: animals are removed in WorldServer.updateEntityWithOptionalForce after one more update (a summoned pig spawns and is destroyed at once; a burning one still takes its first fire damage, with the hurt status and sound)"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) and stands still. Each pig is summoned
+# under krolpin, which also pins its own random (hurt sound pitch) and Math.random()
+# (the direction of the fire damage).
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 7
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "krolpin 3 -- summon Pig -469.5 4 -434.5 {NoAI:1b}"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "krolpin 6 -- summon Pig -468.5 4 -438.5 {NoAI:1b,Fire:100s,Health:3s}"
+wait_ms = 1500
+
+[observe]
+log = true
+entities = [[-30, -28]]

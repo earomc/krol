@@ -50,6 +50,7 @@ mod light_data;
 mod liquids;
 mod maps;
 mod minecart;
+mod mob;
 mod movement;
 mod mushrooms;
 mod noise;
@@ -247,6 +248,8 @@ pub struct GameConfig {
     pub max_build_height: i32,
     /// `pvp`.
     pub pvp: bool,
+    /// `spawn-animals`: without it, animals are removed (`getCanSpawnAnimals`).
+    pub spawn_animals: bool,
 }
 
 /// Handle to the running game thread.
@@ -329,6 +332,10 @@ struct Game {
     /// Parity hook: ticks until `krolpin` sets randomTickSpeed back to 0.
     #[cfg_attr(not(feature = "parity"), allow(dead_code))]
     pin_stop_in: Option<u32>,
+    /// Parity hook: `krolpin mobs` pins every mob's random with this seed (plus its
+    /// entity id) at the end of each of this many more ticks.
+    #[cfg_attr(not(feature = "parity"), allow(dead_code))]
+    mob_pin: Option<(i64, u32)>,
     /// `World.ambientTickCountdown`: ticks until the next cave mood sound check.
     ambient_countdown: i32,
     /// `World.skylightSubtracted`: how much time and weather darken the sky.
@@ -351,6 +358,8 @@ struct Game {
     minecarts: std::collections::BTreeMap<i32, minecart::Minecart>,
     /// Boats, by entity id.
     boats: std::collections::BTreeMap<i32, boat::Boat>,
+    /// Mobs, by entity id.
+    mobs: std::collections::BTreeMap<i32, mob::Mob>,
     /// An entity being spawned with `forceSpawn` (shown to players whose chunk is not
     /// sent yet).
     force_spawn: Option<i32>,
@@ -445,6 +454,7 @@ pub fn start(
         armor_stands: Default::default(),
         minecarts: Default::default(),
         boats: Default::default(),
+        mobs: Default::default(),
         force_spawn: None,
         all_sleeping: false,
         ping_index: 0,
@@ -454,6 +464,7 @@ pub fn start(
         update_lcg: 0,
         ambient_countdown: AMBIENT_COUNTDOWN_UNSET,
         pin_stop_in: None,
+        mob_pin: None,
         skylight_subtracted: 0,
         ticks_this_tick: Vec::new(),
         moving_progress: Default::default(),
@@ -635,6 +646,7 @@ impl Game {
         order.extend(self.armor_stands.keys().copied());
         order.extend(self.minecarts.keys().copied());
         order.extend(self.boats.keys().copied());
+        order.extend(self.mobs.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
@@ -659,6 +671,7 @@ impl Game {
                     .chain(self.armor_stands.keys())
                     .chain(self.minecarts.keys())
                     .chain(self.boats.keys())
+                    .chain(self.mobs.keys())
                     .copied()
                     .filter(|&e| e > newest)
                     .collect();
@@ -710,6 +723,10 @@ impl Game {
             }
             if self.boats.contains_key(&id) {
                 self.update_boat(id);
+                continue;
+            }
+            if self.mobs.contains_key(&id) {
+                self.update_mob(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -782,6 +799,11 @@ impl Game {
                 self.set_game_rule("randomTickSpeed", "0");
             }
         }
+        #[cfg(feature = "parity")]
+        if let Some((seed, left)) = self.mob_pin {
+            self.pin_mobs(seed);
+            self.mob_pin = (left > 1).then_some((seed, left - 1));
+        }
         for line in commands {
             self.console_command(&line);
         }
@@ -794,12 +816,27 @@ impl Game {
             return;
         }
         #[cfg(feature = "parity")]
+        if let Some(args) = line.strip_prefix("krolpin mobs ") {
+            // Parity hook, like parity/vanilla-agent: `krolpin mobs <seed> <ticks>` pins
+            // every mob's random now and at the end of each of the next ticks.
+            let args: Vec<&str> = args.split_whitespace().collect();
+            if let (Some(Ok(seed)), Some(Ok(ticks))) = (
+                args.first().map(|s| s.parse::<i64>()),
+                args.get(1).map(|s| s.parse::<u32>()),
+            ) {
+                self.pin_mobs(seed);
+                self.mob_pin = (ticks > 0).then_some((seed, ticks));
+            }
+            return;
+        }
+        #[cfg(feature = "parity")]
         if let Some(args) = line.strip_prefix("krolpin ") {
             // Parity hook, like parity/vanilla-agent: `krolpin <seed> [speed] [ticks]
             // [-- <command>]` seeds World.rand, World.updateLCG and Math.random()
             // (Random.setSeed is the same as a new Random with that seed), optionally sets
-            // randomTickSpeed in the same tick and back to 0 after that many ticks, and
-            // runs the command after `--` right away.
+            // randomTickSpeed in the same tick and back to 0 after that many ticks,
+            // runs the command after `--` right away, then seeds every mob's own random
+            // with the seed plus its entity id.
             let (args, then) = match args.split_once(" -- ") {
                 Some((a, c)) => (a, Some(c.to_owned())),
                 None => (args, None),
@@ -819,10 +856,21 @@ impl Game {
                 self.execute_command(commands::Sender::Console, &command);
                 self.sb_apply_all_stats();
             }
+            if let Some(Ok(seed)) = args.first().map(|s| s.parse::<i64>()) {
+                self.pin_mobs(seed);
+            }
             return;
         }
         self.execute_command(commands::Sender::Console, line);
         self.sb_apply_all_stats();
+    }
+
+    /// Parity hook: seeds every mob's own random with `seed` plus its entity id.
+    #[cfg(feature = "parity")]
+    fn pin_mobs(&mut self, seed: i64) {
+        for (&id, m) in &mut self.mobs {
+            m.rand.set_seed(seed.wrapping_add(i64::from(id)));
+        }
     }
 
     /// Vanilla `World.updateWeather` + `WorldServer.updateWeather` (overworld).
@@ -2289,6 +2337,10 @@ impl Game {
             || self.boats.values().any(|b| {
                 let bb = b.body.bb();
                 !b.dead && boxes.iter().any(|x| x.intersects(&bb))
+            })
+            || self.mobs.values().any(|m| {
+                let bb = m.body.bb();
+                !m.dead && boxes.iter().any(|x| x.intersects(&bb))
             })
     }
 

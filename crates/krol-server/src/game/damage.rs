@@ -183,7 +183,7 @@ const ARMOR_SLOTS: [usize; 4] = [5, 6, 7, 8];
 const HELMET_SLOT: usize = ARMOR_SLOTS[0];
 
 /// `EnchantmentProtection.calcModifierDamage`.
-fn protection_modifier(id: i16, level: i32, source: DamageSource) -> i32 {
+pub(super) fn protection_modifier(id: i16, level: i32, source: DamageSource) -> i32 {
     use super::item_data::{FEATHER_FALLING, FIRE_PROTECTION, PROTECTION};
     if source.harms_in_creative() {
         return 0;

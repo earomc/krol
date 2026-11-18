@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: /summon`).
+Status as of 2026-11-18 (commit `server: mobs without AI (pigs)`).
 
 **Legend**
 
@@ -22,11 +22,13 @@ Status as of 2026-11-18 (commit `server: /summon`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
-   mob. (The entities without AI are done: projectiles from players, paintings and item
-   frames, armor stands, every minecart but spawner and command block ones, boats.)
-   `/summon` works for those and only keeps mobs as NBT; making it create mobs is the
-   natural first step, and it sets up entity scenarios.
+1. **M5 mobs**: the mob base (`game/mob.rs`) runs pigs saved or summoned with `NoAI`.
+   Next: the living physics for mobs with AI (`moveEntityWithHeading`, falls, the
+   look and body helpers), then the AI task system with the pig's tasks (wander,
+   look, panic, tempt, mate, follow parent), `onInitialSpawn`, despawning; then the
+   other mobs, kind by kind. Share the living code with armor stands
+   (`game/armor_stand.rs` has its own copy). `krolpin mobs` pins mob randoms per tick
+   for scenarios.
 2. **Entity collisions with boats**: items, orbs, arrows, falling blocks and primed TNT
    moving into boats (only players, minecarts and boats collide with them so far), and
    armor stands bumping into boats.
@@ -133,12 +135,12 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
 | 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands, rideable, chest, hopper, furnace and TNT minecarts, boats. Missing: spawner and command block minecarts, fireballs, leash knots, fishing hooks, ... |
-| 0x0F Spawn Mob | ❌ | No mobs |
+| 0x0F Spawn Mob | ✅ | Pigs (`play/mobs_no_ai`); 1.7: the 1.8-only entries dropped, the age as an int. Custom names of mobs for 1.7 ❌ |
 | 0x10 Spawn Painting | ✅ | |
 | 0x11 Spawn Experience Orb | ✅ | |
 | 0x12 Entity Velocity · 0x13 Destroy Entities · 0x15 Entity Relative Move · 0x16 Entity Look · 0x17 Entity Look And Relative Move · 0x18 Entity Teleport · 0x19 Entity Head Look | ✅ | |
 | 0x14 Entity (no-op) | ❌ | Not sent by krol yet; vanilla sends it for entities that didn't move in some update cycles |
-| 0x1A Entity Status | 🟡 | Hurt, death, eating done; mob statuses missing |
+| 0x1A Entity Status | 🟡 | Hurt, death, eating done (mobs too); other mob statuses (love, taming, ...) missing |
 | 0x1B Attach Entity | 🟡 | Riding: to the rider on mounting and dismounting, to its viewers when spawned, on a change and every 60 updates (`play/riding`). Leashes ❌ |
 | 0x1C Entity Metadata | 🟡 | Players, items, orbs, falling blocks, projectiles, hanging entities, armor stands (rotations included) |
 | 0x1D Entity Effect · 0x1E Remove Entity Effect | ✅ | |
@@ -484,7 +486,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `Entity.isEntityInsideOpaqueBlock` | ✅ | Suffocation (players) |
 | `DataWatcher` (metadata) | ✅ | |
 | `EntityLivingBase`: health, hurt time, hurt resistance, `attackEntityFrom`, armor, absorption, effects, attributes, air, death update, knockback | 🟡 | Knockback from attacking entities ✅ (explosions); combat tracker death messages ✅ for implemented sources |
-| `EntityLiving` (mobs: AI tasks, equipment, despawning, leashes) | ❌ | |
+| `EntityLiving` (mobs: AI tasks, equipment, despawning, leashes) | 🟡 | `game/mob.rs`: mobs saved or summoned with `NoAI` (they do not move in 1.8): spawn packets (the watcher's `HashMap` order, attributes changed by the constructor resent), fire, lava, the void, water, drowning, suffocation, the ambient sound on the mob's own random, hurt and death (status, sounds, knockback), loot and experience after a player's hit, equipment drops by drop chance, `/kill`, saving (`Equipment`, `DropChances`, `NoAI`, `Leash` kept, ...), animals removed with `spawn-animals=false`. `play/mobs_no_ai`, `play/mobs_animals_off`. Mobs with AI (kept as NBT), physics, AI tasks, look/body helpers, despawning, `onInitialSpawn`, leads, picking up loot, effects, the combat tracker, pushing entities, projectiles and explosions hitting mobs ❌ |
 | `EntityHanging` | ✅ | See `EntityItemFrame`, `EntityPainting` |
 | `EntityCreature`, `EntityAgeable`, `EntityFlying` | ❌ | |
 | `EntityTracker`, `EntityTrackerEntry` | 🟡 | All implemented entity kinds; ranges/intervals for missing kinds |
@@ -550,13 +552,13 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Group | Status | Notes |
 |---|---|---|
 | `entity.ai` (task system, targeting, pathfinding navigation, look/move helpers, villager/animal behaviors) | ❌ | |
-| Passive: pig, sheep (wool, shearing, dye), cow, mooshroom, chicken (eggs), squid, wolf, ocelot, horse (all variants, inventory), rabbit, bat, villager (trading, professions), iron golem, snow golem | ❌ | |
+| Passive: pig (🟡 `NoAI` only: sounds, loot, cooked when burning, saddle saved), sheep (wool, shearing, dye), cow, mooshroom, chicken (eggs), squid, wolf, ocelot, horse (all variants, inventory), rabbit, bat, villager (trading, professions), iron golem, snow golem | ❌ | |
 | Monsters: zombie (villagers, sieges, reinforcements), skeleton (wither skeleton), creeper, spider, cave spider, enderman, slime, magma cube, ghast, blaze, zombie pigman, silverfish, endermite, witch, guardian (elder) | ❌ | |
 | Boss: ender dragon, wither | ❌ | |
 | `entity.effect`: lightning bolt | ❌ | |
 | Breeding, taming, leashing, name tags, saddles | ❌ | |
-| Mob drops, XP, looting | ❌ | |
-| Natural spawning, spawners, spawn eggs | ❌ | `/summon` creates the non-mob entities (see [commands](#netminecraftcommand)) |
+| Mob drops, XP, looting | 🟡 | Pigs: porkchops (cooked when burning, looting), saddles, equipment by drop chance, the rare drop roll, experience from the world random 20 ticks after death (`play/mobs_no_ai`); the other mobs ❌ |
+| Natural spawning, spawners, spawn eggs | ❌ | `/summon` creates the non-mob entities and pigs without AI (see [commands](#netminecraftcommand)) |
 
 ## net.minecraft.potion
 
@@ -616,7 +618,7 @@ krol notice.
 | `tp` | ✅ | Every form, on players (relative flags) and other entities; the head yaw of players is not set |
 | `kill` · `spawnpoint` | ✅ | |
 | `clear` | ✅ | |
-| `summon` | 🟡 | Every entity kind krol simulates, data tags, the legacy `Minecart` id, all errors ✅; mobs are only kept as NBT (not ticked or shown, no `onInitialSpawn`), `Riding` mounts are summoned but not mounted, `LightningBolt` only reports success ❌ (M5) |
+| `summon` | 🟡 | Every entity kind krol simulates, data tags, the legacy `Minecart` id, all errors ✅; mobs other than pigs without AI are only kept as NBT (not ticked or shown, no `onInitialSpawn`), `Riding` mounts are summoned but not mounted, `LightningBolt` only reports success ❌ (M5) |
 | `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
 | `scoreboard` · `trigger` | ✅ | `players set` data tags for other entities than players ❌ |
 | `publish` | ➖ | LAN only |
@@ -630,7 +632,7 @@ krol notice.
 | Feature | Status | Notes |
 |---|---|---|
 | Objectives, scores, criteria: dummy, trigger, health, deathCount, statistics and achievements | ✅ | Statistic scores change the moment the statistic does (`addStat`), `stat.timeSinceDeath` scores reset on death; a holder's scores keep creation order (vanilla: identity hash order) |
-| Kill criteria (`playerKillCount`, `totalKillCount`, `teamkill.*`, `killedByTeam.*`) | ✅ | Player kills (mob kills arrive with mobs) |
+| Kill criteria (`playerKillCount`, `totalKillCount`, `teamkill.*`, `killedByTeam.*`) | ✅ | Player kills; mob kills count for `totalKillCount` |
 | Teams (prefix/suffix in display names, colors, name tag and death message visibility, packets) | ✅ | Friendly fire ✅; seeing invisible teammates affects nothing yet (no invisibility) |
 | Display slots (sidebar, list, below name, team sidebars) | ✅ | |
 | Non-player holders (scores and teams under the entity's UUID, dropped when a dead entity leaves the world) | ✅ | |
@@ -641,7 +643,7 @@ krol notice.
 | Feature | Status | Notes |
 |---|---|---|
 | `stats/<uuid>.json`: format, key order, saving | ✅ | |
-| General stats (play time, walking/swimming/falling/climbing/flying/diving/sprinting/crouching distances, jumps, deaths, drops, damage taken, time since death, leave game, cake slices, minecart and boat distances) | 🟡 | Pig, horse distances, mob kills, damage dealt, animals bred, fish caught, trading, talking to villagers ❌ (with their features) |
+| General stats (play time, walking/swimming/falling/climbing/flying/diving/sprinting/crouching distances, jumps, deaths, drops, damage taken, time since death, leave game, cake slices, minecart and boat distances) | 🟡 | Pig, horse distances, damage dealt to mobs other than pigs, animals bred, fish caught, trading, talking to villagers ❌ (with their features) |
 | Block mining, item crafting, item use, item break stats | ✅ | For implemented actions |
 | Statistics packet (client request) | ✅ | |
 | Achievements (`AchievementList`, requirements, chat announcements) | 🟡 | Storage and `exploreAllBiomes` ✅; awarding the others ❌ |

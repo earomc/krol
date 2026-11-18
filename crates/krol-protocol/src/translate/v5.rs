@@ -49,6 +49,8 @@ pub struct V5Translator {
     player_entities: HashSet<i32>,
     /// Entity ids of spawned item frames.
     item_frames: HashSet<i32>,
+    /// Spawned mobs: their `EntityList` id by entity id.
+    mobs: HashMap<i32, u8>,
 }
 
 /// A 1.7 packet under construction.
@@ -163,6 +165,37 @@ fn write_metadata(
         .filter(|m| !(m.index == 2 || m.index == 3 || (is_player && m.index == 10)))
         .cloned()
         .collect();
+    write_metadata_entries(w, &kept)
+}
+
+/// `EntityList` ids of the ageable mobs 1.7 knows: pigs, sheep, cows, chickens, wolves,
+/// mooshrooms, ocelots, horses and villagers.
+const AGEABLE_MOBS: [u8; 9] = [90, 91, 92, 93, 95, 96, 98, 100, 120];
+/// `EntityAgeable`'s age entry.
+const AGE_INDEX: u8 = 12;
+/// `EntityLiving`'s 1.8-only no-AI entry.
+const NO_AI_INDEX: u8 = 15;
+
+/// Writes a mob's metadata for 1.7: the 1.8-only entries go (the custom name, silent,
+/// no AI), and an ageable mob's age byte becomes 1.7's int.
+///
+/// TODO(M5): move custom names of mobs to 1.7's indices 10/11.
+fn write_mob_metadata(
+    w: &mut PacketWriter,
+    entries: &[Metadata],
+    ageable: bool,
+) -> Result<(), EncodeError> {
+    let mut kept = Vec::new();
+    for m in entries {
+        match (m.index, &m.value) {
+            (2..=4 | NO_AI_INDEX, _) => {}
+            (AGE_INDEX, MetadataValue::Byte(age)) if ageable => kept.push(Metadata {
+                index: AGE_INDEX,
+                value: MetadataValue::Int(i32::from(*age)),
+            }),
+            _ => kept.push(m.clone()),
+        }
+    }
     write_metadata_entries(w, &kept)
 }
 
@@ -577,6 +610,12 @@ impl V5Translator {
                 w.i32(*entity_id);
                 if self.item_frames.contains(entity_id) {
                     write_item_frame_metadata(&mut w, metadata)?;
+                } else if self.mobs.contains_key(entity_id) {
+                    let ageable = self
+                        .mobs
+                        .get(entity_id)
+                        .is_some_and(|k| AGEABLE_MOBS.contains(k));
+                    write_mob_metadata(&mut w, metadata, ageable)?;
                 } else {
                     write_metadata(&mut w, metadata, self.player_entities.contains(entity_id))?;
                 }
@@ -649,6 +688,7 @@ impl V5Translator {
                 for id in ids {
                     self.player_entities.remove(id);
                     self.item_frames.remove(id);
+                    self.mobs.remove(id);
                 }
                 // The count is a byte in 1.7.
                 for chunk in ids.chunks(127) {
@@ -715,6 +755,36 @@ impl V5Translator {
                     .i32(*z)
                     .i8(*yaw)
                     .i8(*pitch);
+                one(w);
+            }
+            ClientboundPlay::SpawnMob {
+                entity_id,
+                kind,
+                x,
+                y,
+                z,
+                yaw,
+                pitch,
+                head_pitch,
+                velocity,
+                metadata,
+            } => {
+                // TODO(M5): 1.8-only mobs (rabbits, endermites, guardians) and armor
+                // stands' living metadata.
+                self.mobs.insert(*entity_id, *kind);
+                let mut w = packet(0x0f);
+                w.varint(*entity_id)
+                    .u8(*kind)
+                    .i32(*x)
+                    .i32(*y)
+                    .i32(*z)
+                    .i8(*yaw)
+                    .i8(*pitch)
+                    .i8(*head_pitch)
+                    .i16(velocity.0)
+                    .i16(velocity.1)
+                    .i16(velocity.2);
+                write_mob_metadata(&mut w, metadata, AGEABLE_MOBS.contains(kind))?;
                 one(w);
             }
             ClientboundPlay::SpawnObject {
@@ -1478,6 +1548,23 @@ mod tests {
 
     fn hex(b: &[u8]) -> String {
         b.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    /// A 1.8 mob's metadata loses its 1.8-only entries (custom name, silent, no AI),
+    /// and an ageable mob's age becomes an int.
+    #[test]
+    fn spawn_mob() {
+        let mut t = V5Translator::new();
+        let out = t
+            .clientbound(&crate::packets::play::tests::summoned_pig())
+            .unwrap();
+        assert_eq!(
+            hex(&out[0]),
+            concat!(
+                "0f025affffc55000000080ffffc9b0000000000000000000",
+                "0000100021000066412000004700000000080009004c000000007f"
+            )
+        );
     }
 
     #[test]

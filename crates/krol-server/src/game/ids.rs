@@ -344,4 +344,10 @@ pub mod item {
     pub const COMPARATOR: i16 = 404;
     /// `blaze_rod`.
     pub const BLAZE_ROD: i16 = 369;
+    /// `porkchop` (raw).
+    pub const PORKCHOP: i16 = 319;
+    /// `cooked_porkchop`.
+    pub const COOKED_PORKCHOP: i16 = 320;
+    /// `saddle`.
+    pub const SADDLE: i16 = 329;
 }

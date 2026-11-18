@@ -172,6 +172,7 @@ async fn run() -> Option<GameHandle> {
                 op_permission_level: props.op_permission_level,
                 max_build_height: props.max_build_height,
                 pvp: props.pvp,
+                spawn_animals: props.spawn_animals,
             },
             pm,
             shared.clone(),

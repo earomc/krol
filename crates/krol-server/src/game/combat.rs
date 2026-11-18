@@ -6,9 +6,8 @@
 //!
 //! Paintings and item frames can be hit (which breaks them) and item frames used.
 //!
-//! TODO(M5): attacking other entities (only players are living entities in krol;
-//! falling blocks, primed TNT and projectiles are ignored), interacting with other
-//! entities, spectators attacking entities to spectate them, the overkill achievement.
+//! TODO(M5): attacking falling blocks, primed TNT and projectiles (they are
+//! ignored), interacting with mobs, spectators attacking entities to spectate them, the overkill achievement.
 
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
@@ -202,7 +201,8 @@ impl Game {
                 self.boats
                     .get(&target)
                     .map(|b| (b.body.pos, b.body.height * 0.85))
-            });
+            })
+            .or_else(|| self.mobs.get(&target).map(|m| (m.body.pos, m.eye_height())));
         let pos = if let Some(t) = target_player {
             Some(self.players[t].pos)
         } else if let Some((pos, _)) = hanging {
@@ -249,6 +249,13 @@ impl Game {
                     self.player_attacks_minecart(i, target);
                 }
                 _ => {}
+            }
+            return;
+        }
+        if self.mobs.contains_key(&target) {
+            // TODO(M5): interacting with mobs (leads, name tags, saddles, feeding).
+            if action == ATTACK && self.players[i].gamemode != SPECTATOR {
+                self.player_attacks_mob(i, target);
             }
             return;
         }
@@ -321,13 +328,7 @@ impl Game {
         if damage <= 0.0 && bonus <= 0.0 {
             return;
         }
-        let on_ladder = self.on_ladder(i);
-        let p = &self.players[i];
-        let critical = p.fall_distance > 0.0
-            && !p.on_ground
-            && !on_ladder
-            && !p.in_water
-            && !p.effects.iter().any(|e| e.id == BLINDNESS);
+        let critical = self.critical_hit(i);
         if critical && damage > 0.0 {
             damage *= 1.5;
         }
@@ -371,11 +372,38 @@ impl Game {
             v.motion = saved_motion;
         }
         let victim_id = self.players[t].entity_id;
+        self.critical_effects(i, victim_id, critical, bonus);
+        // TODO(M5): the overkill achievement (18 damage or more).
+        self.apply_thorns(t, i);
+        self.wear_weapon(i, held);
+        self.add_stat(i, "stat.damageDealt", (damage * 10.0).round() as i32);
+        if fire_aspect > 0 {
+            self.ignite_player(t, fire_aspect * 4);
+        }
+        self.add_exhaustion(i, ATTACK_EXHAUSTION);
+    }
+
+    /// The attack is a critical hit: the attacker is falling, not on a ladder, in water,
+    /// blind or riding.
+    pub(super) fn critical_hit(&mut self, i: usize) -> bool {
+        let on_ladder = self.on_ladder(i);
+        let p = &self.players[i];
+        p.fall_distance > 0.0
+            && !p.on_ground
+            && !on_ladder
+            && !p.in_water
+            && !p.effects.iter().any(|e| e.id == BLINDNESS)
+            && p.riding.is_none()
+    }
+
+    /// `onCriticalHit` and `onEnchantmentCritical` after a successful attack on
+    /// `victim`: the effects go to the attacker and everyone tracking it.
+    pub(super) fn critical_effects(&mut self, i: usize, victim: i32, critical: bool, bonus: f32) {
         if critical {
             self.send_to_self_and_tracking(
                 i,
                 ClientboundPlay::Animation {
-                    entity_id: victim_id,
+                    entity_id: victim,
                     animation: CRITICAL_EFFECT,
                 },
             );
@@ -384,31 +412,29 @@ impl Game {
             self.send_to_self_and_tracking(
                 i,
                 ClientboundPlay::Animation {
-                    entity_id: victim_id,
+                    entity_id: victim,
                     animation: MAGIC_CRITICAL_EFFECT,
                 },
             );
         }
-        // TODO(M5): the overkill achievement (18 damage or more).
-        self.apply_thorns(t, i);
-        if let Some(stack) = held {
-            // ItemStack.hitEntity: swords wear by 1, tools by 2, and both count as used.
-            if is_sword(stack.id) || is_tool(stack.id) {
-                self.damage_held_item(i, if is_sword(stack.id) { 1 } else { 2 });
-                self.count_item_use(i);
-            }
-            let p = &mut self.players[i];
-            let slot = 36 + p.selected;
-            if p.inventory[slot].as_ref().is_some_and(|s| s.count <= 0) {
-                // destroyCurrentEquippedItem.
-                p.inventory[slot] = None;
-            }
+    }
+
+    /// `ItemStack.hitEntity` of the weapon that hit a living entity: swords wear by 1,
+    /// tools by 2, and both count as used; a used-up item goes.
+    pub(super) fn wear_weapon(&mut self, i: usize, held: Option<ItemStack>) {
+        let Some(stack) = held else {
+            return;
+        };
+        if is_sword(stack.id) || is_tool(stack.id) {
+            self.damage_held_item(i, if is_sword(stack.id) { 1 } else { 2 });
+            self.count_item_use(i);
         }
-        self.add_stat(i, "stat.damageDealt", (damage * 10.0).round() as i32);
-        if fire_aspect > 0 {
-            self.ignite_player(t, fire_aspect * 4);
+        let p = &mut self.players[i];
+        let slot = 36 + p.selected;
+        if p.inventory[slot].as_ref().is_some_and(|s| s.count <= 0) {
+            // destroyCurrentEquippedItem.
+            p.inventory[slot] = None;
         }
-        self.add_exhaustion(i, ATTACK_EXHAUSTION);
     }
 
     /// `EnchantmentHelper.applyThornEnchantments`: each thorns piece the victim holds or
