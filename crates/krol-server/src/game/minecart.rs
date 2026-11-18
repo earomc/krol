@@ -1,6 +1,6 @@
 //! Minecarts (vanilla: `EntityMinecart` with `EntityMinecartEmpty`,
-//! `EntityMinecartContainer`, `EntityMinecartChest` and `EntityMinecartHopper`, placed by
-//! `ItemMinecart`).
+//! `EntityMinecartContainer`, `EntityMinecartChest`, `EntityMinecartHopper` and
+//! `EntityMinecartFurnace`, placed by `ItemMinecart`).
 //!
 //! A minecart on a rail follows it: its motion is turned along the rail, it snaps onto
 //! the rail's line, moves at most 0.4 per tick, slows down by 4% a tick, speeds up down
@@ -15,8 +15,11 @@
 //! every tick unless a powered activator rail turns them off; hoppers and droppers
 //! reach the inventories of carts in front of them.
 //!
-//! TODO(M5): mobs getting in and pulled in by moving carts, furnace, TNT, spawner and
-//! command block minecarts, dispensers placing minecarts, nether portals.
+//! Furnace minecarts burn coal players feed them (3600 ticks a piece) and meanwhile
+//! push themselves away from where that player stood, at half a plain cart's speed.
+//!
+//! TODO(M5): mobs getting in and pulled in by moving carts, TNT, spawner and command
+//! block minecarts, dispensers placing minecarts, nether portals.
 
 use std::collections::BTreeSet;
 
@@ -51,8 +54,17 @@ const WIDTH: f32 = 0.98;
 const HEIGHT: f32 = 0.7;
 /// Gravity (`0.04F`).
 const GRAVITY: f32 = 0.04;
-/// `getMaximumSpeed`.
+/// `getMaximumSpeed` (furnace carts: `FURNACE_MAX_SPEED`).
 const MAX_SPEED: f64 = 0.4;
+const FURNACE_MAX_SPEED: f64 = 0.2;
+/// A piece of coal burns this many ticks in a furnace cart.
+const COAL_FUEL: i32 = 3600;
+/// A furnace cart's drag while pushing (`0.8F`) and while not (`0.98F`, before the
+/// usual drag).
+const PUSHING_DRAG: f32 = 0.8;
+const FURNACE_DRAG: f32 = 0.98;
+/// What a furnace cart bumping into another cart keeps of its motion (`0.95F`).
+const FURNACE_KEEPS: f32 = 0.95;
 /// The speed along a rail never starts above this.
 const MAX_RAIL_SPEED: f64 = 2.0;
 /// Slopes pull the motion down by this much each tick.
@@ -107,8 +119,9 @@ const CREATIVE: i32 = 1;
 /// The spectator game mode.
 const SPECTATOR: i32 = 3;
 
-/// Metadata entries: wobble amplitude and direction, damage, display tile, its
-/// offset, and whether it is custom.
+/// Metadata entries: a furnace cart's flags (bit 1: burning), wobble amplitude and
+/// direction, damage, display tile, its offset, and whether it is custom.
+const FURNACE_FLAGS: u8 = 16;
 const ROLLING_AMPLITUDE: u8 = 17;
 const ROLLING_DIRECTION: u8 = 18;
 const DAMAGE: u8 = 19;
@@ -141,6 +154,8 @@ pub enum CartKind {
     Chest,
     /// `EntityMinecartHopper`.
     Hopper,
+    /// `EntityMinecartFurnace`.
+    Furnace,
 }
 
 impl CartKind {
@@ -150,6 +165,7 @@ impl CartKind {
             RIDEABLE_ID => Some(Self::Rideable),
             "MinecartChest" => Some(Self::Chest),
             "MinecartHopper" => Some(Self::Hopper),
+            "MinecartFurnace" => Some(Self::Furnace),
             _ => None,
         }
     }
@@ -160,6 +176,7 @@ impl CartKind {
             Self::Rideable => RIDEABLE_ID,
             Self::Chest => "MinecartChest",
             Self::Hopper => "MinecartHopper",
+            Self::Furnace => "MinecartFurnace",
         }
     }
 
@@ -169,6 +186,7 @@ impl CartKind {
             item::MINECART => Some(Self::Rideable),
             item::CHEST_MINECART => Some(Self::Chest),
             item::HOPPER_MINECART => Some(Self::Hopper),
+            item::FURNACE_MINECART => Some(Self::Furnace),
             _ => None,
         }
     }
@@ -178,6 +196,7 @@ impl CartKind {
         match self {
             Self::Rideable => 0,
             Self::Chest => 1,
+            Self::Furnace => 2,
             Self::Hopper => 5,
         }
     }
@@ -185,7 +204,7 @@ impl CartKind {
     /// `getSizeInventory` (none for carts without an inventory).
     pub fn slots(self) -> usize {
         match self {
-            Self::Rideable => 0,
+            Self::Rideable | Self::Furnace => 0,
             Self::Chest => CHEST_SLOTS,
             Self::Hopper => super::hopper::HOPPER_SLOTS,
         }
@@ -196,14 +215,17 @@ impl CartKind {
     fn default_name(self) -> &'static str {
         match self {
             Self::Rideable => "entity.MinecartRideable.name",
+            Self::Furnace => "entity.MinecartFurnace.name",
             Self::Chest | Self::Hopper => "container.minecart",
         }
     }
 
-    /// The block item `killMinecart` drops besides the minecart.
+    /// The block item `killMinecart` drops besides the minecart (a furnace cart's not
+    /// when an explosion killed it).
     fn block_item(self) -> Option<i16> {
         match self {
             Self::Rideable => None,
+            Self::Furnace => Some(block::FURNACE as i16),
             Self::Chest => Some(block::CHEST as i16),
             Self::Hopper => Some(block::HOPPER as i16),
         }
@@ -250,6 +272,12 @@ pub struct Minecart {
     pub hopper_enabled: bool,
     /// A hopper cart's `transferTicker` (saved as `TransferCooldown`).
     transfer_ticker: i32,
+    /// A furnace cart's ticks of fuel left (saved as a short, `Fuel`).
+    fuel: i32,
+    /// A furnace cart's push direction (`pushX`, `pushZ`).
+    push: (f64, f64),
+    /// Metadata 16 of a furnace cart: burning.
+    burning: bool,
 }
 
 /// `Block.getStateId`.
@@ -304,6 +332,9 @@ impl Minecart {
             items: vec![None; kind.slots()],
             hopper_enabled: true,
             transfer_ticker: -1,
+            fuel: 0,
+            push: (0.0, 0.0),
+            burning: false,
         };
         m.dirty_metadata = m.metadata().iter().map(|e| e.index).collect();
         m
@@ -383,14 +414,17 @@ impl Minecart {
             Some((state, offset)) => (state_id(state), offset, 1),
             None => (0, DEFAULT_DISPLAY_OFFSET, 0),
         };
+        if self.kind == CartKind::Furnace {
+            out.push(md(FURNACE_FLAGS, Byte(i8::from(self.burning))));
+        }
         out.push(md(ROLLING_AMPLITUDE, Int(self.rolling_amplitude)));
         out.push(md(ROLLING_DIRECTION, Int(self.rolling_direction)));
         out.push(md(DAMAGE, Float(self.damage)));
         out.push(md(DISPLAY_TILE, Int(tile)));
         out.push(md(DISPLAY_OFFSET, Int(offset)));
         out.push(md(HAS_DISPLAY, Byte(has)));
-        // DataWatcher keeps its entries in a HashMap: with only 11 of them (16
-        // buckets) entries 17-22 come between 0-4.
+        // DataWatcher keeps its entries in a HashMap: with only 11 or 12 of them (16
+        // buckets) entries 16-22 come between 0-4.
         let indices: Vec<i32> = out.iter().map(|e| i32::from(e.index)).collect();
         krol_java::java_hash_order(&indices)
             .into_iter()
@@ -409,6 +443,10 @@ impl Minecart {
         }
         if kind == CartKind::Hopper {
             m.transfer_ticker = c.get_i32("TransferCooldown");
+        }
+        if kind == CartKind::Furnace {
+            m.push = (c.get_f64("PushX"), c.get_f64("PushZ"));
+            m.fuel = i32::from(c.get_i16("Fuel"));
         }
         m.body = body;
         m.base = base;
@@ -462,6 +500,21 @@ impl Minecart {
         if self.kind == CartKind::Hopper {
             c.insert("TransferCooldown", Tag::Int(self.transfer_ticker));
         }
+        if self.kind == CartKind::Furnace {
+            c.insert("PushX", Tag::Double(self.push.0));
+            c.insert("PushZ", Tag::Double(self.push.1));
+            // Vanilla quirk: more than 32767 ticks of fuel wrap around when saved.
+            c.insert("Fuel", Tag::Short(self.fuel as i16));
+        }
+    }
+
+    /// `getMaximumSpeed`.
+    fn max_speed(&self) -> f64 {
+        if self.kind == CartKind::Furnace {
+            FURNACE_MAX_SPEED
+        } else {
+            MAX_SPEED
+        }
     }
 
     /// `isUseableByPlayer` of a container cart: alive and within 8 blocks.
@@ -491,6 +544,26 @@ fn detector_area(pos: (i32, i32, i32)) -> Aabb {
             f64::from((pos.2 + 1) as f32 - inset),
         ],
     )
+}
+
+/// The end of `EntityMinecartFurnace.func_180460_a`: a moving furnace cart's push turns
+/// into a unit vector scaled by its old length over the top speed, or stops when the
+/// cart moves against it.
+fn furnace_push_along(m: &mut Minecart) {
+    let sq = m.push.0 * m.push.0 + m.push.1 * m.push.1;
+    let (mx, mz) = (m.body.motion.0, m.body.motion.2);
+    if sq > 1.0e-4 && mx * mx + mz * mz > 0.001 {
+        let d = f64::from(krol_java::math::sqrt_f64(sq));
+        m.push.0 /= d;
+        m.push.1 /= d;
+        if m.push.0 * mx + m.push.1 * mz < 0.0 {
+            m.push = (0.0, 0.0);
+        } else {
+            let k = d / FURNACE_MAX_SPEED;
+            m.push.0 *= k;
+            m.push.1 *= k;
+        }
+    }
 }
 
 /// `func_70489_a`: the point on the rail line under `pos`, if there is a rail there (or
@@ -585,6 +658,13 @@ impl Game {
                 .is_some_and(|m| m.kind == CartKind::Hopper)
             {
                 self.tick_hopper_cart(id);
+            }
+            if self
+                .minecarts
+                .get(&id)
+                .is_some_and(|m| m.kind == CartKind::Furnace)
+            {
+                self.tick_furnace_cart(id);
             }
             if let Some(m) = self.minecarts.get_mut(&id) {
                 m.chunk = chunk_of(m.body.pos);
@@ -785,10 +865,11 @@ impl Game {
         m.body.pos.2 = z0 + dz * t;
         // A cart with a rider moves at three quarters of its motion.
         let share = if rider.is_some() { RIDDEN_SHARE } else { 1.0 };
+        let max = m.max_speed();
         let step = (
-            (m.body.motion.0 * share).clamp(-MAX_SPEED, MAX_SPEED),
+            (m.body.motion.0 * share).clamp(-max, max),
             0.0,
-            (m.body.motion.2 * share).clamp(-MAX_SPEED, MAX_SPEED),
+            (m.body.motion.2 * share).clamp(-max, max),
         );
         self.move_minecart(id, step);
         let Some(m) = self.minecarts.get_mut(&id) else {
@@ -799,6 +880,25 @@ impl Game {
             m.body.pos.1 += f64::from(e[0][1]);
         } else if e[1][1] != 0 && fx - rail.0 == e[1][0] && fz - rail.2 == e[1][2] {
             m.body.pos.1 += f64::from(e[1][1]);
+        }
+        // EntityMinecartFurnace.applyDrag: a pushing furnace cart slows down a lot but
+        // gains its push (turned into a unit vector); then the usual drag.
+        if m.kind == CartKind::Furnace {
+            let sq = m.push.0 * m.push.0 + m.push.1 * m.push.1;
+            if sq > 1.0e-4 {
+                let d = f64::from(krol_java::math::sqrt_f64(sq));
+                m.push.0 /= d;
+                m.push.1 /= d;
+                m.body.motion.0 *= f64::from(PUSHING_DRAG);
+                m.body.motion.1 *= 0.0;
+                m.body.motion.2 *= f64::from(PUSHING_DRAG);
+                m.body.motion.0 += m.push.0;
+                m.body.motion.2 += m.push.1;
+            } else {
+                m.body.motion.0 *= f64::from(FURNACE_DRAG);
+                m.body.motion.1 *= 0.0;
+                m.body.motion.2 *= f64::from(FURNACE_DRAG);
+            }
         }
         // applyDrag: much less with a rider; container carts by how full they are.
         let drag = if m.kind.slots() > 0 {
@@ -857,6 +957,11 @@ impl Game {
                 }
             }
         }
+        if let Some(m) = self.minecarts.get_mut(&id)
+            && m.kind == CartKind::Furnace
+        {
+            furnace_push_along(m);
+        }
     }
 
     fn set_cart_motion_x(&mut self, id: i32, v: f64) {
@@ -877,8 +982,9 @@ impl Game {
         let Some(m) = self.minecarts.get_mut(&id) else {
             return;
         };
-        m.body.motion.0 = m.body.motion.0.clamp(-MAX_SPEED, MAX_SPEED);
-        m.body.motion.2 = m.body.motion.2.clamp(-MAX_SPEED, MAX_SPEED);
+        let max = m.max_speed();
+        m.body.motion.0 = m.body.motion.0.clamp(-max, max);
+        m.body.motion.2 = m.body.motion.2.clamp(-max, max);
         if m.body.on_ground {
             m.body.motion.0 *= 0.5;
             m.body.motion.1 *= 0.5;
@@ -1060,6 +1166,7 @@ impl Game {
             return;
         };
         let (cart_pos, cart_yaw, cart_motion) = (m.body.pos, m.base.yaw, m.body.motion);
+        let cart_furnace = m.kind == CartKind::Furnace;
         let other_pos = match pusher {
             CartPusher::Player(i) => {
                 // A cart is not pushed by its own rider.
@@ -1104,42 +1211,92 @@ impl Game {
                 if (ox * fx + oz * fz).abs() < f64::from(LINED_UP) {
                     return;
                 }
-                let Some(other_motion) = self.minecarts.get(&o).map(|c| c.body.motion) else {
+                let Some((other_motion, other_furnace)) = self
+                    .minecarts
+                    .get(&o)
+                    .map(|c| (c.body.motion, c.kind == CartKind::Furnace))
+                else {
                     return;
                 };
-                let sx = (other_motion.0 + cart_motion.0) / 2.0;
-                let sz = (other_motion.2 + cart_motion.2) / 2.0;
                 let share = f64::from(0.2f32);
+                let keeps = f64::from(FURNACE_KEEPS);
+                // A furnace cart hands its motion to a cart it bumps into and keeps most
+                // of it; two of a kind share their average.
+                let (cart_new, other_new) = if other_furnace && !cart_furnace {
+                    (
+                        (
+                            cart_motion.0 * share + (other_motion.0 - dx),
+                            cart_motion.2 * share + (other_motion.2 - dz),
+                        ),
+                        (other_motion.0 * keeps, other_motion.2 * keeps),
+                    )
+                } else if cart_furnace && !other_furnace {
+                    (
+                        (cart_motion.0 * keeps, cart_motion.2 * keeps),
+                        (
+                            other_motion.0 * share + (cart_motion.0 + dx),
+                            other_motion.2 * share + (cart_motion.2 + dz),
+                        ),
+                    )
+                } else {
+                    let sx = (other_motion.0 + cart_motion.0) / 2.0;
+                    let sz = (other_motion.2 + cart_motion.2) / 2.0;
+                    (
+                        (
+                            cart_motion.0 * share + (sx - dx),
+                            cart_motion.2 * share + (sz - dz),
+                        ),
+                        (
+                            other_motion.0 * share + (sx + dx),
+                            other_motion.2 * share + (sz + dz),
+                        ),
+                    )
+                };
+                // Only addVelocity marks a cart airborne (and adds 0.0 to its vertical
+                // motion, turning a -0.0 into 0.0): the cart a furnace cart pushes, or
+                // both of a kind.
+                let cart_added = !cart_furnace || other_furnace;
+                let other_added = !other_furnace || cart_furnace;
                 if let Some(m) = self.minecarts.get_mut(&id) {
-                    m.body.motion.0 = m.body.motion.0 * share + (sx - dx);
-                    m.body.motion.2 = m.body.motion.2 * share + (sz - dz);
-                    m.airborne = true;
+                    m.body.motion.0 = cart_new.0;
+                    m.body.motion.2 = cart_new.1;
+                    if cart_added {
+                        m.body.motion.1 += 0.0;
+                        m.airborne = true;
+                    }
                 }
                 if let Some(c) = self.minecarts.get_mut(&o) {
-                    c.body.motion.0 = c.body.motion.0 * share + (sx + dx);
-                    c.body.motion.2 = c.body.motion.2 * share + (sz + dz);
-                    c.airborne = true;
+                    c.body.motion.0 = other_new.0;
+                    c.body.motion.2 = other_new.1;
+                    if other_added {
+                        c.body.motion.1 += 0.0;
+                        c.airborne = true;
+                    }
                 }
             }
             CartPusher::Player(i) => {
                 if let Some(m) = self.minecarts.get_mut(&id) {
                     m.body.motion.0 -= dx;
+                    m.body.motion.1 += 0.0;
                     m.body.motion.2 -= dz;
                     m.airborne = true;
                 }
                 let p = &mut self.players[i];
                 p.motion.0 += dx / 4.0;
+                p.motion.1 += 0.0;
                 p.motion.2 += dz / 4.0;
                 p.airborne = true;
             }
             CartPusher::ArmorStand(s) => {
                 if let Some(m) = self.minecarts.get_mut(&id) {
                     m.body.motion.0 -= dx;
+                    m.body.motion.1 += 0.0;
                     m.body.motion.2 -= dz;
                     m.airborne = true;
                 }
                 if let Some(s) = self.armor_stands.get_mut(&s) {
                     s.body.motion.0 += dx / 4.0;
+                    s.body.motion.1 += 0.0;
                     s.body.motion.2 += dz / 4.0;
                 }
             }
@@ -1179,7 +1336,7 @@ impl Game {
             if creative && m.base.custom_name.is_none() {
                 self.set_minecart_dead(id);
             } else {
-                self.kill_minecart(id);
+                self.kill_minecart(id, source);
             }
         }
         true
@@ -1211,8 +1368,8 @@ impl Game {
     }
 
     /// `killMinecart`: the cart dies and drops a minecart (named after it), and a
-    /// container cart its block; the drops need the `doEntityDrops` game rule.
-    fn kill_minecart(&mut self, id: i32) {
+    /// container or furnace cart its block; the drops need the `doEntityDrops` game rule.
+    fn kill_minecart(&mut self, id: i32, source: DamageSource) {
         self.set_minecart_dead(id);
         if self.level.data.game_rule("doEntityDrops") == Some("false") {
             return;
@@ -1232,6 +1389,9 @@ impl Game {
             set_display_name(&mut stack, &name);
         }
         self.spawn_item(pos, stack, DROP_PICKUP_DELAY);
+        if kind == CartKind::Furnace && source.explosion() {
+            return;
+        }
         if let Some(block_item) = kind.block_item() {
             // Vanilla quirk: EntityMinecartContainer.killMinecart spills the (already
             // emptied) slots once more, drawing the random offsets again.
@@ -1258,7 +1418,7 @@ impl Game {
         let (gui, layout) = match m.kind {
             CartKind::Chest => ("minecraft:chest", Layout::Chest((CHEST_SLOTS / 9) as u8)),
             CartKind::Hopper => ("minecraft:hopper", Layout::Hopper),
-            CartKind::Rideable => return,
+            CartKind::Rideable | CartKind::Furnace => return,
         };
         let uuid = self.entity_uuids.get(&id).copied().unwrap_or_default();
         let title = m.display_name(uuid).to_json_string();
@@ -1312,6 +1472,58 @@ impl Game {
         {
             m.transfer_ticker = CART_TRANSFER_COOLDOWN;
         }
+    }
+
+    /// `EntityMinecartFurnace.onUpdate` after the cart's own update: the fuel burns
+    /// down, and with it gone the push stops.
+    fn tick_furnace_cart(&mut self, id: i32) {
+        let Some(m) = self.minecarts.get_mut(&id) else {
+            return;
+        };
+        if m.fuel > 0 {
+            m.fuel -= 1;
+        }
+        if m.fuel <= 0 {
+            m.push = (0.0, 0.0);
+        }
+        let burning = m.fuel > 0;
+        if burning != m.burning {
+            m.burning = burning;
+            m.metadata_updated(FURNACE_FLAGS);
+        }
+        if burning {
+            // The smoke particle's chance, from the cart's own random (unseeded in
+            // vanilla); the particle itself only shows on clients.
+            let _ = self.entity_rand.next_int_bounded(4);
+        }
+    }
+
+    /// `EntityMinecartFurnace.interactFirst`: coal adds fuel (and is used up unless the
+    /// player is in creative mode); any interaction pushes the cart away from the player.
+    pub(super) fn interact_furnace_cart(&mut self, i: usize, id: i32) {
+        let p = &mut self.players[i];
+        let player_pos = p.pos;
+        let creative = p.gamemode == CREATIVE;
+        let held = 36 + p.selected;
+        let coal = p.inventory[held]
+            .as_ref()
+            .is_some_and(|s| s.id == item::COAL);
+        if coal
+            && !creative
+            && let Some(s) = p.inventory[held].as_mut()
+        {
+            s.count -= 1;
+            if s.count == 0 {
+                p.inventory[held] = None;
+            }
+        }
+        let Some(m) = self.minecarts.get_mut(&id) else {
+            return;
+        };
+        if coal {
+            m.fuel = m.fuel.wrapping_add(COAL_FUEL);
+        }
+        m.push = (m.body.pos.0 - player_pos.0, m.body.pos.2 - player_pos.2);
     }
 
     /// `EntityMinecartHopper.func_96112_aD`: what a hopper would take from above

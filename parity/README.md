@@ -201,3 +201,9 @@ into server ticks. Rules learned from flaky scenarios:
   outcome kills: bring the victim down to a few hearts first (instant damage from the
   console after the respawn protection) and turn off `naturalRegeneration`, whose timer
   phase is not reproducible (`play/bows`).
+- **Saved doubles keep the sign of zero** (`-0d` is not `0d`): `x *= 0.0` on a negative
+  motion leaves `-0.0`, and vanilla's `addVelocity(x, 0.0, z)` turns it back into `0.0`,
+  so add the `0.0` wherever vanilla calls it (`play/furnace_minecarts`). A powered cart
+  pressed against a block reaches a steady state, so its saved position and motion
+  compare exactly however long the server runs. krol has no `/summon` yet: set up
+  entities from items.

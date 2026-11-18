@@ -1,0 +1,106 @@
+description = "Furnace minecarts: one placed on a rail (spawn object 10 with type 2), fed a piece of coal (3600 ticks of fuel, the coal used up, the burning metadata) and pushing itself away from the player at 0.2 a tick, bumping into a rideable cart (handing it its motion) and pushing it against the glass at the end of the track; one on a rail of its own, interacted with a sword (no fuel, no push) and broken with it (a minecart and a furnace dropped); the carts saved with their chunk (PushX, PushZ, Fuel)"
+subsystem = "entity"
+
+# jeb_ (entity 0) joins at the spawn in adventure mode, is switched to survival and
+# teleported to (-479.5, 4, -432.5), west of the track along z = -433 (rails from
+# x = -477 to -466, glass at -465), and gets a minecart (hotbar slot 0), two furnace
+# minecarts (slots 1 and 2, they do not stack), two coal (slot 3) and a sword (slot 4) as
+# /give drops 1-4. jeb_ places the rideable cart R (entity 5) at x = -473, the furnace
+# cart F (entity 6) at x = -477, straight east of jeb_ so that its push points along the
+# track, and the furnace cart G (entity 7) on a lone rail at (-478, 4, -436), all within
+# the 8 blocks placing allows. Fed, F runs east, hits R (which takes over its motion and
+# races ahead to the glass) and ends up pressed against R; both then stay put however
+# long the server keeps running, so their saved position and motion compare exactly. Only the fuel left depends on when the server
+# stops. G's drops (entities 8 and 9) land at random and are killed at the end.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -433 -466 4 -433 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -465 4 -433 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -478 4 -436 rail"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 14
+chat = [
+    "@4500 !hold 0",
+    "@4800 !place -473 4 -433 1",
+    "@5300 !hold 1",
+    "@5600 !place -477 4 -433 1",
+    "@6100 !hold 2",
+    "@6400 !place -478 4 -436 1",
+    "@6900 !hold 3",
+    "@7200 !interact 6",
+    "@7900 !hold 4",
+    "@8200 !interact 7",
+    "@8700 !attack 7",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "tp jeb_ -479.5 4 -432.5"
+
+[[steps]]
+action = "console"
+command = "give jeb_ minecart 1"
+
+[[steps]]
+action = "console"
+command = "give jeb_ furnace_minecart 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ coal 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword 1"
+wait_ms = 9500
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin), and
+# where the dropped items end up is random.
+log_ignore_prefixes = ["Killed item."]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+]
+
+[observe.tolerance]
+# F burns a tick of fuel every tick until the server stops.
+"entities.-30,-28[1].Fuel" = 40

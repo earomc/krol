@@ -76,6 +76,10 @@ impl Game {
         let Some(m) = self.minecarts.get(&cart) else {
             return;
         };
+        if m.kind == super::minecart::CartKind::Furnace {
+            self.interact_furnace_cart(i, cart);
+            return;
+        }
         let me = self.players[i].entity_id;
         if m.rider.is_some_and(|r| r != me) {
             return;
