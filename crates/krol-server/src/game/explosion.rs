@@ -54,7 +54,10 @@ impl Game {
         let placed_by = exploder
             .and_then(|id| self.tnt.get(&id))
             .and_then(|t| t.placed_by);
-        let affected = self.explosion_rays(pos, strength);
+        let spare_rails = exploder
+            .and_then(|id| self.minecarts.get(&id))
+            .is_some_and(super::minecart::Minecart::lit);
+        let affected = self.explosion_rays(pos, strength, spare_rails);
         let knockback = self.explosion_entities(exploder, placed_by, pos, strength);
         // doExplosionB(false).
         let r = &mut self.world_rand;
@@ -109,8 +112,15 @@ impl Game {
         }
     }
 
-    /// `doExplosionA`, blocks: the affected positions in `HashSet` order.
-    fn explosion_rays(&mut self, pos: (f64, f64, f64), strength: f32) -> Vec<(i32, i32, i32)> {
+    /// `doExplosionA`, blocks: the affected positions in `HashSet` order. With
+    /// `spare_rails` (a lit TNT cart's `getExplosionResistance` and `verifyExplosion`),
+    /// rails and the blocks under them stop no ray and are never affected.
+    fn explosion_rays(
+        &mut self,
+        pos: (f64, f64, f64),
+        strength: f32,
+        spare_rails: bool,
+    ) -> Vec<(i32, i32, i32)> {
         let mut found: Vec<(i32, i32, i32)> = Vec::new();
         let mut seen = std::collections::HashSet::new();
         let edge = RAYS - 1;
@@ -136,11 +146,20 @@ impl Game {
                             krol_java::math::floor_f64(z),
                         );
                         let id = self.level.overworld.block(p.0, p.1, p.2) >> 4;
+                        let spared = spare_rails
+                            && (super::rails::is_rail(id)
+                                || super::rails::is_rail(
+                                    self.level.overworld.block(p.0, p.1 + 1, p.2) >> 4,
+                                ));
                         if material(id) != Material::Air {
-                            let resistance = super::light_data::explosion_resistance(id);
+                            let resistance = if spared {
+                                0.0
+                            } else {
+                                super::light_data::explosion_resistance(id)
+                            };
                             left -= (resistance + RESISTANCE_OFFSET) * RAY_STEP;
                         }
-                        if left > 0.0 && seen.insert(p) {
+                        if left > 0.0 && !spared && seen.insert(p) {
                             found.push(p);
                         }
                         x += dx * step;

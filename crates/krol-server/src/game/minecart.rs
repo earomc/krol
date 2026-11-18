@@ -1,6 +1,6 @@
 //! Minecarts (vanilla: `EntityMinecart` with `EntityMinecartEmpty`,
-//! `EntityMinecartContainer`, `EntityMinecartChest`, `EntityMinecartHopper` and
-//! `EntityMinecartFurnace`, placed by `ItemMinecart`).
+//! `EntityMinecartContainer`, `EntityMinecartChest`, `EntityMinecartHopper`,
+//! `EntityMinecartFurnace` and `EntityMinecartTNT`, placed by `ItemMinecart`).
 //!
 //! A minecart on a rail follows it: its motion is turned along the rail, it snaps onto
 //! the rail's line, moves at most 0.4 per tick, slows down by 4% a tick, speeds up down
@@ -18,8 +18,13 @@
 //! Furnace minecarts burn coal players feed them (3600 ticks a piece) and meanwhile
 //! push themselves away from where that player stood, at half a plain cart's speed.
 //!
-//! TODO(M5): mobs getting in and pulled in by moving carts, TNT, spawner and command
-//! block minecarts, dispensers placing minecarts, nether portals.
+//! TNT minecarts light on powered activator rails and explode 80 ticks later (sparing
+//! rails and the blocks under them), or at once when they crash, fall 3 blocks, burn,
+//! get caught in an explosion or hit by a burning arrow, the stronger the faster.
+//!
+//! TODO(M5): mobs getting in and pulled in by moving carts, spawner and command block
+//! minecarts, dispensers placing minecarts, nether portals, riders taking fall damage
+//! with their cart.
 
 use std::collections::BTreeSet;
 
@@ -65,6 +70,18 @@ const PUSHING_DRAG: f32 = 0.8;
 const FURNACE_DRAG: f32 = 0.98;
 /// What a furnace cart bumping into another cart keeps of its motion (`0.95F`).
 const FURNACE_KEEPS: f32 = 0.95;
+/// A lit TNT cart explodes after this many ticks.
+const TNT_FUSE: i32 = 80;
+/// TNT carts explode with strength `4 + random * 1.5 * min(speed, 5)`.
+const TNT_STRENGTH: f64 = 4.0;
+const TNT_SPEED_STRENGTH: f64 = 1.5;
+const TNT_MAX_SPEED: f64 = 5.0;
+/// A TNT cart this fast (squared, `0.01F`) explodes when it crashes or breaks.
+const TNT_CRASH_SPEED_SQ: f32 = 0.01;
+/// A TNT cart explodes landing from this high.
+const TNT_FALL: f32 = 3.0;
+/// `setEntityState(10)`: a TNT cart lit.
+const TNT_LIT_STATUS: i8 = 10;
 /// The speed along a rail never starts above this.
 const MAX_RAIL_SPEED: f64 = 2.0;
 /// Slopes pull the motion down by this much each tick.
@@ -156,6 +173,8 @@ pub enum CartKind {
     Hopper,
     /// `EntityMinecartFurnace`.
     Furnace,
+    /// `EntityMinecartTNT`.
+    Tnt,
 }
 
 impl CartKind {
@@ -166,6 +185,7 @@ impl CartKind {
             "MinecartChest" => Some(Self::Chest),
             "MinecartHopper" => Some(Self::Hopper),
             "MinecartFurnace" => Some(Self::Furnace),
+            "MinecartTNT" => Some(Self::Tnt),
             _ => None,
         }
     }
@@ -177,6 +197,7 @@ impl CartKind {
             Self::Chest => "MinecartChest",
             Self::Hopper => "MinecartHopper",
             Self::Furnace => "MinecartFurnace",
+            Self::Tnt => "MinecartTNT",
         }
     }
 
@@ -187,6 +208,7 @@ impl CartKind {
             item::CHEST_MINECART => Some(Self::Chest),
             item::HOPPER_MINECART => Some(Self::Hopper),
             item::FURNACE_MINECART => Some(Self::Furnace),
+            item::TNT_MINECART => Some(Self::Tnt),
             _ => None,
         }
     }
@@ -197,6 +219,7 @@ impl CartKind {
             Self::Rideable => 0,
             Self::Chest => 1,
             Self::Furnace => 2,
+            Self::Tnt => 3,
             Self::Hopper => 5,
         }
     }
@@ -204,7 +227,7 @@ impl CartKind {
     /// `getSizeInventory` (none for carts without an inventory).
     pub fn slots(self) -> usize {
         match self {
-            Self::Rideable | Self::Furnace => 0,
+            Self::Rideable | Self::Furnace | Self::Tnt => 0,
             Self::Chest => CHEST_SLOTS,
             Self::Hopper => super::hopper::HOPPER_SLOTS,
         }
@@ -216,16 +239,18 @@ impl CartKind {
         match self {
             Self::Rideable => "entity.MinecartRideable.name",
             Self::Furnace => "entity.MinecartFurnace.name",
+            Self::Tnt => "entity.MinecartTNT.name",
             Self::Chest | Self::Hopper => "container.minecart",
         }
     }
 
-    /// The block item `killMinecart` drops besides the minecart (a furnace cart's not
-    /// when an explosion killed it).
+    /// The block item `killMinecart` drops besides the minecart (a furnace or TNT
+    /// cart's not when an explosion killed it).
     fn block_item(self) -> Option<i16> {
         match self {
             Self::Rideable => None,
             Self::Furnace => Some(block::FURNACE as i16),
+            Self::Tnt => Some(super::tnt::TNT as i16),
             Self::Chest => Some(block::CHEST as i16),
             Self::Hopper => Some(block::HOPPER as i16),
         }
@@ -278,6 +303,9 @@ pub struct Minecart {
     push: (f64, f64),
     /// Metadata 16 of a furnace cart: burning.
     burning: bool,
+    /// A TNT cart's `minecartTNTFuse` (saved as `TNTFuse`): ticks left once lit, -1
+    /// before.
+    tnt_fuse: i32,
 }
 
 /// `Block.getStateId`.
@@ -335,6 +363,7 @@ impl Minecart {
             fuel: 0,
             push: (0.0, 0.0),
             burning: false,
+            tnt_fuse: -1,
         };
         m.dirty_metadata = m.metadata().iter().map(|e| e.index).collect();
         m
@@ -448,6 +477,9 @@ impl Minecart {
             m.push = (c.get_f64("PushX"), c.get_f64("PushZ"));
             m.fuel = i32::from(c.get_i16("Fuel"));
         }
+        if kind == CartKind::Tnt && c.contains_key_of("TNTFuse", None) {
+            m.tnt_fuse = c.get_i32("TNTFuse");
+        }
         m.body = body;
         m.base = base;
         if c.get_bool("CustomDisplayTile") {
@@ -506,6 +538,14 @@ impl Minecart {
             // Vanilla quirk: more than 32767 ticks of fuel wrap around when saved.
             c.insert("Fuel", Tag::Short(self.fuel as i16));
         }
+        if self.kind == CartKind::Tnt {
+            c.insert("TNTFuse", Tag::Int(self.tnt_fuse));
+        }
+    }
+
+    /// `EntityMinecartTNT.isIgnited`.
+    pub fn lit(&self) -> bool {
+        self.kind == CartKind::Tnt && self.tnt_fuse > -1
     }
 
     /// `getMaximumSpeed`.
@@ -666,6 +706,13 @@ impl Game {
             {
                 self.tick_furnace_cart(id);
             }
+            if self
+                .minecarts
+                .get(&id)
+                .is_some_and(|m| m.kind == CartKind::Tnt)
+            {
+                self.tick_tnt_cart(id);
+            }
             if let Some(m) = self.minecarts.get_mut(&id) {
                 m.chunk = chunk_of(m.body.pos);
             }
@@ -724,6 +771,12 @@ impl Game {
                         if let Some(m) = self.minecarts.get_mut(&id) {
                             m.hopper_enabled = !powered;
                         }
+                    }
+                    // EntityMinecartTNT.onActivatorRailPass: lit once.
+                    Some(CartKind::Tnt)
+                        if powered && self.minecarts.get(&id).is_some_and(|m| m.tnt_fuse < 0) =>
+                    {
+                        self.ignite_tnt_cart(id);
                     }
                     _ => {}
                 }
@@ -1060,7 +1113,19 @@ impl Game {
             return;
         };
         m.body = body;
+        // updateFallState: landing calls fall (which only TNT carts heed).
+        let landed =
+            (m.body.on_ground && m.base.fall_distance > 0.0).then_some(m.base.fall_distance);
+        let tnt = m.kind == CartKind::Tnt;
         m.base.update_fall_state(m.body.on_ground, outcome.moved_y);
+        if tnt
+            && let Some(distance) = landed
+            && distance >= TNT_FALL
+        {
+            // EntityMinecartTNT.fall: the square of a tenth of the height, as a float.
+            let f = distance / 10.0;
+            self.explode_tnt_cart(id, f64::from(f * f));
+        }
         self.minecart_block_collisions(id);
         self.minecart_move_fire(id);
     }
@@ -1307,6 +1372,19 @@ impl Game {
     /// point; a creative player or more than 40 damage breaks it (dropping a minecart
     /// unless a creative player broke an unnamed one). Hits always count.
     pub(super) fn attack_minecart(&mut self, id: i32, source: DamageSource, amount: f32) -> bool {
+        // EntityMinecartTNT.attackEntityFrom: a burning arrow sets it off first, by its
+        // speed.
+        if let DamageSource::Arrow { arrow, .. } = source
+            && self
+                .minecarts
+                .get(&id)
+                .is_some_and(|m| m.kind == CartKind::Tnt)
+            && let Some(a) = self.arrows.get(&arrow)
+            && a.base.fire > 0
+        {
+            let v = a.body.motion;
+            self.explode_tnt_cart(id, v.0 * v.0 + v.1 * v.1 + v.2 * v.2);
+        }
         let creative = source.attacker().is_some_and(|a| {
             self.players
                 .iter()
@@ -1368,9 +1446,25 @@ impl Game {
     }
 
     /// `killMinecart`: the cart dies and drops a minecart (named after it), and a
-    /// container or furnace cart its block; the drops need the `doEntityDrops` game rule.
+    /// container, furnace or TNT cart its block; the drops need the `doEntityDrops` game
+    /// rule. A TNT cart then explodes if fire or an explosion killed it or it was moving.
     fn kill_minecart(&mut self, id: i32, source: DamageSource) {
         self.set_minecart_dead(id);
+        if let Some(m) = self.minecarts.get(&id)
+            && m.kind == CartKind::Tnt
+        {
+            let speed_sq = m.body.motion.0 * m.body.motion.0 + m.body.motion.2 * m.body.motion.2;
+            self.drop_cart_items(id, source);
+            if source.fire() || source.explosion() || speed_sq >= f64::from(TNT_CRASH_SPEED_SQ) {
+                self.explode_tnt_cart(id, speed_sq);
+            }
+            return;
+        }
+        self.drop_cart_items(id, source);
+    }
+
+    /// The drops of `killMinecart`.
+    fn drop_cart_items(&mut self, id: i32, source: DamageSource) {
         if self.level.data.game_rule("doEntityDrops") == Some("false") {
             return;
         }
@@ -1389,7 +1483,7 @@ impl Game {
             set_display_name(&mut stack, &name);
         }
         self.spawn_item(pos, stack, DROP_PICKUP_DELAY);
-        if kind == CartKind::Furnace && source.explosion() {
+        if matches!(kind, CartKind::Furnace | CartKind::Tnt) && source.explosion() {
             return;
         }
         if let Some(block_item) = kind.block_item() {
@@ -1418,7 +1512,7 @@ impl Game {
         let (gui, layout) = match m.kind {
             CartKind::Chest => ("minecraft:chest", Layout::Chest((CHEST_SLOTS / 9) as u8)),
             CartKind::Hopper => ("minecraft:hopper", Layout::Hopper),
-            CartKind::Rideable | CartKind::Furnace => return,
+            CartKind::Rideable | CartKind::Furnace | CartKind::Tnt => return,
         };
         let uuid = self.entity_uuids.get(&id).copied().unwrap_or_default();
         let title = m.display_name(uuid).to_json_string();
@@ -1496,6 +1590,64 @@ impl Game {
             // vanilla); the particle itself only shows on clients.
             let _ = self.entity_rand.next_int_bounded(4);
         }
+    }
+
+    /// `EntityMinecartTNT.onUpdate` after the cart's own update: a lit cart counts its
+    /// fuse down and explodes at zero; one crashing into something fast explodes.
+    fn tick_tnt_cart(&mut self, id: i32) {
+        let Some(m) = self.minecarts.get_mut(&id) else {
+            return;
+        };
+        let speed_sq = m.body.motion.0 * m.body.motion.0 + m.body.motion.2 * m.body.motion.2;
+        let crashed = m.body.collided_horizontally;
+        if m.tnt_fuse > 0 {
+            // (Smoke particles show only on clients.)
+            m.tnt_fuse -= 1;
+        } else if m.tnt_fuse == 0 {
+            self.explode_tnt_cart(id, speed_sq);
+        }
+        if crashed && let Some(m) = self.minecarts.get(&id) {
+            let speed_sq = m.body.motion.0 * m.body.motion.0 + m.body.motion.2 * m.body.motion.2;
+            if speed_sq >= f64::from(TNT_CRASH_SPEED_SQ) {
+                self.explode_tnt_cart(id, speed_sq);
+            }
+        }
+    }
+
+    /// `EntityMinecartTNT.ignite`: the fuse starts, viewers see the cart flash, and it
+    /// hisses.
+    fn ignite_tnt_cart(&mut self, id: i32) {
+        let Some(m) = self.minecarts.get_mut(&id) else {
+            return;
+        };
+        m.tnt_fuse = TNT_FUSE;
+        let (pos, silent) = (m.body.pos, m.base.silent);
+        self.send_to_tracking(
+            id,
+            &ClientboundPlay::EntityStatus {
+                entity_id: id,
+                status: TNT_LIT_STATUS,
+            },
+        );
+        if !silent {
+            self.play_sound_near_except(None, "game.tnt.primed", pos, 1.0, 1.0);
+        }
+    }
+
+    /// `EntityMinecartTNT.explodeCart`: an explosion as strong as the cart was fast
+    /// (`speed_sq` is the speed squared), then the cart is gone.
+    fn explode_tnt_cart(&mut self, id: i32, speed_sq: f64) {
+        let Some(m) = self.minecarts.get(&id) else {
+            return;
+        };
+        let pos = m.body.pos;
+        let speed = speed_sq.sqrt().min(TNT_MAX_SPEED);
+        // The cart's own random (unseeded in vanilla): a resting cart always explodes
+        // with strength 4.
+        let r = self.entity_rand.next_double();
+        let strength = (TNT_STRENGTH + r * TNT_SPEED_STRENGTH * speed) as f32;
+        self.explode(Some(id), pos, strength);
+        self.set_minecart_dead(id);
     }
 
     /// `EntityMinecartFurnace.interactFirst`: coal adds fuel (and is used up unless the

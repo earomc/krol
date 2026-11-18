@@ -302,6 +302,8 @@ pub mod item {
     pub const FURNACE_MINECART: i16 = 343;
     /// `hopper_minecart`.
     pub const HOPPER_MINECART: i16 = 408;
+    /// `tnt_minecart`.
+    pub const TNT_MINECART: i16 = 407;
     /// `skull` (mob heads).
     pub const SKULL: i16 = 397;
     /// `bucket`.

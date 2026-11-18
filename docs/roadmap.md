@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: furnace minecarts`).
+Status as of 2026-11-18 (commit `server: TNT minecarts`).
 
 **Legend**
 
@@ -22,10 +22,10 @@ Status as of 2026-11-18 (commit `server: furnace minecarts`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 entities without AI**: TNT minecarts, boats, with their spawn
+1. **M5 entities without AI**: boats, with their spawn
    packets, tracking and saving (done: projectiles from players, paintings and item
    frames with the maps they show, armor stands, rails, rideable minecarts, players
-   riding minecarts, chest, hopper and furnace minecarts). Implementing `/summon`
+   riding minecarts, chest, hopper, furnace and TNT minecarts). Implementing `/summon`
    would make entity scenarios much easier to set up.
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
@@ -131,7 +131,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
-| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands, rideable, chest, hopper and furnace minecarts. Missing: boats, TNT, spawner and command block minecarts, fireballs, leash knots, fishing hooks, ... |
+| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands, rideable, chest, hopper, furnace and TNT minecarts. Missing: boats, spawner and command block minecarts, fireballs, leash knots, fishing hooks, ... |
 | 0x0F Spawn Mob | ❌ | No mobs |
 | 0x10 Spawn Painting | ✅ | |
 | 0x11 Spawn Experience Orb | ✅ | |
@@ -405,7 +405,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemFishingRod` | ❌ | |
 | `ItemSnowball`, `ItemEgg`, `ItemEnderPearl`, `ItemExpBottle` | ✅ | Throwing (see [entity.projectile](#entityprojectile)): the stack shrinks unless creative (creative players cannot throw pearls), `random.bow` with `Item.itemRand`, the use statistic |
 | `ItemEnderEye`, `ItemFireball`, `ItemFirework`, `ItemFireworkCharge` | ❌ | |
-| `ItemMinecart`, `ItemBoat` | 🟡 | Minecarts, chest, hopper and furnace minecarts placed on rails (`play/minecarts`, `play/container_minecarts`, `play/furnace_minecarts`). TNT and command block minecarts, boats ❌ |
+| `ItemMinecart`, `ItemBoat` | 🟡 | Minecarts, chest, hopper, furnace and TNT minecarts placed on rails (`play/minecarts`, `play/container_minecarts`, `play/furnace_minecarts`, `play/tnt_minecarts`). Command block minecarts, boats ❌ |
 | `ItemHangingEntity` (paintings, item frames) | ✅ | The random art among those that fit, the use statistic even when nothing fits |
 | `ItemArmorStand` | ✅ | On top of or in a replaceable block, both spaces free of blocks and entities (`play/armor_stands`), facing the player in eighths with a random head and body turn from the world random, `EntityTag` merged into the new stand (`play/armor_stand_equipment`) |
 | `ItemMonsterPlacer` (spawn eggs) | ❌ | |
@@ -522,7 +522,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityXPOrb` | ✅ | Pushed out of blocks, saving with the chunk (loaded orbs are 0.25 wide, a vanilla quirk). Lava, water flow ❌ |
 | `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random), saving with the chunk (`TileEntityData` kept); dragon eggs, piston extensions, placing `TileEntityData` ❌ |
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
-| `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | 🟡 | Rideable minecarts: placed on rails by `ItemMinecart` (adventure players too), following rails (snapping onto the line, at most 0.4 a tick, drag, slopes, powered rails boosting and kicking off from a wall, unpowered ones braking), derailed movement, bumping into each other (lined up, sharing motion), players pushing them, colliding with pushable entities while moving, hits (wobble and damage metadata, sharpness, knockback, exhaustion, broken past 40 damage or by creative players, the minecart dropped with its name), fire, water, activator rails, detector rails, tracking (spawn object 10, metadata in `HashMap` order), saving (custom display tiles kept), selectors, `/tp`, `/kill`, explosions, projectiles, pressure plates, blocking block placement (`play/minecarts`), riders (`play/riding`). Chest and hopper minecarts: windows titled with the cart's display name (spectators open them too), contents saved, spilled when the cart dies (`setDead`, twice when broken), the chest or hopper dropped, drag by fullness, hopper carts pulling every tick (the cooldown quirk) from the inventory above or item entities, turned off by powered activator rails, hoppers and droppers reaching cart inventories (a random cart from the world random), detector rail comparator signal (`play/container_minecarts`). Furnace minecarts: coal adding 3600 ticks of fuel, the push away from the player (renormalized along the rail each tick, dropped when moving against it), half speed, their own drag, handing their motion to carts they bump into, burning metadata, the furnace dropped unless an explosion killed them, saving (the fuel wrapping as a short) (`play/furnace_minecarts`). Missing: TNT, spawner and command block minecarts, dispensers placing minecarts, nether portals, custom display tiles for 1.7 clients (their metadata 20 encodes the state differently). Riding: see Riding |
+| `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | 🟡 | Rideable minecarts: placed on rails by `ItemMinecart` (adventure players too), following rails (snapping onto the line, at most 0.4 a tick, drag, slopes, powered rails boosting and kicking off from a wall, unpowered ones braking), derailed movement, bumping into each other (lined up, sharing motion), players pushing them, colliding with pushable entities while moving, hits (wobble and damage metadata, sharpness, knockback, exhaustion, broken past 40 damage or by creative players, the minecart dropped with its name), fire, water, activator rails, detector rails, tracking (spawn object 10, metadata in `HashMap` order), saving (custom display tiles kept), selectors, `/tp`, `/kill`, explosions, projectiles, pressure plates, blocking block placement (`play/minecarts`), riders (`play/riding`). Chest and hopper minecarts: windows titled with the cart's display name (spectators open them too), contents saved, spilled when the cart dies (`setDead`, twice when broken), the chest or hopper dropped, drag by fullness, hopper carts pulling every tick (the cooldown quirk) from the inventory above or item entities, turned off by powered activator rails, hoppers and droppers reaching cart inventories (a random cart from the world random), detector rail comparator signal (`play/container_minecarts`). Furnace minecarts: coal adding 3600 ticks of fuel, the push away from the player (renormalized along the rail each tick, dropped when moving against it), half speed, their own drag, handing their motion to carts they bump into, burning metadata, the furnace dropped unless an explosion killed them, saving (the fuel wrapping as a short) (`play/furnace_minecarts`). TNT minecarts: lit by powered activator rails (entity status 10, the fuse sound, 80 ticks), exploding with strength `4 + random * 1.5 * min(speed, 5)` from the cart's own random (resting carts always 4), a lit cart's explosion sparing rails and the blocks under them, exploding when crashing fast, landing from 3 blocks, killed by fire, explosions or while moving, hit by burning arrows, the TNT dropped unless an explosion killed them, `TNTFuse` saved (`play/tnt_minecarts`). Missing: spawner and command block minecarts, dispensers placing minecarts, nether portals, custom display tiles for 1.7 clients (their metadata 20 encodes the state differently). Riding: see Riding |
 | `EntityBoat` | ❌ | |
 | `EntityItemFrame`, `EntityPainting` | ✅ | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`, maps shown in frames (the frame icon, map packets every 10 ticks, the icon removed with the map). Invulnerable frames, `/tp` and old saves are not in a scenario |
 | `EntityLeashKnot` | ❌ | |

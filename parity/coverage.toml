@@ -597,3 +597,8 @@ scenarios = ["play/container_minecarts"]
 id = "entity.furnace_minecarts"
 description = "EntityMinecartFurnace: placed by ItemMinecart (spawn object 10, type 2); fed coal by a player (3600 ticks of fuel, the coal used up, metadata 16 burning) and pushing itself away from the player along the rail at 0.2 a tick with its own drag; bumping into a rideable cart (furnace collision sharing: the other cart takes its motion, the furnace cart keeps 95%) and pressing it against glass; interacted without coal (no fuel, the push dropped); broken by a sword (a minecart and a furnace dropped); saved with its chunk (PushX, PushZ, Fuel). Not yet in a scenario: the fuel running out, the push dropped when moving against it, explosions (no furnace dropped), two furnace carts colliding, the fuel wrapping when saved, creative players feeding coal, loading"
 scenarios = ["play/furnace_minecarts"]
+
+[[feature]]
+id = "entity.tnt_minecarts"
+description = "EntityMinecartTNT: placed by ItemMinecart (spawn object 10, type 3); broken at rest by a sword (a minecart and TNT dropped, no explosion); lit by its activator rail getting powered (entity status 10, game.tnt.primed) and exploding 80 ticks later with strength 4 at rest, sparing rails and the blocks under them (getExplosionResistance and verifyExplosion of a lit cart); exposure 0 for entities around a blast centered inside a rail (a second TNT cart wobbling but surviving, the player taking the minimum damage); the surviving cart saved with its chunk (TNTFuse). Not yet in a scenario: crashing, falling, fire, explosions and burning arrows setting carts off, moving carts breaking, chain reactions, loading"
+scenarios = ["play/tnt_minecarts"]

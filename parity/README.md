@@ -207,3 +207,8 @@ into server ticks. Rules learned from flaky scenarios:
   pressed against a block reaches a steady state, so its saved position and motion
   compare exactly however long the server runs. krol has no `/summon` yet: set up
   entities from items.
+- **Console steps race the bot's join**: vanilla's slower join can let a console step meant
+  for after a bot action land before it (a teleport made a later attack miss in
+  `play/tnt_minecarts`). Leave seconds of margin, or avoid the console step. Explosions
+  centered inside a rail (TNT minecarts) give every entity exposure 0: the rail's
+  selection box stops each `getBlockDensity` ray.
