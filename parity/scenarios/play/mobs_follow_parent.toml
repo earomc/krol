@@ -1,0 +1,91 @@
+description = "A piglet with AI follows the nearest adult pig (EntityAIFollowParent: adults within 8 blocks, a new path every 10 ticks, stopping 3 blocks away), the adult held still by NoAI behind glass; children are half the size, squeak higher and step on their own; both saved with their chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) and stands still. The pen and pool are
+# those of play/mobs_ai. The adult (silent, without AI, so its own unpinned random never
+# shows) is summoned at (-475.5, 4, -441.5) first, walled into a glass cell so the
+# piglet cannot lean on it (a pushed mob without AI gathers motion every tick, which
+# would make the end depend on the stop's tick); the piglet (Age -1200) is summoned 7
+# blocks east of it, over the pool, under `krolpin 7`, which pins both randoms: it
+# swims out, walks up to the cell (its path ends at the closest point) and goes on with
+# its other goals.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -446 -466 5 -446 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -437 -466 5 -437 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -445 -478 5 -438 glass"
+
+[[steps]]
+action = "console"
+command = "fill -466 4 -445 -466 5 -438 glass"
+
+[[steps]]
+action = "console"
+command = "fill -470 3 -443 -469 3 -442 water"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -442 -477 5 -442 glass"
+
+[[steps]]
+action = "console"
+command = "fill -475 4 -442 -475 5 -442 glass"
+
+[[steps]]
+action = "console"
+command = "fill -476 4 -443 -476 5 -443 glass"
+
+[[steps]]
+action = "console"
+command = "fill -476 4 -441 -476 5 -441 glass"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 30
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "summon Pig -475.5 4 -441.5 {NoAI:1b,Silent:1b}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "krolpin 7 -- summon Pig -468.5 4 -441.5 {Age:-1200}"
+wait_ms = 20000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+
+[observe.tolerance]
+# The piglet's age counts the ticks it lived, up to the stop, whose tick depends on
+# timing.
+"entities.-30,-28[1].Age" = 20

@@ -55,6 +55,7 @@ mod movement;
 mod mushrooms;
 mod noise;
 mod note_block;
+mod pathfinding;
 pub mod physics;
 mod pistons;
 mod placement;

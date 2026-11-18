@@ -554,7 +554,7 @@ impl Game {
     /// Vanilla `collideWithNearbyEntities`: overlapping entities push each other apart
     /// (`Entity.applyEntityCollision`). Spectators neither push nor get pushed.
     ///
-    /// TODO(M5): entities other than players.
+    /// TODO(M5): the other pushable entities, in chunk list order.
     fn push_nearby(&mut self, i: usize) {
         if self.players[i].gamemode == 3 {
             return;
@@ -585,6 +585,15 @@ impl Game {
             me.motion.0 += dx;
             me.motion.2 += dz;
             me.airborne = true;
+        }
+        let mobs: Vec<i32> = self
+            .mobs
+            .iter()
+            .filter(|&(_, m)| !m.dead && area.intersects(&m.body.bb()))
+            .map(|(&id, _)| id)
+            .collect();
+        for id in mobs {
+            self.player_pushes_mob(i, id);
         }
         // Minecarts take the push themselves (`EntityMinecart.applyEntityCollision`).
         let carts: Vec<i32> = self

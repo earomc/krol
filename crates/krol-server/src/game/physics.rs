@@ -15,6 +15,24 @@ use super::blocks::{self, SoundType};
 use super::shapes;
 use super::world::World;
 
+/// `Math.min` of two doubles (`-0.0` below `0.0`; NaN never occurs here).
+const fn java_min(a: f64, b: f64) -> f64 {
+    if a < b || (a == b && a.is_sign_negative()) {
+        a
+    } else {
+        b
+    }
+}
+
+/// `Math.max` of two doubles (`0.0` above `-0.0`).
+const fn java_max(a: f64, b: f64) -> f64 {
+    if a > b || (a == b && a.is_sign_positive()) {
+        a
+    } else {
+        b
+    }
+}
+
 /// An axis-aligned bounding box.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Aabb {
@@ -25,9 +43,22 @@ pub struct Aabb {
 }
 
 impl Aabb {
-    /// A box from its corners.
-    pub const fn new(min: [f64; 3], max: [f64; 3]) -> Self {
-        Self { min, max }
+    /// A box from its corners. Like vanilla's `AxisAlignedBB` constructor, each axis is
+    /// put in order (`Math.min` / `Math.max`), so a box shrunk past its size, such as
+    /// a small entity's box in `handleWaterMovement`, turns inside out into a real one.
+    pub const fn new(a: [f64; 3], b: [f64; 3]) -> Self {
+        Self {
+            min: [
+                java_min(a[0], b[0]),
+                java_min(a[1], b[1]),
+                java_min(a[2], b[2]),
+            ],
+            max: [
+                java_max(a[0], b[0]),
+                java_max(a[1], b[1]),
+                java_max(a[2], b[2]),
+            ],
+        }
     }
 
     /// A box of `width` x `height` standing at `pos` (vanilla `setPosition`; the half
@@ -334,6 +365,8 @@ pub struct Touched {
 /// What a move did besides changing the body.
 #[derive(Debug, Default)]
 pub struct MoveOutcome {
+    /// The entity made a step (`playStepSound` is due, even on a block without one).
+    pub stepped: bool,
     /// Step sound to play, if the entity made a step.
     pub step: Option<StepSound>,
     /// Volume of the swim sound to play before the step sound (steps in water).
@@ -568,6 +601,7 @@ fn move_entity_inner(
             (f64::from(body.distance_walked_on_step) + f64::from(step) * 0.6) as f32;
         if body.distance_walked_on_step > body.next_step_distance as f32 && below_state >> 4 != 0 {
             body.next_step_distance = body.distance_walked_on_step as i32 + 1;
+            outcome.stepped = true;
             if body.in_water {
                 let m = body.motion;
                 let speed = krol_java::math::sqrt_f64(
@@ -606,6 +640,15 @@ fn step_sound(world: &mut World, pos: (i32, i32, i32), state: u16) -> Option<Ste
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shrunk_boxes_turn_inside_out() {
+        // A piglet's box (0.45 high) in handleWaterMovement reaches 0.049 to 0.401 up.
+        let bb = Aabb::at((0.5, 4.0, 0.5), 0.45, 0.45).expand([0.0, f64::from(-0.4f32), 0.0]);
+        assert!(bb.min[1] < bb.max[1]);
+        assert!((bb.min[1] - 4.049_999_994).abs() < 1e-6);
+        assert_eq!(Aabb::new([0.0; 3], [-0.0; 3]).min, [-0.0; 3]);
+    }
 
     #[test]
     fn axis_offsets() {

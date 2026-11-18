@@ -1,0 +1,54 @@
+description = "A pig with AI is tempted by a player holding a carrot (EntityAITempt: the nearest player within 10 blocks, looked at, followed by a path to his feet at 1.2 until 2.5 blocks away, the navigator not avoiding water meanwhile); saved with its chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5), gets a carrot (/give's item is entity 1)
+# and holds it, standing still. The pig is summoned 8 blocks west of him at
+# (-479.5, 4, -434.5) under `krolpin 9` (pinning its random): it walks up to him and
+# stays close, looking at him, as long as he holds the carrot (to the end). The runner
+# stops the server right after the bot leaves: in vanilla that usually lands in the
+# tick the disconnect is handled, at the end of the tick, so the pig never runs a tick
+# without him, but a tick later it would stop looking at him and level its head. The
+# saved pitch is left out for that.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 24
+chat = ["@3500 !hold 0"]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "give jeb_ carrot"
+wait_ms = 3000
+
+[[steps]]
+action = "console"
+command = "krolpin 9 -- summon Pig -479.5 4 -434.5 {}"
+wait_ms = 10000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+# The pitch depends on whether a tick runs between the bot leaving and the stop (the
+# yaw still compares through the tracked entity).
+ignore = ["entities.-30,-28[0].Rotation"]

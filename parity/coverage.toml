@@ -544,6 +544,21 @@ description = "spawn-animals=false: animals are set dead in WorldServer.updateEn
 scenarios = ["play/mobs_animals_off"]
 
 [[feature]]
+id = "entity.mobs.ai"
+description = "Pigs with AI: the goal selector (EntityAITasks: tick rate 3, priorities, mutex bits, the executing order), wander (RandomPositionGenerator with EntityAnimal.getBlockPathWeight, idle limit), look idle, watch closest player, panic while burning, swimming; ground navigation (PathFinder heap and WalkNodeProcessor, path following with straight cuts, stuck checks), the move, look, jump and body helpers, moveEntityWithHeading (ground acceleration by slipperiness, air, water), falls (fall sounds, damage, dust), steps (mob.pig.step), fire contact, despawn idle time; vanilla's box normalization (small entities' water boxes turn inside out into real ones). Not yet: breeding, riding pigs, leads, onInitialSpawn"
+scenarios = ["play/mobs_ai"]
+
+[[feature]]
+id = "entity.mobs.follow_parent"
+description = "EntityAIFollowParent: a piglet (half size, higher sounds, swimming out of a pool) follows the nearest adult of its kind within 8/4/8, a path every 10 ticks to its feet, the closest point when it cannot be reached"
+scenarios = ["play/mobs_follow_parent"]
+
+[[feature]]
+id = "entity.mobs.tempt"
+description = "EntityAITempt: the nearest player within 10 blocks holding a carrot is looked at and followed (path to his feet, 1.2 times the speed, the navigator not avoiding water) until 2.5 blocks away"
+scenarios = ["play/mobs_tempt"]
+
+[[feature]]
 id = "item.potions"
 description = "Potions: drinking (32 updates, drink sounds, status 9) with effects from PotionHelper.getPotionEffects (port checked against every damage value) or CustomPotionEffects, the empty bottle (in the slot or added elsewhere; none in creative), glass bottles filled at water (in creative too, the water bottle added or tossed). Not yet: splash potions, brewing"
 scenarios = ["play/potions"]

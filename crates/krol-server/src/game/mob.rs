@@ -7,22 +7,27 @@
 //! (knockback, hurt and death sounds); a dead mob drops its loot at once and its
 //! experience when the death animation ends, 20 ticks later.
 //!
+//! A mob with AI (not `NoAI`) also thinks and moves: its goals, navigation and the
+//! move, look, jump and body helpers ([`ai`]), then `moveEntityWithHeading` (walking,
+//! swimming, ladders, falls and fall damage, step sounds). Every mob pushes and is
+//! pushed by the players and mobs around it.
+//!
 //! Every mob has its own `java.util.Random` (`Entity.rand`), unseeded in vanilla; the
 //! parity hook `krolpin` seeds it with the pin seed plus the entity id, like the vanilla
 //! agent does.
 //!
-//! TODO(M5): mobs with AI (only mobs saved with `NoAI` are simulated; others keep their
-//! NBT): `moveEntityWithHeading` and the rest of the physics, the AI tasks, the look and
-//! body helpers, despawning, `onInitialSpawn`. The other mob kinds than pigs, children
-//! growing up (only the countdown runs), breeding and feeding, saddles and riding,
-//! leads, picking up loot, status effects (`ActiveEffects` is kept as saved), the combat
-//! tracker, mobs pushing other entities (`collideWithNearbyEntities`), being hit by
-//! projectiles and explosions, arrows stuck in them, equipment changes.
+//! TODO(M5): `onInitialSpawn`, the other mob kinds than pigs, children growing up (only
+//! the countdown runs), breeding and feeding, saddles and riding, leads, picking up
+//! loot, status effects (`ActiveEffects` is kept as saved), jump boost, the combat
+//! tracker, pushing and being pushed by minecarts and boats, being hit by projectiles
+//! and explosions, arrows stuck in them, equipment changes.
+
+mod ai;
 
 use std::collections::BTreeSet;
 
 use krol_java::JavaRandom;
-use krol_java::math::floor_f64;
+use krol_java::math::{ceil_f32, cos, floor_f64, sin, sqrt_f32};
 use krol_nbt::{Compound, List, Tag, TagType};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack, Metadata, MetadataValue, Property};
 
@@ -30,7 +35,7 @@ use super::Game;
 use super::attributes::{KNOCKBACK_RESISTANCE, MAX_HEALTH, MOVEMENT_SPEED};
 use super::damage::{DamageSource, MAX_HURT_TIME};
 use super::ids::{block, item};
-use super::physics::Body;
+use super::physics::{self, Body};
 use super::saved_entities::{EntityBase, FULL_AIR};
 
 /// `generic.followRange` (`EntityLiving`).
@@ -69,6 +74,47 @@ const DEFAULT_DROP_CHANCE: f32 = 0.085;
 const SLOTS: usize = 5;
 /// `EntityItem.setDefaultPickupDelay`.
 const DROP_PICKUP_DELAY: i32 = 10;
+/// `moveEntityWithHeading`: gravity, vertical drag and the friction in the air.
+const GRAVITY: f64 = 0.08;
+const DRAG: f32 = 0.98;
+const AIR_FRICTION: f32 = 0.91;
+/// The ground acceleration is the move speed times this over the friction cubed.
+const GROUND_ACCELERATION: f32 = 0.162_771_36;
+/// `jumpMovementFactor`: the acceleration in the air.
+const JUMP_MOVEMENT_FACTOR: f32 = 0.02;
+/// In water: the friction, the acceleration and the gravity (also in lava).
+const WATER_FRICTION: f32 = 0.8;
+const WATER_ACCELERATION: f32 = 0.02;
+const LIQUID_GRAVITY: f64 = 0.02;
+/// Depth strider levels count up to this; at full strength the water friction becomes
+/// the second value.
+const MAX_DEPTH_STRIDER: f32 = 3.0;
+const STRIDER_FRICTION: f32 = 0.546_000_06;
+/// Swimming against a ledge: the room checked above and the hop out.
+const LEDGE_CHECK_LIFT: f32 = 0.6;
+const LEDGE_JUMP: f32 = 0.3;
+/// Ladders cap the speed and climb at this.
+const LADDER_SPEED: f64 = 0.15;
+const LADDER_CLIMB: f64 = 0.2;
+/// Jumping and floating up (`getJumpUpwardsMotion`, `updateAITick`).
+const JUMP_MOTION: f32 = 0.42;
+const SWIM_UP: f32 = 0.04;
+/// Ticks between jumps while the mob keeps jumping.
+const JUMP_COOLDOWN: i32 = 10;
+/// Falls hurt from this far on.
+const SAFE_FALL: f32 = 3.0;
+/// Standing in fire: the damage, and the burning after a while.
+const IN_FIRE_DAMAGE: f32 = 1.0;
+const FIRE_BLOCK_SECONDS: i32 = 8;
+/// `Entity.fireResistance`.
+const FIRE_RESISTANCE: i16 = 1;
+/// `BlockFarmland.onFallenUpon` tramples from this far above half a block.
+const TRAMPLE_OFFSET: f32 = 0.5;
+/// The revenge target is forgotten this many ticks after the hit.
+const REVENGE_TICKS: i32 = 100;
+/// `S2APacketParticles` id of `BLOCK_DUST`.
+const BLOCK_DUST: i32 = 38;
+const MOB_GRIEFING: &str = "mobGriefing";
 
 /// `S19PacketEntityStatus` statuses.
 const STATUS_HURT: i8 = 2;
@@ -256,6 +302,24 @@ pub struct Mob {
     pub dead: bool,
     /// The chunk the tracker checks viewers against (`chunkCoordX/Z`).
     pub chunk: (i32, i32),
+    /// `renderYawOffset`: the body's yaw.
+    body_yaw: f32,
+    /// `prevPosX/Y/Z`: where the mob was when its update began.
+    prev_pos: (f64, f64, f64),
+    /// `moveForward`, `moveStrafing`: the inputs of `moveEntityWithHeading`.
+    move_forward: f32,
+    move_strafing: f32,
+    /// `landMovementFactor` (`getAIMoveSpeed`).
+    ai_move_speed: f32,
+    /// `isJumping`, `jumpTicks`.
+    jumping: bool,
+    jump_ticks: i32,
+    /// `entityAge`: ticks since a player was near or the mob was hurt.
+    entity_age: i32,
+    /// `entityLivingToAttack` (`getAITarget`): who hurt it last.
+    revenge_target: Option<i32>,
+    /// The AI (taken out while it runs).
+    ai: Option<Box<ai::MobAi>>,
 }
 
 fn chunk_of(pos: (f64, f64, f64)) -> (i32, i32) {
@@ -310,6 +374,18 @@ impl Mob {
             airborne: false,
             dead: false,
             chunk: chunk_of(pos),
+            body_yaw: 0.0,
+            prev_pos: pos,
+            move_forward: 0.0,
+            move_strafing: 0.0,
+            ai_move_speed: 0.0,
+            jumping: false,
+            jump_ticks: 0,
+            entity_age: 0,
+            revenge_target: None,
+            ai: Some(Box::new(match kind {
+                MobKind::Pig => ai::MobAi::pig(pos),
+            })),
         };
         m.dirty_metadata = m.metadata().iter().map(|e| e.index).collect();
         m
@@ -332,8 +408,9 @@ impl Mob {
         m.body.height = height;
         m.body.step_height = step;
         m.base = base;
-        // Entity.readFromNBT turns the head (and body) to the saved yaw.
+        // Entity.readFromNBT turns the head and body to the saved yaw.
         m.head_yaw = m.base.yaw;
+        m.body_yaw = m.base.yaw;
         if m.base.air != FULL_AIR {
             m.metadata_updated(AIR_INDEX);
         }
@@ -513,6 +590,14 @@ impl Mob {
         self.attributes[1].0
     }
 
+    fn movement_speed(&self) -> f64 {
+        self.attributes[2].0
+    }
+
+    fn follow_range(&self) -> f64 {
+        self.attributes[3].0
+    }
+
     /// `DataWatcher.updateObject` of entry `index` with a changed value.
     fn metadata_updated(&mut self, index: u8) {
         self.dirty_metadata.insert(index);
@@ -645,6 +730,7 @@ impl Game {
             // The update runs to its end even if the mob dies on the way.
             self.mob_base_update(id);
             self.mob_living_update(id);
+            self.mob_body_update(id);
             if let Some(m) = self.mobs.get_mut(&id) {
                 m.chunk = chunk_of(m.body.pos);
             }
@@ -663,6 +749,7 @@ impl Game {
         let Some(m) = self.mobs.get_mut(&id) else {
             return;
         };
+        m.prev_pos = m.body.pos;
         if m.base.portal_cooldown > 0 {
             m.base.portal_cooldown -= 1;
         }
@@ -756,6 +843,22 @@ impl Game {
         } else {
             m.attacking_player = None;
         }
+        if let Some(target) = m.revenge_target {
+            let expired = m.ticks_existed - m.hurt_by_timestamp > REVENGE_TICKS;
+            let alive =
+                self.players.iter().any(|p| {
+                    p.entity_id == target && p.health() > 0.0 && !p.dead_marked && !p.removed
+                }) || self.mobs.get(&target).is_some_and(Mob::alive);
+            let Some(m) = self.mobs.get_mut(&id) else {
+                return;
+            };
+            if !alive || expired {
+                m.revenge_target = None;
+            }
+        }
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
         // EntityLiving.onEntityUpdate: the ambient sound.
         if m.alive() {
             let roll = m.rand.next_int_bounded(1000);
@@ -791,13 +894,19 @@ impl Game {
         }
     }
 
-    /// `EntityLivingBase.onLivingUpdate` for a mob without AI (no movement: only the
-    /// motion slows down), then `EntityAgeable` and `EntityAnimal`.
+    /// `EntityLivingBase.onLivingUpdate` with `EntityLiving`'s: the AI (unless the mob
+    /// has none or is dead), jumping, `moveEntityWithHeading` and pushing; then
+    /// `EntityAgeable` and `EntityAnimal`. A mob without AI only slows down.
     fn mob_living_update(&mut self, id: i32) {
         let Some(m) = self.mobs.get_mut(&id) else {
             return;
         };
-        if m.no_ai {
+        if m.jump_ticks > 0 {
+            m.jump_ticks -= 1;
+        }
+        // isServerWorld: false for a mob without AI.
+        let server = !m.no_ai;
+        if !server {
             m.body.motion.0 *= NO_AI_DRAG;
             m.body.motion.1 *= NO_AI_DRAG;
             m.body.motion.2 *= NO_AI_DRAG;
@@ -811,6 +920,45 @@ impl Game {
                 *v = 0.0;
             }
         }
+        // isMovementBlocked: dead mobs stop thinking.
+        if m.health <= 0.0 {
+            m.jumping = false;
+            m.move_strafing = 0.0;
+            m.move_forward = 0.0;
+        } else if server {
+            self.mob_action_state(id);
+        }
+        if self.mobs.get(&id).is_some_and(|m| m.jumping) {
+            let in_lava = self.mob_in_lava(id);
+            let Some(m) = self.mobs.get_mut(&id) else {
+                return;
+            };
+            if m.body.in_water || in_lava {
+                // updateAITick / handleJumpLava.
+                m.body.motion.1 += f64::from(SWIM_UP);
+            } else if m.body.on_ground && m.jump_ticks == 0 {
+                // jump. TODO(M5): jump boost.
+                m.body.motion.1 = f64::from(JUMP_MOTION);
+                m.airborne = true;
+                m.jump_ticks = JUMP_COOLDOWN;
+            }
+        } else if let Some(m) = self.mobs.get_mut(&id) {
+            m.jump_ticks = 0;
+        }
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
+        m.move_strafing *= 0.98;
+        m.move_forward *= 0.98;
+        let (strafe, forward) = (m.move_strafing, m.move_forward);
+        if server {
+            self.mob_travel(id, strafe, forward);
+        }
+        self.mob_collide_nearby(id);
+        // TODO(M5): picking up loot (EntityLiving.onLivingUpdate).
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
         // EntityAgeable: the age counts towards 0.
         if m.kind.ageable() {
             if m.age < 0 {
@@ -837,6 +985,425 @@ impl Game {
                 }
             }
         }
+    }
+
+    /// `EntityLivingBase.moveEntityWithHeading` on the server: walking (with ladders),
+    /// swimming in water (depth strider) or wading through lava.
+    fn mob_travel(&mut self, id: i32, strafe: f32, forward: f32) {
+        let in_lava = self.mob_in_lava(id);
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        if m.body.in_water {
+            let y0 = m.body.pos.1;
+            let mut friction = WATER_FRICTION;
+            let mut acceleration = WATER_ACCELERATION;
+            let mut strider =
+                (m.max_enchantment(super::item_data::DEPTH_STRIDER) as f32).min(MAX_DEPTH_STRIDER);
+            if !m.body.on_ground {
+                strider *= 0.5;
+            }
+            if strider > 0.0 {
+                friction += (STRIDER_FRICTION - friction) * strider / 3.0;
+                acceleration += (m.ai_move_speed - acceleration) * strider / 3.0;
+            }
+            if let Some(m) = self.mobs.get_mut(&id) {
+                move_flying(m, strafe, forward, acceleration);
+            }
+            self.move_mob(id);
+            let Some(m) = self.mobs.get_mut(&id) else {
+                return;
+            };
+            m.body.motion.0 *= f64::from(friction);
+            m.body.motion.1 *= f64::from(0.8f32);
+            m.body.motion.2 *= f64::from(friction);
+            m.body.motion.1 -= LIQUID_GRAVITY;
+            self.mob_ledge_climb(id, y0);
+        } else if in_lava {
+            let y0 = m.body.pos.1;
+            if let Some(m) = self.mobs.get_mut(&id) {
+                move_flying(m, strafe, forward, WATER_ACCELERATION);
+            }
+            self.move_mob(id);
+            let Some(m) = self.mobs.get_mut(&id) else {
+                return;
+            };
+            m.body.motion.0 *= 0.5;
+            m.body.motion.1 *= 0.5;
+            m.body.motion.2 *= 0.5;
+            m.body.motion.1 -= LIQUID_GRAVITY;
+            self.mob_ledge_climb(id, y0);
+        } else {
+            let friction = self.mob_friction(id);
+            let on_ladder = self.mob_on_ladder(id);
+            let Some(m) = self.mobs.get_mut(&id) else {
+                return;
+            };
+            let acceleration = if m.body.on_ground {
+                m.ai_move_speed * (GROUND_ACCELERATION / (friction * friction * friction))
+            } else {
+                JUMP_MOVEMENT_FACTOR
+            };
+            move_flying(m, strafe, forward, acceleration);
+            if on_ladder {
+                m.body.motion.0 = m.body.motion.0.clamp(-LADDER_SPEED, LADDER_SPEED);
+                m.body.motion.2 = m.body.motion.2.clamp(-LADDER_SPEED, LADDER_SPEED);
+                m.base.fall_distance = 0.0;
+                if m.body.motion.1 < -LADDER_SPEED {
+                    m.body.motion.1 = -LADDER_SPEED;
+                }
+            }
+            self.move_mob(id);
+            let climbing = self
+                .mobs
+                .get(&id)
+                .is_some_and(|m| m.body.collided_horizontally)
+                && self.mob_on_ladder(id);
+            let Some(m) = self.mobs.get_mut(&id) else {
+                return;
+            };
+            if climbing {
+                m.body.motion.1 = LADDER_CLIMB;
+            }
+            m.body.motion.1 -= GRAVITY;
+            m.body.motion.1 *= f64::from(DRAG);
+            m.body.motion.0 *= f64::from(friction);
+            m.body.motion.2 *= f64::from(friction);
+        }
+    }
+
+    /// The horizontal friction on land: the slipperiness of the block below when on
+    /// the ground.
+    fn mob_friction(&mut self, id: i32) -> f32 {
+        let Some(m) = self.mobs.get(&id) else {
+            return AIR_FRICTION;
+        };
+        if !m.body.on_ground {
+            return AIR_FRICTION;
+        }
+        let p = m.body.pos;
+        let below = self.level.overworld.block(
+            floor_f64(p.0),
+            floor_f64(m.body.bb().min[1]) - 1,
+            floor_f64(p.2),
+        ) >> 4;
+        super::blocks::slipperiness(below) * AIR_FRICTION
+    }
+
+    /// `isOnLadder`: the mob's feet are in a ladder or vine.
+    fn mob_on_ladder(&mut self, id: i32) -> bool {
+        let Some(m) = self.mobs.get(&id) else {
+            return false;
+        };
+        let p = m.body.pos;
+        let state = self.level.overworld.block(
+            floor_f64(p.0),
+            floor_f64(m.body.bb().min[1]),
+            floor_f64(p.2),
+        );
+        matches!(state >> 4, block::LADDER | block::VINE)
+    }
+
+    /// Swimming out of a liquid onto a ledge (`isOffsetPositionInLiquid`).
+    fn mob_ledge_climb(&mut self, id: i32, y0: f64) {
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        if !m.body.collided_horizontally {
+            return;
+        }
+        let v = m.body.motion;
+        let offset = [
+            v.0,
+            v.1 + f64::from(LEDGE_CHECK_LIFT) - m.body.pos.1 + y0,
+            v.2,
+        ];
+        let bb = m.body.bb().offset(offset);
+        let free = physics::colliding_boxes(&mut self.level.overworld, &bb).is_empty()
+            && !self.any_block_in(&bb, block::FLOWING_WATER..=block::LAVA);
+        if free && let Some(m) = self.mobs.get_mut(&id) {
+            m.body.motion.1 = f64::from(LEDGE_JUMP);
+        }
+    }
+
+    /// `Entity.moveEntity` with the mob's motion, then what follows in vanilla: the
+    /// steps, the fall (`EntityLivingBase.updateFallState`), the blocks touched, fire
+    /// and water.
+    fn move_mob(&mut self, id: i32) {
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
+        let mut body = m.body.clone();
+        let v = body.motion;
+        let outcome = physics::move_entity(&mut self.level.overworld, &mut body, v.0, v.1, v.2);
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
+        m.body = body;
+        if outcome.stepped {
+            if let Some(volume) = outcome.swim {
+                let pitch = 1.0 + (m.rand.next_float() - m.rand.next_float()) * 0.4;
+                let (pos, silent) = (m.body.pos, m.base.silent);
+                if !silent {
+                    self.play_sound_near_except(None, "game.neutral.swim", pos, volume, pitch);
+                }
+            }
+            self.mob_step_sound(id);
+        }
+        if let Some((pos, state)) = outcome.walked_on
+            && matches!(state >> 4, block::REDSTONE_ORE | block::LIT_REDSTONE_ORE)
+        {
+            self.activate_redstone_ore(pos, state);
+        }
+        // EntityLivingBase.updateFallState: water is checked once more first.
+        if self.mobs.get(&id).is_some_and(|m| !m.body.in_water) {
+            self.mob_water_movement(id);
+        }
+        self.mob_fall(id, outcome.moved_y, outcome.below);
+        // doBlockCollisions.
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let bb = m.body.bb();
+        let touched = self.block_collisions(&bb);
+        if let Some(m) = self.mobs.get_mut(&id) {
+            m.body.touched(touched);
+            if touched.web {
+                m.base.fall_distance = 0.0;
+            }
+        }
+        self.mob_move_fire(id);
+    }
+
+    /// `playStepSound` of the mob's kind.
+    fn mob_step_sound(&mut self, id: i32) {
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let (pos, silent) = (m.body.pos, m.base.silent);
+        let (sound, volume) = match m.kind {
+            MobKind::Pig => ("mob.pig.step", 0.15),
+        };
+        if !silent {
+            self.play_sound_near_except(None, sound, pos, volume, 1.0);
+        }
+    }
+
+    /// `updateFallState` after a move: landing from more than 3 blocks raises dust; a
+    /// landing ends the fall through the block below (`onFallenUpon`), falling counts
+    /// down.
+    fn mob_fall(&mut self, id: i32, moved_y: f64, below: ((i32, i32, i32), u16)) {
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let (pos, on_ground, distance) = (m.body.pos, m.body.on_ground, m.base.fall_distance);
+        let (block_pos, state) = below;
+        if on_ground && distance > SAFE_FALL && state >> 4 != block::AIR {
+            let extra = ceil_f32(distance - SAFE_FALL) as f32;
+            let strength = f64::from((0.2 + extra / 15.0).min(10.0)).min(2.5);
+            let count = (150.0 * strength) as i32;
+            let id_meta = i32::from(state);
+            let packet = ClientboundPlay::Particle {
+                id: BLOCK_DUST,
+                long_distance: false,
+                pos: (pos.0 as f32, pos.1 as f32, pos.2 as f32),
+                offset: (0.0, 0.0, 0.0),
+                speed: 0.15,
+                count,
+                args: vec![(id_meta >> 4) | ((id_meta & 15) << 12)],
+            };
+            self.send_particle(&packet, pos);
+        }
+        if on_ground {
+            if distance > 0.0 {
+                let mut multiplier = 1.0;
+                let mut falls = true;
+                match state >> 4 {
+                    // BlockFarmland.onFallenUpon: the world's random decides; without
+                    // mob griefing nothing happens, not even the fall.
+                    block::FARMLAND => {
+                        if self.world_rand.next_float() < distance - TRAMPLE_OFFSET {
+                            if self.level.data.game_rule(MOB_GRIEFING) == Some("false") {
+                                falls = false;
+                            } else {
+                                self.set_block_notify(block_pos, block::DIRT << 4);
+                            }
+                        }
+                    }
+                    // BlockSlime.onFallenUpon: no damage (mobs never sneak).
+                    block::SLIME => multiplier = 0.0,
+                    _ => {}
+                }
+                if falls {
+                    self.mob_fall_damage(id, distance, multiplier);
+                }
+                if let Some(m) = self.mobs.get_mut(&id) {
+                    m.base.fall_distance = 0.0;
+                }
+            }
+        } else if moved_y < 0.0
+            && let Some(m) = self.mobs.get_mut(&id)
+        {
+            m.base.fall_distance = (f64::from(m.base.fall_distance) - moved_y) as f32;
+        }
+    }
+
+    /// `EntityLivingBase.fall`: the fall sound, the damage, then the landing sound of
+    /// the block below.
+    fn mob_fall_damage(&mut self, id: i32, distance: f32, multiplier: f32) {
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let damage = ceil_f32((distance - SAFE_FALL) * multiplier);
+        if damage <= 0 {
+            return;
+        }
+        let (pos, silent) = (m.body.pos, m.base.silent);
+        let sound = if damage > 4 {
+            "game.neutral.hurt.fall.big"
+        } else {
+            "game.neutral.hurt.fall.small"
+        };
+        if !silent {
+            self.play_sound_near_except(None, sound, pos, 1.0, 1.0);
+        }
+        self.attack_mob(id, DamageSource::Fall, damage as f32);
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let (pos, silent) = (m.body.pos, m.base.silent);
+        let below = self.level.overworld.block(
+            floor_f64(pos.0),
+            floor_f64(pos.1 - f64::from(0.2f32)),
+            floor_f64(pos.2),
+        ) >> 4;
+        if below != block::AIR && !silent {
+            let s = super::blocks::sound_type(below);
+            self.play_sound_near_except(
+                None,
+                &s.step_sound(),
+                pos,
+                s.volume * 0.5,
+                s.frequency * 0.75,
+            );
+        }
+    }
+
+    /// The end of `moveEntity`: standing in fire or lava burns (and sets on fire after
+    /// a while); getting wet puts the fire out.
+    fn mob_move_fire(&mut self, id: i32) {
+        let wet = self.mob_wet(id);
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let bb = m.body.bb().contract([0.001, 0.001, 0.001]);
+        if self.flammable_within(&bb) {
+            // dealFireDamage.
+            self.attack_mob(id, DamageSource::InFire, IN_FIRE_DAMAGE);
+            if !wet && let Some(m) = self.mobs.get_mut(&id) {
+                m.base.fire += 1;
+                if m.base.fire == 0 {
+                    m.set_fire(FIRE_BLOCK_SECONDS);
+                }
+            }
+        } else if let Some(m) = self.mobs.get_mut(&id)
+            && m.base.fire <= 0
+        {
+            m.base.fire = -FIRE_RESISTANCE;
+        }
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
+        if wet && m.base.fire > 0 {
+            let pitch = 1.6 + (m.rand.next_float() - m.rand.next_float()) * 0.4;
+            m.base.fire = -FIRE_RESISTANCE;
+            let (pos, silent) = (m.body.pos, m.base.silent);
+            if !silent {
+                self.play_sound_near_except(None, "random.fizz", pos, 0.7, pitch);
+            }
+        }
+    }
+
+    /// `collideWithNearbyEntities`: the players and mobs overlapping the mob (its box
+    /// grown by 0.2 sideways) push it and are pushed (`applyEntityCollision`), in
+    /// chunk list order.
+    fn mob_collide_nearby(&mut self, id: i32) {
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let area = m
+            .body
+            .bb()
+            .expand([f64::from(0.2f32), 0.0, f64::from(0.2f32)]);
+        let mut others: Vec<(i32, Option<usize>)> = Vec::new();
+        for (i, p) in self.players.iter().enumerate() {
+            if p.gamemode != SPECTATOR
+                && !p.dead_marked
+                && !p.removed
+                && physics::Aabb::at(p.pos, 0.6, 1.8).intersects(&area)
+            {
+                others.push((p.entity_id, Some(i)));
+            }
+        }
+        for (&other, o) in &self.mobs {
+            if other != id && !o.dead && o.body.bb().intersects(&area) {
+                others.push((other, None));
+            }
+        }
+        // TODO(M5): minecarts and boats.
+        others.sort_by_key(|(other, _)| *other);
+        for (other, player) in others {
+            let Some(me) = self.mobs.get(&id).map(|m| m.body.pos) else {
+                return;
+            };
+            match player {
+                Some(i) => {
+                    let Some((dx, dz)) = super::boat::collision_push(self.players[i].pos, me)
+                    else {
+                        continue;
+                    };
+                    let p = &mut self.players[i];
+                    p.motion.0 -= dx;
+                    p.motion.2 -= dz;
+                    p.airborne = true;
+                    if let Some(m) = self.mobs.get_mut(&id) {
+                        add_velocity(m, dx, dz);
+                    }
+                }
+                None => {
+                    let Some(at) = self.mobs.get(&other).map(|o| o.body.pos) else {
+                        continue;
+                    };
+                    let Some((dx, dz)) = super::boat::collision_push(at, me) else {
+                        continue;
+                    };
+                    if let Some(o) = self.mobs.get_mut(&other) {
+                        add_velocity(o, -dx, -dz);
+                    }
+                    if let Some(m) = self.mobs.get_mut(&id) {
+                        add_velocity(m, dx, dz);
+                    }
+                }
+            }
+        }
+    }
+
+    /// A player overlapping the mob pushes it (`applyEntityCollision` of the mob with
+    /// the player `i`).
+    pub(super) fn player_pushes_mob(&mut self, i: usize, id: i32) {
+        let Some(at) = self.mobs.get(&id).map(|m| m.body.pos) else {
+            return;
+        };
+        let Some((dx, dz)) = super::boat::collision_push(at, self.players[i].pos) else {
+            return;
+        };
+        if let Some(m) = self.mobs.get_mut(&id) {
+            add_velocity(m, -dx, -dz);
+        }
+        let p = &mut self.players[i];
+        p.motion.0 += dx;
+        p.motion.2 += dz;
+        p.airborne = true;
     }
 
     /// `Entity.handleWaterMovement`: flowing water pushes the mob; getting into water
@@ -967,6 +1534,7 @@ impl Game {
         if m.base.invulnerable && source != DamageSource::OutOfWorld && !creative_attacker {
             return false;
         }
+        m.entity_age = 0;
         if m.kind.ageable() {
             m.in_love = 0;
         }
@@ -1008,6 +1576,7 @@ impl Game {
         };
         if let Some(a) = attacker_player {
             // setRevengeTarget, then the player's hit counts for loot.
+            m.revenge_target = Some(a);
             m.hurt_by_timestamp = m.ticks_existed;
             m.recently_hit = RECENTLY_HIT;
             m.attacking_player = Some(a);
@@ -1327,6 +1896,35 @@ impl Game {
         c
     }
 }
+
+/// `moveFlying`: accelerate by `friction` towards the input direction, turned by the
+/// mob's yaw.
+fn move_flying(m: &mut Mob, strafe: f32, forward: f32, friction: f32) {
+    let mut f = strafe * strafe + forward * forward;
+    if f < 1.0e-4 {
+        return;
+    }
+    f = sqrt_f32(f);
+    if f < 1.0 {
+        f = 1.0;
+    }
+    f = friction / f;
+    let (strafe, forward) = (strafe * f, forward * f);
+    let yaw = m.base.yaw * std::f32::consts::PI / 180.0;
+    let (s, c) = (sin(yaw), cos(yaw));
+    m.body.motion.0 += f64::from(strafe * c - forward * s);
+    m.body.motion.2 += f64::from(forward * c + strafe * s);
+}
+
+/// `Entity.addVelocity(x, 0, z)`.
+fn add_velocity(m: &mut Mob, x: f64, z: f64) {
+    m.body.motion.0 += x;
+    m.body.motion.2 += z;
+    m.airborne = true;
+}
+
+/// `WorldSettings.GameType.SPECTATOR`.
+const SPECTATOR: i32 = 3;
 
 /// One item of `id`.
 fn single(id: i16) -> ItemStack {

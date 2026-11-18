@@ -350,4 +350,8 @@ pub mod item {
     pub const COOKED_PORKCHOP: i16 = 320;
     /// `saddle`.
     pub const SADDLE: i16 = 329;
+    /// `carrot` (the food).
+    pub const CARROT: i16 = 391;
+    /// `carrot_on_a_stick`.
+    pub const CARROT_ON_A_STICK: i16 = 398;
 }

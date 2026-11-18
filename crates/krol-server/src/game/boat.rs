@@ -915,7 +915,7 @@ impl Game {
 
 /// The push of `Entity.applyEntityCollision` between an entity at `at` and one at
 /// `other`: what `other` gets (the first one gets the opposite), if they are apart.
-fn collision_push(at: (f64, f64, f64), other: (f64, f64, f64)) -> Option<(f64, f64)> {
+pub(super) fn collision_push(at: (f64, f64, f64), other: (f64, f64, f64)) -> Option<(f64, f64)> {
     let (mut dx, mut dz) = (other.0 - at.0, other.2 - at.2);
     let mut d = krol_java::math::abs_max(dx, dz);
     if d < PUSH_MIN_DISTANCE {

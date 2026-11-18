@@ -695,8 +695,7 @@ impl Game {
                 self.armor_stands.insert(id, stand);
                 pos
             }
-            // TODO(M5): mobs with AI (only those without are simulated so far).
-            saved if c.get_bool("NoAI") && super::mob::MobKind::from_saved_id(saved).is_some() => {
+            saved if super::mob::MobKind::from_saved_id(saved).is_some() => {
                 let mob_kind =
                     super::mob::MobKind::from_saved_id(saved).unwrap_or(super::mob::MobKind::Pig);
                 let head = self.new_stand_head();
