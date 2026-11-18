@@ -225,9 +225,12 @@ impl Game {
         if water {
             t.base.wet();
         }
-        t.body.motion.0 += push.0;
-        t.body.motion.1 += push.1;
-        t.body.motion.2 += push.2;
+        // handleMaterialAcceleration adds nothing without a push (keeping a -0.0).
+        if push != (0.0, 0.0, 0.0) {
+            t.body.motion.0 += push.0;
+            t.body.motion.1 += push.1;
+            t.body.motion.2 += push.2;
+        }
         self.tnt.insert(id, t);
     }
 

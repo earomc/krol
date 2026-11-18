@@ -676,6 +676,7 @@ impl Game {
             if self.armor_stands.get(&id).is_some_and(|s| !s.dead) {
                 self.send_stand_equipment(id);
                 self.stand_living_update(id);
+                self.stand_bumps_minecarts(id);
             }
             if let Some(s) = self.armor_stands.get_mut(&id) {
                 // The marker flag changes the size on the next update.
@@ -806,9 +807,12 @@ impl Game {
         let Some(s) = self.armor_stands.get_mut(&id) else {
             return;
         };
-        s.body.motion.0 += push.0;
-        s.body.motion.1 += push.1;
-        s.body.motion.2 += push.2;
+        // handleMaterialAcceleration adds nothing without a push (keeping a -0.0).
+        if push != (0.0, 0.0, 0.0) {
+            s.body.motion.0 += push.0;
+            s.body.motion.1 += push.1;
+            s.body.motion.2 += push.2;
+        }
         if water && !s.body.in_water && !s.first_update {
             // resetHeight: the splash is silent and its particles client-side, but they
             // draw from the stand's own random (unseeded in vanilla).
@@ -944,6 +948,28 @@ impl Game {
             s.body.motion.1 *= f64::from(DRAG);
             s.body.motion.0 *= f64::from(friction);
             s.body.motion.2 *= f64::from(friction);
+        }
+    }
+
+    /// `EntityArmorStand.collideWithNearbyEntities`: rideable minecarts overlapping the
+    /// stand with their position within 0.2 (squared) of its own are pushed.
+    fn stand_bumps_minecarts(&mut self, id: i32) {
+        let Some(s) = self.armor_stands.get(&id) else {
+            return;
+        };
+        let (bb, pos) = (s.body.bb(), s.body.pos);
+        let carts: Vec<i32> = self
+            .minecarts
+            .iter()
+            .filter(|&(_, m)| {
+                let p = m.body.pos;
+                let d = (p.0 - pos.0).powi(2) + (p.1 - pos.1).powi(2) + (p.2 - pos.2).powi(2);
+                !m.dead && m.body.bb().intersects(&bb) && d <= 0.2
+            })
+            .map(|(&c, _)| c)
+            .collect();
+        for cart in carts {
+            self.minecart_collision(cart, super::minecart::CartPusher::ArmorStand(id));
         }
     }
 

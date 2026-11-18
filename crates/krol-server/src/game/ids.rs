@@ -294,6 +294,8 @@ pub mod item {
     pub const ITEM_FRAME: i16 = 389;
     /// `armor_stand`.
     pub const ARMOR_STAND: i16 = 416;
+    /// `minecart`.
+    pub const MINECART: i16 = 328;
     /// `skull` (mob heads).
     pub const SKULL: i16 = 397;
     /// `bucket`.

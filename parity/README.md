@@ -148,6 +148,14 @@ into server ticks. Rules learned from flaky scenarios:
   whatever tick the placement lands. The parity view zeroes those two rotations
   (metadata entries 11 and 12, the only rotation-typed entries) in every Entity Metadata
   packet; ignore `Pose.Head` and `Pose.Body` of saved stands (`play/armor_stands`).
+- **Rolling minecarts never stop exactly** on plain rails (4% drag a tick): end a track
+  with an unpowered powered rail, which brakes carts to zero, or give a cart still
+  creeping at the end a commented tolerance (`play/minecarts`). Their physics draws no
+  random numbers, so everything else compares exactly.
+- **Entity metadata comes in `HashMap` order**: entities with 12 entries or fewer keep
+  16 buckets, so entries 16-31 come between the low ones (a minecart: 0, 1, 17, 2, 18,
+  ...). A metadata hex diff that only reorders entries means a missing
+  `java_hash_order`.
 - **Burning entities in fire never take the burn damage**: the fire counter rises by one
   with each move in the fire and drops by one with each update, so it never reaches the
   multiple of 20 that hurts. Only the fire block's own damage counts; time scenarios

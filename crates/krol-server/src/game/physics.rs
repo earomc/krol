@@ -365,7 +365,7 @@ fn clip(boxes: &[Aabb], bb: &Aabb, axis: usize, mut d: f64) -> f64 {
 /// (cobwebs slow it down, see [`Body::in_web`]). `walks` is `canTriggerWalking` and that the entity is a player for the
 /// sneak edge check.
 pub fn move_entity(world: &mut World, body: &mut Body, dx: f64, dy: f64, dz: f64) -> MoveOutcome {
-    move_entity_inner(world, body, dx, dy, dz, true)
+    move_entity_inner(world, body, dx, dy, dz, true, &[])
 }
 
 /// `moveEntity` for entities that do not trigger walking (`canTriggerWalking` false,
@@ -377,7 +377,19 @@ pub fn move_entity_quiet(
     dy: f64,
     dz: f64,
 ) -> MoveOutcome {
-    move_entity_inner(world, body, dx, dy, dz, false)
+    move_entity_inner(world, body, dx, dy, dz, false, &[])
+}
+
+/// [`move_entity_quiet`] that also collides with the boxes of nearby entities (vanilla
+/// `getCollidingBoundingBoxes` adds `getCollisionBox` of the entities around the mover:
+/// for a minecart, those of pushable entities).
+pub fn move_entity_among(
+    world: &mut World,
+    body: &mut Body,
+    d: (f64, f64, f64),
+    entities: &[Aabb],
+) -> MoveOutcome {
+    move_entity_inner(world, body, d.0, d.1, d.2, false, entities)
 }
 
 fn move_entity_inner(
@@ -387,7 +399,13 @@ fn move_entity_inner(
     dy: f64,
     dz: f64,
     walks: bool,
+    entities: &[Aabb],
 ) -> MoveOutcome {
+    let colliding = |world: &mut World, query: &Aabb| {
+        let mut boxes = colliding_boxes(world, query);
+        boxes.extend(entities.iter().filter(|b| b.intersects(query)).copied());
+        boxes
+    };
     let mut outcome = MoveOutcome::default();
     let start = body.pos;
     let (mut x, mut y, mut z) = (dx, dy, dz);
@@ -420,7 +438,7 @@ fn move_entity_inner(
         }
     }
 
-    let boxes = colliding_boxes(world, &bb.add_coord([x, y, z]));
+    let boxes = colliding(world, &bb.add_coord([x, y, z]));
     let original = bb;
     y = clip(&boxes, &bb, 1, y);
     bb = bb.offset([0.0, y, 0.0]);
@@ -433,7 +451,7 @@ fn move_entity_inner(
     if body.step_height > 0.0 && grounded && (x0 != x || z0 != z) {
         let (px, py, pz, plain) = (x, y, z, bb);
         let step = f64::from(body.step_height);
-        let boxes = colliding_boxes(world, &original.add_coord([x0, step, z0]));
+        let boxes = colliding(world, &original.add_coord([x0, step, z0]));
         // Step up first, then move horizontally.
         let mut a = original;
         let ay = clip(&boxes, &a.add_coord([x0, 0.0, z0]), 1, step);

@@ -48,6 +48,7 @@ mod leaves;
 mod light_data;
 mod liquids;
 mod maps;
+mod minecart;
 mod movement;
 mod mushrooms;
 mod noise;
@@ -344,6 +345,8 @@ struct Game {
     hanging: std::collections::BTreeMap<i32, hanging::Hanging>,
     /// Armor stands, by entity id.
     armor_stands: std::collections::BTreeMap<i32, armor_stand::ArmorStand>,
+    /// Minecarts, by entity id.
+    minecarts: std::collections::BTreeMap<i32, minecart::Minecart>,
     /// Every player but spectators lies in bed (`allPlayersSleeping`).
     all_sleeping: bool,
     /// Ticks since the last latency broadcast (`playerPingIndex`).
@@ -433,6 +436,7 @@ pub fn start(
         arrows: Default::default(),
         hanging: Default::default(),
         armor_stands: Default::default(),
+        minecarts: Default::default(),
         all_sleeping: false,
         ping_index: 0,
         wire_gives_power: true,
@@ -621,6 +625,7 @@ impl Game {
         order.extend(self.arrows.keys().copied());
         order.extend(self.hanging.keys().copied());
         order.extend(self.armor_stands.keys().copied());
+        order.extend(self.minecarts.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
@@ -643,6 +648,7 @@ impl Game {
                     .chain(self.arrows.keys())
                     .chain(self.hanging.keys())
                     .chain(self.armor_stands.keys())
+                    .chain(self.minecarts.keys())
                     .copied()
                     .filter(|&e| e > newest)
                     .collect();
@@ -685,6 +691,11 @@ impl Game {
             }
             if self.armor_stands.contains_key(&id) {
                 self.update_armor_stand(id);
+                continue;
+            }
+            // updateEntityWithOptionalForce keeps the yaw before the update.
+            if let Some(prev_yaw) = self.minecarts.get(&id).map(|m| m.base.yaw) {
+                self.update_minecart(id, prev_yaw);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -1987,6 +1998,14 @@ impl Game {
         if !(player.sneaking && player.held().is_some()) && self.activate_block(i, pos) {
             return;
         }
+        // ItemMinecart never asks canPlayerEdit: adventure players place minecarts too.
+        if self.players[i]
+            .held()
+            .is_some_and(|s| s.id == ids::item::MINECART && s.count > 0)
+            && self.place_minecart(i, pos)
+        {
+            return;
+        }
         let player = &self.players[i];
         // Adventure players may not place blocks (no CanPlaceOn support yet).
         if player.gamemode == 2 {
@@ -2216,7 +2235,7 @@ impl Game {
         }
     }
 
-    /// Whether a player or an armor stand (the entities with `preventEntitySpawning`
+    /// Whether a player, an armor stand or a minecart (the entities with `preventEntitySpawning`
     /// so far) stands in the collision box of `state` at `at` (`checkNoEntityCollision`).
     fn blocked_by_players(&self, state: u16, at: (i32, i32, i32)) -> bool {
         let boxes = physics::block_boxes(state, at);
@@ -2228,6 +2247,10 @@ impl Game {
             || self.armor_stands.values().any(|s| {
                 let bb = s.body.bb();
                 !s.dead && boxes.iter().any(|b| b.intersects(&bb))
+            })
+            || self.minecarts.values().any(|m| {
+                let bb = m.body.bb();
+                !m.dead && boxes.iter().any(|b| b.intersects(&bb))
             })
     }
 

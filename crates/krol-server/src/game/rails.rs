@@ -7,7 +7,7 @@
 //! or up slopes. Powered and activator rails pass power on along up to 8 rails of their
 //! own kind; detector rails are powered by minecarts on them.
 //!
-//! TODO(M5): detector rails seeing minecarts (they never find one yet).
+//! Detector rails see minecarts that touch them or sit in their box.
 
 use super::Game;
 use super::ids::block;
@@ -492,13 +492,6 @@ impl Game {
         }
     }
 
-    /// Whether a minecart is in a detector rail's box (`findMinecarts`).
-    ///
-    /// TODO(M5): minecarts.
-    fn minecart_on_detector(&mut self, _pos: Pos) -> bool {
-        false
-    }
-
     /// `BlockRailDetector.updatePoweredState`: powered while a minecart is on it,
     /// re-checked every 20 ticks.
     pub(super) fn detector_update(&mut self, pos: Pos, state: u16) {
@@ -506,7 +499,7 @@ impl Game {
             return;
         }
         let was = state & POWERED_BIT != 0;
-        let now = self.minecart_on_detector(pos);
+        let now = self.minecart_in_detector(pos);
         if now != was {
             let new = if now {
                 state | POWERED_BIT

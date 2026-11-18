@@ -251,9 +251,12 @@ impl Game {
             .expand([0.0, f64::from(-0.4f32), 0.0])
             .contract([0.001, 0.001, 0.001]);
         let (water, push) = super::liquids::water_movement(&mut self.level.overworld, &bb, true);
-        it.body.motion.0 += push.0;
-        it.body.motion.1 += push.1;
-        it.body.motion.2 += push.2;
+        // handleMaterialAcceleration adds nothing without a push (keeping a -0.0).
+        if push != (0.0, 0.0, 0.0) {
+            it.body.motion.0 += push.0;
+            it.body.motion.1 += push.1;
+            it.body.motion.2 += push.2;
+        }
         if water && !it.body.in_water && it.ticks > 1 {
             // resetHeight: the splash (particles are client-side).
             let m = it.body.motion;

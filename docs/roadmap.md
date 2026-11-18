@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: rails`).
+Status as of 2026-11-18 (commit `server: minecarts`).
 
 **Legend**
 
@@ -22,9 +22,10 @@ Status as of 2026-11-18 (commit `server: rails`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 entities without AI**: minecarts and boats, with their spawn
+1. **M5 entities without AI**: riding (players in minecarts), the other minecarts
+   (chest, hopper, furnace, TNT), boats, with their spawn
    packets, tracking and saving (done: projectiles from players, paintings and item
-   frames with the maps they show, armor stands).
+   frames with the maps they show, armor stands, rails, rideable minecarts).
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
 
@@ -126,7 +127,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
-| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands. Missing: boats, minecarts, fireballs, leash knots, fishing hooks, ... |
+| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands, rideable minecarts. Missing: boats, other minecarts, fireballs, leash knots, fishing hooks, ... |
 | 0x0F Spawn Mob | ❌ | No mobs |
 | 0x10 Spawn Painting | ✅ | |
 | 0x11 Spawn Experience Orb | ✅ | |
@@ -517,7 +518,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityXPOrb` | ✅ | Pushed out of blocks, saving with the chunk (loaded orbs are 0.25 wide, a vanilla quirk). Lava, water flow ❌ |
 | `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random), saving with the chunk (`TileEntityData` kept); dragon eggs, piston extensions, placing `TileEntityData` ❌ |
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
-| `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | ❌ | |
+| `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | 🟡 | Rideable minecarts: placed on rails by `ItemMinecart` (adventure players too), following rails (snapping onto the line, at most 0.4 a tick, drag, slopes, powered rails boosting and kicking off from a wall, unpowered ones braking), derailed movement, bumping into each other (lined up, sharing motion), players pushing them, colliding with pushable entities while moving, hits (wobble and damage metadata, sharpness, knockback, exhaustion, broken past 40 damage or by creative players, the minecart dropped with its name), fire, water, activator rails, detector rails, tracking (spawn object 10, metadata in `HashMap` order), saving (custom display tiles kept), selectors, `/tp`, `/kill`, explosions, projectiles, pressure plates, blocking block placement (`play/minecarts`). Missing: riding, the other minecarts, dispensers placing minecarts, nether portals, custom display tiles for 1.7 clients (their metadata 20 encodes the state differently) |
 | `EntityBoat` | ❌ | |
 | `EntityItemFrame`, `EntityPainting` | ✅ | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`, maps shown in frames (the frame icon, map packets every 10 ticks, the icon removed with the map). Invulnerable frames, `/tp` and old saves are not in a scenario |
 | `EntityLeashKnot` | ❌ | |

@@ -414,6 +414,10 @@ impl Game {
             s.body.pos = pos;
             s.base.yaw = rotation.0;
             s.base.pitch = rotation.1;
+        } else if let Some(m) = self.minecarts.get_mut(&id) {
+            m.body.pos = pos;
+            m.base.yaw = rotation.0;
+            m.base.pitch = rotation.1;
         }
     }
 
@@ -436,6 +440,8 @@ impl Game {
             h.dead = true;
         } else if let Some(s) = self.armor_stands.get_mut(&id) {
             s.dead = true;
+        } else if let Some(m) = self.minecarts.get_mut(&id) {
+            m.dead = true;
         }
     }
 
@@ -557,6 +563,19 @@ impl Game {
                 type_name: super::armor_stand::SAVED_ID,
                 name: Some(s.name()),
                 rotation: (s.base.yaw, s.base.pitch),
+                entity_id: id,
+            });
+        }
+        for (&id, m) in &self.minecarts {
+            all.push(Candidate {
+                target: Target::Entity(id),
+                pos: m.body.pos,
+                size: (m.body.width, m.body.height),
+                bb: None,
+                alive: !m.dead,
+                type_name: super::minecart::RIDEABLE_ID,
+                name: Some(m.name()),
+                rotation: (m.base.yaw, m.base.pitch),
                 entity_id: id,
             });
         }

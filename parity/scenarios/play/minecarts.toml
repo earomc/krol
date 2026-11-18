@@ -1,0 +1,119 @@
+description = "Minecarts: placed on rails (spawn object 10, metadata), one hit five times in a row (wobble and damage metadata, broken past 40 damage, the minecart dropped), one launched off a powered rail against a stone block (kick-off, boost, drag), running along the track over a detector rail (powered while the cart is on it, off 20 ticks after), bumping into a resting cart (the motion shared), both stopped by the glass at the end; the carts saved with their chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, facing south, and is
+# switched to survival from the console. The track runs east along z = -433 behind a
+# glass wall at z = -434, from powered rails at x = -476 and -475 (a redstone block
+# beside the first, a stone block west of it for the kick-off) over plain rails to
+# x = -467, with a detector rail at x = -468, and an unpowered powered rail at x = -466
+# that brakes the carts to a stop (rails alone never stop them exactly, so their saved
+# position would depend on when the server stops); a glass block closes the east end. jeb_
+# places and hits the carts through the glass, within the 3 blocks allowed without line
+# of sight. Entity ids: jeb_ 0, the /give drop 1, cart A 2, its dropped minecart 3,
+# cart C 4, cart B 5. Cart physics draws no random numbers, so where B and C end up is
+# compared exactly; the dropped minecart's flight is random (it is killed at the end).
+# Minecarts do not stack: the three from /give fill hotbar slots 0-2.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -434 -465 8 -434 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -477 4 -433 stone"
+
+[[steps]]
+action = "console"
+command = "setblock -465 4 -433 glass"
+
+[[steps]]
+action = "console"
+command = "fill -476 4 -433 -475 4 -433 golden_rail"
+
+[[steps]]
+action = "console"
+command = "fill -474 4 -433 -469 4 -433 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -468 4 -433 detector_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -467 4 -433 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -433 golden_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -476 4 -432 redstone_block"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+chat = [
+    "@4500 !hold 0",
+    "@4800 !place -472 4 -433 1",
+    "@5500 !attack 2",
+    "@5600 !attack 2",
+    "@5700 !attack 2",
+    "@5800 !attack 2",
+    "@5900 !attack 2",
+    "@6500 !hold 1",
+    "@6800 !place -470 4 -433 1",
+    "@7500 !hold 2",
+    "@7800 !place -476 4 -433 1",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ minecart 3"
+wait_ms = 12000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin), and
+# where the dropped minecart ends up is random.
+log_ignore_prefixes = ["Killed item.item."]
+blocks = [[-468, 4, -433]]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+]
+
+[observe.tolerance]
+# Cart B ends up creeping back west over the detector rail, slowing by 4% a tick but
+# never stopping exactly, so its saved position and motion depend on the tick the server
+# stops in.
+"entities.-30,-28[1].Pos" = 0.01
+"entities.-30,-28[1].Motion" = 0.001

@@ -408,9 +408,12 @@ impl Game {
             super::liquids::water_movement(&mut self.level.overworld, &bb, pushed)
         };
         let p = &mut self.players[i];
-        p.motion.0 += push.0;
-        p.motion.1 += push.1;
-        p.motion.2 += push.2;
+        // handleMaterialAcceleration adds nothing without a push (keeping a -0.0).
+        if push != (0.0, 0.0, 0.0) {
+            p.motion.0 += push.0;
+            p.motion.1 += push.1;
+            p.motion.2 += push.2;
+        }
         if water {
             if !p.in_water && !p.first_update {
                 self.water_splash(i);
@@ -576,6 +579,16 @@ impl Game {
             me.motion.0 += dx;
             me.motion.2 += dz;
             me.airborne = true;
+        }
+        // Minecarts take the push themselves (`EntityMinecart.applyEntityCollision`).
+        let carts: Vec<i32> = self
+            .minecarts
+            .iter()
+            .filter(|&(_, m)| !m.dead && area.intersects(&m.body.bb()))
+            .map(|(&id, _)| id)
+            .collect();
+        for id in carts {
+            self.minecart_collision(id, super::minecart::CartPusher::Player(i));
         }
     }
 

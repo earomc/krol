@@ -57,6 +57,9 @@ const ITEM_FRAME_METADATA_INTERVAL: u32 = 10;
 /// Armor stands: range 160, every 3 ticks, with velocity updates.
 const ARMOR_STAND_RANGE: i32 = 160;
 const ARMOR_STAND_FREQUENCY: u32 = 3;
+/// Minecarts: range 80, every 3 ticks, with velocity updates.
+const MINECART_RANGE: i32 = 80;
+const MINECART_FREQUENCY: u32 = 3;
 /// Experience orbs: range 160, every 20 ticks, with velocity updates.
 const ORB_RANGE: i32 = 160;
 const ORB_FREQUENCY: u32 = 20;
@@ -269,6 +272,20 @@ impl Game {
                 player: None,
             });
         }
+        if let Some(m) = self.minecarts.get(&entity_id) {
+            return Some(View {
+                pos: m.body.pos,
+                yaw: m.base.yaw,
+                pitch: m.base.pitch,
+                head: 0.0,
+                on_ground: m.body.on_ground,
+                motion: m.body.motion,
+                chunk: m.chunk,
+                airborne: m.airborne,
+                metadata_changed: m.metadata_changed,
+                player: None,
+            });
+        }
         if let Some(s) = self.armor_stands.get(&entity_id) {
             return Some(View {
                 pos: s.body.pos,
@@ -359,6 +376,8 @@ impl Game {
             (HANGING_RANGE, HANGING_FREQUENCY, false)
         } else if self.armor_stands.contains_key(&entity_id) {
             (ARMOR_STAND_RANGE, ARMOR_STAND_FREQUENCY, true)
+        } else if self.minecarts.contains_key(&entity_id) {
+            (MINECART_RANGE, MINECART_FREQUENCY, true)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
         };
@@ -689,6 +708,32 @@ impl Game {
                     });
                 }
             }
+        } else if let Some(m) = self.minecarts.get(&entity_id) {
+            // The minecart type is the data; type 0 brings no velocity, so a velocity
+            // packet follows.
+            let data = m.type_id();
+            packets.push(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind: super::minecart::OBJECT_TYPE,
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                pitch: angle(v.pitch) as i8,
+                yaw: angle(v.yaw) as i8,
+                data,
+                velocity: (data != 0)
+                    .then(|| (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2))),
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: m.metadata(),
+            });
+            packets.push(ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: speed(v.motion.0),
+                y: speed(v.motion.1),
+                z: speed(v.motion.2),
+            });
         } else if let Some(o) = self.orbs.get(&entity_id) {
             packets.push(ClientboundPlay::SpawnExperienceOrb {
                 entity_id,
@@ -971,6 +1016,8 @@ impl Game {
                 self.players[i].airborne = false;
             } else if let Some(h) = self.hanging.get_mut(&entity_id) {
                 h.airborne = false;
+            } else if let Some(m) = self.minecarts.get_mut(&entity_id) {
+                m.airborne = false;
             }
         }
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
@@ -1017,6 +1064,8 @@ impl Game {
             &mut a.body
         } else if let Some(s) = self.armor_stands.get_mut(&entity_id) {
             &mut s.body
+        } else if let Some(m) = self.minecarts.get_mut(&entity_id) {
+            &mut m.body
         } else {
             &mut self.tnt.get_mut(&entity_id)?.body
         };
@@ -1073,6 +1122,20 @@ impl Game {
                 .metadata()
                 .into_iter()
                 .filter(|m| dirty.contains(&m.index))
+                .collect();
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata,
+            });
+        } else if let Some(m) = self.minecarts.get_mut(&entity_id)
+            && std::mem::take(&mut m.metadata_changed)
+        {
+            // DataWatcher.getChanged: every entry still watched.
+            let dirty = std::mem::take(&mut m.dirty_metadata);
+            let metadata = m
+                .metadata()
+                .into_iter()
+                .filter(|e| dirty.contains(&e.index))
                 .collect();
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,

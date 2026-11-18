@@ -87,6 +87,11 @@ impl Game {
         players
             + stands
             + self
+                .minecarts
+                .values()
+                .filter(|m| !m.dead && m.body.bb().intersects(area))
+                .count()
+            + self
                 .items
                 .values()
                 .filter(|it| !it.dead && it.body.bb().intersects(area))
@@ -260,6 +265,12 @@ impl Game {
                     // BlockBasePressurePlate.onEntityCollidedWithBlock.
                     if is_plate(state >> 4) && plate_strength(state) == 0 {
                         self.update_plate((x, y, z), state);
+                    }
+                    // BlockRailDetector.onEntityCollidedWithBlock.
+                    if state >> 4 == super::ids::block::DETECTOR_RAIL
+                        && state & super::rails::POWERED_BIT == 0
+                    {
+                        self.detector_update((x, y, z), state);
                     }
                     if state >> 4 == super::cauldron::CAULDRON
                         && let Some(i) = player

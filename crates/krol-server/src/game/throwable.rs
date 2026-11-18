@@ -636,9 +636,12 @@ impl Game {
             .expand([0.0, f64::from(-0.4f32), 0.0])
             .contract([0.001, 0.001, 0.001]);
         let (water, push) = super::liquids::water_movement(&mut self.level.overworld, &bb, true);
-        body.motion.0 += push.0;
-        body.motion.1 += push.1;
-        body.motion.2 += push.2;
+        // handleMaterialAcceleration adds nothing without a push (keeping a -0.0).
+        if push != (0.0, 0.0, 0.0) {
+            body.motion.0 += push.0;
+            body.motion.1 += push.1;
+            body.motion.2 += push.2;
+        }
         if water && !body.in_water && !*first_update {
             // resetHeight: the splash (particles are client-side), with the entity's own
             // random (unseeded in vanilla).
@@ -691,6 +694,7 @@ impl Game {
                 .armor_stands
                 .get(&id)
                 .is_some_and(|s| !s.dead && !s.is_marker()),
+            Target::Minecart(id) => self.minecarts.get(&id).is_some_and(|m| !m.dead),
             Target::Item(_) | Target::Orb(_) | Target::Thrown(_) | Target::Arrow(_) => false,
         }
     }
@@ -885,6 +889,7 @@ impl Game {
             Target::Arrow(id) => self.arrows.get(&id)?.body.bb(),
             Target::Hanging(id) => self.hanging.get(&id)?.bb,
             Target::ArmorStand(id) => self.armor_stands.get(&id)?.body.bb(),
+            Target::Minecart(id) => self.minecarts.get(&id)?.body.bb(),
         })
     }
 }

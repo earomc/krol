@@ -35,7 +35,7 @@ const SHOVELS: [i16; 5] = [269, 273, 256, 277, 284];
 
 /// Enchantment ids.
 const SHARPNESS: i16 = 16;
-const KNOCKBACK: i16 = 19;
+pub(super) const KNOCKBACK: i16 = 19;
 const THORNS: i16 = 7;
 /// `Potion.blindness`.
 const BLINDNESS: u8 = 15;
@@ -54,9 +54,9 @@ const THORNS_SOUND: &str = "damage.thorns";
 const THORNS_VOLUME: f32 = 0.5;
 /// `S0BPacketAnimation` ids of critical hits and enchanted hits.
 const CRITICAL_EFFECT: u8 = 4;
-const MAGIC_CRITICAL_EFFECT: u8 = 5;
+pub(super) const MAGIC_CRITICAL_EFFECT: u8 = 5;
 /// Exhaustion of an attack (`addExhaustion(0.3F)`).
-const ATTACK_EXHAUSTION: f32 = 0.3;
+pub(super) const ATTACK_EXHAUSTION: f32 = 0.3;
 /// How long an attacker counts as the killer without combat entries (`recentlyHit`).
 pub const RECENTLY_HIT: i32 = 100;
 
@@ -130,7 +130,7 @@ fn is_tool(id: i16) -> bool {
 
 /// `EnchantmentHelper.func_152377_a` against an undefined creature (players):
 /// sharpness adds 1.25 per level.
-fn enchantment_damage(stack: Option<&ItemStack>) -> f32 {
+pub(super) fn enchantment_damage(stack: Option<&ItemStack>) -> f32 {
     let Some(stack) = stack else {
         return 0.0;
     };
@@ -192,6 +192,11 @@ impl Game {
                 self.armor_stands
                     .get(&target)
                     .map(|s| (s.body.pos, s.eye_height()))
+            })
+            .or_else(|| {
+                self.minecarts
+                    .get(&target)
+                    .map(|m| (m.body.pos, m.body.height * 0.85))
             });
         let pos = if let Some(t) = target_player {
             Some(self.players[t].pos)
@@ -220,6 +225,13 @@ impl Game {
         let p = self.players[i].pos;
         let d = (p.0 - pos.0, p.1 - pos.1, p.2 - pos.2);
         if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 >= reach {
+            return;
+        }
+        if self.minecarts.contains_key(&target) {
+            // TODO(M5): interacting with a rideable minecart gets in.
+            if action == ATTACK && self.players[i].gamemode != SPECTATOR {
+                self.player_attacks_minecart(i, target);
+            }
             return;
         }
         if self.armor_stands.contains_key(&target) {
@@ -432,7 +444,7 @@ impl Game {
     }
 
     /// `EntityTracker.func_151248_b`: to the player and everyone tracking it.
-    fn send_to_self_and_tracking(&mut self, i: usize, packet: ClientboundPlay) {
+    pub(super) fn send_to_self_and_tracking(&mut self, i: usize, packet: ClientboundPlay) {
         let entity_id = self.players[i].entity_id;
         self.players[i].send(packet.clone());
         self.send_to_tracking(entity_id, &packet);

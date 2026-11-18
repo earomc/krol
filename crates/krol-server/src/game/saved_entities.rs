@@ -440,6 +440,8 @@ impl Game {
             Some(h.body.pos)
         } else if let Some(s) = self.armor_stands.get(&id) {
             Some(s.body.pos)
+        } else if let Some(m) = self.minecarts.get(&id) {
+            Some(m.body.pos)
         } else {
             self.tnt.get(&id).map(|t| t.body.pos)
         }
@@ -602,6 +604,14 @@ impl Game {
                 self.hanging.insert(id, h);
                 pos
             }
+            super::minecart::RIDEABLE_ID => {
+                let (base, uuid) = EntityBase::read(c, &mut body);
+                self.set_saved_uuid(id, uuid);
+                let m = super::minecart::Minecart::load(body, base, c);
+                let pos = m.body.pos;
+                self.minecarts.insert(id, m);
+                pos
+            }
             super::armor_stand::SAVED_ID => {
                 let head = self.new_stand_head();
                 let (stand, uuid) = self.armor_stand_from_nbt(c, head);
@@ -738,6 +748,11 @@ impl Game {
             c.insert("id", Tag::String(super::armor_stand::SAVED_ID.into()));
             s.base.write(&s.body, uuid, &mut c);
             s.write(&mut c);
+        } else if let Some(m) = self.minecarts.get(&id) {
+            if m.dead {
+                return None;
+            }
+            self.minecart_nbt(m, uuid, &mut c);
         } else {
             let t = self.tnt.get(&id).filter(|t| !t.dead)?;
             c.insert("id", Tag::String(TNT_ID.into()));
