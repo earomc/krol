@@ -534,7 +534,29 @@ impl Game {
         if p.health() <= 0.0 || p.gamemode == 3 {
             return;
         }
-        let area = Aabb::at(p.pos, 0.6, 1.8).expand([1.0, 0.5, 1.0]);
+        // A rider reaches around its vehicle too.
+        let own = Aabb::at(p.pos, 0.6, 1.8);
+        let vehicle = p
+            .riding
+            .and_then(|v| self.minecarts.get(&v))
+            .filter(|m| !m.dead)
+            .map(|m| m.body.bb());
+        let area = match vehicle {
+            Some(v) => Aabb::new(
+                [
+                    own.min[0].min(v.min[0]),
+                    own.min[1].min(v.min[1]),
+                    own.min[2].min(v.min[2]),
+                ],
+                [
+                    own.max[0].max(v.max[0]),
+                    own.max[1].max(v.max[1]),
+                    own.max[2].max(v.max[2]),
+                ],
+            )
+            .expand([1.0, 0.0, 1.0]),
+            None => own.expand([1.0, 0.5, 1.0]),
+        };
         let mut near: Vec<i32> = self
             .items
             .iter()

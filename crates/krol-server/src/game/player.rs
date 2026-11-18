@@ -86,6 +86,16 @@ pub struct Player {
     pub swing: (bool, i32),
     /// Motion per tick of the server's copy of the player (`motionX/Y/Z`).
     pub motion: (f64, f64, f64),
+    /// The vehicle the player rides (`ridingEntity`), by entity id.
+    pub riding: Option<i32>,
+    /// Where minecart riding started (`startMinecartRidingCoordinate`).
+    pub minecart_start: Option<(i32, i32, i32)>,
+    /// A rider's sideways input (`moveStrafing`).
+    pub move_strafing: f32,
+    /// A rider's forward input (`moveForward`).
+    pub move_forward: f32,
+    /// A rider holds jump (`isJumping`).
+    pub jumping: bool,
     /// Sneaking (entity flag 1).
     pub sneaking: bool,
     /// Sprinting (entity flag 3).

@@ -582,3 +582,8 @@ scenarios = ["play/rails"]
 id = "entity.minecarts"
 description = "EntityMinecart (rideable): ItemMinecart.onItemUse on a rail, spawn object 10 with the minecart type as data, metadata in DataWatcher HashMap order (17-22 between 0-4); five quick hits (wobble direction and amplitude, damage up 10 a point and down 1 a tick, broken past 40, the minecart item dropped); a cart kicked off a powered rail by a stone block, boosted, running over plain rails and a detector rail (powered while the cart is on it, off 20 ticks after it leaves), bumping into a resting cart (both lined up: the motion shared), stopped by an unpowered powered rail and the glass at the end; the carts saved with their chunk (Motion -0.0 kept). Not yet in a scenario: players pushing carts, slopes, derailing, fire, water, explosions, projectiles, creative players, named carts, activator rails, loading, /tp"
 scenarios = ["play/minecarts"]
+
+[[feature]]
+id = "entity.riding"
+description = "Players riding minecarts: interacting with a cart gets in (Attach Entity to the rider, a teleport where it stands), the rider sits on the cart (y - 0.35), riding a cart launched by a powered rail and braked to a stop, the unmount input getting out (a teleport to a free spot next to the cart, Attach Entity -1, another teleport), getting back in; the cart saved in the player's data (Riding) and not with its chunk; after a restart the player joins in the cart (spawned at once, Attach Entity, a teleport); the minecart distance stat. Not yet in a scenario: viewers seeing a rider (attach every 60 updates, looks only, the teleport after getting off), sneaking out, carts breaking under a rider, activator rails, a rider pushing forward, logging out while riding"
+scenarios = ["play/riding"]

@@ -1106,9 +1106,8 @@ impl Game {
             }
             "save-all" => {
                 self.reply(sender, &t("commands.save.start", vec![]));
-                let dir = self.level.dir.clone();
-                for p in &mut self.players {
-                    p.save(&dir);
+                for i in 0..self.players.len() {
+                    self.save_player(i);
                 }
                 self.save_level(false);
                 self.scoreboard.save(&self.level.dir);

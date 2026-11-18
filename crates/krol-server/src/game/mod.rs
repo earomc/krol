@@ -67,6 +67,7 @@ mod random_ticks;
 mod raytrace;
 mod recipes;
 mod redstone;
+mod riding;
 mod saved_entities;
 mod scheduler;
 mod scoreboard;
@@ -347,6 +348,9 @@ struct Game {
     armor_stands: std::collections::BTreeMap<i32, armor_stand::ArmorStand>,
     /// Minecarts, by entity id.
     minecarts: std::collections::BTreeMap<i32, minecart::Minecart>,
+    /// An entity being spawned with `forceSpawn` (shown to players whose chunk is not
+    /// sent yet).
+    force_spawn: Option<i32>,
     /// Every player but spectators lies in bed (`allPlayersSleeping`).
     all_sleeping: bool,
     /// Ticks since the last latency broadcast (`playerPingIndex`).
@@ -437,6 +441,7 @@ pub fn start(
         hanging: Default::default(),
         armor_stands: Default::default(),
         minecarts: Default::default(),
+        force_spawn: None,
         all_sleeping: false,
         ping_index: 0,
         wire_gives_power: true,
@@ -598,9 +603,8 @@ impl Game {
         self.tick_scheduled();
         if self.tick_count % 900 == 0 && self.saving_enabled {
             // Vanilla autosave (saveAllWorlds(true): no log lines).
-            let dir = self.level.dir.clone();
-            for p in &mut self.players {
-                p.save(&dir);
+            for i in 0..self.players.len() {
+                self.save_player(i);
             }
             self.save_level(false);
             self.scoreboard.save(&self.level.dir);
@@ -703,6 +707,24 @@ impl Game {
             };
             if self.players[i].removed {
                 continue;
+            }
+            // A rider updates right after its vehicle; one whose vehicle is gone or
+            // has let go of it gets off silently.
+            if let Some(cart) = self.players[i].riding {
+                let me = self.players[i].entity_id;
+                if self
+                    .minecarts
+                    .get(&cart)
+                    .is_some_and(|m| !m.dead && m.rider == Some(me))
+                {
+                    continue;
+                }
+                if let Some(m) = self.minecarts.get_mut(&cart)
+                    && m.rider == Some(me)
+                {
+                    m.rider = None;
+                }
+                self.players[i].riding = None;
             }
             // A dead player marked dead leaves the world on its turn here.
             if self.players[i].dead_marked {
@@ -1302,6 +1324,11 @@ impl Game {
                 };
                 (f(0), f(1), f(2))
             },
+            riding: None,
+            minecart_start: None,
+            move_strafing: 0.0,
+            move_forward: 0.0,
+            jumping: false,
             sneaking: false,
             sprinting: false,
             flying: data
@@ -1440,6 +1467,8 @@ impl Game {
         });
         // Container.onCraftGuiOpened checks for changes right away.
         self.detect_inventory_changes(new_index);
+        // A player saved riding gets its vehicle back.
+        self.restore_riding(new_index);
     }
 
     /// `Container.detectAndSendChanges` for the player window (vanilla quirk: the
@@ -2442,6 +2471,11 @@ impl Game {
             } => {
                 self.use_entity(i, target, action, target_pos);
             }
+            ServerboundPlay::SteerVehicle {
+                sideways,
+                forward,
+                flags,
+            } => self.steer_vehicle(i, sideways, forward, flags),
             ServerboundPlay::HeldItemChange { slot } => {
                 if (0..9).contains(&slot) {
                     self.players[i].selected = slot as usize;
@@ -2559,8 +2593,9 @@ impl Game {
         let conn_id = self.players[i].conn_id;
         self.broadcast_chat(&left, Some(conn_id));
         self.add_stat(i, "stat.leaveGame", 1);
-        let dir = self.level.dir.clone();
-        self.players[i].save(&dir);
+        self.save_player(i);
+        // playerLoggedOut: the vehicle leaves with the player.
+        self.remove_mount_of_leaving(i);
         // World.removeEntity: viewers destroy the player entity.
         self.untrack_player(i);
         let player = self.players.remove(i);
@@ -2577,9 +2612,8 @@ impl Game {
     fn shutdown(&mut self) {
         info!("Stopping server");
         info!("Saving players");
-        let dir = self.level.dir.clone();
-        for p in &mut self.players {
-            p.save(&dir);
+        for i in 0..self.players.len() {
+            self.save_player(i);
         }
         let closed = Component::text("Server closed").to_json_string();
         for p in &self.players {

@@ -117,6 +117,18 @@ pub fn encode(p: &ServerboundPlay, own_entity: i32) -> Result<Option<Vec<u8>>, E
         ServerboundPlay::UseEntity { target, action, .. } => {
             w.varint(0x02).i32(*target).i8(*action as i8);
         }
+        // 1.7 sends the jump and unmount flags as two booleans.
+        ServerboundPlay::SteerVehicle {
+            sideways,
+            forward,
+            flags,
+        } => {
+            w.varint(0x0c)
+                .f32(*sideways)
+                .f32(*forward)
+                .bool(flags & 1 != 0)
+                .bool(flags & 2 != 0);
+        }
         ServerboundPlay::Animation => {
             w.varint(0x0a).i32(own_entity).i8(1);
         }

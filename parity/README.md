@@ -152,6 +152,12 @@ into server ticks. Rules learned from flaky scenarios:
   with an unpowered powered rail, which brakes carts to zero, or give a cart still
   creeping at the end a commented tolerance (`play/minecarts`). Their physics draws no
   random numbers, so everything else compares exactly.
+- **A riding player's data holds its vehicle** (`Riding`, with the vehicle's random
+  UUID as two longs that the UUID normalization does not see: ignore them), and a
+  player reloaded from data with an `XpSeed` of 0 draws a new seed at random (ignore
+  `XpSeed` after a restart; `play/riding`).
+- **Goldens are parsed with `float_roundtrip`**: without it `serde_json` misreads some
+  doubles by an ulp, which showed as diffs between identical-looking numbers.
 - **Entity metadata comes in `HashMap` order**: entities with 12 entries or fewer keep
   16 buckets, so entries 16-31 come between the low ones (a minecart: 0, 1, 17, 2, 18,
   ...). A metadata hex diff that only reorders entries means a missing

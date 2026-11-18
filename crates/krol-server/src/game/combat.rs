@@ -228,9 +228,12 @@ impl Game {
             return;
         }
         if self.minecarts.contains_key(&target) {
-            // TODO(M5): interacting with a rideable minecart gets in.
-            if action == ATTACK && self.players[i].gamemode != SPECTATOR {
-                self.player_attacks_minecart(i, target);
+            match action {
+                INTERACT => self.interact_minecart(i, target),
+                ATTACK if self.players[i].gamemode != SPECTATOR => {
+                    self.player_attacks_minecart(i, target);
+                }
+                _ => {}
             }
             return;
         }

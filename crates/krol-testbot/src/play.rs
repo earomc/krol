@@ -51,7 +51,9 @@ pub struct PlayObservation {
 /// `!place <x> <y> <z> <face> [cx cy cz]` (use the held item, cursor 8/8/8 unless
 /// given in 1/16; sends the swing first),
 /// `!use` (use the held item, face 255), `!hold <slot>` (select hotbar slot),
-/// `!swing` (arm animation), `!attack <entity id>` (swing, then attack),
+/// `!swing` (arm animation), `!attack <entity id>` (swing, then attack), `!sneak` /
+/// `!unsneak` (Entity Action start / stop sneaking), `!steer <sideways> <forward>
+/// <flags>` (Steer Vehicle: flags 1 jump, 2 get off),
 /// `!interact <entity id>` (right click on an entity), `!interactat <entity id> <x> <y>
 /// <z>` (a 1.8 client's right click: interact at the hit point relative to the entity,
 /// then interact),
@@ -438,6 +440,20 @@ fn action_or_chat(
             action: if action == "sprint" { 3 } else { 4 },
             jump_boost: 0,
         }],
+        Some(action @ ("sneak" | "unsneak")) => vec![ServerboundPlay::EntityAction {
+            entity: own_eid,
+            action: if action == "sneak" { 0 } else { 1 },
+            jump_boost: 0,
+        }],
+        // !steer <sideways> <forward> <flags>: a rider's input (flags: 1 jump, 2 get off).
+        Some("steer") => {
+            let f = |k: usize| parts.get(k).and_then(|p| p.parse().ok()).unwrap_or(0.0);
+            vec![ServerboundPlay::SteerVehicle {
+                sideways: f(1),
+                forward: f(2),
+                flags: num(3) as u8,
+            }]
+        }
         Some("hold") => vec![ServerboundPlay::HeldItemChange {
             slot: num(1) as i16,
         }],

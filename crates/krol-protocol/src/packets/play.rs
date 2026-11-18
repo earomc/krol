@@ -422,6 +422,13 @@ impl ServerboundPlay {
                     .varint(*action)
                     .varint(*jump_boost);
             }
+            Self::SteerVehicle {
+                sideways,
+                forward,
+                flags,
+            } => {
+                w.varint(0x0c).f32(*sideways).f32(*forward).u8(*flags);
+            }
             Self::PluginMessage { channel, data } => {
                 w.varint(0x17).string(channel)?;
                 w.bytes(data);
@@ -777,6 +784,12 @@ pub enum ClientboundPlay {
     },
     /// `0x0D`
     CollectItem { collected: i32, collector: i32 },
+    /// `0x1B` (`vehicle_id` -1 to get off; `leash` for leads)
+    AttachEntity {
+        entity_id: i32,
+        vehicle_id: i32,
+        leash: bool,
+    },
     /// `0x2D` (title: chat JSON)
     OpenWindow {
         window: u8,
@@ -1060,6 +1073,7 @@ impl ClientboundPlay {
             Self::Explosion { .. } => 0x27,
             Self::SpawnObject { .. } => 0x0e,
             Self::CollectItem { .. } => 0x0d,
+            Self::AttachEntity { .. } => 0x1b,
             Self::Respawn { .. } => 0x07,
             Self::ConfirmTransaction { .. } => 0x32,
             Self::OpenWindow { .. } => 0x2d,
@@ -1409,6 +1423,13 @@ impl ClientboundPlay {
                 collector,
             } => {
                 w.varint(*collected).varint(*collector);
+            }
+            Self::AttachEntity {
+                entity_id,
+                vehicle_id,
+                leash,
+            } => {
+                w.i32(*entity_id).i32(*vehicle_id).u8(u8::from(*leash));
             }
             Self::Respawn {
                 dimension,
@@ -1920,6 +1941,11 @@ impl ClientboundPlay {
                 collected: r.varint()?,
                 collector: r.varint()?,
             },
+            0x1b => Self::AttachEntity {
+                entity_id: r.i32()?,
+                vehicle_id: r.i32()?,
+                leash: r.u8()? != 0,
+            },
             0x12 => Self::EntityVelocity {
                 entity_id: r.varint()?,
                 x: r.i16()?,
@@ -2067,6 +2093,27 @@ mod tests {
         want.push(2);
         assert_eq!(bytes, want);
         assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
+    }
+
+    #[test]
+    fn riding_golden_bytes() {
+        let attach = ClientboundPlay::AttachEntity {
+            entity_id: 1,
+            vehicle_id: -1,
+            leash: false,
+        };
+        let bytes = attach.encode(V).unwrap();
+        assert_eq!(bytes, [0x1b, 0, 0, 0, 1, 0xff, 0xff, 0xff, 0xff, 0]);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(attach));
+        let steer = ServerboundPlay::SteerVehicle {
+            sideways: 0.0,
+            forward: 1.0,
+            flags: 2,
+        };
+        assert_eq!(
+            steer.encode().unwrap().unwrap(),
+            [0x0c, 0, 0, 0, 0, 0x3f, 0x80, 0, 0, 2]
+        );
     }
 
     #[test]

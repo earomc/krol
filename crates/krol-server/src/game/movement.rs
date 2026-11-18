@@ -387,7 +387,7 @@ impl Game {
         self.players[i].dead_marked = true;
     }
 
-    fn living_move(&mut self, i: usize) {
+    pub(super) fn living_move(&mut self, i: usize) {
         // EntityPlayer.onUpdate, before the living update.
         self.item_use_update(i);
         let p = &mut self.players[i];
@@ -794,7 +794,7 @@ impl Game {
 
     /// The end of `EntityPlayer.onUpdate`, run with every movement packet: food
     /// (`FoodStats.onUpdate`) and the time statistics.
-    fn player_update(&mut self, i: usize) {
+    pub(super) fn player_update(&mut self, i: usize) {
         let difficulty = self.config.difficulty;
         let regeneration = self.level.data.game_rule("naturalRegeneration") != Some("false");
         let p = &mut self.players[i];
@@ -849,7 +849,7 @@ impl Game {
 
     /// The end of `EntityPlayerMP.onUpdateEntity`: health and food go out when they
     /// changed.
-    fn send_health_if_changed(&mut self, i: usize) {
+    pub(super) fn send_health_if_changed(&mut self, i: usize) {
         let p = &mut self.players[i];
         let now = (
             p.health(),
@@ -942,7 +942,6 @@ impl Game {
             self.kick(i, "Invalid move packet received");
             return;
         }
-        let radius = self.config.view_distance;
         let allow_flight = self.config.allow_flight;
         let player = &mut self.players[i];
         let start = player.pos;
@@ -962,7 +961,10 @@ impl Game {
             return;
         }
         player.movement.last_move_tick = player.movement.network_ticks;
-        // TODO(M5): riding.
+        if player.riding.is_some() {
+            self.riding_movement(i, position, rotation, on_ground);
+            return;
+        }
         if player.sleeping {
             // A sleeping player updates but stays where it lies.
             self.update_carried_maps(i);
@@ -1079,7 +1081,15 @@ impl Game {
             }
         }
         self.players[i].on_ground = on_ground;
+        self.update_player_chunks(i);
+        let dy_fall = self.players[i].pos.1 - prev_y;
+        self.handle_falling(i, dy_fall, on_ground);
+    }
 
+    /// `serverUpdateMovingPlayer`: the chunks around a player that moved start or stop
+    /// being watched.
+    pub(super) fn update_player_chunks(&mut self, i: usize) {
+        let radius = self.config.view_distance;
         let unload = self.players[i].update_watching(radius);
         for (x, z) in self.players[i].take_new_watches() {
             self.level.overworld.chunk(x, z);
@@ -1097,8 +1107,6 @@ impl Game {
                 full: true,
             });
         }
-        let dy_fall = self.players[i].pos.1 - prev_y;
-        self.handle_falling(i, dy_fall, on_ground);
     }
 
     /// Vanilla `processEntityAction`.

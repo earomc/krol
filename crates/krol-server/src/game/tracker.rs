@@ -81,6 +81,11 @@ pub struct TrackerEntry {
     last_motion: (f64, f64, f64),
     /// Entity ids of the players that see this entity (vanilla `trackingPlayers`).
     tracking: BTreeSet<i32>,
+    /// The vehicle the viewers were last told about (`field_85178_v`).
+    last_vehicle: Option<i32>,
+    /// The entity rode something at the last update (`ridingEntity`): the first update
+    /// after it gets off sends a teleport.
+    was_riding: bool,
 }
 
 impl TrackerEntry {
@@ -395,6 +400,8 @@ impl Game {
             velocity_updates,
             last_motion: v.motion,
             tracking: BTreeSet::new(),
+            last_vehicle: None,
+            was_riding: false,
         };
         self.tracker.insert(entity_id, entry);
         self.update_player_entities(entity_id);
@@ -536,6 +543,13 @@ impl Game {
                     &t.modifiers,
                 ),
             });
+            if let Some(vehicle_id) = t.riding {
+                packets.push(ClientboundPlay::AttachEntity {
+                    entity_id,
+                    vehicle_id,
+                    leash: false,
+                });
+            }
             for (slot, item) in equipment(t).into_iter().enumerate() {
                 if item.is_some() {
                     packets.push(ClientboundPlay::EntityEquipment {
@@ -804,7 +818,9 @@ impl Game {
         if in_range {
             let vp = &self.players[viewer];
             let sent = vp.watching.contains(&v.chunk) && !vp.chunk_queue.contains(&v.chunk);
-            if entry.tracking.contains(&viewer_id) || !sent {
+            // forceSpawn: a vehicle restored with a joining player shows at once.
+            let forced = self.force_spawn == Some(entity_id);
+            if entry.tracking.contains(&viewer_id) || !(sent || forced) {
                 return;
             }
             for packet in self.spawn_packets(entity_id, &v) {
@@ -877,6 +893,22 @@ impl Game {
             self.update_player_entities(entity_id);
         }
 
+        // The vehicle goes to the viewers when it changes, and every 60 updates while
+        // riding.
+        let vehicle = v.player.and_then(|i| self.players[i].riding);
+        if let Some(entry) = self.tracker.get_mut(&entity_id)
+            && (entry.last_vehicle != vehicle
+                || (vehicle.is_some() && entry.update_counter % 60 == 0))
+        {
+            entry.last_vehicle = vehicle;
+            let packet = ClientboundPlay::AttachEntity {
+                entity_id,
+                vehicle_id: vehicle.unwrap_or(-1),
+                leash: false,
+            };
+            self.send_to_tracking(entity_id, &packet);
+        }
+
         // Item frames send the map they show and changed metadata every 10 ticks.
         let mut v = v;
         let frame = self.hanging.get(&entity_id).and_then(|h| match h.kind {
@@ -904,7 +936,42 @@ impl Game {
             return rechecked;
         };
         let counter = entry.update_counter;
-        if counter % entry.frequency == 0 || v.airborne || v.metadata_changed {
+        let due = counter % entry.frequency == 0 || v.airborne || v.metadata_changed;
+        if due && vehicle.is_some() {
+            // A rider only sends its look; its position follows the vehicle.
+            let (yaw, pitch) = (angle(v.yaw), angle(v.pitch));
+            let turned =
+                (yaw - entry.encoded_rot.0).abs() >= 4 || (pitch - entry.encoded_rot.1).abs() >= 4;
+            let look = turned.then(|| {
+                entry.encoded_rot = (yaw, pitch);
+                ClientboundPlay::EntityLook {
+                    entity_id,
+                    yaw: yaw as i8,
+                    pitch: pitch as i8,
+                    on_ground: v.on_ground,
+                }
+            });
+            entry.encoded_pos = (fixed(v.pos.0), fixed(v.pos.1), fixed(v.pos.2));
+            entry.was_riding = true;
+            let head = angle(v.head);
+            let head_packet = ((head - entry.last_head).abs() >= 4).then(|| {
+                entry.last_head = head;
+                ClientboundPlay::EntityHeadLook {
+                    entity_id,
+                    yaw: head as i8,
+                }
+            });
+            if let Some(packet) = look {
+                self.send_to_tracking(entity_id, &packet);
+            }
+            self.send_dirty_data(entity_id, &v);
+            if let Some(packet) = head_packet {
+                self.send_to_tracking(entity_id, &packet);
+            }
+            if let Some(i) = v.player {
+                self.players[i].airborne = false;
+            }
+        } else if due {
             entry.ticks_since_teleport += 1;
             let (x, y, z) = (fixed(v.pos.0), fixed(v.pos.1), fixed(v.pos.2));
             let (yaw, pitch) = (angle(v.yaw), angle(v.pitch));
@@ -923,6 +990,7 @@ impl Game {
                     && small(dy)
                     && small(dz)
                     && entry.ticks_since_teleport <= 400
+                    && !entry.was_riding
                     && entry.on_ground == v.on_ground
                 {
                     let on_ground = v.on_ground;
@@ -991,6 +1059,7 @@ impl Game {
             if moved {
                 entry.encoded_pos = (x, y, z);
             }
+            entry.was_riding = false;
             if turned {
                 entry.encoded_rot = (yaw, pitch);
             }

@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: minecarts`).
+Status as of 2026-11-18 (commit `server: riding minecarts`).
 
 **Legend**
 
@@ -22,12 +22,16 @@ Status as of 2026-11-18 (commit `server: minecarts`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 entities without AI**: riding (players in minecarts), the other minecarts
+1. **M5 entities without AI**: the other minecarts
    (chest, hopper, furnace, TNT), boats, with their spawn
    packets, tracking and saving (done: projectiles from players, paintings and item
-   frames with the maps they show, armor stands, rails, rideable minecarts).
+   frames with the maps they show, armor stands, rails, rideable minecarts, players
+   riding minecarts).
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
+3. **Parity robustness**: `play/tnt_pinned` replayed as 1.7 clients failed once in a
+   parallel full run (a health update arriving after the explosion's block changes) and
+   passed alone; make its timing robust.
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
 The nether and the end are ❌ (see [world](#netminecraftworld)).
@@ -134,7 +138,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x12 Entity Velocity · 0x13 Destroy Entities · 0x15 Entity Relative Move · 0x16 Entity Look · 0x17 Entity Look And Relative Move · 0x18 Entity Teleport · 0x19 Entity Head Look | ✅ | |
 | 0x14 Entity (no-op) | ❌ | Not sent by krol yet; vanilla sends it for entities that didn't move in some update cycles |
 | 0x1A Entity Status | 🟡 | Hurt, death, eating done; mob statuses missing |
-| 0x1B Attach Entity | ❌ | Riding, leashes |
+| 0x1B Attach Entity | 🟡 | Riding: to the rider on mounting and dismounting, to its viewers when spawned, on a change and every 60 updates (`play/riding`). Leashes ❌ |
 | 0x1C Entity Metadata | 🟡 | Players, items, orbs, falling blocks, projectiles, hanging entities, armor stands (rotations included) |
 | 0x1D Entity Effect · 0x1E Remove Entity Effect | ✅ | |
 | 0x1F Set Experience | ✅ | |
@@ -176,7 +180,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 |---|---|---|
 | 0x00 Keep Alive · 0x01 Chat · 0x03–0x06 Player/Position/Look · 0x07 Player Digging · 0x08 Block Placement · 0x09 Held Item Change · 0x0A Animation · 0x0B Entity Action · 0x0D Close Window · 0x0E Click Window · 0x0F Confirm Transaction · 0x10 Creative Inventory Action · 0x12 Update Sign · 0x13 Player Abilities · 0x15 Client Settings · 0x16 Client Status | ✅ | |
 | 0x02 Use Entity (attack, interact, interact at) | 🟡 | Attacking players, hanging entities and armor stands, interacting with item frames, interacting at armor stands ✅ (items, orbs and oneself kick like vanilla); mobs ❌ |
-| 0x0C Steer Vehicle | ❌ | No vehicles |
+| 0x0C Steer Vehicle | 🟡 | The unmount flag gets a rider out; forward input starts a resting minecart (`play/riding`). Steering boats, pigs and horses ❌ |
 | 0x11 Enchant Item | ✅ | |
 | 0x14 Tab-Complete | ❌ | |
 | 0x17 Plugin Message | 🟡 | Received; `MC|ItemName` ✅ (1.7's raw text translated), `MC|Beacon` ✅; `MC|BEdit`, `MC|BSign`, `MC|TrSel`, `MC|AdvCdm`, `MC|AutoCmd`, `MC|PickItem` unhandled |
@@ -504,7 +508,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Sleeping | 🟡 | Use bed, sleep timer, waking (day, bed gone, leaving, night skipped), spawn point, respawning at the bed or being told it is missing ✅; the 0.2 x 0.2 sleeping box, players saved asleep moved out of the bed ❌ |
 | Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ✅ | Players only. Held item attack modifiers (also saved), sword blocking, thorns, tool wear and use stats, killers (combat tracker, `attackingPlayer`), revenge target (`HurtByTimestamp`), PvP death messages. Critical hits, sprint knockback, fire aspect (the burning flag follows on the victim's own update) and thorns (the sound at the attacker) are covered by `play/pvp_effects`; the overkill achievement ❌ |
 | Interacting with entities (`interactWith`) | ❌ | |
-| Riding (`mountEntity`) | ❌ | |
+| Riding (`mountEntity`) | 🟡 | Players in rideable minecarts: getting in by interacting, riders updating right after their vehicle (and once more with each movement packet), sitting on the cart, sneaking or the unmount input getting out onto a free spot, getting out when the cart breaks or passes a powered activator rail, letting go silently of dead carts, the cart saved in the player's `Riding` tag (not with its chunk) and taken along on logout, back with the player on login (spawned at once), riders sending only looks to viewers (a teleport after getting off), carts moving slower and with less drag with a rider, the rider's push starting a resting cart, the distance ridden (`play/riding`). Missing: mobs and armor stands riding (moving carts picking them up), boats, pigs, horses, the onARail achievement, the rider's own move under the cart (block collisions) |
 | Spectator mode: camera, teleport via `Spectate` | 🟡 | Game mode and noclip ✅; camera/spectate packets ❌ |
 | Achievements awarded during play | 🟡 | `exploreAllBiomes` ✅; `openInventory`, `mineWood`, crafting and pickup achievements ❌ |
 | Chat visibility and other client settings | 🟡 | Skin parts ✅; chat visibility filtering ❌ |
@@ -518,7 +522,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityXPOrb` | ✅ | Pushed out of blocks, saving with the chunk (loaded orbs are 0.25 wide, a vanilla quirk). Lava, water flow ❌ |
 | `EntityFallingBlock` | ✅ | Anvils (fall distance, hurting entities, helmet wear, the damage roll from the entity's own random), saving with the chunk (`TileEntityData` kept); dragon eggs, piston extensions, placing `TileEntityData` ❌ |
 | `EntityTNTPrimed` | ✅ | Motion from `Math.random()`, fuse, water push, no splash (vanilla quirk), tracking (spawn object 50), saving with the chunk |
-| `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | 🟡 | Rideable minecarts: placed on rails by `ItemMinecart` (adventure players too), following rails (snapping onto the line, at most 0.4 a tick, drag, slopes, powered rails boosting and kicking off from a wall, unpowered ones braking), derailed movement, bumping into each other (lined up, sharing motion), players pushing them, colliding with pushable entities while moving, hits (wobble and damage metadata, sharpness, knockback, exhaustion, broken past 40 damage or by creative players, the minecart dropped with its name), fire, water, activator rails, detector rails, tracking (spawn object 10, metadata in `HashMap` order), saving (custom display tiles kept), selectors, `/tp`, `/kill`, explosions, projectiles, pressure plates, blocking block placement (`play/minecarts`). Missing: riding, the other minecarts, dispensers placing minecarts, nether portals, custom display tiles for 1.7 clients (their metadata 20 encodes the state differently) |
+| `EntityMinecart*` (empty, chest, furnace, hopper, TNT, spawner, command block) | 🟡 | Rideable minecarts: placed on rails by `ItemMinecart` (adventure players too), following rails (snapping onto the line, at most 0.4 a tick, drag, slopes, powered rails boosting and kicking off from a wall, unpowered ones braking), derailed movement, bumping into each other (lined up, sharing motion), players pushing them, colliding with pushable entities while moving, hits (wobble and damage metadata, sharpness, knockback, exhaustion, broken past 40 damage or by creative players, the minecart dropped with its name), fire, water, activator rails, detector rails, tracking (spawn object 10, metadata in `HashMap` order), saving (custom display tiles kept), selectors, `/tp`, `/kill`, explosions, projectiles, pressure plates, blocking block placement (`play/minecarts`), riders (`play/riding`). Missing: the other minecarts, dispensers placing minecarts, nether portals, custom display tiles for 1.7 clients (their metadata 20 encodes the state differently). Riding: see Riding |
 | `EntityBoat` | ❌ | |
 | `EntityItemFrame`, `EntityPainting` | ✅ | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`, maps shown in frames (the frame icon, map packets every 10 ticks, the icon removed with the map). Invulnerable frames, `/tp` and old saves are not in a scenario |
 | `EntityLeashKnot` | ❌ | |
@@ -635,7 +639,7 @@ krol notice.
 | Feature | Status | Notes |
 |---|---|---|
 | `stats/<uuid>.json`: format, key order, saving | ✅ | |
-| General stats (play time, walking/swimming/falling/climbing/flying/diving/sprinting/crouching distances, jumps, deaths, drops, damage taken, time since death, leave game, cake slices) | 🟡 | Riding, boat, minecart, pig, horse distances, mob kills, damage dealt, animals bred, fish caught, trading, talking to villagers ❌ (with their features) |
+| General stats (play time, walking/swimming/falling/climbing/flying/diving/sprinting/crouching distances, jumps, deaths, drops, damage taken, time since death, leave game, cake slices, minecart distance) | 🟡 | Boat, pig, horse distances, mob kills, damage dealt, animals bred, fish caught, trading, talking to villagers ❌ (with their features) |
 | Block mining, item crafting, item use, item break stats | ✅ | For implemented actions |
 | Statistics packet (client request) | ✅ | |
 | Achievements (`AchievementList`, requirements, chat announcements) | 🟡 | Storage and `exploreAllBiomes` ✅; awarding the others ❌ |

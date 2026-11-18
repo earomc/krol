@@ -1,0 +1,99 @@
+description = "Riding a minecart: a player gets into a cart (Attach Entity, a teleport where it stands), rides it when a redstone block powers the rail under it (kick-off from a stone block, braked to a stop by unpowered powered rails), gets out with the unmount input (a teleport to a free spot next to the cart, Attach Entity -1, another teleport), gets back in and stays in; the server saves the cart in the player's data (Riding) and not with its chunk; after a restart the player joins in the cart again (the cart spawned at once, Attach Entity, a teleport)"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, facing south, and is
+# switched to survival from the console. The track runs east along z = -433: a stone
+# block at x = -477, a powered rail at -476 (unpowered until the console sets a redstone
+# block beside it), plain rails to -467, unpowered powered rails at -466 and -465 that
+# brake the cart to an exact stop, and a stone block at -464. The cart (entity id 2;
+# the /give drop is 1) is placed on the powered rail and stays there, braked, until the
+# rail is powered. Cart physics draws no random numbers, so the ride, the stop, the
+# dismount spot and the distance ridden compare exactly. The second session's cart gets
+# a new entity id.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -477 4 -433 stone"
+
+[[steps]]
+action = "console"
+command = "setblock -476 4 -433 golden_rail"
+
+[[steps]]
+action = "console"
+command = "fill -475 4 -433 -467 4 -433 rail"
+
+[[steps]]
+action = "console"
+command = "fill -466 4 -433 -465 4 -433 golden_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -464 4 -433 stone"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 18
+chat = [
+    "@4500 !hold 0",
+    "@4800 !place -476 4 -433 1",
+    "@5800 !interact 2",
+    "@14000 !steer 0 0 2",
+    "@15500 !interact 2",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ minecart"
+wait_ms = 6000
+
+[[steps]]
+action = "console"
+command = "setblock -476 4 -432 redstone_block"
+wait_ms = 12000
+
+[[steps]]
+action = "restart"
+
+[[steps]]
+id = "rejoin"
+action = "play"
+protocol = 47
+name = "jeb_"
+seconds = 4
+
+[observe]
+log = true
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    # The cart's UUID comes from its own unseeded random (saved as two longs inside
+    # Riding, which the UUID normalization does not see).
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Riding.UUIDMost",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.Riding.UUIDLeast",
+    # A player loaded with an XP seed of 0 draws a new one from its unseeded random.
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.XpSeed",
+]

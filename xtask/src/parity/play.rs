@@ -700,6 +700,10 @@ pub fn v5_view(summary: &Value, from_v5: bool) -> Value {
                     };
                     p[*key] = json!(teleported[k]);
                 }
+                // 1.7 teleports carry the eye height in y, which the 1.7 bot takes off
+                // again: not exact for every y (a rider's 3.7125), so do the same here.
+                const V5_EYE_HEIGHT: f64 = 1.620_000_004_768_371_6;
+                p["y"] = json!((teleported[1] + V5_EYE_HEIGHT) - V5_EYE_HEIGHT);
             }
             if let Value::Object(m) = &mut p {
                 m.remove("reduced_debug_info");

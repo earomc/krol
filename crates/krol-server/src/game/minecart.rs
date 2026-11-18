@@ -54,6 +54,14 @@ const KICK_OFF: f64 = 0.02;
 /// Drag on the rails without a rider (`0.96F`) and off them (`0.95F`, airborne).
 const RAIL_DRAG: f32 = 0.96;
 const AIR_DRAG: f32 = 0.95;
+/// Drag on the rails with a rider (`0.997F`).
+const RIDDEN_DRAG: f32 = 0.997;
+/// A ridden cart moves at this share of its motion.
+const RIDDEN_SHARE: f64 = 0.75;
+/// A rider pushing forward adds this to a cart slower than the root of
+/// `RIDER_START_SPEED_SQ`.
+const RIDER_PUSH: f64 = 0.1;
+const RIDER_START_SPEED_SQ: f64 = 0.01;
 /// Height differences along the rail change the speed by this share.
 const SLOPE_SPEED: f64 = 0.05;
 /// The rail line sits this high above the rail block.
@@ -132,6 +140,8 @@ pub struct Minecart {
     pub dirty_metadata: BTreeSet<u8>,
     /// Some metadata changed since the tracker last looked.
     pub metadata_changed: bool,
+    /// The player riding it (`riddenByEntity`), by entity id.
+    pub rider: Option<i32>,
     /// `isAirBorne`: pushed by `addVelocity`; the tracker sends the move at once and
     /// clears it.
     pub airborne: bool,
@@ -185,6 +195,7 @@ impl Minecart {
             display: None,
             dirty_metadata: BTreeSet::new(),
             metadata_changed: false,
+            rider: None,
             airborne: false,
             dead: false,
             chunk: chunk_of(pos),
@@ -400,9 +411,17 @@ impl Game {
                 m.chunk = chunk_of(m.body.pos);
             }
             self.relocate_entity(id);
+            // updateEntityWithOptionalForce: then its rider.
+            self.update_vehicle_rider(id);
         }
         if self.minecarts.get(&id).is_some_and(|m| m.dead) {
-            self.minecarts.remove(&id);
+            if let Some(m) = self.minecarts.remove(&id)
+                && let Some(rider) = m.rider
+                && let Some(p) = self.players.iter_mut().find(|p| p.entity_id == rider)
+                && p.riding == Some(id)
+            {
+                p.riding = None;
+            }
             self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
         }
@@ -491,7 +510,11 @@ impl Game {
         m.body.pos.1 = f64::from(rail.1);
         let golden = state >> 4 == block::GOLDEN_RAIL;
         let boost = golden && state & rails::POWERED_BIT != 0;
-        let brake = golden && !boost;
+        let mut brake = golden && !boost;
+        let rider = m
+            .rider
+            .and_then(|r| self.players.iter().find(|p| p.entity_id == r))
+            .map(|p| (p.move_forward, p.rotation.0));
         let shape = rails::shape(state);
         match shape {
             rails::ASCENDING_EAST => {
@@ -524,7 +547,20 @@ impl Game {
         let speed = (mx * mx + mz * mz).sqrt().min(MAX_RAIL_SPEED);
         m.body.motion.0 = speed * dx / len;
         m.body.motion.2 = speed * dz / len;
-        // TODO(M5): a rider pushing forward starts the cart.
+        // A rider pushing forward starts a (nearly) resting cart where it looks.
+        if let Some((forward, yaw)) = rider
+            && forward > 0.0
+        {
+            // Math.sin and Math.cos of a double (HotSpot may differ from f64 by an ulp).
+            let angle = f64::from(yaw * std::f32::consts::PI / 180.0);
+            let (px, pz) = (-angle.sin(), angle.cos());
+            let sq = m.body.motion.0 * m.body.motion.0 + m.body.motion.2 * m.body.motion.2;
+            if sq < RIDER_START_SPEED_SQ {
+                m.body.motion.0 += px * RIDER_PUSH;
+                m.body.motion.2 += pz * RIDER_PUSH;
+                brake = false;
+            }
+        }
         if brake {
             let s = (m.body.motion.0 * m.body.motion.0 + m.body.motion.2 * m.body.motion.2).sqrt();
             if s < BRAKE_STOP_SPEED {
@@ -554,10 +590,12 @@ impl Game {
         };
         m.body.pos.0 = x0 + dx * t;
         m.body.pos.2 = z0 + dz * t;
+        // A cart with a rider moves at three quarters of its motion.
+        let share = if rider.is_some() { RIDDEN_SHARE } else { 1.0 };
         let step = (
-            m.body.motion.0.clamp(-MAX_SPEED, MAX_SPEED),
+            (m.body.motion.0 * share).clamp(-MAX_SPEED, MAX_SPEED),
             0.0,
-            m.body.motion.2.clamp(-MAX_SPEED, MAX_SPEED),
+            (m.body.motion.2 * share).clamp(-MAX_SPEED, MAX_SPEED),
         );
         self.move_minecart(id, step);
         let Some(m) = self.minecarts.get_mut(&id) else {
@@ -569,10 +607,15 @@ impl Game {
         } else if e[1][1] != 0 && fx - rail.0 == e[1][0] && fz - rail.2 == e[1][2] {
             m.body.pos.1 += f64::from(e[1][1]);
         }
-        // applyDrag (no rider).
-        m.body.motion.0 *= f64::from(RAIL_DRAG);
+        // applyDrag: much less with a rider.
+        let drag = if m.rider.is_some() {
+            RIDDEN_DRAG
+        } else {
+            RAIL_DRAG
+        };
+        m.body.motion.0 *= f64::from(drag);
         m.body.motion.1 *= 0.0;
-        m.body.motion.2 *= f64::from(RAIL_DRAG);
+        m.body.motion.2 *= f64::from(drag);
         let pos = m.body.pos;
         let end = rail_point(&mut self.level.overworld, pos);
         let Some(m) = self.minecarts.get_mut(&id) else {
@@ -662,6 +705,7 @@ impl Game {
         if !powered {
             return;
         }
+        self.dismount_rider_of(id);
         if let Some(m) = self.minecarts.get_mut(&id)
             && m.rolling_amplitude == 0
         {
@@ -676,10 +720,17 @@ impl Game {
     /// near it (players but spectators, other minecarts).
     fn cart_obstacles(&self, id: i32, area: &Aabb) -> Vec<Aabb> {
         let near = area.expand([0.25, 0.25, 0.25]);
+        // Not its own rider.
+        let rider = self.minecarts.get(&id).and_then(|m| m.rider);
         let mut boxes: Vec<Aabb> = self
             .players
             .iter()
-            .filter(|p| !p.removed && p.gamemode != SPECTATOR && p.health() > 0.0)
+            .filter(|p| {
+                !p.removed
+                    && p.gamemode != SPECTATOR
+                    && p.health() > 0.0
+                    && Some(p.entity_id) != rider
+            })
             .map(|p| Aabb::at(p.pos, 0.6, 1.8))
             .filter(|b| b.intersects(&near))
             .collect();
@@ -814,7 +865,13 @@ impl Game {
         };
         let (cart_pos, cart_yaw, cart_motion) = (m.body.pos, m.base.yaw, m.body.motion);
         let other_pos = match pusher {
-            CartPusher::Player(i) => self.players[i].pos,
+            CartPusher::Player(i) => {
+                // A cart is not pushed by its own rider.
+                if m.rider == Some(self.players[i].entity_id) {
+                    return;
+                }
+                self.players[i].pos
+            }
             CartPusher::ArmorStand(s) => match self.armor_stands.get(&s) {
                 Some(s) => s.body.pos,
                 None => return,
@@ -916,7 +973,13 @@ impl Game {
         m.body.velocity_changed = true;
         m.set_damage(m.damage + amount * DAMAGE_PER_POINT);
         if creative || m.damage > BREAK_DAMAGE {
-            // TODO(M5): the rider gets off.
+            // The rider gets off first.
+            if m.rider.is_some() {
+                self.dismount_rider_of(id);
+            }
+            let Some(m) = self.minecarts.get_mut(&id) else {
+                return true;
+            };
             m.dead = true;
             if !(creative && m.base.custom_name.is_none())
                 && self.level.data.game_rule("doEntityDrops") != Some("false")

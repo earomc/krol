@@ -809,6 +809,15 @@ impl V5Translator {
                 })?;
                 one(w);
             }
+            ClientboundPlay::AttachEntity {
+                entity_id,
+                vehicle_id,
+                leash,
+            } => {
+                let mut w = packet(0x1b);
+                w.i32(*entity_id).i32(*vehicle_id).bool(*leash);
+                one(w);
+            }
             ClientboundPlay::CollectItem {
                 collected,
                 collector,
@@ -1624,6 +1633,27 @@ mod tests {
                 chat_colors: true,
                 skin_parts: 0x41
             }
+        );
+        // Steer Vehicle: jump and unmount as booleans in 1.7.
+        let mut w = PacketWriter::new();
+        w.varint(0x0c).f32(0.5).f32(-1.0).bool(false).bool(true);
+        assert_eq!(
+            t.serverbound(w.as_bytes()).unwrap(),
+            ServerboundPlay::SteerVehicle {
+                sideways: 0.5,
+                forward: -1.0,
+                flags: 2
+            }
+        );
+        // Attach Entity has the same layout in 1.7.
+        let attach = ClientboundPlay::AttachEntity {
+            entity_id: 3,
+            vehicle_id: 9,
+            leash: false,
+        };
+        assert_eq!(
+            t.clientbound(&attach).unwrap(),
+            vec![vec![0x1b, 0, 0, 0, 3, 0, 0, 0, 9, 0]]
         );
         let mut w = PacketWriter::new();
         w.varint(0x01).string(&"a".repeat(101)).unwrap();

@@ -668,6 +668,17 @@ impl Game {
         )
     }
 
+    /// `readFromNBT` of a minecart (a player's `Riding` tag); returns the cart and its
+    /// saved UUID.
+    pub(super) fn minecart_from_nbt(
+        &self,
+        c: &Compound,
+    ) -> (super::minecart::Minecart, Option<u128>) {
+        let mut body = Body::player((0.0, 0.0, 0.0), false);
+        let (base, uuid) = EntityBase::read(c, &mut body);
+        (super::minecart::Minecart::load(body, base, c), uuid)
+    }
+
     /// Replaces the random UUID a loaded entity got in its constructor with the saved
     /// one.
     fn set_saved_uuid(&mut self, id: i32, uuid: Option<u128>) {
@@ -749,7 +760,8 @@ impl Game {
             s.base.write(&s.body, uuid, &mut c);
             s.write(&mut c);
         } else if let Some(m) = self.minecarts.get(&id) {
-            if m.dead {
+            // writeToNBTOptional: a ridden entity is saved by its rider (`Riding`).
+            if m.dead || m.rider.is_some() {
                 return None;
             }
             self.minecart_nbt(m, uuid, &mut c);
