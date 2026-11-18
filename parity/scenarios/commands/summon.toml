@@ -1,0 +1,90 @@
+description = "/summon: usage, out of the world (the console's origin is in an unloaded chunk; above the build height), unknown ids (failed, with vanilla's 'Skipping Entity' warning), data tag errors, absolute coordinates centered on the block, the legacy Minecart id with its Type, entities created from data tags (Rotation, ShowArms, Item, Age, Block, Time) and spawned in the world (tracked, saved with their chunk)"
+subsystem = "commands"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and stands still; all
+# summoned entities are in his chunk (-30, -28). Item entities draw their hover start
+# from Math.random() and armor stands their head yaw, both pinned. The item never ages
+# (Age -32768), so its saved state does not depend on when the world is saved. The
+# falling sand starts at Time 1: at Time 0 it would check for itself at its block,
+# find air and vanish (the summoned entity is not placed by a block turning into it).
+# Entity UUIDs come from their own unseeded randoms and compare as <uuid-N>.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 12
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "summon"
+
+[[steps]]
+action = "console"
+command = "summon Boat"
+
+[[steps]]
+action = "console"
+command = "summon Boat -470 300 -440"
+
+[[steps]]
+action = "console"
+command = "summon Nonsense -470 4 -440"
+
+[[steps]]
+action = "console"
+command = "summon ArmorStand -470 4 -440 {foo"
+
+[[steps]]
+action = "console"
+command = "summon Boat -470 4 x"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "summon Minecart -468 4 -440 {Type:1}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "summon Boat -472 4 -441"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "summon ArmorStand -466.5 4 -438.5 {Rotation:[45f,0f],ShowArms:1b}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "summon Item -474 6 -440 {Age:-32768s,Item:{id:\"minecraft:stone\",Count:3b}}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "summon FallingSand -476 8 -444 {Block:\"minecraft:sand\",Time:1}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "summon Snowball -478 10 -436"
+wait_ms = 4000
+
+[observe]
+log = true
+entities = [[-30, -28]]

@@ -160,6 +160,11 @@ pub struct EntityBase {
     pub silent: bool,
     /// `cmdResultStats`: the complete `<type>Name` / `<type>Objective` pairs.
     pub command_stats: Option<Compound>,
+    /// `DataWatcher.hasObjectChanged` of the entity kinds that watch only these base
+    /// entries (falling blocks, primed TNT, throwables, experience orbs): reading NBT
+    /// that differs from a new entity's (a data tag's missing `Air` reads as 0) makes the
+    /// tracker send the whole watcher once.
+    pub metadata_changed: bool,
 }
 
 impl Default for EntityBase {
@@ -177,6 +182,7 @@ impl Default for EntityBase {
             custom_name_visible: false,
             silent: false,
             command_stats: None,
+            metadata_changed: false,
         }
     }
 }
@@ -256,7 +262,7 @@ impl EntityBase {
             None
         };
         let name = c.get_str("CustomName");
-        let base = Self {
+        let mut base = Self {
             // setRotation keeps both angles within (-360, 360).
             yaw: rotation[0] % 360.0,
             pitch: rotation[1] % 360.0,
@@ -270,7 +276,12 @@ impl EntityBase {
             custom_name_visible: c.get_bool("CustomNameVisible"),
             silent: c.get_bool("Silent"),
             command_stats: c.get_compound("CommandStats").and_then(command_stats),
+            metadata_changed: false,
         };
+        base.metadata_changed = base.air != FULL_AIR
+            || base.custom_name.is_some()
+            || base.custom_name_visible
+            || base.silent;
         (base, uuid)
     }
 
@@ -455,6 +466,33 @@ impl Game {
         let (cx, cz) = (floor_f64(pos.0 / 16.0), floor_f64(pos.2 / 16.0));
         self.level.overworld.mark_has_entities(cx, cz);
         self.chunk_entities.add(id, (cx, cz, section_of(pos.1)));
+        self.set_entity_chunk(id, (cx, cz));
+    }
+
+    /// `chunkCoordX` / `chunkCoordZ` of a simulated non-player entity (the chunk the
+    /// tracker checks its viewers against).
+    fn set_entity_chunk(&mut self, id: i32, chunk: (i32, i32)) {
+        if let Some(it) = self.items.get_mut(&id) {
+            it.chunk = chunk;
+        } else if let Some(o) = self.orbs.get_mut(&id) {
+            o.chunk = chunk;
+        } else if let Some(f) = self.falling.get_mut(&id) {
+            f.chunk = chunk;
+        } else if let Some(t) = self.thrown.get_mut(&id) {
+            t.chunk = chunk;
+        } else if let Some(a) = self.arrows.get_mut(&id) {
+            a.chunk = chunk;
+        } else if let Some(h) = self.hanging.get_mut(&id) {
+            h.chunk = chunk;
+        } else if let Some(s) = self.armor_stands.get_mut(&id) {
+            s.chunk = chunk;
+        } else if let Some(m) = self.minecarts.get_mut(&id) {
+            m.chunk = chunk;
+        } else if let Some(b) = self.boats.get_mut(&id) {
+            b.chunk = chunk;
+        } else if let Some(t) = self.tnt.get_mut(&id) {
+            t.chunk = chunk;
+        }
     }
 
     /// `spawnEntityInWorld` for a new non-player entity already in its map: it joins its
@@ -535,10 +573,31 @@ impl Game {
         c: &Compound,
         created: &mut Vec<(usize, i32)>,
     ) -> bool {
+        let Some((id, pos)) = self.create_entity_from_nbt(c) else {
+            return false;
+        };
+        // Chunk.addEntity: an entity saved in the wrong chunk is set dead (it still
+        // joins this chunk's list, and is not saved again).
+        let (cx, cz) = (floor_f64(pos.0 / 16.0), floor_f64(pos.2 / 16.0));
+        if (cx, cz) != chunk {
+            self.set_entity_dead(id);
+            self.chunk_entities.kept.remove(&id);
+        }
+        let section = section_of(pos.1);
+        self.level.overworld.mark_has_entities(chunk.0, chunk.1);
+        self.chunk_entities.add(id, (chunk.0, chunk.1, section));
+        created.push((section, id));
+        true
+    }
+
+    /// `EntityList.createEntityFromNBT` (the legacy minecart id already resolved): the
+    /// new entity's id and position, or `None` (with vanilla's warning) if vanilla does
+    /// not know the saved id. Kinds krol does not simulate keep their NBT.
+    fn create_entity_from_nbt(&mut self, c: &Compound) -> Option<(i32, (f64, f64, f64))> {
         let kind = c.get_str("id");
         if !KNOWN_IDS.contains(&kind) {
             warn!("Skipping Entity with id {kind}");
-            return false;
+            return None;
         }
         let id = self.alloc_entity_id();
         let mut body = Body::player((0.0, 0.0, 0.0), false);
@@ -651,18 +710,60 @@ impl Game {
                 }
             },
         };
-        // Chunk.addEntity: an entity saved in the wrong chunk is set dead (it still
-        // joins this chunk's list, and is not saved again).
-        let (cx, cz) = (floor_f64(pos.0 / 16.0), floor_f64(pos.2 / 16.0));
-        if (cx, cz) != chunk {
-            self.set_entity_dead(id);
-            self.chunk_entities.kept.remove(&id);
+        Some((id, pos))
+    }
+
+    /// `/summon`'s `createEntityFromNBT`, `setLocationAndAngles` (keeping the saved
+    /// rotation) and `spawnEntityInWorld`: the new entity's id, or `None` if vanilla
+    /// does not know the id.
+    ///
+    /// TODO(M5): kinds krol does not simulate (mobs) are only kept as NBT, so clients do
+    /// not see them; `onInitialSpawn` of mobs summoned without a data tag.
+    pub(super) fn summon_entity_from_nbt(
+        &mut self,
+        c: &Compound,
+        pos: (f64, f64, f64),
+    ) -> Option<i32> {
+        let mut c = c.clone();
+        resolve_legacy_id(&mut c);
+        let (id, _) = self.create_entity_from_nbt(&c)?;
+        if let Some(kept) = self.chunk_entities.kept.get_mut(&id) {
+            kept.insert("Pos", double_list([pos.0, pos.1, pos.2]));
+            self.add_entity_to_chunk(id, pos);
+            return Some(id);
         }
-        let section = section_of(pos.1);
-        self.level.overworld.mark_has_entities(chunk.0, chunk.1);
-        self.chunk_entities.add(id, (chunk.0, chunk.1, section));
-        created.push((section, id));
-        true
+        let rotation = self.entity_rotation(id);
+        self.set_location_and_angles(id, pos, rotation);
+        self.spawn_entity_in_world(id);
+        Some(id)
+    }
+
+    /// The rotation (yaw, pitch) of a simulated non-player entity.
+    fn entity_rotation(&self, id: i32) -> (f32, f32) {
+        let base = if let Some(it) = self.items.get(&id) {
+            &it.base
+        } else if let Some(o) = self.orbs.get(&id) {
+            &o.base
+        } else if let Some(f) = self.falling.get(&id) {
+            &f.base
+        } else if let Some(t) = self.thrown.get(&id) {
+            &t.base
+        } else if let Some(a) = self.arrows.get(&id) {
+            &a.base
+        } else if let Some(h) = self.hanging.get(&id) {
+            &h.base
+        } else if let Some(s) = self.armor_stands.get(&id) {
+            &s.base
+        } else if let Some(m) = self.minecarts.get(&id) {
+            &m.base
+        } else if let Some(b) = self.boats.get(&id) {
+            &b.base
+        } else if let Some(t) = self.tnt.get(&id) {
+            &t.base
+        } else {
+            return (0.0, 0.0);
+        };
+        (base.yaw, base.pitch)
     }
 
     /// `readFromNBT` of an armor stand whose constructor turned its head to `head`;

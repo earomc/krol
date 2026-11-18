@@ -217,7 +217,7 @@ impl Game {
                 motion: f.body.motion,
                 chunk: f.chunk,
                 airborne: false,
-                metadata_changed: false,
+                metadata_changed: f.base.metadata_changed,
                 player: None,
             });
         }
@@ -231,7 +231,7 @@ impl Game {
                 motion: t.body.motion,
                 chunk: t.chunk,
                 airborne: false,
-                metadata_changed: false,
+                metadata_changed: t.base.metadata_changed,
                 player: None,
             });
         }
@@ -259,7 +259,7 @@ impl Game {
                 motion: t.body.motion,
                 chunk: t.chunk,
                 airborne: false,
-                metadata_changed: false,
+                metadata_changed: t.base.metadata_changed,
                 player: None,
             });
         }
@@ -329,7 +329,7 @@ impl Game {
                 motion: o.body.motion,
                 chunk: o.chunk,
                 airborne: false,
-                metadata_changed: false,
+                metadata_changed: o.base.metadata_changed,
                 player: None,
             });
         }
@@ -1289,6 +1289,25 @@ impl Game {
                 .into_iter()
                 .filter(|m| dirty.contains(&m.index))
                 .collect();
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata,
+            });
+        }
+        // DataWatcher.getChanged of a watcher whose entries were never sent as changed:
+        // all of them.
+        let base_only = if let Some(f) = self.falling.get_mut(&entity_id) {
+            std::mem::take(&mut f.base.metadata_changed).then(|| f.metadata())
+        } else if let Some(t) = self.tnt.get_mut(&entity_id) {
+            std::mem::take(&mut t.base.metadata_changed).then(|| t.metadata())
+        } else if let Some(t) = self.thrown.get_mut(&entity_id) {
+            std::mem::take(&mut t.base.metadata_changed).then(|| t.metadata())
+        } else if let Some(o) = self.orbs.get_mut(&entity_id) {
+            std::mem::take(&mut o.base.metadata_changed).then(|| o.metadata())
+        } else {
+            None
+        };
+        if let Some(metadata) = base_only {
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,
                 metadata,

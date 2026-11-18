@@ -1085,6 +1085,7 @@ impl Game {
             "effect" => self.cmd_effect(sender, args),
             "enchant" => self.cmd_enchant(sender, args),
             "give" => self.cmd_give(sender, args),
+            "summon" => self.cmd_summon(sender, args),
             "save-off" | "save-on" => {
                 let enable = name == "save-on";
                 if self.saving_enabled == enable {
@@ -1735,6 +1736,69 @@ impl Game {
                 s(name),
             ],
         );
+        Ok(())
+    }
+
+    /// Vanilla `CommandSummon`.
+    fn cmd_summon(&mut self, sender: Sender, args: &[&str]) -> CommandResult {
+        /// The name `/summon` takes for a lightning bolt (not an `EntityList` id).
+        const LIGHTNING_BOLT: &str = "LightningBolt";
+        let Some(&kind) = args.first() else {
+            return Err(usage("summon"));
+        };
+        // getPositionVector / getPosition: the console's is the origin.
+        let origin = match sender {
+            Sender::Console => (0.0, 0.0, 0.0),
+            Sender::Player(i) => self.players[i].pos,
+        };
+        let (mut pos, mut block) = (origin, self.sender_position(sender));
+        if args.len() >= 4 {
+            pos = (
+                parse_coordinate_arg(origin.0, args[1], None, true)?.value,
+                parse_coordinate_arg(origin.1, args[2], None, false)?.value,
+                parse_coordinate_arg(origin.2, args[3], None, true)?.value,
+            );
+            block = (
+                krol_java::math::floor_f64(pos.0),
+                krol_java::math::floor_f64(pos.1),
+                krol_java::math::floor_f64(pos.2),
+            );
+        }
+        // World.isBlockLoaded: inside the world's bounds and in a loaded chunk.
+        let loaded = (COORD_LIMIT.0..COORD_LIMIT.1).contains(&block.0)
+            && (COORD_LIMIT.0..COORD_LIMIT.1).contains(&block.2)
+            && (0..256).contains(&block.1)
+            && self
+                .level
+                .overworld
+                .is_chunk_loaded(block.0 >> 4, block.2 >> 4);
+        if !loaded {
+            return Err(err("commands.summon.outOfWorld", vec![]));
+        }
+        if kind == LIGHTNING_BOLT {
+            // TODO(M5): lightning bolts (weather effects: the strike, fire, damage).
+            self.notify(sender, "summon", false, "commands.summon.success", vec![]);
+            return Ok(());
+        }
+        let mut tag = if args.len() >= 5 {
+            data_tag(&args[4..], "commands.summon.tagError")?
+        } else {
+            krol_nbt::Compound::new()
+        };
+        tag.insert("id", krol_nbt::Tag::String(kind.to_owned()));
+        if self.summon_entity_from_nbt(&tag, pos).is_none() {
+            return Err(err("commands.summon.failed", vec![]));
+        }
+        // The mounts saved in `Riding`, each summoned at the same spot.
+        // TODO(M5): mount each entity on the next (only players ride so far).
+        let mut riding = tag.get_compound("Riding").cloned();
+        while let Some(mount) = riding {
+            if self.summon_entity_from_nbt(&mount, pos).is_none() {
+                break;
+            }
+            riding = mount.get_compound("Riding").cloned();
+        }
+        self.notify(sender, "summon", false, "commands.summon.success", vec![]);
         Ok(())
     }
 

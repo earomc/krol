@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: boats`).
+Status as of 2026-11-18 (commit `server: /summon`).
 
 **Legend**
 
@@ -25,7 +25,8 @@ when an item is done or priorities change.
 1. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob. (The entities without AI are done: projectiles from players, paintings and item
    frames, armor stands, every minecart but spawner and command block ones, boats.)
-   Implementing `/summon` first would make entity scenarios much easier to set up.
+   `/summon` works for those and only keeps mobs as NBT; making it create mobs is the
+   natural first step, and it sets up entity scenarios.
 2. **Entity collisions with boats**: items, orbs, arrows, falling blocks and primed TNT
    moving into boats (only players, minecarts and boats collide with them so far), and
    armor stands bumping into boats.
@@ -193,7 +194,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 |---|---|---|
 | All tag types, named root, uncompressed/gzip/zlib | ✅ | `krol-nbt` |
 | Modified UTF-8 strings | ✅ | `krol-java` |
-| `JsonToNBT` (NBT in commands: `/give`, `/summon`, `/setblock` data tags, `/entitydata`, ...) | ✅ | `krol_nbt::text::parse_data_tag`, with its quirks; used by `/give` |
+| `JsonToNBT` (NBT in commands: `/give`, `/summon`, `/setblock` data tags, `/entitydata`, ...) | ✅ | `krol_nbt::text::parse_data_tag`, with its quirks; used by `/give` and `/summon` |
 | `NBTBase.toString` (item hover text) | ✅ | `krol_nbt::text::to_java_string` |
 | `NBTUtil` (game profiles in skulls) | ✅ | `readGameProfileFromNBT`/`writeGameProfile` |
 | `NBTUtil.func_181123_a` (partial NBT matching for `/clear`, `/testfor`) | ✅ | `krol_nbt::matches_pattern` |
@@ -555,7 +556,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `entity.effect`: lightning bolt | ❌ | |
 | Breeding, taming, leashing, name tags, saddles | ❌ | |
 | Mob drops, XP, looting | ❌ | |
-| Natural spawning, spawners, spawn eggs, `/summon` | ❌ | |
+| Natural spawning, spawners, spawn eggs | ❌ | `/summon` creates the non-mob entities (see [commands](#netminecraftcommand)) |
 
 ## net.minecraft.potion
 
@@ -615,7 +616,8 @@ krol notice.
 | `tp` | ✅ | Every form, on players (relative flags) and other entities; the head yaw of players is not set |
 | `kill` · `spawnpoint` | ✅ | |
 | `clear` | ✅ | |
-| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `summon` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
+| `summon` | 🟡 | Every entity kind krol simulates, data tags, the legacy `Minecart` id, all errors ✅; mobs are only kept as NBT (not ticked or shown, no `onInitialSpawn`), `Riding` mounts are summoned but not mounted, `LightningBolt` only reports success ❌ (M5) |
+| `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
 | `scoreboard` · `trigger` | ✅ | `players set` data tags for other entities than players ❌ |
 | `publish` | ➖ | LAN only |
 | `PlayerSelector` (`@p`, `@a`, `@r`, `@e` with arguments) | 🟡 | All arguments; one command run per target; UUIDs as names (entity UUIDs from their own unseeded random); selectors in `/say`, `/me`, `/tell`; `score_` for every entity, `team` for players; dropped items' names (`item.<unlocalized name>`, `data/item_entity_names.txt`); custom entity names ❌; `@r` shuffles with its own unseeded random like vanilla |

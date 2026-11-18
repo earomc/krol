@@ -529,6 +529,11 @@ description = "Commands on non-player entities: dropped items' names, /tp in eve
 scenarios = ["commands/entity_targets"]
 
 [[feature]]
+id = "commands.summon"
+description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Not yet: mobs (onInitialSpawn), Riding mounts, LightningBolt"
+scenarios = ["commands/summon"]
+
+[[feature]]
 id = "item.potions"
 description = "Potions: drinking (32 updates, drink sounds, status 9) with effects from PotionHelper.getPotionEffects (port checked against every damage value) or CustomPotionEffects, the empty bottle (in the slot or added elsewhere; none in creative), glass bottles filled at water (in creative too, the water bottle added or tossed). Not yet: splash potions, brewing"
 scenarios = ["play/potions"]

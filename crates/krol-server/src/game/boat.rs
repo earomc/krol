@@ -142,7 +142,7 @@ impl Boat {
         body.width = WIDTH;
         body.height = HEIGHT;
         body.step_height = 0.0;
-        Self {
+        let mut b = Self {
             body,
             base: EntityBase::facing(yaw),
             time_since_hit: 0,
@@ -157,7 +157,10 @@ impl Boat {
             chunk: chunk_of(pos),
             dirty_metadata: BTreeSet::new(),
             metadata_changed: false,
-        }
+        };
+        // A new data watcher's entries are all watched: its first change sends them all.
+        b.dirty_metadata = b.metadata().iter().map(|e| e.index).collect();
+        b
     }
 
     /// `readEntityFromNBT` of a boat (`body` and `base` already read; boats save
