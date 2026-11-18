@@ -621,6 +621,7 @@ impl Game {
             sent: vec![None; layout.len()],
             fields: [0; 4],
             taken: 0,
+            cart: None,
         });
         // Container.onCraftGuiOpened (with its change check), then the table's own
         // properties.

@@ -1681,6 +1681,13 @@ impl ClientboundPlay {
                 flags: r.i8()?,
             },
             0x09 => Self::HeldItemChange { slot: r.i8()? },
+            // (A horse's window carries the horse's entity id after this.)
+            0x2d => Self::OpenWindow {
+                window: r.u8()?,
+                kind: r.string(32)?,
+                title: r.string(32767)?,
+                slots: r.u8()?,
+            },
             0x39 => Self::PlayerAbilities {
                 flags: r.i8()?,
                 flying_speed: r.f32()?,
@@ -2539,6 +2546,24 @@ mod tests {
         let bytes = p.encode(V).unwrap();
         // Position: x << 38 | (y & 0xfff) << 26 | (z & 0x3ffffff).
         assert_eq!(bytes, [0x0a, 5, 0, 0, 0, 0x41, 0x03, 0xff, 0xff, 0xff]);
+        assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
+    }
+
+    #[test]
+    fn open_window_round_trip() {
+        let p = ClientboundPlay::OpenWindow {
+            window: 2,
+            kind: "minecraft:hopper".into(),
+            title: "{\"translate\":\"container.minecart\"}".into(),
+            slots: 5,
+        };
+        let bytes = p.encode(V).unwrap();
+        let mut expected = vec![0x2d, 2, 16];
+        expected.extend_from_slice(b"minecraft:hopper");
+        expected.push(34);
+        expected.extend_from_slice(b"{\"translate\":\"container.minecart\"}");
+        expected.push(5);
+        assert_eq!(bytes, expected);
         assert_eq!(ClientboundPlay::decode(&bytes, V).unwrap(), Some(p));
     }
 

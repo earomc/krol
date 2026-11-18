@@ -1,0 +1,155 @@
+description = "Chest and hopper minecarts: placed on rails (spawn object 10 with types 1 and 5), their windows opened by interacting (titled with the cart's display name: translation, show_entity hover, UUID insertion), items shift-clicked in and out; a hopper under a chest cart pulling its items once a redstone block stops disabling it; a hopper cart turned off by a powered activator rail, then pulling a chest's items above it; a comparator reading a chest cart on a detector rail; the chest cart broken with a sword (its contents spilled, a minecart and a chest dropped); the remaining carts saved with their chunk (Items, TransferCooldown)"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, is switched to survival
+# and teleported to (-470.5, 4, -436.5) from the console, four blocks from the track so
+# spilled and dropped items never come into pickup reach (entities are used by sight,
+# within 6 blocks). Along z = -433:
+# - x = -473: chest cart A (entity 6) on a rail over a hopper facing down, disabled by
+#   a redstone block south of it until the console replaces that with grass;
+# - x = -471: chest cart C (entity 7) on a detector rail, with a comparator behind it
+#   (z = -432, facing north into the rail);
+# - x = -468: hopper cart B (entity 8) on an activator rail powered by a redstone block
+#   under it (later grass), below a chest holding 3 dirt and 2 stone.
+# The /give drops are entities 1-5 (the two chest minecarts, which do not stack and land
+# in hotbar slots 0 and 1, the hopper minecart, cobblestone, stone, the sword in slot 5).
+# A window's hotbar slot k is 54 + k in a chest window.
+# Cart physics draws no random numbers and resting carts stay put, so the carts compare
+# exactly; where the spilled stone and the drops land is random (killed at the end).
+# The detector rail rechecks every 20 ticks from the cart's arrival, so the comparator
+# turns on up to a second after the stone goes into C, and off up to a second after C
+# breaks: both fall in quiet stretches of the timeline.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -433 hopper 0"
+
+[[steps]]
+action = "console"
+command = "setblock -473 3 -432 redstone_block"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -433 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -433 detector_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -432 unpowered_comparator 2"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -433 redstone_block"
+
+[[steps]]
+action = "console"
+command = "setblock -468 4 -433 activator_rail"
+
+[[steps]]
+action = "console"
+command = 'setblock -468 5 -433 chest 0 replace {Items:[{Slot:0b,id:"minecraft:dirt",Count:3b},{Slot:1b,id:"minecraft:stone",Count:2b}]}'
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 24
+chat = [
+    "@5500 !hold 0",
+    "@5800 !place -473 4 -433 1",
+    "@6300 !hold 1",
+    "@6600 !place -471 4 -433 1",
+    "@7100 !hold 2",
+    "@7400 !place -468 4 -433 1",
+    "@7900 !interact 6",
+    "@8400 !click 1 57 0 1 1",
+    "@8900 !close 1",
+    "@9400 !interact 7",
+    "@9900 !click 2 58 0 1 1",
+    "@10400 !close 2",
+    "@11900 !interact 8",
+    "@12400 !close 3",
+    "@16800 !interact 8",
+    "@17300 !click 4 0 0 1 1",
+    "@17800 !close 4",
+    "@18300 !hold 5",
+    "@18800 !attack 7",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "tp jeb_ -470.5 4 -436.5"
+
+[[steps]]
+action = "console"
+command = "give jeb_ chest_minecart 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ hopper_minecart 1"
+
+[[steps]]
+action = "console"
+command = "give jeb_ cobblestone 3"
+
+[[steps]]
+action = "console"
+command = "give jeb_ stone 2"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword 1"
+wait_ms = 8500
+
+# The hopper under A starts pulling A's cobblestone (one item every 8 ticks).
+[[steps]]
+action = "console"
+command = "setblock -473 3 -432 grass"
+wait_ms = 2000
+
+# The activator rail turns off: B pulls the chest's 5 items, one a tick.
+[[steps]]
+action = "console"
+command = "setblock -468 3 -433 grass"
+wait_ms = 6500
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin), and
+# where the spilled and dropped items end up is random.
+log_ignore_prefixes = ["Killed item."]
+blocks = [[-471, 4, -433], [-471, 4, -432], [-468, 4, -433]]
+tile_entities = [[-473, 3, -433], [-468, 5, -433], [-471, 4, -432]]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+]

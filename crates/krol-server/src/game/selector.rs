@@ -440,8 +440,8 @@ impl Game {
             h.dead = true;
         } else if let Some(s) = self.armor_stands.get_mut(&id) {
             s.dead = true;
-        } else if let Some(m) = self.minecarts.get_mut(&id) {
-            m.dead = true;
+        } else if self.minecarts.contains_key(&id) {
+            self.set_minecart_dead(id);
         }
     }
 
@@ -573,7 +573,7 @@ impl Game {
                 size: (m.body.width, m.body.height),
                 bb: None,
                 alive: !m.dead,
-                type_name: super::minecart::RIDEABLE_ID,
+                type_name: m.kind.saved_id(),
                 name: Some(m.name()),
                 rotation: (m.base.yaw, m.base.pitch),
                 entity_id: id,

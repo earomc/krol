@@ -237,7 +237,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "01186d696e6563726166743a6372616674696e675f7461626c65237b227472616e736c617465223a2274696c652e776f726b62656e63682e6e616d65227d00",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:crafting_table\", title: \"{\\\"translate\\\":\\\"tile.workbench.name\\\"}\", slots: 0 }",
           "packet": "0x2d"
         },
         {
@@ -922,10 +922,10 @@
         "stat.craftingTableInteraction"
       ],
       "value": {
-        "stat.playOneMinute": 216,
+        "stat.playOneMinute": 215,
         "stat.craftItem.minecraft.planks": 4,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 216,
+        "stat.timeSinceDeath": 215,
         "stat.useItem.minecraft.crafting_table": 1,
         "stat.craftItem.minecraft.wooden_pickaxe": 1,
         "achievement.exploreAllBiomes": {

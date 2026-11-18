@@ -598,7 +598,7 @@
           "packet": "block_change"
         },
         {
-          "hex": "01176d696e6563726166743a62726577696e675f7374616e64217b227472616e736c617465223a22636f6e7461696e65722e62726577696e67227d04",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:brewing_stand\", title: \"{\\\"translate\\\":\\\"container.brewing\\\"}\", slots: 4 }",
           "packet": "0x2d"
         },
         {

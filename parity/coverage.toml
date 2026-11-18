@@ -370,8 +370,8 @@ scenarios = ["play/pressure_plates"]
 
 [[feature]]
 id = "redstone.hoppers"
-description = "Hoppers: pulling from the inventory above or item entities, pushing into the inventory they face (furnace sides, double chests, other hoppers), 8-tick cooldown, redstone lock, window, comparator signal, contents dropped when broken. Not yet: minecarts, dispensers, droppers, brewing stands"
-scenarios = ["play/hoppers"]
+description = "Hoppers: pulling from the inventory above or item entities, pushing into the inventory they face (furnace sides, double chests, other hoppers), 8-tick cooldown, redstone lock, window, comparator signal, contents dropped when broken; pulling from a chest minecart above (play/container_minecarts). Not yet: dispensers, droppers, brewing stands, pushing into minecarts"
+scenarios = ["play/hoppers", "play/container_minecarts"]
 
 [[feature]]
 id = "redstone.dispensers"
@@ -587,3 +587,8 @@ scenarios = ["play/minecarts"]
 id = "entity.riding"
 description = "Players riding minecarts: interacting with a cart gets in (Attach Entity to the rider, a teleport where it stands), the rider sits on the cart (y - 0.35), riding a cart launched by a powered rail and braked to a stop, the unmount input getting out (a teleport to a free spot next to the cart, Attach Entity -1, another teleport), getting back in; the cart saved in the player's data (Riding) and not with its chunk; after a restart the player joins in the cart (spawned at once, Attach Entity, a teleport); the minecart distance stat. Not yet in a scenario: viewers seeing a rider (attach every 60 updates, looks only, the teleport after getting off), sneaking out, carts breaking under a rider, activator rails, a rider pushing forward, logging out while riding"
 scenarios = ["play/riding"]
+
+[[feature]]
+id = "entity.container_minecarts"
+description = "EntityMinecartChest and EntityMinecartHopper: placed by ItemMinecart (spawn object 10, types 1 and 5); interacting opens a chest or hopper window titled with the cart's display name (translation, show_entity hover, UUID insertion); shift-clicks in and out; a hopper under a chest cart pulling its items (getInventoryAtPosition's entity search); a hopper cart off on a powered activator rail, then pulling a chest's items above it one a tick; a comparator reading a chest cart on a detector rail (on with items, off once the cart is gone); the chest cart broken by a sword (contents spilled, a minecart and a chest dropped); the carts saved with their chunk (Items, TransferCooldown). Not yet in a scenario: hopper carts picking up item entities, hoppers pushing into carts, droppers, spectators, /kill spilling the contents, drag by fullness, named carts, loading"
+scenarios = ["play/container_minecarts"]

@@ -156,6 +156,12 @@ into server ticks. Rules learned from flaky scenarios:
   UUID as two longs that the UUID normalization does not see: ignore them), and a
   player reloaded from data with an `XpSeed` of 0 draws a new seed at random (ignore
   `XpSeed` after a restart; `play/riding`).
+- **Entity windows carry a random UUID in their title** (a container minecart's display
+  name has a `show_entity` hover and the UUID as insertion). Open Window is decoded so
+  the title is a string the UUID normalization sees; a packet compared as hex keeps its
+  UUIDs. Bot clicks without a predicted item (`!click` with no item fields) are rejected
+  whenever the click moves something (Confirm Transaction false, the window resent),
+  on both servers (`play/container_minecarts`).
 - **Goldens are parsed with `float_roundtrip`**: without it `serde_json` misreads some
   doubles by an ulp, which showed as diffs between identical-looking numbers.
 - **Entity metadata comes in `HashMap` order**: entities with 12 entries or fewer keep

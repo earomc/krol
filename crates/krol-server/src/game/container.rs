@@ -316,6 +316,8 @@ pub struct OpenContainer {
     pub parts: Vec<(i32, i32, i32)>,
     /// The window shows the player's ender inventory; `pos` is the ender chest.
     pub ender: bool,
+    /// The window shows a container minecart's slots (by entity id).
+    pub cart: Option<i32>,
     /// Window properties last sent (furnaces).
     pub fields: [i32; 4],
     /// Items taken from a furnace's output not yet counted (`SlotFurnaceOutput`).
@@ -481,6 +483,16 @@ impl Game {
                 flat.extend(p.inventory[9..45].iter().cloned());
                 flat
             }
+            Some(o @ OpenContainer { cart: Some(id), .. }) => {
+                // A cart removed before the window closes shows empty slots.
+                let mut flat = self
+                    .minecarts
+                    .get(id)
+                    .map(|m| m.items.clone())
+                    .unwrap_or_else(|| vec![None; o.layout.len() - 36]);
+                flat.extend(p.inventory[9..45].iter().cloned());
+                flat
+            }
             Some(o) if o.layout == Layout::Hopper => {
                 let mut flat = self.hopper_items(o.pos);
                 flat.extend(p.inventory[9..45].iter().cloned());
@@ -517,6 +529,14 @@ impl Game {
     /// Writes a slot list back into the open window.
     fn scatter(&mut self, i: usize, flat: Vec<Option<ItemStack>>) {
         let put_input = std::mem::take(&mut self.players[i].window.put_input);
+        if let Some(id) = self.players[i].window.open.as_ref().and_then(|o| o.cart) {
+            let own = flat.len() - 36;
+            if let Some(m) = self.minecarts.get_mut(&id) {
+                m.items = flat[..own].to_vec();
+            }
+            self.players[i].inventory[9..45].clone_from_slice(&flat[own..]);
+            return;
+        }
         if let Some(pos) = self.players[i]
             .window
             .open
@@ -1238,6 +1258,7 @@ impl Game {
             sent: vec![None; Layout::Workbench.len()],
             fields: [0; 4],
             taken: 0,
+            cart: None,
         });
         self.open_container_gui(i);
         // BlockWorkbench.onBlockActivated: counted once the window is open.
@@ -1259,6 +1280,16 @@ impl Game {
         let (pos, layout, ender) = (o.pos, o.layout, o.ender);
         let parts = o.parts.clone();
         let player = self.players[i].pos;
+        if let Some(id) = o.cart {
+            if !self
+                .minecarts
+                .get(&id)
+                .is_some_and(|m| m.usable_from(player))
+            {
+                self.close_screen(i);
+            }
+            return;
+        }
         let near = |pos: (i32, i32, i32)| {
             let d = (
                 f64::from(pos.0) + 0.5 - player.0,

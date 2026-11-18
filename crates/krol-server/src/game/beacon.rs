@@ -203,6 +203,7 @@ impl Game {
             sent: vec![None; layout.len()],
             fields: [0; 4],
             taken: 0,
+            cart: None,
         });
         self.open_container_gui(i);
         // ContainerBeacon.onCraftGuiOpened: the levels and powers, once.

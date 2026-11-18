@@ -385,7 +385,7 @@
           "packet": "block_change"
         },
         {
-          "hex": "01116d696e6563726166743a64726f70706572217b227472616e736c617465223a22636f6e7461696e65722e64726f70706572227d09",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:dropper\", title: \"{\\\"translate\\\":\\\"container.dropper\\\"}\", slots: 9 }",
           "packet": "0x2d"
         },
         {
@@ -445,7 +445,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "02136d696e6563726166743a64697370656e736572237b227472616e736c617465223a22636f6e7461696e65722e64697370656e736572227d09",
+          "debug": "OpenWindow { window: 2, kind: \"minecraft:dispenser\", title: \"{\\\"translate\\\":\\\"container.dispenser\\\"}\", slots: 9 }",
           "packet": "0x2d"
         },
         {

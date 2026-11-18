@@ -237,6 +237,7 @@ impl Game {
             sent: vec![None; layout.len()],
             fields: [0; 4],
             taken: 0,
+            cart: None,
         });
         self.open_container_gui(i);
     }
@@ -467,36 +468,42 @@ impl Game {
             block::DISPENSER | block::DROPPER => self.dispenser_contents(pos),
             _ => return,
         };
-        for stack in contents {
-            // InventoryHelper keeps its own unseeded Random.
-            let r = &mut self.world_rand;
-            let fx = r.next_float() * 0.8 + 0.1;
-            let fy = r.next_float() * 0.8 + 0.1;
-            let fz = r.next_float() * 0.8 + 0.1;
-            let mut left = stack.count;
-            while left > 0 {
-                let mut n = (self.world_rand.next_int_bounded(21) + 10) as i8;
-                if n > left {
-                    n = left;
-                }
-                left -= n;
-                let r = &mut self.world_rand;
-                let motion = (
-                    r.next_gaussian() * f64::from(0.05f32),
-                    r.next_gaussian() * f64::from(0.05f32) + f64::from(0.2f32),
-                    r.next_gaussian() * f64::from(0.05f32),
-                );
-                let at = (
-                    f64::from(pos.0) + f64::from(fx),
-                    f64::from(pos.1) + f64::from(fy),
-                    f64::from(pos.2) + f64::from(fz),
-                );
-                let piece = ItemStack {
-                    count: n,
-                    ..stack.clone()
-                };
-                self.spawn_item_moving(at, piece, 0, Some(motion));
+        let at = (f64::from(pos.0), f64::from(pos.1), f64::from(pos.2));
+        for mut stack in contents {
+            self.spill_stack(at, &mut stack);
+        }
+    }
+
+    /// `InventoryHelper.spawnItemStack`: the stack flies out of a random spot in the
+    /// block whose corner is `at`, in clumps of 10-30 items, and is left empty.
+    pub(super) fn spill_stack(&mut self, at: (f64, f64, f64), stack: &mut ItemStack) {
+        // InventoryHelper keeps its own unseeded Random.
+        let r = &mut self.world_rand;
+        let fx = r.next_float() * 0.8 + 0.1;
+        let fy = r.next_float() * 0.8 + 0.1;
+        let fz = r.next_float() * 0.8 + 0.1;
+        while stack.count > 0 {
+            let mut n = (self.world_rand.next_int_bounded(21) + 10) as i8;
+            if n > stack.count {
+                n = stack.count;
             }
+            stack.count -= n;
+            let r = &mut self.world_rand;
+            let motion = (
+                r.next_gaussian() * f64::from(0.05f32),
+                r.next_gaussian() * f64::from(0.05f32) + f64::from(0.2f32),
+                r.next_gaussian() * f64::from(0.05f32),
+            );
+            let spot = (
+                at.0 + f64::from(fx),
+                at.1 + f64::from(fy),
+                at.2 + f64::from(fz),
+            );
+            let piece = ItemStack {
+                count: n,
+                ..stack.clone()
+            };
+            self.spawn_item_moving(spot, piece, 0, Some(motion));
         }
     }
 }

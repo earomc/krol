@@ -808,6 +808,17 @@ impl Game {
         if id == super::brewing::BREWING_STAND {
             return Some(container_signal(&self.brewing_items(pos)));
         }
+        // BlockRailDetector: a powered detector rail reads a container cart on it, and
+        // overrides the input with 0 otherwise.
+        if id == block::DETECTOR_RAIL {
+            if state & super::rails::POWERED_BIT == 0 {
+                return Some(0);
+            }
+            return Some(
+                self.container_cart_in_detector(pos)
+                    .map_or(0, |items| container_signal(&items)),
+            );
+        }
         None
     }
 

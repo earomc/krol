@@ -2030,7 +2030,7 @@ impl Game {
         // ItemMinecart never asks canPlayerEdit: adventure players place minecarts too.
         if self.players[i]
             .held()
-            .is_some_and(|s| s.id == ids::item::MINECART && s.count > 0)
+            .is_some_and(|s| minecart::CartKind::from_item(s.id).is_some() && s.count > 0)
             && self.place_minecart(i, pos)
         {
             return;

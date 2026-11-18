@@ -1,8 +1,10 @@
 //! Hoppers and the inventories they move items between (vanilla: `TileEntityHopper`,
 //! `BlockHopper`, `ContainerHopper`, `ISidedInventory` of furnaces).
 //!
-//! TODO(M5): minecarts with chests and hoppers, dispensers, droppers and brewing
-//! stands as inventories.
+//! Hoppers and droppers find inventories in blocks first, else in container minecarts
+//! (a random one when several are there).
+//!
+//! TODO(M5): beacons as inventories.
 
 use krol_nbt::{Compound, List, Tag, TagType};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
@@ -26,13 +28,15 @@ const PICKUP_RADIUS: f64 = 0.5;
 
 /// An inventory a hopper can reach.
 #[derive(Debug, Clone)]
-enum Inv {
+pub(super) enum Inv {
     /// A chest, or both halves of a double chest.
     Chest(Vec<(i32, i32, i32)>),
     Furnace((i32, i32, i32)),
     Hopper((i32, i32, i32)),
     Dispenser((i32, i32, i32)),
     Brewing((i32, i32, i32)),
+    /// A chest or hopper minecart, by entity id.
+    Cart(i32),
 }
 
 /// The facing of a hopper (`EnumFacing.getFront(meta & 7)`).
@@ -129,19 +133,47 @@ impl Game {
         }
     }
 
-    /// `TileEntityHopper.getInventoryAtPosition`: the inventory block at `pos` (a
-    /// blocked chest is none).
+    /// `getInventoryAtPosition` as hoppers pushing and droppers call it: with the
+    /// block's corner. (Vanilla quirk: so the entity search box is off by half a block.)
     fn inventory_at(&mut self, pos: (i32, i32, i32)) -> Option<Inv> {
+        self.inventory_at_point((f64::from(pos.0), f64::from(pos.1), f64::from(pos.2)))
+    }
+
+    /// `TileEntityHopper.getInventoryAtPosition`: the inventory block containing `p`
+    /// (a blocked chest is none), else a random living container minecart in the
+    /// block-sized box around `p` (from the world random).
+    fn inventory_at_point(&mut self, p: (f64, f64, f64)) -> Option<Inv> {
+        use krol_java::math::floor_f64;
+        let pos = (floor_f64(p.0), floor_f64(p.1), floor_f64(p.2));
         let id = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
-        self.level.overworld.tile_entity(pos)?;
-        match id {
-            _ if block::is_chest(id) => self.chest_parts(pos).map(Inv::Chest),
-            _ if block::is_furnace(id) => Some(Inv::Furnace(pos)),
-            block::HOPPER => Some(Inv::Hopper(pos)),
-            _ if super::dispenser::is_dispenser(id) => Some(Inv::Dispenser(pos)),
-            super::brewing::BREWING_STAND => Some(Inv::Brewing(pos)),
-            _ => None,
+        if self.level.overworld.tile_entity(pos).is_some() {
+            let inv = match id {
+                _ if block::is_chest(id) => self.chest_parts(pos).map(Inv::Chest),
+                _ if block::is_furnace(id) => Some(Inv::Furnace(pos)),
+                block::HOPPER => Some(Inv::Hopper(pos)),
+                _ if super::dispenser::is_dispenser(id) => Some(Inv::Dispenser(pos)),
+                super::brewing::BREWING_STAND => Some(Inv::Brewing(pos)),
+                _ => None,
+            };
+            if inv.is_some() {
+                return inv;
+            }
         }
+        let area = super::physics::Aabb::new(
+            [p.0 - 0.5, p.1 - 0.5, p.2 - 0.5],
+            [p.0 + 0.5, p.1 + 0.5, p.2 + 0.5],
+        );
+        let carts: Vec<i32> = self
+            .minecarts
+            .iter()
+            .filter(|(_, m)| !m.dead && m.kind.slots() > 0 && m.body.bb().intersects(&area))
+            .map(|(&id, _)| id)
+            .collect();
+        if carts.is_empty() {
+            return None;
+        }
+        let k = self.world_rand.next_int_bounded(carts.len() as i32);
+        Some(Inv::Cart(carts[k as usize]))
     }
 
     fn inv_items(&self, inv: &Inv) -> Vec<Option<ItemStack>> {
@@ -151,6 +183,11 @@ impl Game {
             Inv::Hopper(pos) => self.hopper_items(*pos),
             Inv::Dispenser(pos) => self.dispenser_items(*pos),
             Inv::Brewing(pos) => self.brewing_items(*pos),
+            Inv::Cart(id) => self
+                .minecarts
+                .get(id)
+                .map(|m| m.items.clone())
+                .unwrap_or_default(),
         }
     }
 
@@ -163,6 +200,12 @@ impl Game {
             Inv::Hopper(pos) => self.set_hopper_items(*pos, items),
             Inv::Dispenser(pos) => self.set_dispenser_items(*pos, items),
             Inv::Brewing(pos) => self.set_brewing_items(*pos, items),
+            // markDirty does nothing for minecarts.
+            Inv::Cart(id) => {
+                if let Some(m) = self.minecarts.get_mut(id) {
+                    m.items = items.to_vec();
+                }
+            }
         }
     }
 
@@ -323,12 +366,21 @@ impl Game {
         false
     }
 
-    /// `TileEntityHopper.captureDroppedItems`: one item from the inventory above, or
-    /// item entities just above.
+    /// `TileEntityHopper.captureDroppedItems` for a hopper block.
     fn hopper_pull(&mut self, pos: (i32, i32, i32)) -> bool {
-        let above = (pos.0, pos.1 + 1, pos.2);
-        let hopper = Inv::Hopper(pos);
-        if let Some(source) = self.inventory_at(above) {
+        let at = (
+            f64::from(pos.0) + 0.5,
+            f64::from(pos.1) + 0.5,
+            f64::from(pos.2) + 0.5,
+        );
+        self.capture_items(&Inv::Hopper(pos), at)
+    }
+
+    /// `TileEntityHopper.captureDroppedItems`: one item from the inventory a block above
+    /// the hopper's point `at`, or item entities there.
+    pub(super) fn capture_items(&mut self, hopper: &Inv, at: (f64, f64, f64)) -> bool {
+        let above = (at.0, at.1 + 1.0, at.2);
+        if let Some(source) = self.inventory_at_point(above) {
             if self.inv_state(&source, DOWN).1 {
                 return false;
             }
@@ -351,7 +403,7 @@ impl Game {
                     ..stack.clone()
                 });
                 self.set_inv_items(&source, &items, false);
-                if self.put_stack(&hopper, one, None).is_none() {
+                if self.put_stack(hopper, one, None).is_none() {
                     return true;
                 }
                 let mut items = self.inv_items(&source);
@@ -360,11 +412,7 @@ impl Game {
             }
             return false;
         }
-        let center = (
-            f64::from(pos.0) + 0.5,
-            f64::from(pos.1) + 1.5,
-            f64::from(pos.2) + 0.5,
-        );
+        let center = above;
         let area = super::physics::Aabb::new(
             [
                 center.0 - PICKUP_RADIUS,
@@ -384,28 +432,36 @@ impl Game {
             .map(|(id, _)| *id)
             .collect();
         for id in near {
-            let Some(stack) = self.items.get(&id).map(|it| it.stack.clone()) else {
-                continue;
-            };
-            // putDropInInventoryAllSlots.
-            match self.put_stack(&hopper, stack, None) {
-                None => {
-                    if let Some(it) = self.items.get_mut(&id) {
-                        it.dead = true;
-                    }
-                    return true;
-                }
-                Some(rest) => {
-                    if let Some(it) = self.items.get_mut(&id) {
-                        if it.stack != rest {
-                            it.dirty_metadata.insert(10);
-                        }
-                        it.stack = rest;
-                    }
-                }
+            if self.put_drop_in_inventory(hopper, id) {
+                return true;
             }
         }
         false
+    }
+
+    /// `putDropInInventoryAllSlots`: as much of the item entity's stack as fits goes
+    /// into `inv`; returns whether all of it did (the item entity is then gone).
+    pub(super) fn put_drop_in_inventory(&mut self, inv: &Inv, item: i32) -> bool {
+        let Some(stack) = self.items.get(&item).map(|it| it.stack.clone()) else {
+            return false;
+        };
+        match self.put_stack(inv, stack, None) {
+            None => {
+                if let Some(it) = self.items.get_mut(&item) {
+                    it.dead = true;
+                }
+                true
+            }
+            Some(rest) => {
+                if let Some(it) = self.items.get_mut(&item) {
+                    if it.stack != rest {
+                        it.dirty_metadata.insert(10);
+                    }
+                    it.stack = rest;
+                }
+                false
+            }
+        }
     }
 
     /// `TileEntityHopper.update`.
@@ -492,6 +548,7 @@ impl Game {
             sent: vec![None; layout.len()],
             fields: [0; 4],
             taken: 0,
+            cart: None,
         });
         self.open_container_gui(i);
         self.add_stat(i, "stat.hopperInspected", 1);

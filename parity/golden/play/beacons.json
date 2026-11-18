@@ -182,7 +182,7 @@
           "packet": "destroy_entities"
         },
         {
-          "hex": "01106d696e6563726166743a626561636f6e207b227472616e736c617465223a22636f6e7461696e65722e626561636f6e227d01",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:beacon\", title: \"{\\\"translate\\\":\\\"container.beacon\\\"}\", slots: 1 }",
           "packet": "0x2d"
         },
         {
@@ -814,14 +814,14 @@
         {
           "Ambient": "1b",
           "Amplifier": "0b",
-          "Duration": 130,
+          "Duration": 131,
           "Id": "1b",
           "ShowParticles": "1b"
         },
         {
           "Ambient": "1b",
           "Amplifier": "0b",
-          "Duration": 130,
+          "Duration": 131,
           "Id": "10b",
           "ShowParticles": "1b"
         }

@@ -186,7 +186,7 @@
           "packet": "entity_properties"
         },
         {
-          "hex": "01106d696e6563726166743a686f70706572207b227472616e736c617465223a22636f6e7461696e65722e686f70706572227d05",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:hopper\", title: \"{\\\"translate\\\":\\\"container.hopper\\\"}\", slots: 5 }",
           "packet": "0x2d"
         },
         {
@@ -278,7 +278,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "02106d696e6563726166743a686f70706572207b227472616e736c617465223a22636f6e7461696e65722e686f70706572227d05",
+          "debug": "OpenWindow { window: 2, kind: \"minecraft:hopper\", title: \"{\\\"translate\\\":\\\"container.hopper\\\"}\", slots: 5 }",
           "packet": "0x2d"
         },
         {

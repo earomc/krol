@@ -623,7 +623,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "01116d696e6563726166743a6675726e616365217b227472616e736c617465223a22636f6e7461696e65722e6675726e616365227d03",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:furnace\", title: \"{\\\"translate\\\":\\\"container.furnace\\\"}\", slots: 3 }",
           "packet": "0x2d"
         },
         {
@@ -2947,10 +2947,10 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.playOneMinute": 355,
+        "stat.playOneMinute": 356,
         "stat.leaveGame": 1,
         "stat.furnaceInteraction": 1,
-        "stat.timeSinceDeath": 355,
+        "stat.timeSinceDeath": 356,
         "stat.useItem.minecraft.furnace": 1,
         "achievement.exploreAllBiomes": {
           "value": 0,

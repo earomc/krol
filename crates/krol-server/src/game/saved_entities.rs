@@ -604,10 +604,12 @@ impl Game {
                 self.hanging.insert(id, h);
                 pos
             }
-            super::minecart::RIDEABLE_ID => {
+            saved if super::minecart::CartKind::from_saved_id(saved).is_some() => {
+                let cart_kind = super::minecart::CartKind::from_saved_id(saved)
+                    .unwrap_or(super::minecart::CartKind::Rideable);
                 let (base, uuid) = EntityBase::read(c, &mut body);
                 self.set_saved_uuid(id, uuid);
-                let m = super::minecart::Minecart::load(body, base, c);
+                let m = super::minecart::Minecart::load(cart_kind, body, base, c);
                 let pos = m.body.pos;
                 self.minecarts.insert(id, m);
                 pos
@@ -676,7 +678,9 @@ impl Game {
     ) -> (super::minecart::Minecart, Option<u128>) {
         let mut body = Body::player((0.0, 0.0, 0.0), false);
         let (base, uuid) = EntityBase::read(c, &mut body);
-        (super::minecart::Minecart::load(body, base, c), uuid)
+        let kind = super::minecart::CartKind::from_saved_id(c.get_str("id"))
+            .unwrap_or(super::minecart::CartKind::Rideable);
+        (super::minecart::Minecart::load(kind, body, base, c), uuid)
     }
 
     /// Replaces the random UUID a loaded entity got in its constructor with the saved

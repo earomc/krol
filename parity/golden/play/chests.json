@@ -240,7 +240,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "010f6d696e6563726166743a63686573741f7b227472616e736c617465223a22636f6e7461696e65722e6368657374227d1b",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:chest\", title: \"{\\\"translate\\\":\\\"container.chest\\\"}\", slots: 27 }",
           "packet": "0x2d"
         },
         {
@@ -339,7 +339,7 @@
           "packet": "block_change"
         },
         {
-          "hex": "020f6d696e6563726166743a6368657374257b227472616e736c617465223a22636f6e7461696e65722e6368657374446f75626c65227d36",
+          "debug": "OpenWindow { window: 2, kind: \"minecraft:chest\", title: \"{\\\"translate\\\":\\\"container.chestDouble\\\"}\", slots: 54 }",
           "packet": "0x2d"
         },
         {
@@ -1060,9 +1060,9 @@
       "value": {
         "stat.chestOpened": 2,
         "stat.useItem.minecraft.chest": 2,
-        "stat.playOneMinute": 215,
+        "stat.playOneMinute": 214,
         "stat.leaveGame": 1,
-        "stat.timeSinceDeath": 215,
+        "stat.timeSinceDeath": 214,
         "achievement.exploreAllBiomes": {
           "value": 0,
           "progress": [

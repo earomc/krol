@@ -247,7 +247,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "010f6d696e6563726166743a616e76696c1f7b227472616e736c617465223a2274696c652e616e76696c2e6e616d65227d00",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:anvil\", title: \"{\\\"translate\\\":\\\"tile.anvil.name\\\"}\", slots: 0 }",
           "packet": "0x2d"
         },
         {

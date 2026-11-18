@@ -122,7 +122,9 @@ pub fn solid_top(state: u16) -> bool {
         44 | 126 | 182 => meta & 8 != 0,
         43 | 125 | 181 | 154 => true,
         78 => meta & 7 == 7,
-        _ => is_normal_cube(state),
+        // Opaque material and a full cube: unlike normal cubes, this includes power
+        // sources such as redstone blocks.
+        _ => super::block_data::material(id).is_opaque() && super::light_data::full_cube(id),
     }
 }
 

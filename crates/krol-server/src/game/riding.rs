@@ -59,6 +59,16 @@ impl Game {
     /// `EntityMinecartEmpty.interactFirst`: an empty cart (or one the player is in)
     /// takes the player in.
     pub(super) fn interact_minecart(&mut self, i: usize, cart: i32) {
+        // EntityMinecartContainer.interactFirst: container carts open their window
+        // (for spectators too, EntityPlayer.interactWith).
+        if self
+            .minecarts
+            .get(&cart)
+            .is_some_and(|m| m.kind.slots() > 0)
+        {
+            self.open_cart_window(i, cart);
+            return;
+        }
         // EntityPlayer.interactWith: spectators only open inventories.
         if self.players[i].gamemode == SPECTATOR {
             return;

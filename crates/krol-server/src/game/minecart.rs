@@ -1,4 +1,5 @@
-//! Minecarts (vanilla: `EntityMinecart` with `EntityMinecartEmpty`, placed by
+//! Minecarts (vanilla: `EntityMinecart` with `EntityMinecartEmpty`,
+//! `EntityMinecartContainer`, `EntityMinecartChest` and `EntityMinecartHopper`, placed by
 //! `ItemMinecart`).
 //!
 //! A minecart on a rail follows it: its motion is turned along the rail, it snaps onto
@@ -8,8 +9,13 @@
 //! hits wobble them and add damage that wears off; past 40 (or at once for a creative
 //! player) they break, dropping a minecart item.
 //!
-//! TODO(M5): riding (players and mobs getting in, mobs pulled in by moving carts,
-//! steering, dismounting on activator rails), chest, hopper, furnace, TNT, spawner and
+//! Chest and hopper minecarts carry an inventory (27 and 5 slots) that opens like a
+//! chest's or a hopper's, spills out when the cart dies, and slows the cart less the
+//! fuller it is. Hopper minecarts pick up items and pull from inventories above them
+//! every tick unless a powered activator rail turns them off; hoppers and droppers
+//! reach the inventories of carts in front of them.
+//!
+//! TODO(M5): mobs getting in and pulled in by moving carts, furnace, TNT, spawner and
 //! command block minecarts, dispensers placing minecarts, nether portals.
 
 use std::collections::BTreeSet;
@@ -19,6 +25,7 @@ use krol_nbt::{Compound, Tag};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack, Metadata, MetadataValue};
 
 use super::Game;
+use super::container::{Layout, OpenContainer};
 use super::damage::DamageSource;
 use super::ids::{block, item};
 use super::physics::{self, Aabb, Body};
@@ -27,12 +34,18 @@ use super::saved_entities::EntityBase;
 
 /// Saved id of the rideable minecart (`EntityList` name).
 pub const RIDEABLE_ID: &str = "MinecartRideable";
-/// `getName`: the untranslated key (en_US names only `entity.Minecart.name`).
-pub const RIDEABLE_NAME: &str = "entity.MinecartRideable.name";
 /// `S0EPacketSpawnObject` type of minecarts; the data is the minecart type.
 pub const OBJECT_TYPE: i8 = 10;
-/// `EnumMinecartType.RIDEABLE`'s network id.
-const RIDEABLE_TYPE: i32 = 0;
+/// Slots of a chest minecart.
+const CHEST_SLOTS: usize = 27;
+/// A hopper minecart pulls again this many ticks after a transfer (but see
+/// [`Game::tick_hopper_cart`]).
+const CART_TRANSFER_COOLDOWN: i32 = 4;
+/// Container carts slow down by `0.98 + 0.001 * (15 - signal)` a tick.
+const CONTAINER_DRAG: f32 = 0.98;
+const CONTAINER_DRAG_STEP: f32 = 0.001;
+/// Players farther than this (squared) from a container cart lose its window.
+const USE_RANGE_SQ: f64 = 64.0;
 /// `setSize(0.98F, 0.7F)`.
 const WIDTH: f32 = 0.98;
 const HEIGHT: f32 = 0.7;
@@ -119,9 +132,89 @@ const ENDS: [[[i32; 3]; 2]; 10] = [
     [[0, 0, -1], [1, 0, 0]],
 ];
 
+/// The kinds of minecart krol models (`EnumMinecartType`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CartKind {
+    /// `EntityMinecartEmpty`.
+    Rideable,
+    /// `EntityMinecartChest`.
+    Chest,
+    /// `EntityMinecartHopper`.
+    Hopper,
+}
+
+impl CartKind {
+    /// The kind saved under an `EntityList` name.
+    pub fn from_saved_id(id: &str) -> Option<Self> {
+        match id {
+            RIDEABLE_ID => Some(Self::Rideable),
+            "MinecartChest" => Some(Self::Chest),
+            "MinecartHopper" => Some(Self::Hopper),
+            _ => None,
+        }
+    }
+
+    /// The `EntityList` name (saved id, selector type).
+    pub fn saved_id(self) -> &'static str {
+        match self {
+            Self::Rideable => RIDEABLE_ID,
+            Self::Chest => "MinecartChest",
+            Self::Hopper => "MinecartHopper",
+        }
+    }
+
+    /// The kind an `ItemMinecart` places.
+    pub fn from_item(id: i16) -> Option<Self> {
+        match id {
+            item::MINECART => Some(Self::Rideable),
+            item::CHEST_MINECART => Some(Self::Chest),
+            item::HOPPER_MINECART => Some(Self::Hopper),
+            _ => None,
+        }
+    }
+
+    /// `EnumMinecartType.getNetworkID`, the spawn packet's data.
+    fn network_id(self) -> i32 {
+        match self {
+            Self::Rideable => 0,
+            Self::Chest => 1,
+            Self::Hopper => 5,
+        }
+    }
+
+    /// `getSizeInventory` (none for carts without an inventory).
+    pub fn slots(self) -> usize {
+        match self {
+            Self::Rideable => 0,
+            Self::Chest => CHEST_SLOTS,
+            Self::Hopper => super::hopper::HOPPER_SLOTS,
+        }
+    }
+
+    /// `getName` without a custom name: the untranslated key (en_US names only
+    /// `entity.Minecart.name`).
+    fn default_name(self) -> &'static str {
+        match self {
+            Self::Rideable => "entity.MinecartRideable.name",
+            Self::Chest | Self::Hopper => "container.minecart",
+        }
+    }
+
+    /// The block item `killMinecart` drops besides the minecart.
+    fn block_item(self) -> Option<i16> {
+        match self {
+            Self::Rideable => None,
+            Self::Chest => Some(block::CHEST as i16),
+            Self::Hopper => Some(block::HOPPER as i16),
+        }
+    }
+}
+
 /// One minecart.
 #[derive(Debug, Clone)]
 pub struct Minecart {
+    /// What kind of minecart it is.
+    pub kind: CartKind,
     /// Position, motion and the movement state.
     pub body: Body,
     /// The base entity state (its custom name is the cart's `entityName`, which the
@@ -149,6 +242,14 @@ pub struct Minecart {
     pub dead: bool,
     /// The chunk it is in (as of its last update).
     pub chunk: (i32, i32),
+    /// A container cart's slots (`minecartContainerItems`); emptied stacks stay as
+    /// zero-sized ones once spilled, like vanilla's.
+    pub items: Vec<Option<ItemStack>>,
+    /// A hopper cart's `isBlocked`, which (despite the name) means it may pull items;
+    /// powered activator rails clear it. Not saved.
+    pub hopper_enabled: bool,
+    /// A hopper cart's `transferTicker` (saved as `TransferCooldown`).
+    transfer_ticker: i32,
 }
 
 /// `Block.getStateId`.
@@ -179,13 +280,14 @@ fn normalize(x: f64, z: f64) -> (f64, f64) {
 }
 
 impl Minecart {
-    /// A new rideable minecart at `pos` (`EntityMinecart(world, x, y, z)`).
-    fn new(pos: (f64, f64, f64)) -> Self {
+    /// A new minecart at `pos` (`EntityMinecart.func_180458_a`).
+    fn new(kind: CartKind, pos: (f64, f64, f64)) -> Self {
         let mut body = Body::player(pos, false);
         body.width = WIDTH;
         body.height = HEIGHT;
         body.step_height = 0.0;
         let mut m = Self {
+            kind,
             body,
             base: EntityBase::default(),
             reverse: false,
@@ -199,6 +301,9 @@ impl Minecart {
             airborne: false,
             dead: false,
             chunk: chunk_of(pos),
+            items: vec![None; kind.slots()],
+            hopper_enabled: true,
+            transfer_ticker: -1,
         };
         m.dirty_metadata = m.metadata().iter().map(|e| e.index).collect();
         m
@@ -235,12 +340,36 @@ impl Minecart {
         self.base
             .custom_name
             .clone()
-            .unwrap_or_else(|| RIDEABLE_NAME.to_owned())
+            .unwrap_or_else(|| self.kind.default_name().to_owned())
     }
 
     /// The minecart type the spawn packet carries.
     pub fn type_id(&self) -> i32 {
-        RIDEABLE_TYPE
+        self.kind.network_id()
+    }
+
+    /// `getDisplayName`: the custom name as text, else the name's translation, with the
+    /// entity hover and the UUID to insert.
+    pub fn display_name(&self, uuid: u128) -> crate::chat::Component {
+        let mut c = match &self.base.custom_name {
+            Some(name) => crate::chat::Component::text(name.clone()),
+            None => crate::chat::Component::translate(self.kind.default_name(), vec![]),
+        };
+        let uuid = crate::status::java_uuid_string(uuid);
+        // getHoverEvent: an NBTTagCompound's toString, keys in HashMap order.
+        let quoted = |v: &str| format!("\"{}\"", v.replace('"', "\\\""));
+        let hover = format!(
+            "{{name:{},id:{},type:{}}}",
+            quoted(&self.name()),
+            quoted(&uuid),
+            quoted(self.kind.saved_id())
+        );
+        c.style.insertion = Some(uuid);
+        c.style.hover = Some((
+            "show_entity".into(),
+            Box::new(crate::chat::Component::text(hover)),
+        ));
+        c
     }
 
     /// The complete data watcher, in index order.
@@ -270,11 +399,17 @@ impl Minecart {
     }
 
     /// `readEntityFromNBT` of a minecart (`body` and `base` already read).
-    pub fn load(mut body: Body, base: EntityBase, c: &Compound) -> Self {
+    pub fn load(kind: CartKind, mut body: Body, base: EntityBase, c: &Compound) -> Self {
         body.width = WIDTH;
         body.height = HEIGHT;
         body.step_height = 0.0;
-        let mut m = Self::new(body.pos);
+        let mut m = Self::new(kind, body.pos);
+        if kind.slots() > 0 {
+            m.items = super::dispenser::te_items(Some(c), kind.slots());
+        }
+        if kind == CartKind::Hopper {
+            m.transfer_ticker = c.get_i32("TransferCooldown");
+        }
         m.body = body;
         m.base = base;
         if c.get_bool("CustomDisplayTile") {
@@ -321,7 +456,41 @@ impl Minecart {
         if let Some(name) = &self.base.custom_name {
             c.insert("CustomName", Tag::String(name.clone()));
         }
+        if self.kind.slots() > 0 {
+            c.insert("Items", Tag::List(super::dispenser::items_tag(&self.items)));
+        }
+        if self.kind == CartKind::Hopper {
+            c.insert("TransferCooldown", Tag::Int(self.transfer_ticker));
+        }
     }
+
+    /// `isUseableByPlayer` of a container cart: alive and within 8 blocks.
+    pub fn usable_from(&self, pos: (f64, f64, f64)) -> bool {
+        let d = (
+            pos.0 - self.body.pos.0,
+            pos.1 - self.body.pos.1,
+            pos.2 - self.body.pos.2,
+        );
+        !self.dead && d.0 * d.0 + d.1 * d.1 + d.2 * d.2 <= USE_RANGE_SQ
+    }
+}
+
+/// `BlockRailDetector.findMinecarts`' box: the rail's block inset by 0.2 (as floats),
+/// but for the bottom.
+fn detector_area(pos: (i32, i32, i32)) -> Aabb {
+    let inset = 0.2f32;
+    Aabb::new(
+        [
+            f64::from(pos.0 as f32 + inset),
+            f64::from(pos.1),
+            f64::from(pos.2 as f32 + inset),
+        ],
+        [
+            f64::from((pos.0 + 1) as f32 - inset),
+            f64::from((pos.1 + 1) as f32 - inset),
+            f64::from((pos.2 + 1) as f32 - inset),
+        ],
+    )
 }
 
 /// `func_70489_a`: the point on the rail line under `pos`, if there is a rail there (or
@@ -377,6 +546,9 @@ impl Game {
         let Some(stack) = self.players[i].held().cloned() else {
             return false;
         };
+        let Some(kind) = CartKind::from_item(stack.id) else {
+            return false;
+        };
         let lift = if rails::is_ascending(rails::shape(state)) {
             0.5
         } else {
@@ -388,7 +560,7 @@ impl Game {
             f64::from(pos.2) + 0.5,
         );
         let id = self.next_entity_id();
-        let mut cart = Minecart::new(at);
+        let mut cart = Minecart::new(kind, at);
         cart.base.custom_name = super::item_data::custom_name(&stack).map(str::to_owned);
         self.minecarts.insert(id, cart);
         self.spawn_entity_in_world(id);
@@ -407,6 +579,13 @@ impl Game {
     pub(super) fn update_minecart(&mut self, id: i32, prev_yaw: f32) {
         if self.minecarts.get(&id).is_some_and(|m| !m.dead) {
             self.tick_minecart(id, prev_yaw);
+            if self
+                .minecarts
+                .get(&id)
+                .is_some_and(|m| m.kind == CartKind::Hopper)
+            {
+                self.tick_hopper_cart(id);
+            }
             if let Some(m) = self.minecarts.get_mut(&id) {
                 m.chunk = chunk_of(m.body.pos);
             }
@@ -438,8 +617,12 @@ impl Game {
             m.set_damage(m.damage - 1.0);
         }
         if m.body.pos.1 < VOID_Y {
-            m.dead = true;
+            // kill: setDead.
+            self.set_minecart_dead(id);
         }
+        let Some(m) = self.minecarts.get_mut(&id) else {
+            return;
+        };
         if m.base.portal_cooldown > 0 {
             m.base.portal_cooldown -= 1;
         }
@@ -453,7 +636,17 @@ impl Game {
         if rails::is_rail(state >> 4) {
             self.minecart_on_rail(id, (x, y, z), state);
             if state >> 4 == block::ACTIVATOR_RAIL {
-                self.minecart_activator_pass(id, state & rails::POWERED_BIT != 0);
+                let powered = state & rails::POWERED_BIT != 0;
+                match self.minecarts.get(&id).map(|m| m.kind) {
+                    Some(CartKind::Rideable) => self.minecart_activator_pass(id, powered),
+                    // EntityMinecartHopper.onActivatorRailPass: off while powered.
+                    Some(CartKind::Hopper) => {
+                        if let Some(m) = self.minecarts.get_mut(&id) {
+                            m.hopper_enabled = !powered;
+                        }
+                    }
+                    _ => {}
+                }
             }
         } else {
             self.minecart_derailed(id);
@@ -607,8 +800,11 @@ impl Game {
         } else if e[1][1] != 0 && fx - rail.0 == e[1][0] && fz - rail.2 == e[1][2] {
             m.body.pos.1 += f64::from(e[1][1]);
         }
-        // applyDrag: much less with a rider.
-        let drag = if m.rider.is_some() {
+        // applyDrag: much less with a rider; container carts by how full they are.
+        let drag = if m.kind.slots() > 0 {
+            let empty = 15 - super::redstone::container_signal(&m.items);
+            CONTAINER_DRAG + empty as f32 * CONTAINER_DRAG_STEP
+        } else if m.rider.is_some() {
             RIDDEN_DRAG
         } else {
             RAIL_DRAG
@@ -977,28 +1173,170 @@ impl Game {
             if m.rider.is_some() {
                 self.dismount_rider_of(id);
             }
-            let Some(m) = self.minecarts.get_mut(&id) else {
+            let Some(m) = self.minecarts.get(&id) else {
                 return true;
             };
-            m.dead = true;
-            if !(creative && m.base.custom_name.is_none())
-                && self.level.data.game_rule("doEntityDrops") != Some("false")
-            {
-                // killMinecart: entityDropItem at the cart's feet.
-                let mut stack = ItemStack {
-                    id: item::MINECART,
-                    count: 1,
-                    damage: 0,
-                    nbt: None,
-                };
-                if let Some(name) = m.base.custom_name.clone() {
-                    set_display_name(&mut stack, &name);
-                }
-                let pos = m.body.pos;
-                self.spawn_item(pos, stack, DROP_PICKUP_DELAY);
+            if creative && m.base.custom_name.is_none() {
+                self.set_minecart_dead(id);
+            } else {
+                self.kill_minecart(id);
             }
         }
         true
+    }
+
+    /// `setDead` of a minecart: a container cart spills its contents first (every
+    /// time, as vanilla's `dropContentsWhenDead` stays set).
+    pub(super) fn set_minecart_dead(&mut self, id: i32) {
+        self.spill_cart(id);
+        if let Some(m) = self.minecarts.get_mut(&id) {
+            m.dead = true;
+        }
+    }
+
+    /// `InventoryHelper.func_180176_a` on a container cart: every slot spills out at
+    /// the cart's position, leaving zero-sized stacks behind.
+    fn spill_cart(&mut self, id: i32) {
+        let Some(m) = self.minecarts.get_mut(&id) else {
+            return;
+        };
+        let pos = m.body.pos;
+        let mut items = std::mem::take(&mut m.items);
+        for stack in items.iter_mut().flatten() {
+            self.spill_stack(pos, stack);
+        }
+        if let Some(m) = self.minecarts.get_mut(&id) {
+            m.items = items;
+        }
+    }
+
+    /// `killMinecart`: the cart dies and drops a minecart (named after it), and a
+    /// container cart its block; the drops need the `doEntityDrops` game rule.
+    fn kill_minecart(&mut self, id: i32) {
+        self.set_minecart_dead(id);
+        if self.level.data.game_rule("doEntityDrops") == Some("false") {
+            return;
+        }
+        let Some(m) = self.minecarts.get(&id) else {
+            return;
+        };
+        let (pos, kind, name) = (m.body.pos, m.kind, m.base.custom_name.clone());
+        // entityDropItem at the cart's feet.
+        let mut stack = ItemStack {
+            id: item::MINECART,
+            count: 1,
+            damage: 0,
+            nbt: None,
+        };
+        if let Some(name) = name {
+            set_display_name(&mut stack, &name);
+        }
+        self.spawn_item(pos, stack, DROP_PICKUP_DELAY);
+        if let Some(block_item) = kind.block_item() {
+            // Vanilla quirk: EntityMinecartContainer.killMinecart spills the (already
+            // emptied) slots once more, drawing the random offsets again.
+            self.spill_cart(id);
+            let stack = ItemStack {
+                id: block_item,
+                count: 1,
+                damage: 0,
+                nbt: None,
+            };
+            self.spawn_item(pos, stack, DROP_PICKUP_DELAY);
+        }
+    }
+
+    /// `EntityPlayerMP.displayGUIChest` for a container cart: a chest or hopper window
+    /// titled with the cart's display name.
+    pub(super) fn open_cart_window(&mut self, i: usize, id: i32) {
+        if self.players[i].window.open.is_some() {
+            self.close_screen(i);
+        }
+        let Some(m) = self.minecarts.get(&id) else {
+            return;
+        };
+        let (gui, layout) = match m.kind {
+            CartKind::Chest => ("minecraft:chest", Layout::Chest((CHEST_SLOTS / 9) as u8)),
+            CartKind::Hopper => ("minecraft:hopper", Layout::Hopper),
+            CartKind::Rideable => return,
+        };
+        let uuid = self.entity_uuids.get(&id).copied().unwrap_or_default();
+        let title = m.display_name(uuid).to_json_string();
+        let slots = m.items.len() as u8;
+        let window = self.players[i].window.next_window_id();
+        self.players[i].send(ClientboundPlay::OpenWindow {
+            window: window as u8,
+            kind: gui.into(),
+            title,
+            slots,
+        });
+        self.players[i].window.open = Some(OpenContainer {
+            id: window,
+            layout,
+            pos: (0, 0, 0),
+            slots: Vec::new(),
+            parts: Vec::new(),
+            ender: false,
+            cart: Some(id),
+            sent: vec![None; layout.len()],
+            fields: [0; 4],
+            taken: 0,
+        });
+        self.open_container_gui(i);
+    }
+
+    /// `EntityMinecartHopper.onUpdate` after the cart's own update: while enabled it
+    /// tries to pull an item every tick. (Vanilla quirk: the block it last stood on is
+    /// never recorded, so away from the block at the origin the transfer cooldown is
+    /// reset each tick.)
+    fn tick_hopper_cart(&mut self, id: i32) {
+        let Some(m) = self.minecarts.get_mut(&id) else {
+            return;
+        };
+        if m.dead || !m.hopper_enabled {
+            return;
+        }
+        let p = m.body.pos;
+        let block = (floor_f64(p.0), floor_f64(p.1), floor_f64(p.2));
+        if block == (0, 0, 0) {
+            m.transfer_ticker -= 1;
+        } else {
+            m.transfer_ticker = 0;
+        }
+        if m.transfer_ticker > 0 {
+            return;
+        }
+        m.transfer_ticker = 0;
+        if self.hopper_cart_pull(id)
+            && let Some(m) = self.minecarts.get_mut(&id)
+        {
+            m.transfer_ticker = CART_TRANSFER_COOLDOWN;
+        }
+    }
+
+    /// `EntityMinecartHopper.func_96112_aD`: what a hopper would take from above
+    /// (`captureDroppedItems`), else the first item entity next to the cart (which
+    /// does not count as a transfer).
+    fn hopper_cart_pull(&mut self, id: i32) -> bool {
+        let Some(m) = self.minecarts.get(&id) else {
+            return false;
+        };
+        // IHopper's position is half a block above the cart's.
+        let at = (m.body.pos.0, m.body.pos.1 + 0.5, m.body.pos.2);
+        let area = m.body.bb().expand([0.25, 0.0, 0.25]);
+        let cart = super::hopper::Inv::Cart(id);
+        if self.capture_items(&cart, at) {
+            return true;
+        }
+        let first = self
+            .items
+            .iter()
+            .find(|(_, it)| !it.dead && it.body.bb().intersects(&area))
+            .map(|(&item, _)| item);
+        if let Some(item) = first {
+            self.put_drop_in_inventory(&cart, item);
+        }
+        false
     }
 
     /// A player's attack on a minecart (`attackTargetEntityWithCurrentItem` on an
@@ -1052,27 +1390,28 @@ impl Game {
     /// `BlockRailDetector.findMinecarts`: whether a minecart is in the detector rail's
     /// box at `pos`.
     pub(super) fn minecart_in_detector(&self, pos: (i32, i32, i32)) -> bool {
-        let inset = 0.2f32;
-        let area = Aabb::new(
-            [
-                f64::from(pos.0 as f32 + inset),
-                f64::from(pos.1),
-                f64::from(pos.2 as f32 + inset),
-            ],
-            [
-                f64::from((pos.0 + 1) as f32 - inset),
-                f64::from((pos.1 + 1) as f32 - inset),
-                f64::from((pos.2 + 1) as f32 - inset),
-            ],
-        );
+        let area = detector_area(pos);
         self.minecarts
             .values()
             .any(|m| !m.dead && m.body.bb().intersects(&area))
     }
 
+    /// `BlockRailDetector.getComparatorInputOverride`'s cart: the slots of the first
+    /// living container cart in the detector rail's box at `pos`.
+    pub(super) fn container_cart_in_detector(
+        &self,
+        pos: (i32, i32, i32),
+    ) -> Option<Vec<Option<ItemStack>>> {
+        let area = detector_area(pos);
+        self.minecarts
+            .values()
+            .find(|m| !m.dead && m.kind.slots() > 0 && m.body.bb().intersects(&area))
+            .map(|m| m.items.clone())
+    }
+
     /// `writeToNBTOptional` of a minecart.
     pub(super) fn minecart_nbt(&self, m: &Minecart, uuid: u128, c: &mut Compound) {
-        c.insert("id", Tag::String(RIDEABLE_ID.into()));
+        c.insert("id", Tag::String(m.kind.saved_id().into()));
         m.base.write_entity(&m.body, uuid, c);
         m.write(c);
     }
@@ -1108,7 +1447,7 @@ mod tests {
 
     #[test]
     fn metadata_hides_the_custom_name() {
-        let mut m = Minecart::new((0.5, 4.0625, 0.5));
+        let mut m = Minecart::new(CartKind::Rideable, (0.5, 4.0625, 0.5));
         m.base.custom_name = Some("Cart".into());
         let md = m.metadata();
         let indices: Vec<u8> = md.iter().map(|e| e.index).collect();

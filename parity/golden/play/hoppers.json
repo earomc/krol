@@ -360,7 +360,7 @@
           "packet": "block_change"
         },
         {
-          "hex": "010f6d696e6563726166743a63686573741f7b227472616e736c617465223a22636f6e7461696e65722e6368657374227d1b",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:chest\", title: \"{\\\"translate\\\":\\\"container.chest\\\"}\", slots: 27 }",
           "packet": "0x2d"
         },
         {

@@ -252,7 +252,7 @@
           "packet": "set_slot"
         },
         {
-          "hex": "01136d696e6563726166743a636f6e7461696e6572247b227472616e736c617465223a22636f6e7461696e65722e656e6465726368657374227d1b",
+          "debug": "OpenWindow { window: 1, kind: \"minecraft:container\", title: \"{\\\"translate\\\":\\\"container.enderchest\\\"}\", slots: 27 }",
           "packet": "0x2d"
         },
         {
@@ -355,7 +355,7 @@
           "packet": "block_change"
         },
         {
-          "hex": "02136d696e6563726166743a636f6e7461696e6572247b227472616e736c617465223a22636f6e7461696e65722e656e6465726368657374227d1b",
+          "debug": "OpenWindow { window: 2, kind: \"minecraft:container\", title: \"{\\\"translate\\\":\\\"container.enderchest\\\"}\", slots: 27 }",
           "packet": "0x2d"
         },
         {
@@ -1118,10 +1118,10 @@
         "achievement.exploreAllBiomes"
       ],
       "value": {
-        "stat.playOneMinute": 193,
+        "stat.playOneMinute": 195,
         "stat.leaveGame": 1,
         "stat.enderchestOpened": 2,
-        "stat.timeSinceDeath": 193,
+        "stat.timeSinceDeath": 195,
         "stat.useItem.minecraft.ender_chest": 3,
         "achievement.exploreAllBiomes": {
           "value": 0,
