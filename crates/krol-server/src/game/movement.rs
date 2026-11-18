@@ -155,7 +155,7 @@ impl Game {
     }
 
     /// Whether any block in `bb` has the given ids (`World.isMaterialInBB` for liquids).
-    fn any_block_in(&mut self, bb: &Aabb, ids: std::ops::RangeInclusive<u16>) -> bool {
+    pub(super) fn any_block_in(&mut self, bb: &Aabb, ids: std::ops::RangeInclusive<u16>) -> bool {
         for x in floor_f64(bb.min[0])..floor_f64(bb.max[0] + 1.0) {
             for y in floor_f64(bb.min[1])..floor_f64(bb.max[1] + 1.0) {
                 for z in floor_f64(bb.min[2])..floor_f64(bb.max[2] + 1.0) {
@@ -269,8 +269,15 @@ impl Game {
     /// surface.
     pub(super) fn eyes_in_water(&mut self, i: usize) -> bool {
         let p = &self.players[i];
-        let eye_y = p.pos.1 + f64::from(p.eye_height());
-        let (x, y, z) = (floor_f64(p.pos.0), floor_f64(eye_y), floor_f64(p.pos.2));
+        let (pos, eye) = (p.pos, p.eye_height());
+        self.eyes_in_water_at(pos, eye)
+    }
+
+    /// `Entity.isInsideOfMaterial(water)` for an entity at `pos` with eyes `eye`
+    /// above its feet.
+    pub(super) fn eyes_in_water_at(&mut self, pos: (f64, f64, f64), eye: f32) -> bool {
+        let eye_y = pos.1 + f64::from(eye);
+        let (x, y, z) = (floor_f64(pos.0), floor_f64(eye_y), floor_f64(pos.2));
         let state = self.level.overworld.block(x, y, z);
         if super::block_data::material(state >> 4) != super::block_data::Material::Water {
             return false;
@@ -758,7 +765,7 @@ impl Game {
 
     /// Sends a particle packet to every player within 16 blocks (measured from the
     /// player's block position, vanilla `WorldServer.spawnParticle`).
-    fn send_particle(&self, packet: &ClientboundPlay, pos: (f64, f64, f64)) {
+    pub(super) fn send_particle(&self, packet: &ClientboundPlay, pos: (f64, f64, f64)) {
         for p in &self.players {
             let b = (
                 f64::from(floor_f64(p.pos.0)),

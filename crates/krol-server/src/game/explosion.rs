@@ -43,6 +43,7 @@ pub(super) enum Target {
     Thrown(i32),
     Arrow(i32),
     Hanging(i32),
+    ArmorStand(i32),
 }
 
 impl Game {
@@ -179,6 +180,12 @@ impl Game {
         let source = placed_by.map_or(DamageSource::Explosion, DamageSource::ExplosionBy);
         let mut knockback = Vec::new();
         for (entity_id, target) in targets {
+            // isImmuneToExplosions: invisible armor stands.
+            if let Target::ArmorStand(id) = target
+                && self.armor_stands.get(&id).is_some_and(|s| s.invisible)
+            {
+                continue;
+            }
             let Some((feet, eye, bb)) = self.target_shape(target) else {
                 continue;
             };
@@ -251,6 +258,11 @@ impl Game {
                         add(&mut h.body.motion);
                     }
                 }
+                Target::ArmorStand(id) => {
+                    if let Some(s) = self.armor_stands.get_mut(&id) {
+                        add(&mut s.body.motion);
+                    }
+                }
             }
         }
         knockback
@@ -299,6 +311,11 @@ impl Game {
                 add(id, h.bb, Target::Hanging(id));
             }
         }
+        for (&id, s) in &self.armor_stands {
+            if !s.dead {
+                add(id, s.body.bb(), Target::ArmorStand(id));
+            }
+        }
         // Chunk entity lists keep insertion order, which follows entity ids here.
         targets.sort_by_key(|(id, _)| *id);
         targets
@@ -315,6 +332,7 @@ impl Game {
         match target {
             Target::Player(i) => return self.attack_player(i, source, damage),
             Target::Hanging(id) => return self.attack_hanging(id, source),
+            Target::ArmorStand(id) => self.attack_armor_stand(id, source),
             Target::Item(id) => {
                 if let Some(it) = self.items.get_mut(&id) {
                     // Nether stars survive explosions.
@@ -386,6 +404,10 @@ impl Game {
                 let h = self.hanging.get(&id)?;
                 return Some((h.body.pos, h.body.height * 0.85, h.bb));
             }
+            Target::ArmorStand(id) => {
+                let s = self.armor_stands.get(&id)?;
+                return Some((s.body.pos, s.eye_height(), s.body.bb()));
+            }
         };
         // Entity.getEyeHeight: 85% of the height.
         Some((body.pos, body.height * 0.85, body.bb()))
@@ -401,22 +423,33 @@ impl Game {
         impact: f64,
     ) -> f64 {
         let _ = self.attack_target(target, source, damage);
-        match target {
-            Target::Player(i) => {
-                let level = super::item_data::armor_enchantment(
-                    &self.players[i].inventory,
-                    super::item_data::BLAST_PROTECTION,
-                );
-                if level > 0 {
-                    impact
-                        - f64::from(krol_java::math::floor_f64(
-                            impact * f64::from(level as f32 * BLAST_KNOCKBACK_REDUCTION),
-                        ))
-                } else {
-                    impact
-                }
-            }
-            _ => impact,
+        let level = match target {
+            Target::Player(i) => super::item_data::armor_enchantment(
+                &self.players[i].inventory,
+                super::item_data::BLAST_PROTECTION,
+            ),
+            // An armor stand's whole equipment counts (`getInventory`), its hand too.
+            Target::ArmorStand(id) => self.armor_stands.get(&id).map_or(0, |s| {
+                s.equipment
+                    .iter()
+                    .map(|e| {
+                        super::item_data::enchantment_level(
+                            e.as_ref(),
+                            super::item_data::BLAST_PROTECTION,
+                        )
+                    })
+                    .max()
+                    .unwrap_or(0)
+            }),
+            _ => 0,
+        };
+        if level > 0 {
+            impact
+                - f64::from(krol_java::math::floor_f64(
+                    impact * f64::from(level as f32 * BLAST_KNOCKBACK_REDUCTION),
+                ))
+        } else {
+            impact
         }
     }
 

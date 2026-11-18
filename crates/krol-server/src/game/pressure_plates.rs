@@ -76,10 +76,16 @@ impl Game {
             .iter()
             .filter(|p| p.gamemode != 3 && Aabb::at(p.pos, 0.6, 1.8).intersects(area))
             .count();
+        let stands = self
+            .armor_stands
+            .values()
+            .filter(|s| !s.dead && s.body.bb().intersects(area))
+            .count();
         if living {
-            return players;
+            return players + stands;
         }
         players
+            + stands
             + self
                 .items
                 .values()

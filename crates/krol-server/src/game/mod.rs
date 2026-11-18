@@ -6,6 +6,7 @@
 //! player's [`Outgoing`] queue.
 
 mod anvil;
+mod armor_stand;
 mod arrow;
 mod attributes;
 mod banner;
@@ -340,6 +341,8 @@ struct Game {
     arrows: std::collections::BTreeMap<i32, arrow::Arrow>,
     /// Paintings and item frames, by entity id.
     hanging: std::collections::BTreeMap<i32, hanging::Hanging>,
+    /// Armor stands, by entity id.
+    armor_stands: std::collections::BTreeMap<i32, armor_stand::ArmorStand>,
     /// Every player but spectators lies in bed (`allPlayersSleeping`).
     all_sleeping: bool,
     /// Ticks since the last latency broadcast (`playerPingIndex`).
@@ -428,6 +431,7 @@ pub fn start(
         thrown: Default::default(),
         arrows: Default::default(),
         hanging: Default::default(),
+        armor_stands: Default::default(),
         all_sleeping: false,
         ping_index: 0,
         wire_gives_power: true,
@@ -615,6 +619,7 @@ impl Game {
         order.extend(self.thrown.keys().copied());
         order.extend(self.arrows.keys().copied());
         order.extend(self.hanging.keys().copied());
+        order.extend(self.armor_stands.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
@@ -636,6 +641,7 @@ impl Game {
                     .chain(self.thrown.keys())
                     .chain(self.arrows.keys())
                     .chain(self.hanging.keys())
+                    .chain(self.armor_stands.keys())
                     .copied()
                     .filter(|&e| e > newest)
                     .collect();
@@ -674,6 +680,10 @@ impl Game {
             }
             if self.hanging.contains_key(&id) {
                 self.update_hanging(id);
+                continue;
+            }
+            if self.armor_stands.contains_key(&id) {
+                self.update_armor_stand(id);
                 continue;
             }
             let Some(i) = self.players.iter().position(|p| p.entity_id == id) else {
@@ -1994,6 +2004,10 @@ impl Game {
             self.place_hanging(i, pos, face as u8);
             return;
         }
+        if stack.id == ids::item::ARMOR_STAND {
+            self.place_armor_stand(i, pos, face as u8);
+            return;
+        }
         if farming::is_hoe(stack.id) {
             self.use_hoe(i, pos, face as u8);
             return;
@@ -2201,14 +2215,19 @@ impl Game {
         }
     }
 
-    /// Whether a player stands in the collision box of `state` at `at`
-    /// (`checkNoEntityCollision`).
+    /// Whether a player or an armor stand (the entities with `preventEntitySpawning`
+    /// so far) stands in the collision box of `state` at `at` (`checkNoEntityCollision`).
     fn blocked_by_players(&self, state: u16, at: (i32, i32, i32)) -> bool {
         let boxes = physics::block_boxes(state, at);
-        self.players.iter().any(|p| {
+        let players = self.players.iter().any(|p| {
             let bb = physics::Aabb::at(p.pos, 0.6, 1.8);
             boxes.iter().any(|b| b.intersects(&bb))
-        })
+        });
+        players
+            || self.armor_stands.values().any(|s| {
+                let bb = s.body.bb();
+                !s.dead && boxes.iter().any(|b| b.intersects(&bb))
+            })
     }
 
     /// Sets the placed block, plays its place sound to everyone within hearing distance
@@ -2392,8 +2411,12 @@ impl Game {
                     );
                 }
             }
-            ServerboundPlay::UseEntity { target, action, .. } => {
-                self.use_entity(i, target, action);
+            ServerboundPlay::UseEntity {
+                target,
+                action,
+                target_pos,
+            } => {
+                self.use_entity(i, target, action, target_pos);
             }
             ServerboundPlay::HeldItemChange { slot } => {
                 if (0..9).contains(&slot) {

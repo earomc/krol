@@ -10,7 +10,12 @@ cargo xtask parity diff status/modern_ping  # one scenario's diffs from the last
 cargo xtask parity coverage                 # feature coverage (parity/coverage.toml)
 ```
 
-`run` takes `--protocol 5` (replay the play scenarios as 1.7 clients) and `--jobs N` (`-j N`,
+`--filter` keeps the scenarios whose name contains the text (a substring, not a glob:
+`--filter play/armor_stand` matches both armor stand scenarios; a `*` matches nothing).
+
+`run` takes `--protocol 5` (replay the play scenarios as 1.7 clients; scenarios with
+`v5 = false` in `[setup]` are left out, for what 1.7 clients cannot do, such as
+interacting with an armor stand at a point) and `--jobs N` (`-j N`,
 scenarios at once, default 4, capped at the CPU count). Scenarios mostly wait on scripted bot
 sessions, so 4 jobs bring a full run from about 18 to about 5 minutes. A scenario that fails
 during a parallel run is run once more on its own; if it passes then, it counts as passed and
@@ -139,6 +144,14 @@ into server ticks. Rules learned from flaky scenarios:
   other packets in between, for packets resent unchanged on a timer while the scenario
   does other things (a carried map's icon packets, `"0x34"` in `play/framed_maps`):
   what changes still shows, in order.
+- **Armor stands placed by a player turn their head and body by the world random** in
+  whatever tick the placement lands. The parity view zeroes those two rotations
+  (metadata entries 11 and 12, the only rotation-typed entries) in every Entity Metadata
+  packet; ignore `Pose.Head` and `Pose.Body` of saved stands (`play/armor_stands`).
+- **Burning entities in fire never take the burn damage**: the fire counter rises by one
+  with each move in the fire and drops by one with each update, so it never reaches the
+  multiple of 20 that hurts. Only the fire block's own damage counts; time scenarios
+  for that (`play/armor_stands`).
 - **Tolerances on NBT lists go on the list itself** (`"file:<path>.dat.Pos" = 0.1`):
   lists of values are otherwise diffed line by line, where element tolerances never
   apply. Packet tolerances name a packet index, and the 1.7 view (`--protocol 5`) drops

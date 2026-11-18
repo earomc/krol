@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: maps in item frames`).
+Status as of 2026-11-18 (commit `server: armor stands`).
 
 **Legend**
 
@@ -22,9 +22,9 @@ Status as of 2026-11-18 (commit `server: maps in item frames`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 entities without AI**: armor stands, minecarts and boats, with their spawn
+1. **M5 entities without AI**: minecarts and boats, with their spawn
    packets, tracking and saving (done: projectiles from players, paintings and item
-   frames with the maps they show).
+   frames with the maps they show, armor stands).
 2. **M5 mobs**: the living entity base for mobs, spawning, then the AI tasks mob by
    mob.
 
@@ -121,12 +121,12 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | Packet | Status | Notes |
 |---|---|---|
 | 0x00 Keep Alive · 0x01 Join Game · 0x02 Chat · 0x03 Time Update · 0x05 Spawn Position · 0x06 Update Health · 0x07 Respawn · 0x08 Player Position And Look · 0x09 Held Item Change | ✅ | |
-| 0x04 Entity Equipment | ✅ | Players only |
+| 0x04 Entity Equipment | ✅ | Players and armor stands |
 | 0x0A Use Bed | ✅ | |
 | 0x0B Animation | ✅ | Swing arm, hurt (critical effects missing) |
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
-| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames. Missing: boats, minecarts, fireballs, leash knots, armor stands, fishing hooks, ... |
+| 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands. Missing: boats, minecarts, fireballs, leash knots, fishing hooks, ... |
 | 0x0F Spawn Mob | ❌ | No mobs |
 | 0x10 Spawn Painting | ✅ | |
 | 0x11 Spawn Experience Orb | ✅ | |
@@ -134,7 +134,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x14 Entity (no-op) | ❌ | Not sent by krol yet; vanilla sends it for entities that didn't move in some update cycles |
 | 0x1A Entity Status | 🟡 | Hurt, death, eating done; mob statuses missing |
 | 0x1B Attach Entity | ❌ | Riding, leashes |
-| 0x1C Entity Metadata | 🟡 | Players, items, orbs, falling blocks |
+| 0x1C Entity Metadata | 🟡 | Players, items, orbs, falling blocks, projectiles, hanging entities, armor stands (rotations included) |
 | 0x1D Entity Effect · 0x1E Remove Entity Effect | ✅ | |
 | 0x1F Set Experience | ✅ | |
 | 0x20 Entity Properties | ✅ | Players |
@@ -174,7 +174,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | Packet | Status | Notes |
 |---|---|---|
 | 0x00 Keep Alive · 0x01 Chat · 0x03–0x06 Player/Position/Look · 0x07 Player Digging · 0x08 Block Placement · 0x09 Held Item Change · 0x0A Animation · 0x0B Entity Action · 0x0D Close Window · 0x0E Click Window · 0x0F Confirm Transaction · 0x10 Creative Inventory Action · 0x12 Update Sign · 0x13 Player Abilities · 0x15 Client Settings · 0x16 Client Status | ✅ | |
-| 0x02 Use Entity (attack, interact, interact at) | 🟡 | Attacking players ✅ (items, orbs and oneself kick like vanilla); interacting and attacking other entities ❌ |
+| 0x02 Use Entity (attack, interact, interact at) | 🟡 | Attacking players, hanging entities and armor stands, interacting with item frames, interacting at armor stands ✅ (items, orbs and oneself kick like vanilla); mobs ❌ |
 | 0x0C Steer Vehicle | ❌ | No vehicles |
 | 0x11 Enchant Item | ✅ | |
 | 0x14 Tab-Complete | ❌ | |
@@ -402,7 +402,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemEnderEye`, `ItemFireball`, `ItemFirework`, `ItemFireworkCharge` | ❌ | |
 | `ItemMinecart`, `ItemBoat` | ❌ | |
 | `ItemHangingEntity` (paintings, item frames) | ✅ | The random art among those that fit, the use statistic even when nothing fits |
-| `ItemArmorStand` | ❌ | |
+| `ItemArmorStand` | ✅ | On top of or in a replaceable block, both spaces free of blocks and entities (`play/armor_stands`), facing the player in eighths with a random head and body turn from the world random, `EntityTag` merged into the new stand (`play/armor_stand_equipment`) |
 | `ItemMonsterPlacer` (spawn eggs) | ❌ | |
 | `ItemSaddle`, `ItemLead`, `ItemNameTag`, `ItemCarrotOnAStick` | ❌ | |
 | `ItemMap`, `ItemEmptyMap` | 🟡 | Making maps, drawing the held map (block map colors extracted from vanilla, height shading, water depth, the rim), player icons and the off-map icon, map packets, maps without data recreated around the spawn, zoomed maps from the crafting grid (cursor pickup), cloning/extending recipes, maps in item frames (the frame icon, map packets from the tracker to every player in the world), `Decorations` lists on items ✅ (`Decorations` lists and nether icon spin not in a scenario); shift-clicked zoom results, unloaded chunks, color ties at larger scales, the nether ❌ |
@@ -521,7 +521,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityBoat` | ❌ | |
 | `EntityItemFrame`, `EntityPainting` | ✅ | Placing, the surface check every 101 updates, breaking by hits, projectiles, explosions and falling anvils (no drops for creative players, `doEntityDrops`), items put in and turned (metadata, comparators), knocked out by hits but not explosions, the drop chance, tracking (spawn object 71, spawn painting; frames flush metadata every 10 ticks), saving with the chunk (old `Direction` saves), selectors, `/tp`, `/kill`, maps shown in frames (the frame icon, map packets every 10 ticks, the icon removed with the map). Invulnerable frames, `/tp` and old saves are not in a scenario |
 | `EntityLeashKnot` | ❌ | |
-| `EntityArmorStand` | ❌ | |
+| `EntityArmorStand` | 🟡 | The living update without input (gravity, water and lava with depth strider, ladders, falls with landing dust and farmland trampling, fire and lava setting it on fire, air under water with respiration, the void), punches (a second within 5 ticks knocks it over with its drops, adventure players cannot), creative players removing it, fire burning it down (`play/armor_stands`), equipment put on and taken off by interacting at a point with disabled slots, small stands, arms (`play/armor_stand_equipment`), arrows and explosions (drops only the contents; invisible stands are immune, blast protection on what it wears), markers (no size, no hits), tracking (spawn object 78, metadata with the pose, attributes, velocity, equipment), saving with the chunk, selectors, `/tp`, `/kill`, pressure plates, blocking block placement. Arrows, explosions, markers, loading and `/tp` are not in a scenario. Missing: status effects (`ActiveEffects` kept as saved), sounds of stands loaded without `Silent`, riding minecarts pushing them, dispensers putting armor on them, death at 0 health set by commands, saved attribute modifiers (kept, not applied) |
 | `EntityEnderCrystal` | ❌ | |
 | `EntityFireworkRocket` | ❌ | |
 | `EntityEnderPearl` | ✅ | Thrown (not in creative), flies through its thrower, teleports the thrower (online, awake, alive; else the pearl just breaks) with 5 fall damage, dies with its thrower. Endermites (the 5% roll is made) and dismounting ❌ |

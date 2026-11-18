@@ -2,7 +2,7 @@
 //! `AnvilChunkLoader.writeChunkToNBT` / `readChunkFromNBT`, `Chunk.entityLists`,
 //! `Chunk.onChunkLoad`, `EntityList.createEntityFromNBT`, `Entity.writeToNBT` /
 //! `readFromNBT` and the `writeEntityToNBT` / `readEntityFromNBT` of items, experience
-//! orbs, falling blocks, primed TNT, projectiles, paintings and item frames).
+//! orbs, falling blocks, primed TNT, projectiles, paintings, item frames and armor stands).
 //!
 //! Every chunk keeps its entities in 16 lists, one per 16-block section, in the order
 //! they entered the section; the chunk saves them in that order. Saved entities of the
@@ -274,6 +274,12 @@ impl EntityBase {
         (base, uuid)
     }
 
+    /// `Entity.writeToNBT` up to the entity's own fields, for entities written outside
+    /// a chunk save (an item's `EntityTag` merging into a new entity).
+    pub fn write_entity(&self, body: &Body, uuid: u128, c: &mut Compound) {
+        self.write(body, uuid, c);
+    }
+
     /// `Entity.writeToNBT` up to the entity's own fields.
     fn write(&self, body: &Body, uuid: u128, c: &mut Compound) {
         let (p, m) = (body.pos, body.motion);
@@ -432,6 +438,8 @@ impl Game {
             Some(a.body.pos)
         } else if let Some(h) = self.hanging.get(&id) {
             Some(h.body.pos)
+        } else if let Some(s) = self.armor_stands.get(&id) {
+            Some(s.body.pos)
         } else {
             self.tnt.get(&id).map(|t| t.body.pos)
         }
@@ -594,6 +602,14 @@ impl Game {
                 self.hanging.insert(id, h);
                 pos
             }
+            super::armor_stand::SAVED_ID => {
+                let head = self.new_stand_head();
+                let (stand, uuid) = self.armor_stand_from_nbt(c, head);
+                self.set_saved_uuid(id, uuid);
+                let pos = stand.body.pos;
+                self.armor_stands.insert(id, stand);
+                pos
+            }
             saved => match super::throwable::Kind::from_saved_id(saved) {
                 Some(thrown_kind) => {
                     body.width = super::throwable::SIZE;
@@ -625,6 +641,21 @@ impl Game {
         self.chunk_entities.add(id, (chunk.0, chunk.1, section));
         created.push((section, id));
         true
+    }
+
+    /// `readFromNBT` of an armor stand whose constructor turned its head to `head`;
+    /// returns the stand and its saved UUID.
+    pub(super) fn armor_stand_from_nbt(
+        &self,
+        c: &Compound,
+        head: f32,
+    ) -> (super::armor_stand::ArmorStand, Option<u128>) {
+        let mut body = Body::player((0.0, 0.0, 0.0), false);
+        let (base, uuid) = EntityBase::read(c, &mut body);
+        (
+            super::armor_stand::ArmorStand::load(body, base, c, head),
+            uuid,
+        )
     }
 
     /// Replaces the random UUID a loaded entity got in its constructor with the saved
@@ -700,6 +731,13 @@ impl Game {
             c.insert("id", Tag::String(h.kind.saved_id().into()));
             h.base.write(&h.body, uuid, &mut c);
             h.write(&mut c);
+        } else if let Some(s) = self.armor_stands.get(&id) {
+            if s.dead {
+                return None;
+            }
+            c.insert("id", Tag::String(super::armor_stand::SAVED_ID.into()));
+            s.base.write(&s.body, uuid, &mut c);
+            s.write(&mut c);
         } else {
             let t = self.tnt.get(&id).filter(|t| !t.dead)?;
             c.insert("id", Tag::String(TNT_ID.into()));

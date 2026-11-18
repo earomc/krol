@@ -410,6 +410,10 @@ impl Game {
                 h.base.pitch = rotation.1;
                 self.move_hanging(id, pos);
             }
+        } else if let Some(s) = self.armor_stands.get_mut(&id) {
+            s.body.pos = pos;
+            s.base.yaw = rotation.0;
+            s.base.pitch = rotation.1;
         }
     }
 
@@ -430,6 +434,8 @@ impl Game {
             a.dead = true;
         } else if let Some(h) = self.hanging.get_mut(&id) {
             h.dead = true;
+        } else if let Some(s) = self.armor_stands.get_mut(&id) {
+            s.dead = true;
         }
     }
 
@@ -538,6 +544,19 @@ impl Game {
                 type_name: h.kind.saved_id(),
                 name: Some(h.kind.name().into()),
                 rotation: (h.base.yaw, h.base.pitch),
+                entity_id: id,
+            });
+        }
+        for (&id, s) in &self.armor_stands {
+            all.push(Candidate {
+                target: Target::Entity(id),
+                pos: s.body.pos,
+                size: (s.body.width, s.body.height),
+                bb: None,
+                alive: s.alive(),
+                type_name: super::armor_stand::SAVED_ID,
+                name: Some(s.name()),
+                rotation: (s.base.yaw, s.base.pitch),
                 entity_id: id,
             });
         }

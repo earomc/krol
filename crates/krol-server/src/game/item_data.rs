@@ -391,6 +391,12 @@ pub const INFINITY: i16 = 51;
 /// `Enchantment.respiration`'s id.
 pub const RESPIRATION: i16 = 5;
 
+/// `Enchantment.depthStrider`'s id.
+pub const DEPTH_STRIDER: i16 = 8;
+
+/// `Enchantment.fireAspect`'s id.
+pub const FIRE_ASPECT: i16 = 20;
+
 /// `Enchantment.aquaAffinity`'s id.
 pub const AQUA_AFFINITY: i16 = 6;
 

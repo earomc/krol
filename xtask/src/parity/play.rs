@@ -514,6 +514,7 @@ pub fn summarize(o: &PlayObservation) -> Value {
         }
         let mut entry = match &p.decoded {
             Some(d) => decoded_json(d),
+            None if p.id == 0x1c => json!({ "hex": hex(&mask_random_pose(&p.body)) }),
             None => json!({ "hex": hex(&p.body) }),
         };
         if let Value::Object(m) = &mut entry {
@@ -553,6 +554,59 @@ pub fn summarize(o: &PlayObservation) -> Value {
             .collect::<serde_json::Map<_, _>>(),
         "closed_by_server": o.closed_by_server,
     })
+}
+
+/// An Entity Metadata body with the head and body rotations of armor stands (entries
+/// 11 and 12, the only rotation-typed entries) zeroed: a stand placed by a player gets
+/// them from the world's random in whatever tick the placement lands. Bodies that do
+/// not parse (or hold item stacks, which carry NBT) are left as they are.
+fn mask_random_pose(body: &[u8]) -> Vec<u8> {
+    const ROTATION: u8 = 7;
+    const RANDOM_PARTS: [u8; 2] = [11, 12];
+    let mut out = body.to_vec();
+    // The entity id is a VarInt.
+    let mut at = match body.iter().position(|b| b & 0x80 == 0) {
+        Some(k) => k + 1,
+        None => return out,
+    };
+    while let Some(&key) = body.get(at) {
+        if key == 0x7f {
+            return out;
+        }
+        at += 1;
+        let size = match key >> 5 {
+            0 => 1,
+            1 => 2,
+            2 | 3 => 4,
+            4 => {
+                // A VarInt length, then the string.
+                let mut len = 0usize;
+                let mut shift = 0;
+                loop {
+                    let Some(&b) = body.get(at) else {
+                        return body.to_vec();
+                    };
+                    at += 1;
+                    len |= usize::from(b & 0x7f) << shift;
+                    shift += 7;
+                    if b & 0x80 == 0 {
+                        break;
+                    }
+                }
+                len
+            }
+            6 | 7 => 12,
+            _ => return body.to_vec(),
+        };
+        if key >> 5 == ROTATION
+            && RANDOM_PARTS.contains(&(key & 31))
+            && let Some(bytes) = out.get_mut(at..at + size)
+        {
+            bytes.fill(0);
+        }
+        at += size;
+    }
+    body.to_vec()
 }
 
 /// Applies [`v5_view`] to every play session in a scenario's observations.

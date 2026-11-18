@@ -264,6 +264,11 @@ description = "EntityPainting and EntityItemFrame: ItemHangingEntity.onItemUse (
 scenarios = ["play/hanging", "play/framed_maps"]
 
 [[feature]]
+id = "entity.armor_stands"
+description = "EntityArmorStand and ItemArmorStand: placing on the ground (on top of the clicked block; refused where an entity stands, no entity id used), spawn object 78 with data 0, metadata (silent, health, flags, the pose: the random head and body turn masked), attributes (generic.movementSpeed 0.7, generic.maxHealth), velocity; a first punch only marking it, a second within 5 ticks knocking it over (destroy entities, the stand dropped); fire set into it on netherrack (burning flag, health down by 0.15 a tick, never by 4: the fire counter quirk), breaking with nothing dropped; the stand left standing saved with its chunk (living fields, Attributes, Equipment, Pose, DisabledSlots, flags). Equipment: armor put on by interacting at a point (helmet at the head, chestplate at the chest, equipment packets), a sword refused without arms, the helmet taken back with an empty hand, an EntityTag (ShowArms, Small) merged into a new stand, a sword put into its hand and dropped with the stand. Not yet in a scenario: arrows, explosions, creative players, markers, invisible stands, disabled slots, loading, /tp, water and ladders"
+scenarios = ["play/armor_stands", "play/armor_stand_equipment"]
+
+[[feature]]
 id = "entity.splash_potions"
 description = "EntityPotion: ItemPotion.onItemRightClick for splash potions (thrown like the other throwables: speed 0.5, lobbed 20 degrees, gravity 0.05), spawn object 73 with the potion's damage value as data, the 2002 effect with that value, direct hits at full strength: instant damage (indirectMagic, knockback from the thrower), instant health, a lasting effect with its attribute modifier; potion display names in /give's log line. Not yet in a scenario: splashes reaching entities that were not hit (the share depends on the unpinned throw spread), effects of 20 ticks or less being dropped, saving with the chunk"
 scenarios = ["play/splash_potions"]

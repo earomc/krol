@@ -2,9 +2,9 @@
 //! (vanilla: `EntityTracker`, `EntityTrackerEntry`).
 //!
 //! Players, dropped items, experience orbs, falling blocks, primed TNT, projectiles,
-//! paintings and item frames are tracked so far. Every tracked entity has an entry holding what its
-//! viewers were last told (position in 1/32 blocks, angles in 1/256 turns). Each tick,
-//! after the entity updates, every entry:
+//! paintings, item frames and armor stands are tracked so far. Every tracked entity has
+//! an entry holding what its viewers were last told (position in 1/32 blocks, angles in
+//! 1/256 turns). Each tick, after the entity updates, every entry:
 //!
 //! - re-checks which players can see it, on its first update or after moving more than
 //!   4 blocks (a new player's first update also makes every other entry check it),
@@ -54,6 +54,9 @@ const HANGING_RANGE: i32 = 160;
 const HANGING_FREQUENCY: u32 = i32::MAX as u32;
 /// Item frames send their changed metadata every 10 ticks.
 const ITEM_FRAME_METADATA_INTERVAL: u32 = 10;
+/// Armor stands: range 160, every 3 ticks, with velocity updates.
+const ARMOR_STAND_RANGE: i32 = 160;
+const ARMOR_STAND_FREQUENCY: u32 = 3;
 /// Experience orbs: range 160, every 20 ticks, with velocity updates.
 const ORB_RANGE: i32 = 160;
 const ORB_FREQUENCY: u32 = 20;
@@ -266,6 +269,20 @@ impl Game {
                 player: None,
             });
         }
+        if let Some(s) = self.armor_stands.get(&entity_id) {
+            return Some(View {
+                pos: s.body.pos,
+                yaw: s.base.yaw,
+                pitch: s.base.pitch,
+                head: s.head_yaw,
+                on_ground: s.body.on_ground,
+                motion: s.body.motion,
+                chunk: s.chunk,
+                airborne: false,
+                metadata_changed: s.metadata_changed,
+                player: None,
+            });
+        }
         if let Some(o) = self.orbs.get(&entity_id) {
             return Some(View {
                 pos: o.body.pos,
@@ -340,6 +357,8 @@ impl Game {
             (ARROW_RANGE, ARROW_FREQUENCY, false)
         } else if self.hanging.contains_key(&entity_id) {
             (HANGING_RANGE, HANGING_FREQUENCY, false)
+        } else if self.armor_stands.contains_key(&entity_id) {
+            (ARMOR_STAND_RANGE, ARMOR_STAND_FREQUENCY, true)
         } else {
             (ITEM_RANGE, ITEM_FREQUENCY, true)
         };
@@ -633,6 +652,43 @@ impl Game {
                 entity_id,
                 metadata: h.metadata(),
             });
+        } else if let Some(s) = self.armor_stands.get(&entity_id) {
+            // Data 0: no velocity in the spawn packet, a velocity packet follows the
+            // attributes. Then what it wears, like any living entity.
+            packets.push(ClientboundPlay::SpawnObject {
+                entity_id,
+                kind: super::armor_stand::OBJECT_TYPE,
+                x: fixed(v.pos.0),
+                y: fixed(v.pos.1),
+                z: fixed(v.pos.2),
+                pitch: angle(v.pitch) as i8,
+                yaw: angle(v.yaw) as i8,
+                data: 0,
+                velocity: None,
+            });
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata: s.metadata(),
+            });
+            packets.push(ClientboundPlay::EntityProperties {
+                entity_id,
+                properties: s.properties(),
+            });
+            packets.push(ClientboundPlay::EntityVelocity {
+                entity_id,
+                x: speed(v.motion.0),
+                y: speed(v.motion.1),
+                z: speed(v.motion.2),
+            });
+            for (slot, item) in s.equipment.iter().enumerate() {
+                if item.is_some() {
+                    packets.push(ClientboundPlay::EntityEquipment {
+                        entity_id,
+                        slot: slot as i16,
+                        item: item.clone(),
+                    });
+                }
+            }
         } else if let Some(o) = self.orbs.get(&entity_id) {
             packets.push(ClientboundPlay::SpawnExperienceOrb {
                 entity_id,
@@ -959,6 +1015,8 @@ impl Game {
             &mut t.body
         } else if let Some(a) = self.arrows.get_mut(&entity_id) {
             &mut a.body
+        } else if let Some(s) = self.armor_stands.get_mut(&entity_id) {
+            &mut s.body
         } else {
             &mut self.tnt.get_mut(&entity_id)?.body
         };
@@ -1012,6 +1070,20 @@ impl Game {
             // DataWatcher.getChanged: every entry still watched.
             let dirty = std::mem::take(&mut h.dirty_metadata);
             let metadata = h
+                .metadata()
+                .into_iter()
+                .filter(|m| dirty.contains(&m.index))
+                .collect();
+            packets.push(ClientboundPlay::EntityMetadata {
+                entity_id,
+                metadata,
+            });
+        } else if let Some(s) = self.armor_stands.get_mut(&entity_id)
+            && std::mem::take(&mut s.metadata_changed)
+        {
+            // DataWatcher.getChanged: every entry still watched.
+            let dirty = std::mem::take(&mut s.dirty_metadata);
+            let metadata = s
                 .metadata()
                 .into_iter()
                 .filter(|m| dirty.contains(&m.index))

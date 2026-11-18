@@ -371,7 +371,7 @@ impl Game {
     }
 
     /// `World.isFlammableWithin`: fire or lava in the box.
-    fn flammable_within(&mut self, bb: &super::physics::Aabb) -> bool {
+    pub(super) fn flammable_within(&mut self, bb: &super::physics::Aabb) -> bool {
         let floor = krol_java::math::floor_f64;
         for x in floor(bb.min[0])..floor(bb.max[0] + 1.0) {
             for y in floor(bb.min[1])..floor(bb.max[1] + 1.0) {

@@ -664,8 +664,12 @@ impl Game {
             damage += self.entity_rand.next_int_bounded(damage / 2 + 2);
         }
         let source = DamageSource::Arrow { arrow: id, shooter };
-        if burning && let Target::Player(t) = target {
-            self.ignite_player(t, VICTIM_FIRE_SECONDS);
+        if burning {
+            match target {
+                Target::Player(t) => self.ignite_player(t, VICTIM_FIRE_SECONDS),
+                Target::ArmorStand(s) => self.ignite_armor_stand(s),
+                _ => {}
+            }
         }
         let hurt = match target {
             Target::Player(t) => self.attack_player(t, source, damage as f32),

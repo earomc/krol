@@ -127,6 +127,8 @@ pub mod block {
     pub const WALL_BANNER: u16 = 177;
     /// `ladder`.
     pub const LADDER: u16 = 65;
+    /// `vine`.
+    pub const VINE: u16 = 106;
     /// `rail`.
     pub const RAIL: u16 = 66;
     /// `wall_sign`.
@@ -290,6 +292,10 @@ pub mod item {
     pub const PAINTING: i16 = 321;
     /// `item_frame`.
     pub const ITEM_FRAME: i16 = 389;
+    /// `armor_stand`.
+    pub const ARMOR_STAND: i16 = 416;
+    /// `skull` (mob heads).
+    pub const SKULL: i16 = 397;
     /// `bucket`.
     pub const BUCKET: i16 = 325;
     /// `water_bucket`.

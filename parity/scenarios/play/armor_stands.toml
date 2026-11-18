@@ -1,0 +1,102 @@
+description = "Armor stands: three stands placed on the ground (spawn packets, metadata, attributes), a fourth refused where the player stands, one knocked over by two quick punches (drops the stand), one punched once (stays), one burning down in fire (health and burning metadata, no drops); the stand left standing saved with its chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, facing south, and is
+# switched to survival from the console. The stands go on the ground at z = -433, behind
+# a glass wall at z = -434 (with the corridor's ends closed) that keeps the dropped stand
+# out of jeb_'s reach; jeb_ places and punches through it, within the 3 blocks allowed
+# without line of sight. Entity ids: jeb_ 0, the /give drops 1-2, stands A 3, B 4, C 5.
+#
+# Each stand turns its head and body by the world's random in whatever tick its placement
+# lands, so the parity view zeroes those two rotations in metadata (see
+# `mask_random_pose`) and the saved pose of the stand left standing is not compared.
+# Stand C stands on netherrack, where the fire set into it from the console never goes
+# out: it catches fire and loses 0.15 health every tick in the fire, breaking after about
+# 6.5 seconds. (Vanilla quirk: in the fire its fire counter rises by one with each move
+# and drops by one with each update, so it never hits the multiple of 20 at which
+# burning would hurt it by 4.)
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -434 -465 8 -434 glass"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -433 -477 8 -433 glass"
+
+[[steps]]
+action = "console"
+command = "fill -465 4 -433 -465 8 -433 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -468 3 -433 netherrack"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 22
+chat = [
+    "@4500 !hold 0",
+    "@4800 !place -471 3 -433 1",
+    "@5300 !place -474 3 -433 1",
+    "@5800 !place -468 3 -433 1",
+    "@6300 !place -472 3 -435 1",
+    "@7000 !attack 3",
+    "@7100 !attack 3",
+    "@8000 !attack 4",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ armor_stand 4"
+
+[[steps]]
+action = "console"
+command = "give jeb_ stick"
+wait_ms = 8000
+
+[[steps]]
+action = "console"
+command = "setblock -468 4 -433 fire"
+wait_ms = 10000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin), and
+# where the drops end up is random.
+log_ignore_prefixes = ["Killed item.item."]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    # The random head and body turn of the stand left standing (see above).
+    "entities.-30,-28[0].Pose.Head",
+    "entities.-30,-28[0].Pose.Body",
+]

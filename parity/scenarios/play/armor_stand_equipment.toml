@@ -1,0 +1,115 @@
+description = "Armor stand equipment: a helmet and a chestplate put on a stand by right-clicking it at a point (equipment packets), a sword refused by a stand without arms, the helmet taken back with an empty hand; a small stand with arms from an item's EntityTag takes the sword into its hand and drops it with itself when knocked over; the stand left standing saved with its chestplate"
+subsystem = "entity"
+
+# 1.7 clients have no packet for right-clicking an entity at a point, so this scenario is
+# not replayed as 1.7 clients (`v5 = false`).
+#
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, facing south, and is
+# switched to survival from the console. The stands go on the ground at z = -433 behind a
+# glass wall at z = -434 (with the corridor's ends closed) that keeps the drops out of
+# jeb_'s reach; jeb_ works through it, within the 3 blocks allowed without line of sight.
+# The hotbar fills in /give order: a plain stand, iron helmet, diamond chestplate,
+# diamond sword, a stand with an EntityTag. Entity ids: jeb_ 0, the /give drops 1-5,
+# stands A 6 and B 7. Hit points are relative to the stand's feet: 1.8 is the head,
+# 1.2 the chest of a full-size stand.
+#
+# Each stand turns its head and body by the world's random in whatever tick its placement
+# lands: the parity view zeroes those rotations in metadata, and the saved pose is not
+# compared.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+v5 = false
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -434 -465 8 -434 glass"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -433 -477 8 -433 glass"
+
+[[steps]]
+action = "console"
+command = "fill -465 4 -433 -465 8 -433 glass"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+chat = [
+    "@4500 !hold 0",
+    "@4800 !place -471 3 -433 1",
+    "@5300 !hold 1",
+    "@5600 !interactat 6 0 1.8 0",
+    "@6100 !hold 2",
+    "@6400 !interactat 6 0 1.2 0",
+    "@6900 !hold 3",
+    "@7200 !interactat 6 0 1.0 0",
+    "@7700 !hold 1",
+    "@8000 !interactat 6 0 1.8 0",
+    "@8500 !hold 4",
+    "@8800 !place -474 3 -433 1",
+    "@9300 !hold 3",
+    "@9600 !interactat 7 0 0.5 0",
+    "@10400 !attack 7",
+    "@10500 !attack 7",
+]
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ armor_stand"
+
+[[steps]]
+action = "console"
+command = "give jeb_ iron_helmet"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_chestplate"
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword"
+
+[[steps]]
+action = "console"
+command = "give jeb_ armor_stand 1 0 {EntityTag:{ShowArms:1b,Small:1b}}"
+wait_ms = 12000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin), and
+# where the drops end up is random.
+log_ignore_prefixes = ["Killed item.item."]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodExhaustionLevel",
+    # The random head and body turn of the stand left standing (see above).
+    "entities.-30,-28[0].Pose.Head",
+    "entities.-30,-28[0].Pose.Body",
+]

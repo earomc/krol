@@ -36,7 +36,6 @@ const SHOVELS: [i16; 5] = [269, 273, 256, 277, 284];
 /// Enchantment ids.
 const SHARPNESS: i16 = 16;
 const KNOCKBACK: i16 = 19;
-const FIRE_ASPECT: i16 = 20;
 const THORNS: i16 = 7;
 /// `Potion.blindness`.
 const BLINDNESS: u8 = 15;
@@ -47,6 +46,7 @@ const REACH_SQ_HIDDEN: f64 = 9.0;
 /// `C02PacketUseEntity.Action` ids.
 const INTERACT: i32 = 0;
 const ATTACK: i32 = 1;
+const INTERACT_AT: i32 = 2;
 /// The spectator game mode.
 const SPECTATOR: i32 = 3;
 /// The sound thorns make at the attacker (`damage.thorns`, volume 0.5, pitch 1).
@@ -173,7 +173,13 @@ impl Game {
 
     /// `processUseEntity`: attacks and interactions within reach (6 blocks, 3 through
     /// walls).
-    pub(super) fn use_entity(&mut self, i: usize, target: i32, action: i32) {
+    pub(super) fn use_entity(
+        &mut self,
+        i: usize,
+        target: i32,
+        action: i32,
+        hit: Option<(f32, f32, f32)>,
+    ) {
         let target_player = self
             .players
             .iter()
@@ -181,7 +187,12 @@ impl Game {
         let hanging = self
             .hanging
             .get(&target)
-            .map(|h| (h.body.pos, h.body.height * 0.85));
+            .map(|h| (h.body.pos, h.body.height * 0.85))
+            .or_else(|| {
+                self.armor_stands
+                    .get(&target)
+                    .map(|s| (s.body.pos, s.eye_height()))
+            });
         let pos = if let Some(t) = target_player {
             Some(self.players[t].pos)
         } else if let Some((pos, _)) = hanging {
@@ -209,6 +220,20 @@ impl Game {
         let p = self.players[i].pos;
         let d = (p.0 - pos.0, p.1 - pos.1, p.2 - pos.2);
         if d.0 * d.0 + d.1 * d.1 + d.2 * d.2 >= reach {
+            return;
+        }
+        if self.armor_stands.contains_key(&target) {
+            match action {
+                INTERACT_AT => {
+                    if let Some(hit) = hit {
+                        self.interact_armor_stand(i, target, hit);
+                    }
+                }
+                ATTACK if self.players[i].gamemode != SPECTATOR => {
+                    self.player_attacks_armor_stand(i, target);
+                }
+                _ => {}
+            }
             return;
         }
         if hanging.is_some() {
@@ -277,7 +302,8 @@ impl Game {
             damage *= 1.5;
         }
         damage += bonus;
-        let fire_aspect = super::item_data::enchantment_level(held.as_ref(), FIRE_ASPECT);
+        let fire_aspect =
+            super::item_data::enchantment_level(held.as_ref(), super::item_data::FIRE_ASPECT);
         let mut lit = false;
         if fire_aspect > 0 && self.players[t].data.get_i16("Fire") <= 0 {
             lit = true;

@@ -219,9 +219,11 @@ fn run(filter: Option<&str>, v5: bool, jobs: usize) -> Result<ExitCode> {
     let mut scenarios = scenario::load_all(&parity_root().join("scenarios"), filter)?;
     if v5 {
         scenarios.retain(|sc| {
-            sc.steps
-                .iter()
-                .any(|s| matches!(s, scenario::Step::Play { .. }))
+            sc.setup.v5
+                && sc
+                    .steps
+                    .iter()
+                    .any(|s| matches!(s, scenario::Step::Play { .. }))
         });
         for sc in &mut scenarios {
             for step in &mut sc.steps {

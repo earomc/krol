@@ -51,6 +51,11 @@ pub struct Setup {
     /// random tick generator so that behavior driven by them compares exactly.
     #[serde(default)]
     pub pin_random: bool,
+    /// Replay the play sessions as 1.7 clients in `run --protocol 5` (default `true`).
+    /// Off for scenarios built on what 1.7 clients cannot do (e.g. interacting with an
+    /// armor stand at a point, which 1.7 has no packet for).
+    #[serde(default = "yes")]
+    pub v5: bool,
 }
 
 fn yes() -> bool {

@@ -686,6 +686,11 @@ impl Game {
             Target::Falling(id) => self.falling.get(&id).is_some_and(|f| !f.dead),
             Target::Tnt(id) => self.tnt.get(&id).is_some_and(|t| !t.dead),
             Target::Hanging(id) => self.hanging.get(&id).is_some_and(|h| !h.dead),
+            // EntityArmorStand.canBeCollidedWith: not markers.
+            Target::ArmorStand(id) => self
+                .armor_stands
+                .get(&id)
+                .is_some_and(|s| !s.dead && !s.is_marker()),
             Target::Item(_) | Target::Orb(_) | Target::Thrown(_) | Target::Arrow(_) => false,
         }
     }
@@ -879,6 +884,7 @@ impl Game {
             Target::Thrown(id) => self.thrown.get(&id)?.body.bb(),
             Target::Arrow(id) => self.arrows.get(&id)?.body.bb(),
             Target::Hanging(id) => self.hanging.get(&id)?.bb,
+            Target::ArmorStand(id) => self.armor_stands.get(&id)?.body.bb(),
         })
     }
 }
