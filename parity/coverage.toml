@@ -559,6 +559,11 @@ description = "EntityAITempt: the nearest player within 10 blocks holding a carr
 scenarios = ["play/mobs_tempt"]
 
 [[feature]]
+id = "entity.mobs.breeding"
+description = "Players using items on mobs (EntityPlayer.interactWith): a carrot puts an adult pig in love (status 18, InLove 600, the feeder remembered) or makes a piglet grow by a tenth of its time (func_175501_a, ForcedAge), nothing on a pig in love; saddles (adult pigs only, mob.horse.leather) and named name tags (CustomName, PersistenceRequired), used up outside creative; EntityAIMate: a pig in love finds the closest partner in love within 8 blocks, walks up to it and after 60 ticks within 3 blocks the child is born at its feet (Age -24000, facing south), the parents rest (Age 6000), hearts drawn from the parent's random, an experience orb of 1 to 7, the feeder's stat.animalsBred. Spawn eggs used on a pig of their kind (a child, named after the egg) are implemented but not covered; leads and riding saddled pigs are missing"
+scenarios = ["play/mobs_breed"]
+
+[[feature]]
 id = "item.potions"
 description = "Potions: drinking (32 updates, drink sounds, status 9) with effects from PotionHelper.getPotionEffects (port checked against every damage value) or CustomPotionEffects, the empty bottle (in the slot or added elsewhere; none in creative), glass bottles filled at water (in creative too, the water bottle added or tossed). Not yet: splash potions, brewing"
 scenarios = ["play/potions"]

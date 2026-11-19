@@ -16,13 +16,16 @@
 //! parity hook `krolpin` seeds it with the pin seed plus the entity id, like the vanilla
 //! agent does.
 //!
-//! TODO(M5): `onInitialSpawn`, the other mob kinds than pigs, children growing up (only
-//! the countdown runs), breeding and feeding, saddles and riding, leads, picking up
+//! Players feed, saddle and name mobs, and animals in love breed ([`breeding`]).
+//!
+//! TODO(M5): `onInitialSpawn`, the other mob kinds than pigs, children growing up (the
+//! box moves by the change in width, like `Entity.setSize`), riding, leads, picking up
 //! loot, status effects (`ActiveEffects` is kept as saved), jump boost, the combat
 //! tracker, pushing and being pushed by minecarts and boats, being hit by projectiles
 //! and explosions, arrows stuck in them, equipment changes.
 
 mod ai;
+mod breeding;
 
 use std::collections::BTreeSet;
 
@@ -122,6 +125,7 @@ const STATUS_DEATH: i8 = 3;
 
 /// Metadata indices (`DataWatcher`).
 const FLAGS_INDEX: u8 = 0;
+const CUSTOM_NAME_INDEX: u8 = 2;
 const AIR_INDEX: u8 = 1;
 const HEALTH_INDEX: u8 = 6;
 const POTION_COLOR_INDEX: u8 = 7;
@@ -282,6 +286,8 @@ pub struct Mob {
     forced_age: i32,
     /// `EntityAnimal.inLove`.
     in_love: i32,
+    /// `EntityAnimal.playerInLove`: the entity id of the player who fed it last.
+    player_in_love: Option<i32>,
     /// `EntityPig` saddle (metadata entry 16).
     saddled: bool,
     /// The burning flag as last set in the metadata.
@@ -365,6 +371,7 @@ impl Mob {
             age: 0,
             forced_age: 0,
             in_love: 0,
+            player_in_love: None,
             saddled: false,
             burning_flag: false,
             first_update: true,

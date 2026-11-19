@@ -75,8 +75,10 @@ a bot does to a mob at some wall-clock moment would meet an unknown state;
 `krolpin mobs <seed> <ticks>` seeds every mob's random again at the end of each of the
 next ticks, so the bot's action meets the same state whichever tick it lands in (mob
 ambient rolls then repeat the same value every tick: pick the seed so the sound comes at
-a quiet time). Other entities' randoms (sound pitches, knockback rolls of players, item
-pushes) are not pinned.
+a quiet time). `krolpin spawns <seed>` pins the random of every mob that joins a world
+from then on (summoned, or born to breeding parents) with the seed plus its entity id,
+before its first update; chunk loads are left alone. Other entities' randoms (sound
+pitches, knockback rolls of players, item pushes) are not pinned.
 
 ## Writing race-free scenarios
 
@@ -233,3 +235,12 @@ into server ticks. Rules learned from flaky scenarios:
   decaying velocity every third tick, counted from when it started being tracked, so the
   values depend on which tick a bot's hit lands in. Give a mob a knockback resistance of
   1 through its `Attributes` tag when the hit itself is what matters (`play/mobs_no_ai`).
+- **Mobs that a bot uses items on**: keep them without AI and silent (their own random
+  then never shows) and behind glass in a cell of their own, so mobs with AI cannot
+  push them (a pushed mob without AI gathers motion every tick). Glass hides them, so
+  the bot reaches them only within 3 blocks. A pig in love is summoned with
+  `{InLove:600}` under `krolpin` so that breeding starts at a known tick, and
+  `krolpin spawns` pins the child (`play/mobs_breed`). Mind that feeding a piglet grows
+  it by a tenth of its time left in whole seconds: pick its `Age` so the feeding tick
+  lands mid-step. Mobs with AI look around up to the stop: ignore their final tracked
+  `head`, and give ages a tolerance.

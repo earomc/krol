@@ -57,6 +57,10 @@ const PARENT_SEARCH: [f64; 3] = [8.0, 4.0, 8.0];
 const PARENT_NEAR_SQ: f64 = 9.0;
 const PARENT_FAR_SQ: f64 = 256.0;
 const PARENT_REPATH: i32 = 10;
+/// `EntityAIMate`: the child comes after this many ticks together, this close
+/// (squared).
+const MATE_DELAY: i32 = 60;
+const MATE_NEAR_SQ: f64 = 9.0;
 /// `EntityAnimal.getBlockPathWeight` on grass.
 const GRASS_WEIGHT: f32 = 10.0;
 
@@ -71,11 +75,12 @@ enum Goal {
     ///
     /// TODO(M5): riding pigs (it never starts without a rider).
     ControlledByPlayer,
-    /// `EntityAIMate`.
-    ///
-    /// TODO(M5): breeding (it only starts with a partner in love nearby, which needs
-    /// feeding).
-    Mate,
+    /// `EntityAIMate`: walk up to a partner in love and breed after three seconds.
+    Mate {
+        speed: f64,
+        mate: Option<i32>,
+        delay: i32,
+    },
     /// `EntityAITempt`: follow a player holding the item.
     Tempt {
         speed: f64,
@@ -115,7 +120,7 @@ impl Goal {
             Self::Swimming => 4,
             Self::Panic { .. } | Self::Wander { .. } => 1,
             Self::ControlledByPlayer => 7,
-            Self::Mate | Self::Tempt { .. } | Self::LookIdle { .. } => 3,
+            Self::Mate { .. } | Self::Tempt { .. } | Self::LookIdle { .. } => 3,
             Self::FollowParent { .. } => 0,
             Self::WatchClosest { .. } => 2,
         }
@@ -227,7 +232,14 @@ impl MobAi {
                 },
             ),
             (2, Goal::ControlledByPlayer),
-            (3, Goal::Mate),
+            (
+                3,
+                Goal::Mate {
+                    speed: 1.0,
+                    mate: None,
+                    delay: 0,
+                },
+            ),
             (4, tempt(1.2, item::CARROT_ON_A_STICK)),
             (4, tempt(1.2, item::CARROT)),
             (
@@ -486,7 +498,14 @@ impl Game {
                     None => false,
                 }
             }
-            Goal::ControlledByPlayer | Goal::Mate => false,
+            Goal::ControlledByPlayer => false,
+            Goal::Mate { mate, .. } => {
+                if m.in_love <= 0 {
+                    return false;
+                }
+                *mate = self.nearby_mate(id);
+                mate.is_some()
+            }
             Goal::Tempt {
                 item,
                 player,
@@ -615,6 +634,12 @@ impl Game {
                 dist_sq(m.body.pos, game.players[p].pos) <= r && *look_time > 0
             }
             Goal::LookIdle { time, .. } => *time >= 0,
+            Goal::Mate { mate, delay, .. } => {
+                *delay < MATE_DELAY
+                    && mate
+                        .and_then(|p| game.mobs.get(&p))
+                        .is_some_and(|p| p.alive() && p.in_love > 0)
+            }
             _ => game.should_execute(id, ai, goal),
         })
     }
@@ -663,6 +688,10 @@ impl Game {
             }
             Goal::FollowParent { parent, .. } => *parent = None,
             Goal::WatchClosest { target, .. } => *target = None,
+            Goal::Mate { mate, delay, .. } => {
+                *mate = None;
+                *delay = 0;
+            }
             _ => {}
         });
     }
@@ -694,6 +723,25 @@ impl Game {
                         ai.nav.clear();
                     } else {
                         game.nav_move_to_entity(id, ai, ppos, *speed);
+                    }
+                }
+                Goal::Mate { speed, mate, delay } => {
+                    let Some(other) = *mate else {
+                        return;
+                    };
+                    let Some(p) = game.mobs.get(&other) else {
+                        return;
+                    };
+                    let (ppos, peye) = (p.body.pos, p.eye_height());
+                    look_at(ai, (ppos.0, ppos.1 + f64::from(peye), ppos.2), 10.0);
+                    game.nav_move_to_entity(id, ai, ppos, *speed);
+                    *delay += 1;
+                    let near = game
+                        .mobs
+                        .get(&id)
+                        .is_some_and(|m| dist_sq(m.body.pos, ppos) < MATE_NEAR_SQ);
+                    if *delay >= MATE_DELAY && near {
+                        game.breed(id, other);
                     }
                 }
                 Goal::FollowParent {

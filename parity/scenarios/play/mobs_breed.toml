@@ -1,0 +1,148 @@
+description = "Players using items on pigs and pigs breeding: a carrot puts an adult in love (hearts status, the carrot used up) and makes a piglet grow by a tenth of its time (ForcedAge), a second carrot on a pig in love does nothing; a saddle goes on an adult (sound) but not on a piglet, a named name tag names a pig (no despawning); a pig in love walks up to its partner (EntityAIMate) and after three seconds the child is born at its feet (half size, Age -24000, its own random, facing south), with an experience orb, the parents resting (Age 6000) and the feeder's animalsBred statistic; saved with their chunk and the player"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5), south of a glass pen (walls two blocks
+# high at x = -478 and -466, z = -446 and -436), and gets two carrots, a saddle and a
+# name tag named "Bacon" (hotbar slots 0 to 2). Two pigs without AI (silent, so their
+# own unpinned randoms never show) stand in glass cells in the pen's south wall, 2 and
+# 2.8 blocks from him: an adult at (-471.5, 4, -436.5) and a piglet (Age -1300) at
+# (-469.5, 4, -436.5). Glass hides them, so he reaches them within 3 blocks. The cells
+# keep the pig with AI from pushing them (a pushed mob without AI gathers motion every
+# tick, so the end would depend on the stop's tick). He feeds the adult twice (only the
+# first carrot counts), then the piglet, puts the saddle on the piglet (refused) and on
+# the adult, names the piglet and puts his hand away. `krolpin spawns 11` then pins every
+# mob joining the world from now on (the child), and a pig in love is summoned in the
+# pen at (-471.5, 4, -441.5) under `krolpin 5` (pinning its random): it walks up to the
+# adult's cell (its path ends at the closest point), and after 60 ticks within 3 blocks
+# of it the child is born, then all go on with their other goals.
+#
+# Entity ids: jeb_ 0, the three /give items 1 to 3, the adult 4, the piglet 5.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -446 -466 5 -446 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -436 -466 5 -436 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -445 -478 5 -437 glass"
+
+[[steps]]
+action = "console"
+command = "fill -466 4 -445 -466 5 -437 glass"
+
+[[steps]]
+action = "console"
+command = "fill -473 4 -438 -469 5 -437 glass"
+
+[[steps]]
+action = "console"
+command = "fill -472 4 -437 -472 5 -437 air"
+
+[[steps]]
+action = "console"
+command = "fill -470 4 -437 -470 5 -437 air"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 34
+chat = [
+    "@6500 !hold 0",
+    "@7000 !interact 4",
+    "@7500 !interact 4",
+    "@8000 !interact 5",
+    "@8500 !hold 1",
+    "@9000 !interact 5",
+    "@9500 !interact 4",
+    "@10000 !hold 2",
+    "@10500 !interact 5",
+    "@11000 !hold 3",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "give jeb_ carrot 2"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ saddle"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ name_tag 1 0 {display:{Name:\"Bacon\"}}"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "summon Pig -471.5 4 -436.5 {NoAI:1b,Silent:1b}"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "summon Pig -469.5 4 -436.5 {NoAI:1b,Silent:1b,Age:-1300}"
+wait_ms = 9000
+
+[[steps]]
+action = "console"
+command = "krolpin spawns 11"
+wait_ms = 200
+
+[[steps]]
+action = "console"
+command = "krolpin 5 -- summon Pig -471.5 4 -441.5 {InLove:600}"
+wait_ms = 20000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    # The pig with AI and the child look around up to the stop, whose tick depends on
+    # timing (the tracker sends head turns every 3 ticks).
+    "player.entities.6.head",
+    "player.entities.7.head",
+]
+
+[observe.tolerance]
+# Ages count the ticks up to the stop, whose tick depends on timing: the adult's and
+# the parents' rest, the piglet's growth, the child's and the orb's age.
+"entities.-30,-28[0].Age" = 20
+"entities.-30,-28[1].Age" = 20
+"entities.-30,-28[2].Age" = 20
+"entities.-30,-28[3].Age" = 20
+"entities.-30,-28[4].Age" = 20
+# The orb creeps towards jeb_ behind the glass a little every tick.
+"entities.-30,-28[4].Pos" = 0.01
+"entities.-30,-28[4].Motion" = 0.001

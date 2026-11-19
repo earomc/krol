@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-18 (commit `server: pigs with AI`).
+Status as of 2026-11-19 (commit `server: feeding and breeding pigs`).
 
 **Legend**
 
@@ -22,13 +22,17 @@ Status as of 2026-11-18 (commit `server: pigs with AI`).
 The working queue within the current milestones (M4/M5), most useful first. Update it
 when an item is done or priorities change.
 
-1. **M5 mobs**: pigs run with AI (`game/mob.rs`, `game/mob/ai.rs`,
-   `game/pathfinding.rs`). Next: feeding and breeding (`EntityAIMate`, which never
-   starts yet), `onInitialSpawn` (the follow range bonus from `/summon` without a data
-   tag), attribute modifiers, pushing minecarts and boats, then the other mobs, kind by
-   kind (each new navigator: swimming, climbing). Share the living code with armor
+1. **M5 mobs**: pigs run with AI, are fed, saddled and named, and breed
+   (`game/mob.rs`, `game/mob/ai.rs`, `game/mob/breeding.rs`, `game/pathfinding.rs`).
+   Next: riding saddled pigs (`EntityAIControlledByPlayer`, carrots on a stick),
+   leads, spawn eggs (on blocks; on mobs they are done), `onInitialSpawn` (the follow
+   range bonus from `/summon` without a data tag), attribute modifiers, children
+   growing up (`Entity.setSize` keeps the box's corner, so the mob moves by the change
+   in width; also for piglets loaded from a chunk), pushing minecarts and boats, then
+   the other mobs, kind by kind (each new navigator: swimming, climbing). Share the living code with armor
    stands (`game/armor_stand.rs` has its own copy). Scenarios summon one pig per
    `krolpin` (its random pinned once); `/execute` or `/entitydata` would allow several.
+   `krolpin spawns` pins mobs born later (`play/mobs_breed`).
 2. **Disconnect timing**: vanilla handles a client's closed connection in
    `NetworkSystem.networkTick`, after the world tick; krol removes the player at the
    start of the tick, so entities run one tick without the player that vanilla runs
@@ -416,8 +420,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemMinecart`, `ItemBoat` | 🟡 | Minecarts, chest, hopper, furnace and TNT minecarts placed on rails (`play/minecarts`, `play/container_minecarts`, `play/furnace_minecarts`, `play/tnt_minecarts`). Boats placed at the block or water in sight, facing away from the player, unless the player's eyes are in an entity or the boat does not fit (`play/boats`). Command block minecarts ❌ |
 | `ItemHangingEntity` (paintings, item frames) | ✅ | The random art among those that fit, the use statistic even when nothing fits |
 | `ItemArmorStand` | ✅ | On top of or in a replaceable block, both spaces free of blocks and entities (`play/armor_stands`), facing the player in eighths with a random head and body turn from the world random, `EntityTag` merged into the new stand (`play/armor_stand_equipment`) |
-| `ItemMonsterPlacer` (spawn eggs) | ❌ | |
-| `ItemSaddle`, `ItemLead`, `ItemNameTag`, `ItemCarrotOnAStick` | ❌ | |
+| `ItemMonsterPlacer` (spawn eggs) | 🟡 | Used on a pig (`EntityAgeable.interact`): a child of its kind, named after the egg (not covered by a scenario); on blocks and in dispensers ❌ |
+| `ItemSaddle`, `ItemLead`, `ItemNameTag`, `ItemCarrotOnAStick` | 🟡 | Saddles on pigs, name tags on mobs (`play/mobs_breed`); leads and carrots on a stick ❌ |
 | `ItemMap`, `ItemEmptyMap` | 🟡 | Making maps, drawing the held map (block map colors extracted from vanilla, height shading, water depth, the rim), player icons and the off-map icon, map packets, maps without data recreated around the spawn, zoomed maps from the crafting grid (cursor pickup), cloning/extending recipes, maps in item frames (the frame icon, map packets from the tracker to every player in the world), `Decorations` lists on items ✅ (`Decorations` lists and nether icon spin not in a scenario); shift-clicked zoom results, unloaded chunks, color ties at larger scales, the nether ❌ |
 | `ItemBook`, `ItemWritableBook`, `ItemEditableBook`, `ItemEnchantedBook` | 🟡 | Book cloning recipe ✅; editing/signing books (`MC|BEdit`, `MC|BSign`) ❌ |
 | `ItemRecord` | ✅ | `stat.recordPlayed` |
@@ -491,7 +495,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `Entity.isEntityInsideOpaqueBlock` | ✅ | Suffocation (players) |
 | `DataWatcher` (metadata) | ✅ | |
 | `EntityLivingBase`: health, hurt time, hurt resistance, `attackEntityFrom`, armor, absorption, effects, attributes, air, death update, knockback | 🟡 | Knockback from attacking entities ✅ (explosions); combat tracker death messages ✅ for implemented sources |
-| `EntityLiving` (mobs: AI tasks, equipment, despawning, leashes) | 🟡 | `game/mob.rs`: spawn packets (the watcher's `HashMap` order, attributes changed by the constructor resent), fire, lava, the void, water, drowning, suffocation, the ambient sound on the mob's own random, hurt and death (status, sounds, knockback), loot and experience after a player's hit, equipment drops by drop chance, `/kill`, saving (`Equipment`, `DropChances`, `NoAI`, `Leash` kept, ...), animals removed with `spawn-animals=false`. Mobs with AI: `updateEntityActionState` (idle time and the despawn roll, goals, navigation, move/look/jump helpers), the body helper, jumping and swimming up, `moveEntityWithHeading` (ground, air, water with depth strider, lava, ladders), falls with damage and dust, farmland and slime landings, step and swim sounds, fire contact, the revenge target, pushing and being pushed by players and mobs. `play/mobs_ai`, `play/mobs_follow_parent`, `play/mobs_tempt`, `play/mobs_no_ai`, `play/mobs_animals_off`. `onInitialSpawn`, attribute modifiers, leads, picking up loot, effects, jump boost, the combat tracker, pushing minecarts and boats, projectiles and explosions hitting mobs ❌ |
+| `EntityLiving` (mobs: AI tasks, equipment, despawning, leashes) | 🟡 | `game/mob.rs`: spawn packets (the watcher's `HashMap` order, attributes changed by the constructor resent), fire, lava, the void, water, drowning, suffocation, the ambient sound on the mob's own random, hurt and death (status, sounds, knockback), loot and experience after a player's hit, equipment drops by drop chance, `/kill`, saving (`Equipment`, `DropChances`, `NoAI`, `Leash` kept, ...), animals removed with `spawn-animals=false`. Mobs with AI: `updateEntityActionState` (idle time and the despawn roll, goals, navigation, move/look/jump helpers), the body helper, jumping and swimming up, `moveEntityWithHeading` (ground, air, water with depth strider, lava, ladders), falls with damage and dust, farmland and slime landings, step and swim sounds, fire contact, the revenge target, pushing and being pushed by players and mobs. Name tags (`play/mobs_breed`). `play/mobs_ai`, `play/mobs_follow_parent`, `play/mobs_tempt`, `play/mobs_no_ai`, `play/mobs_animals_off`. `onInitialSpawn`, attribute modifiers, leads, picking up loot, effects, jump boost, the combat tracker, pushing minecarts and boats, projectiles and explosions hitting mobs ❌ |
 | `EntityHanging` | ✅ | See `EntityItemFrame`, `EntityPainting` |
 | `EntityCreature`, `EntityAgeable`, `EntityFlying` | ❌ | |
 | `EntityTracker`, `EntityTrackerEntry` | 🟡 | All implemented entity kinds; ranges/intervals for missing kinds |
@@ -515,7 +519,7 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Damage outside the world border | ❌ | |
 | Sleeping | 🟡 | Use bed, sleep timer, waking (day, bed gone, leaving, night skipped), spawn point, respawning at the bed or being told it is missing ✅; the 0.2 x 0.2 sleeping box, players saved asleep moved out of the bed ❌ |
 | Attacking (`attackTargetEntityWithCurrentItem`): damage, critical hits, knockback, sprint attacks, enchantments, PvP setting | ✅ | Players only. Held item attack modifiers (also saved), sword blocking, thorns, tool wear and use stats, killers (combat tracker, `attackingPlayer`), revenge target (`HurtByTimestamp`), PvP death messages. Critical hits, sprint knockback, fire aspect (the burning flag follows on the victim's own update) and thorns (the sound at the attacker) are covered by `play/pvp_effects`; the overkill achievement ❌ |
-| Interacting with entities (`interactWith`) | ❌ | |
+| Interacting with entities (`interactWith`) | 🟡 | Minecarts, boats, item frames, armor stands and mobs (feeding, saddles, name tags, spawn eggs; `play/mobs_breed`); leads and riding pigs ❌ |
 | Riding (`mountEntity`) | 🟡 | Players in rideable minecarts: getting in by interacting, riders updating right after their vehicle (and once more with each movement packet), sitting on the cart, sneaking or the unmount input getting out onto a free spot, getting out when the cart breaks or passes a powered activator rail, letting go silently of dead carts, the cart saved in the player's `Riding` tag (not with its chunk) and taken along on logout, back with the player on login (spawned at once), riders sending only looks to viewers (a teleport after getting off), carts moving slower and with less drag with a rider, the rider's push starting a resting cart, the distance ridden (`play/riding`). Players in boats: getting in, sitting ahead of the middle along the boat's yaw, steering, getting out, the boat distance, staying "in" a broken boat until it is gone (`play/boats`). Missing: mobs and armor stands riding (moving carts picking them up), pigs, horses, the onARail achievement, the rider's own move under the cart (block collisions) |
 | Spectator mode: camera, teleport via `Spectate` | 🟡 | Game mode and noclip ✅; camera/spectate packets ❌ |
 | Achievements awarded during play | 🟡 | `exploreAllBiomes` ✅; `openInventory`, `mineWood`, crafting and pickup achievements ❌ |
@@ -556,12 +560,12 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 
 | Group | Status | Notes |
 |---|---|---|
-| `entity.ai` (task system, targeting, pathfinding navigation, look/move helpers, villager/animal behaviors) | 🟡 | `game/mob/ai.rs`: the goal selector (`EntityAITasks`), the move, look, jump and body helpers, `PathNavigateGround`, `RandomPositionGenerator` (no homes), goals swimming, panic, tempt, follow parent, wander, watch closest (players), look idle (`play/mobs_ai`, `play/mobs_follow_parent`, `play/mobs_tempt`). `EntityAIMate` and `EntityAIControlledByPlayer` never start yet; target tasks, `EntitySenses`, homes and `EntityAIMoveTowardsRestriction`, sun avoidance, the other goals ❌. Look idle's `Math.cos`/`Math.sin` use Rust's libm (vanilla's may differ in the last bit) |
-| Passive: pig (🟡 AI, sounds, steps, loot, cooked when burning, saddle saved; breeding and riding ❌), sheep (wool, shearing, dye), cow, mooshroom, chicken (eggs), squid, wolf, ocelot, horse (all variants, inventory), rabbit, bat, villager (trading, professions), iron golem, snow golem | ❌ | |
+| `entity.ai` (task system, targeting, pathfinding navigation, look/move helpers, villager/animal behaviors) | 🟡 | `game/mob/ai.rs`: the goal selector (`EntityAITasks`), the move, look, jump and body helpers, `PathNavigateGround`, `RandomPositionGenerator` (no homes), goals swimming, panic, mate, tempt, follow parent, wander, watch closest (players), look idle (`play/mobs_ai`, `play/mobs_follow_parent`, `play/mobs_tempt`, `play/mobs_breed`). `EntityAIControlledByPlayer` never starts yet; target tasks, `EntitySenses`, homes and `EntityAIMoveTowardsRestriction`, sun avoidance, the other goals ❌. Look idle's `Math.cos`/`Math.sin` use Rust's libm (vanilla's may differ in the last bit) |
+| Passive: pig (🟡 AI, sounds, steps, loot, cooked when burning, feeding, breeding, saddles; riding ❌), sheep (wool, shearing, dye), cow, mooshroom, chicken (eggs), squid, wolf, ocelot, horse (all variants, inventory), rabbit, bat, villager (trading, professions), iron golem, snow golem | ❌ | |
 | Monsters: zombie (villagers, sieges, reinforcements), skeleton (wither skeleton), creeper, spider, cave spider, enderman, slime, magma cube, ghast, blaze, zombie pigman, silverfish, endermite, witch, guardian (elder) | ❌ | |
 | Boss: ender dragon, wither | ❌ | |
 | `entity.effect`: lightning bolt | ❌ | |
-| Breeding, taming, leashing, name tags, saddles | ❌ | |
+| Breeding, taming, leashing, name tags, saddles | 🟡 | `game/mob/breeding.rs`: pigs fed (love, piglets growing), breeding (`EntityAIMate.spawnBaby`), saddles, name tags (`play/mobs_breed`); taming and leashing ❌ (no tameable mobs yet) |
 | Mob drops, XP, looting | 🟡 | Pigs: porkchops (cooked when burning, looting), saddles, equipment by drop chance, the rare drop roll, experience from the world random 20 ticks after death (`play/mobs_no_ai`); the other mobs ❌ |
 | Natural spawning, spawners, spawn eggs | ❌ | `/summon` creates the non-mob entities and pigs without AI (see [commands](#netminecraftcommand)) |
 
@@ -706,7 +710,7 @@ example plugin, `docs/bukkit-to-rust.md`.
 | `parity run`, `record`, `diff`, `coverage`, `report.json` | ✅ | |
 | Scenario `restart` step, saved chunk entities observation | ✅ | |
 | `--protocol 5` replays | ✅ | |
-| Vanilla agent: pinning the world random and random tick LCG, timed random tick windows (`krolpin`) | ✅ | |
+| Vanilla agent: pinning the world random and random tick LCG, timed random tick windows (`krolpin`) | ✅ | Mobs' own randoms: once (`krolpin`), every tick (`krolpin mobs`), at birth (`krolpin spawns`) |
 | Pinning entity randoms and the clock | ❌ | |
 | `[observe.tolerance]` | ✅ | |
 | `parity fuzz` | ❌ | |

@@ -337,6 +337,10 @@ struct Game {
     /// entity id) at the end of each of this many more ticks.
     #[cfg_attr(not(feature = "parity"), allow(dead_code))]
     mob_pin: Option<(i64, u32)>,
+    /// Parity hook: `krolpin spawns` pins the random of every mob joining the world from
+    /// then on with this seed (plus its entity id).
+    #[cfg_attr(not(feature = "parity"), allow(dead_code))]
+    spawn_pin: Option<i64>,
     /// `World.ambientTickCountdown`: ticks until the next cave mood sound check.
     ambient_countdown: i32,
     /// `World.skylightSubtracted`: how much time and weather darken the sky.
@@ -466,6 +470,7 @@ pub fn start(
         ambient_countdown: AMBIENT_COUNTDOWN_UNSET,
         pin_stop_in: None,
         mob_pin: None,
+        spawn_pin: None,
         skylight_subtracted: 0,
         ticks_this_tick: Vec::new(),
         moving_progress: Default::default(),
@@ -814,6 +819,15 @@ impl Game {
     /// Runs a console command line.
     fn console_command(&mut self, line: &str) {
         if line.trim().is_empty() {
+            return;
+        }
+        #[cfg(feature = "parity")]
+        if let Some(seed) = line.strip_prefix("krolpin spawns ") {
+            // Parity hook, like parity/vanilla-agent: `krolpin spawns <seed>` pins every
+            // mob that joins the world from now on, before its first update.
+            if let Ok(seed) = seed.trim().parse::<i64>() {
+                self.spawn_pin = Some(seed);
+            }
             return;
         }
         #[cfg(feature = "parity")]

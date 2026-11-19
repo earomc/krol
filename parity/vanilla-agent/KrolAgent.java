@@ -14,8 +14,11 @@
 // `--` runs right after pinning, in the same tick (e.g. one that primes TNT).
 // `krolpin mobs <seed> <ticks>` pins only the mobs' randoms, now and again at the end of
 // each of the next ticks (through a tickable), so that what a bot does to a mob meets the
-// same random state whichever tick it lands in. krol answers the
-// same command in builds with the `parity` feature.
+// same random state whichever tick it lands in. `krolpin spawns <seed>` pins the random
+// of every mob that joins a world from then on (World.spawnEntityInWorld adding it to
+// World.loadedEntityList, which the agent swaps for a list that seeds each mob added),
+// before its first update, so a child born during a scenario starts pinned. krol answers
+// the same commands in builds with the `parity` feature.
 //
 // The server jar is obfuscated, so the agent works through reflection on the official
 // 1.8.8 names (looked up in the MCP mappings, see reference/tools):
@@ -100,6 +103,11 @@ public final class KrolAgent {
         }
         if (n.equals("a") && params == 1 && ret == boolean.class) {
             return true; // canCommandSenderUseCommand
+        }
+        if (n.equals("a") && params == 2 && ((String[]) a[1]).length >= 2 && ((String[]) a[1])[0].equals("spawns")) {
+            // krolpin spawns <seed>: pin every mob that joins a world from now on.
+            pinSpawns(server, Long.parseLong(((String[]) a[1])[1]));
+            return null;
         }
         if (n.equals("a") && params == 2 && ((String[]) a[1]).length >= 3 && ((String[]) a[1])[0].equals("mobs")) {
             // krolpin mobs <seed> <ticks>: pin every mob's random now and at the end of
@@ -201,6 +209,45 @@ public final class KrolAgent {
                     ((Random) rand.get(e)).setSeed(seed + (int) entityId.invoke(e));
                 }
             }
+        }
+    }
+
+    /**
+     * Swaps every world's loadedEntityList for a copy that seeds the random of each mob
+     * added to it (World.spawnEntityInWorld; chunk loads add with addAll) with the seed
+     * plus its entity id.
+     */
+    private static void pinSpawns(Object server, long seed) throws Exception {
+        Class<?> world = Class.forName("adm");
+        Field loaded = world.getDeclaredField("f");
+        loaded.setAccessible(true);
+        java.lang.reflect.Field modifiers = Field.class.getDeclaredField("modifiers");
+        modifiers.setAccessible(true);
+        modifiers.setInt(loaded, loaded.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+        Class<?> entity = Class.forName("pk");
+        Class<?> mob = Class.forName("ps");
+        Field rand = entity.getDeclaredField("V");
+        rand.setAccessible(true);
+        Method entityId = entity.getMethod("F");
+        for (Object w : worlds(server)) {
+            if (w == null) {
+                continue;
+            }
+            java.util.List<?> old = (java.util.List<?>) loaded.get(w);
+            java.util.ArrayList<Object> pinning = new java.util.ArrayList<Object>(old) {
+                @Override
+                public boolean add(Object e) {
+                    if (mob.isInstance(e)) {
+                        try {
+                            ((Random) rand.get(e)).setSeed(seed + (int) entityId.invoke(e));
+                        } catch (Exception x) {
+                            throw new IllegalStateException(x);
+                        }
+                    }
+                    return super.add(e);
+                }
+            };
+            loaded.set(w, pinning);
         }
     }
 

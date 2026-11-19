@@ -354,4 +354,8 @@ pub mod item {
     pub const CARROT: i16 = 391;
     /// `carrot_on_a_stick`.
     pub const CARROT_ON_A_STICK: i16 = 398;
+    /// `spawn_egg` (the damage is the entity type id).
+    pub const SPAWN_EGG: i16 = 383;
+    /// `name_tag`.
+    pub const NAME_TAG: i16 = 421;
 }

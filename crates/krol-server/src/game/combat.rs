@@ -253,9 +253,12 @@ impl Game {
             return;
         }
         if self.mobs.contains_key(&target) {
-            // TODO(M5): interacting with mobs (leads, name tags, saddles, feeding).
-            if action == ATTACK && self.players[i].gamemode != SPECTATOR {
-                self.player_attacks_mob(i, target);
+            match action {
+                INTERACT => self.interact_mob(i, target),
+                ATTACK if self.players[i].gamemode != SPECTATOR => {
+                    self.player_attacks_mob(i, target);
+                }
+                _ => {}
             }
             return;
         }
