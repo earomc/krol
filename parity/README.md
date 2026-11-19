@@ -323,4 +323,11 @@ into server ticks. Rules learned from flaky scenarios:
 - **Mobs made new draw unpinned values**: `onInitialSpawn` (spawn eggs, `/summon`
   without a data tag) draws the follow range bonus from the mob's random before
   `krolpin spawns` pins it, and the modifier's UUID comes from `ThreadLocalRandom`:
-  ignore the saved `Attributes[3].Modifiers` of each such mob.
+  ignore the saved `Attributes[3].Modifiers` of each such mob. The bonus also sets how far
+  the mob's paths reach, so a wandering mob drifts apart from vanilla: summon those with
+  any data tag (`{Age:0}`), which skips `onInitialSpawn` (`play/mobs_push_vehicles`).
+- **End a busy mob at a fixed tick**: a mob still bumping into things when the bot
+  leaves gives a final state that depends on the stop's tick. Make it stop at a tick
+  counted from its summon instead, e.g. let it burn to death (`{Fire:400s}` takes a
+  pig's 10 health in about 10 seconds; `gamerule doMobLoot false` keeps the drops away)
+  (`play/mobs_push_vehicles`).

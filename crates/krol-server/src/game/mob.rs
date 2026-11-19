@@ -1252,7 +1252,10 @@ impl Game {
             return;
         };
         let mut body = m.body.clone();
-        let outcome = physics::move_entity(&mut self.level.overworld, &mut body, d.0, d.1, d.2);
+        // Boats are solid (getCollisionBoundingBox).
+        let boats = self.boat_boxes(&body.bb().add_coord([d.0, d.1, d.2]), None);
+        let outcome =
+            physics::move_entity_walking_among(&mut self.level.overworld, &mut body, d, &boats);
         let Some(m) = self.mobs.get_mut(&id) else {
             return;
         };
@@ -1443,9 +1446,9 @@ impl Game {
         }
     }
 
-    /// `collideWithNearbyEntities`: the players and mobs overlapping the mob (its box
-    /// grown by 0.2 sideways) push it and are pushed (`applyEntityCollision`), in
-    /// chunk list order.
+    /// `collideWithNearbyEntities`: the pushable entities overlapping the mob (its box
+    /// grown by 0.2 sideways) push it and are pushed (their `applyEntityCollision`),
+    /// in chunk list order: players, other mobs, minecarts and boats.
     fn mob_collide_nearby(&mut self, id: i32) {
         let Some(m) = self.mobs.get(&id) else {
             return;
@@ -1454,7 +1457,7 @@ impl Game {
             .body
             .bb()
             .expand([f64::from(0.2f32), 0.0, f64::from(0.2f32)]);
-        let mut others: Vec<(i32, Option<usize>)> = Vec::new();
+        let mut others: Vec<(i32, Pushed)> = Vec::new();
         for (i, p) in self.players.iter().enumerate() {
             // applyEntityCollision: not with its own rider.
             if p.gamemode != SPECTATOR
@@ -1463,48 +1466,67 @@ impl Game {
                 && !p.removed
                 && physics::Aabb::at(p.pos, 0.6, 1.8).intersects(&area)
             {
-                others.push((p.entity_id, Some(i)));
+                others.push((p.entity_id, Pushed::Player(i)));
             }
         }
         for (&other, o) in &self.mobs {
             if other != id && !o.dead && o.body.bb().intersects(&area) {
-                others.push((other, None));
+                others.push((other, Pushed::Mob));
             }
         }
-        // TODO(M5): minecarts and boats.
+        for (&cart, c) in &self.minecarts {
+            if !c.dead && c.body.bb().intersects(&area) {
+                others.push((cart, Pushed::Minecart));
+            }
+        }
+        for (&boat, b) in &self.boats {
+            if !b.dead && b.body.bb().intersects(&area) {
+                others.push((boat, Pushed::Boat));
+            }
+        }
         others.sort_by_key(|(other, _)| *other);
-        for (other, player) in others {
-            let Some(me) = self.mobs.get(&id).map(|m| m.body.pos) else {
+        for (other, kind) in others {
+            let Some((me, free)) = self.mobs.get(&id).map(|m| (m.body.pos, m.rider.is_none()))
+            else {
                 return;
             };
-            match player {
-                Some(i) => {
+            match kind {
+                Pushed::Player(i) => {
                     let Some((dx, dz)) = super::boat::collision_push(self.players[i].pos, me)
                     else {
                         continue;
                     };
+                    // Nothing rides players.
                     let p = &mut self.players[i];
                     p.motion.0 -= dx;
                     p.motion.2 -= dz;
                     p.airborne = true;
-                    if let Some(m) = self.mobs.get_mut(&id) {
+                    if free && let Some(m) = self.mobs.get_mut(&id) {
                         add_velocity(m, dx, dz);
                     }
                 }
-                None => {
-                    let Some(at) = self.mobs.get(&other).map(|o| o.body.pos) else {
+                Pushed::Mob => {
+                    let Some((at, other_free)) = self
+                        .mobs
+                        .get(&other)
+                        .map(|o| (o.body.pos, o.rider.is_none()))
+                    else {
                         continue;
                     };
                     let Some((dx, dz)) = super::boat::collision_push(at, me) else {
                         continue;
                     };
-                    if let Some(o) = self.mobs.get_mut(&other) {
+                    if other_free && let Some(o) = self.mobs.get_mut(&other) {
                         add_velocity(o, -dx, -dz);
                     }
-                    if let Some(m) = self.mobs.get_mut(&id) {
+                    if free && let Some(m) = self.mobs.get_mut(&id) {
                         add_velocity(m, dx, dz);
                     }
                 }
+                Pushed::Minecart => {
+                    self.minecart_collision(other, super::minecart::CartPusher::Mob(id));
+                }
+                Pushed::Boat => self.boat_pushed_by_mob(other, id),
             }
         }
     }
@@ -1516,13 +1538,14 @@ impl Game {
         if self.players[i].riding == Some(id) {
             return;
         }
-        let Some(at) = self.mobs.get(&id).map(|m| m.body.pos) else {
+        let Some((at, free)) = self.mobs.get(&id).map(|m| (m.body.pos, m.rider.is_none())) else {
             return;
         };
         let Some((dx, dz)) = super::boat::collision_push(at, self.players[i].pos) else {
             return;
         };
-        if let Some(m) = self.mobs.get_mut(&id) {
+        // A ridden mob is not pushed.
+        if free && let Some(m) = self.mobs.get_mut(&id) {
             add_velocity(m, -dx, -dz);
         }
         let p = &mut self.players[i];
@@ -2042,10 +2065,25 @@ fn move_flying(m: &mut Mob, strafe: f32, forward: f32, friction: f32) {
 }
 
 /// `Entity.addVelocity(x, 0, z)`.
-fn add_velocity(m: &mut Mob, x: f64, z: f64) {
+pub(super) fn add_velocity(m: &mut Mob, x: f64, z: f64) {
     m.body.motion.0 += x;
+    // Adding 0.0 turns a -0.0 into 0.0.
+    m.body.motion.1 += 0.0;
     m.body.motion.2 += z;
     m.airborne = true;
+}
+
+/// What a mob bumps into in [`Game::mob_collide_nearby`].
+#[derive(Debug, Clone, Copy)]
+enum Pushed {
+    /// A player, by index.
+    Player(usize),
+    /// Another mob.
+    Mob,
+    /// A minecart.
+    Minecart,
+    /// A boat.
+    Boat,
 }
 
 /// `WorldSettings.GameType.SPECTATOR`.

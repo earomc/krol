@@ -574,6 +574,11 @@ description = "EntityAgeable: a child's age counts up to 0 and it grows to full 
 scenarios = ["play/mobs_growing_up"]
 
 [[feature]]
+id = "entity.mobs.push_vehicles"
+description = "Mobs and vehicles (EntityLivingBase.collideWithNearbyEntities, EntityMinecart.applyEntityCollision, Entity.applyEntityCollision, getCollisionBoundingBox/getCollisionBox): a mob pushes minecarts (the cart takes the push, the mob a quarter) and boats (both ways), boats are solid for walking mobs, mobs block moving carts and boats, a pig without AI pushes without moving. Not covered: moving rideable carts picking mobs up (not implemented), ridden mobs left unpushed"
+scenarios = ["play/mobs_push_vehicles"]
+
+[[feature]]
 id = "entity.mobs.tempt"
 description = "EntityAITempt: the nearest player within 10 blocks holding a carrot is looked at and followed (path to his feet, 1.2 times the speed, the navigator not avoiding water) until 2.5 blocks away"
 scenarios = ["play/mobs_tempt"]

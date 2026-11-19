@@ -1072,7 +1072,7 @@ impl Game {
     }
 
     /// The boxes a moving minecart collides with besides blocks: pushable entities
-    /// near it (players but spectators, other minecarts).
+    /// near it (players but spectators, other minecarts, mobs).
     fn cart_obstacles(&self, id: i32, area: &Aabb) -> Vec<Aabb> {
         let near = area.expand([0.25, 0.25, 0.25]);
         // Not its own rider.
@@ -1094,6 +1094,14 @@ impl Game {
                 .iter()
                 .filter(|&(&o, c)| o != id && !c.dead)
                 .map(|(_, c)| c.body.bb())
+                .filter(|b| b.intersects(&near)),
+        );
+        // Mobs are pushable while alive.
+        boxes.extend(
+            self.mobs
+                .values()
+                .filter(|m| !m.dead)
+                .map(|m| m.body.bb())
                 .filter(|b| b.intersects(&near)),
         );
         // Boats are solid for everyone (getCollisionBoundingBox).
@@ -1246,12 +1254,17 @@ impl Game {
                 Some(s) => s.body.pos,
                 None => return,
             },
+            CartPusher::Mob(o) => match self.mobs.get(&o) {
+                Some(o) => o.body.pos,
+                None => return,
+            },
             CartPusher::Minecart(o) => match self.minecarts.get(&o) {
                 Some(o) => o.body.pos,
                 None => return,
             },
         };
-        // TODO(M5): moving rideable carts pick up mobs (and armor stands) they hit.
+        // TODO(M5): moving rideable carts pick up mobs (and armor stands) they hit
+        // (mountEntity when its speed squared is over 0.01 and neither rides).
         let (mut dx, mut dz) = (other_pos.0 - cart_pos.0, other_pos.2 - cart_pos.2);
         let mut d = dx * dx + dz * dz;
         if d < f64::from(1.0e-4f32) {
@@ -1365,6 +1378,20 @@ impl Game {
                     s.body.motion.0 += dx / 4.0;
                     s.body.motion.1 += 0.0;
                     s.body.motion.2 += dz / 4.0;
+                }
+            }
+            CartPusher::Mob(o) => {
+                if let Some(m) = self.minecarts.get_mut(&id) {
+                    m.body.motion.0 -= dx;
+                    m.body.motion.1 += 0.0;
+                    m.body.motion.2 -= dz;
+                    m.airborne = true;
+                }
+                if let Some(o) = self.mobs.get_mut(&o) {
+                    o.body.motion.0 += dx / 4.0;
+                    o.body.motion.1 += 0.0;
+                    o.body.motion.2 += dz / 4.0;
+                    o.airborne = true;
                 }
             }
         }
@@ -1807,6 +1834,8 @@ pub enum CartPusher {
     ArmorStand(i32),
     /// Another minecart, by entity id.
     Minecart(i32),
+    /// A mob, by entity id.
+    Mob(i32),
 }
 
 #[cfg(test)]

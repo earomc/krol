@@ -1,0 +1,107 @@
+description = "Mobs and vehicles pushing each other: a mob's collideWithNearbyEntities reaches minecarts (EntityMinecart.applyEntityCollision: the cart takes the push, the mob a quarter of it) and boats (Entity.applyEntityCollision both ways), boats are solid for walking mobs (getCollisionBoundingBox) and mobs block moving carts and boats (getCollisionBox); a pig without AI does not move but still pushes"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) and stands still. A glass pen (walls two
+# blocks high at x = -474 and -469, z = -444 and -439, 4 by 4 inside) holds a chest
+# minecart and a boat; a pig is summoned in a corner under `krolpin 5`, which pins its
+# own random once. It burns (Fire:400s) and panics, running into both again and again,
+# until the fire has taken its 10 health (about 10 seconds): dying at a fixed tick after
+# its summon, it stops pushing well before the stop, whose tick depends on timing (a
+# pig wandering in so small a pen keeps bumping into something). Both pigs are summoned
+# with a tag, which skips onInitialSpawn: its follow range bonus is drawn before the pin
+# and would change how far the pig's paths reach. Chest carts never pick mobs up, so
+# the pig stays on its feet (rideable carts moving faster than 0.1 would).
+# Outside the pen, east of jeb_, a pig without AI is summoned between a second boat and
+# a second chest cart, overlapping both: it pushes them away every tick until they are
+# clear, without moving itself. The vehicles are summoned before the pigs; they lie still
+# until pushed.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+# The burnt pig drops nothing.
+[[steps]]
+action = "console"
+command = "gamerule doMobLoot false"
+
+[[steps]]
+action = "console"
+command = "fill -474 4 -444 -469 5 -444 glass"
+
+[[steps]]
+action = "console"
+command = "fill -474 4 -439 -469 5 -439 glass"
+
+[[steps]]
+action = "console"
+command = "fill -474 4 -443 -474 5 -440 glass"
+
+[[steps]]
+action = "console"
+command = "fill -469 4 -443 -469 5 -440 glass"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 25
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "summon MinecartChest -470.5 4 -442.5"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "summon Boat -472.5 4 -440.5"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "summon Boat -465.1 4 -434.5"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "summon MinecartChest -465.9 4 -434.5"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "krolpin 6 -- summon Pig -465.5 4 -434.5 {NoAI:1b}"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "krolpin 5 -- summon Pig -472.5 4 -442.5 {Fire:400s}"
+wait_ms = 15000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+# Watching the player at the end, the pitch would depend on whether a tick runs
+# between the bot leaving and the stop (see play/mobs_tempt; the yaw still compares
+# through the tracked entity).
+ignore = ["entities.-30,-28[*].Rotation"]
+
+# The pushed vehicles' motion decays towards zero until the stop, whose tick depends on
+# timing: only the leftover denormals differ.
+[observe.tolerance]
+"entities.-30,-28[*].Motion" = 1e-9

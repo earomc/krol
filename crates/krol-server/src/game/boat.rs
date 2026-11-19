@@ -394,6 +394,7 @@ impl Game {
         boxes.extend(self.arrows.values().map(|a| a.body.bb()));
         boxes.extend(self.hanging.values().map(|h| h.bb));
         boxes.extend(self.armor_stands.values().map(|s| s.body.bb()));
+        boxes.extend(self.mobs.values().map(|m| m.body.bb()));
         boxes.extend(self.minecarts.values().map(|m| m.body.bb()));
         boxes.extend(
             self.boats
@@ -720,6 +721,24 @@ impl Game {
         p.motion.1 += 0.0;
         p.motion.2 += dz;
         p.airborne = true;
+    }
+
+    /// A mob walking into a boat (`EntityLivingBase.collideWithEntity`, the boat's
+    /// `applyEntityCollision`): each moves apart unless something rides it.
+    pub(super) fn boat_pushed_by_mob(&mut self, id: i32, mob: i32) {
+        let (Some(b), Some(m)) = (self.boats.get(&id), self.mobs.get(&mob)) else {
+            return;
+        };
+        let Some((dx, dz)) = collision_push(b.body.pos, m.body.pos) else {
+            return;
+        };
+        let (boat_free, mob_free) = (b.rider.is_none(), m.rider.is_none());
+        if boat_free && let Some(b) = self.boats.get_mut(&id) {
+            add_velocity(b, -dx, -dz);
+        }
+        if mob_free && let Some(m) = self.mobs.get_mut(&mob) {
+            super::mob::add_velocity(m, dx, dz);
+        }
     }
 
     /// `Entity.moveEntity` for a boat: its own fall rule, then the blocks touched and
