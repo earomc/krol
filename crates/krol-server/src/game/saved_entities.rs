@@ -738,15 +738,17 @@ impl Game {
     }
 
     /// `/summon`'s `createEntityFromNBT`, `setLocationAndAngles` (keeping the saved
-    /// rotation) and `spawnEntityInWorld`: the new entity's id, or `None` if vanilla
+    /// rotation), `onInitialSpawn` of a mob if `initial_spawn` (summoned without a
+    /// data tag) and `spawnEntityInWorld`: the new entity's id, or `None` if vanilla
     /// does not know the id.
     ///
     /// TODO(M5): kinds krol does not simulate (mobs) are only kept as NBT, so clients do
-    /// not see them; `onInitialSpawn` of mobs summoned without a data tag.
+    /// not see them.
     pub(super) fn summon_entity_from_nbt(
         &mut self,
         c: &Compound,
         pos: (f64, f64, f64),
+        initial_spawn: bool,
     ) -> Option<i32> {
         let mut c = c.clone();
         resolve_legacy_id(&mut c);
@@ -758,6 +760,9 @@ impl Game {
         }
         let rotation = self.entity_rotation(id);
         self.set_location_and_angles(id, pos, rotation);
+        if initial_spawn && let Some(m) = self.mobs.get_mut(&id) {
+            m.initial_spawn(&mut self.entity_rand);
+        }
         self.spawn_entity_in_world(id);
         Some(id)
     }

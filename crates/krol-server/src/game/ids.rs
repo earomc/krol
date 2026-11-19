@@ -117,6 +117,8 @@ pub mod block {
     pub const SPRUCE_DOOR: u16 = 193;
     /// `dark_oak_door`.
     pub const DARK_OAK_DOOR: u16 = 197;
+    /// `mob_spawner`.
+    pub const MOB_SPAWNER: u16 = 52;
     /// `wheat` (the crop).
     pub const WHEAT: u16 = 59;
     /// `farmland`.

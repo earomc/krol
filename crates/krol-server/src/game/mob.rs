@@ -16,9 +16,10 @@
 //! parity hook `krolpin` seeds it with the pin seed plus the entity id, like the vanilla
 //! agent does.
 //!
-//! Players feed, saddle and name mobs, and animals in love breed ([`breeding`]).
+//! Players feed, saddle and name mobs, and animals in love breed ([`breeding`]). Spawn
+//! eggs hatch mobs on blocks and in liquids ([`spawn_egg`]).
 //!
-//! TODO(M5): `onInitialSpawn`, the other mob kinds than pigs, children growing up (the
+//! TODO(M5): `onInitialSpawn` of the other mob kinds than pigs, children growing up (the
 //! box moves by the change in width, like `Entity.setSize`), horses, leads, picking up
 //! loot, status effects (`ActiveEffects` is kept as saved), jump boost, the combat
 //! tracker, pushing and being pushed by minecarts and boats, being hit by projectiles
@@ -26,6 +27,7 @@
 
 mod ai;
 mod breeding;
+mod spawn_egg;
 
 use std::collections::BTreeSet;
 
@@ -35,7 +37,7 @@ use krol_nbt::{Compound, List, Tag, TagType};
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack, Metadata, MetadataValue, Property};
 
 use super::Game;
-use super::attributes::{KNOCKBACK_RESISTANCE, MAX_HEALTH, MOVEMENT_SPEED};
+use super::attributes::{KNOCKBACK_RESISTANCE, MAX_HEALTH, MOVEMENT_SPEED, Modifier};
 use super::damage::{DamageSource, MAX_HURT_TIME};
 use super::ids::{block, item};
 use super::physics::{self, Body};
@@ -43,6 +45,11 @@ use super::saved_entities::{EntityBase, FULL_AIR};
 
 /// `generic.followRange` (`EntityLiving`).
 const FOLLOW_RANGE: &str = "generic.followRange";
+/// `onInitialSpawn`'s follow range modifier: its name, the spread of its gaussian
+/// amount and its operation (add a multiple of the base).
+const SPAWN_BONUS_NAME: &str = "Random spawn bonus";
+const SPAWN_BONUS_SPREAD: f64 = 0.05;
+const ADD_MULTIPLE_OF_BASE: i8 = 1;
 /// `EntityLivingBase.stepHeight`.
 const STEP_HEIGHT: f32 = 0.6;
 /// `maxHurtResistantTime`: hits within half of it only hurt by what they add.
@@ -151,6 +158,13 @@ impl MobKind {
             "Pig" => Some(Self::Pig),
             _ => None,
         }
+    }
+
+    /// The kind with `EntityList` id `id` (a spawn egg's damage).
+    pub fn from_type_id(id: i32) -> Option<Self> {
+        [Self::Pig]
+            .into_iter()
+            .find(|k| i32::from(k.type_id()) == id)
     }
 
     /// The saved id (`EntityList` name).
@@ -262,9 +276,10 @@ pub struct Mob {
     attacking_player: Option<i32>,
     /// `livingSoundTime`: the ambient sound becomes likelier every tick.
     living_sound_time: i32,
-    /// The attribute bases and saved modifier lists, in [`MobKind::attribute_bases`]
-    /// order.
-    attributes: [(f64, Option<List>); 4],
+    /// The attribute bases, in [`MobKind::attribute_bases`] order.
+    attributes: [f64; 4],
+    /// The attribute modifiers (all saved).
+    modifiers: Vec<Modifier>,
     /// `ActiveEffects`, kept as saved.
     effects: Option<List>,
     /// What it holds and wears.
@@ -361,7 +376,8 @@ impl Mob {
             recently_hit: 0,
             attacking_player: None,
             living_sound_time: 0,
-            attributes: bases.map(|(_, b)| (b, None)),
+            attributes: bases.map(|(_, b)| b),
+            modifiers: Vec::new(),
             effects: None,
             equipment: Default::default(),
             drop_chances: [DEFAULT_DROP_CHANCE; SLOTS],
@@ -438,12 +454,19 @@ impl Mob {
                     tracing::warn!("Ignoring unknown attribute '{name}'");
                     continue;
                 };
-                m.attributes[k] = (
-                    a.get_f64("Base"),
-                    a.get_list("Modifiers", TagType::Compound)
-                        .filter(|l| !l.is_empty())
-                        .cloned(),
-                );
+                m.attributes[k] = a.get_f64("Base");
+                let attribute = bases[k].0;
+                for modifier in a
+                    .get_list("Modifiers", TagType::Compound)
+                    .iter()
+                    .flat_map(|l| l.iter())
+                {
+                    let Tag::Compound(modifier) = modifier else {
+                        continue;
+                    };
+                    let modifier = super::attributes::read_modifier(attribute, modifier);
+                    super::attributes::apply_modifier(&mut m.modifiers, modifier);
+                }
             }
         }
         let health = match c.get("HealF").filter(|t| t.as_f32().is_some()) {
@@ -508,14 +531,17 @@ impl Mob {
         c.insert("DeathTime", Tag::Short(self.death_time));
         c.insert("AbsorptionAmount", Tag::Float(self.absorption));
         let mut attributes = List::new();
-        for ((name, _), (base, modifiers)) in
-            self.kind.attribute_bases().iter().zip(&self.attributes)
-        {
+        for ((name, _), base) in self.kind.attribute_bases().iter().zip(&self.attributes) {
             let mut a = Compound::new();
             a.insert("Name", Tag::String((*name).to_owned()));
             a.insert("Base", Tag::Double(*base));
-            if let Some(m) = modifiers {
-                a.insert("Modifiers", Tag::List(m.clone()));
+            let modifiers = super::attributes::modifiers_of(name, &self.modifiers);
+            if !modifiers.is_empty() {
+                let mut list = List::new();
+                for m in modifiers {
+                    let _ = list.push(Tag::Compound(super::attributes::modifier_nbt(m)));
+                }
+                a.insert("Modifiers", Tag::List(list));
             }
             let _ = attributes.push(Tag::Compound(a));
         }
@@ -591,21 +617,44 @@ impl Mob {
         self.body.height * 0.85
     }
 
+    /// The value of attribute `k` (in [`MobKind::attribute_bases`] order) with its
+    /// modifiers.
+    fn attribute(&self, k: usize) -> f64 {
+        let name = self.kind.attribute_bases()[k].0;
+        super::attributes::compute(name, self.attributes[k], &self.modifiers)
+    }
+
     fn max_health(&self) -> f32 {
-        // TODO(M5): attribute modifiers.
-        self.attributes[0].0 as f32
+        self.attribute(0) as f32
     }
 
     fn knockback_resistance(&self) -> f64 {
-        self.attributes[1].0
+        self.attribute(1)
     }
 
     fn movement_speed(&self) -> f64 {
-        self.attributes[2].0
+        self.attribute(2)
     }
 
     fn follow_range(&self) -> f64 {
-        self.attributes[3].0
+        self.attribute(3)
+    }
+
+    /// `EntityLiving.onInitialSpawn`: a mob spawned anew (not from saved data) gets a
+    /// random follow range bonus, drawn from its own random. The modifier's UUID comes
+    /// from `uuid_rand` (vanilla: `ThreadLocalRandom`).
+    pub(super) fn initial_spawn(&mut self, uuid_rand: &mut JavaRandom) {
+        let amount = self.rand.next_gaussian() * SPAWN_BONUS_SPREAD;
+        let uuid = super::attributes::random_uuid(uuid_rand);
+        let modifier = Modifier {
+            attribute: FOLLOW_RANGE,
+            uuid,
+            name: SPAWN_BONUS_NAME.to_owned(),
+            amount,
+            operation: ADD_MULTIPLE_OF_BASE,
+            saved: true,
+        };
+        super::attributes::apply_modifier(&mut self.modifiers, modifier);
     }
 
     /// `DataWatcher.updateObject` of entry `index` with a changed value.
@@ -713,7 +762,13 @@ impl Mob {
         let bases = self.kind.attribute_bases();
         WATCHED
             .iter()
-            .map(|&k| (bases[k].0.to_owned(), self.attributes[k].0, Vec::new()))
+            .map(|&k| {
+                let modifiers = super::attributes::modifiers_of(bases[k].0, &self.modifiers)
+                    .into_iter()
+                    .map(|m| (m.uuid, m.amount, m.operation))
+                    .collect();
+                (bases[k].0.to_owned(), self.attributes[k], modifiers)
+            })
             .collect()
     }
 }

@@ -530,7 +530,7 @@ scenarios = ["commands/entity_targets"]
 
 [[feature]]
 id = "commands.summon"
-description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Not yet: mobs (onInitialSpawn), Riding mounts, LightningBolt"
+description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Not yet: mobs other than pigs, Riding mounts, LightningBolt (onInitialSpawn of a tagless summon: play/spawn_eggs)"
 scenarios = ["commands/summon"]
 
 [[feature]]
@@ -545,7 +545,7 @@ scenarios = ["play/mobs_animals_off"]
 
 [[feature]]
 id = "entity.mobs.ai"
-description = "Pigs with AI: the goal selector (EntityAITasks: tick rate 3, priorities, mutex bits, the executing order), wander (RandomPositionGenerator with EntityAnimal.getBlockPathWeight, idle limit), look idle, watch closest player, panic while burning, swimming; ground navigation (PathFinder heap and WalkNodeProcessor, path following with straight cuts, stuck checks), the move, look, jump and body helpers, moveEntityWithHeading (ground acceleration by slipperiness, air, water), falls (fall sounds, damage, dust), steps (mob.pig.step), fire contact, despawn idle time; vanilla's box normalization (small entities' water boxes turn inside out into real ones). Not yet: breeding, riding pigs, leads, onInitialSpawn"
+description = "Pigs with AI: the goal selector (EntityAITasks: tick rate 3, priorities, mutex bits, the executing order), wander (RandomPositionGenerator with EntityAnimal.getBlockPathWeight, idle limit), look idle, watch closest player, panic while burning, swimming; ground navigation (PathFinder heap and WalkNodeProcessor, path following with straight cuts, stuck checks), the move, look, jump and body helpers, moveEntityWithHeading (ground acceleration by slipperiness, air, water), falls (fall sounds, damage, dust), steps (mob.pig.step), fire contact, despawn idle time; vanilla's box normalization (small entities' water boxes turn inside out into real ones). Not yet: leads"
 scenarios = ["play/mobs_ai"]
 
 [[feature]]
@@ -560,13 +560,18 @@ scenarios = ["play/mobs_tempt"]
 
 [[feature]]
 id = "entity.mobs.breeding"
-description = "Players using items on mobs (EntityPlayer.interactWith): a carrot puts an adult pig in love (status 18, InLove 600, the feeder remembered) or makes a piglet grow by a tenth of its time (func_175501_a, ForcedAge), nothing on a pig in love; saddles (adult pigs only, mob.horse.leather) and named name tags (CustomName, PersistenceRequired), used up outside creative; EntityAIMate: a pig in love finds the closest partner in love within 8 blocks, walks up to it and after 60 ticks within 3 blocks the child is born at its feet (Age -24000, facing south), the parents rest (Age 6000), hearts drawn from the parent's random, an experience orb of 1 to 7, the feeder's stat.animalsBred. Spawn eggs used on a pig of their kind (a child, named after the egg) are implemented but not covered; leads and riding saddled pigs are missing"
+description = "Players using items on mobs (EntityPlayer.interactWith): a carrot puts an adult pig in love (status 18, InLove 600, the feeder remembered) or makes a piglet grow by a tenth of its time (func_175501_a, ForcedAge), nothing on a pig in love; saddles (adult pigs only, mob.horse.leather) and named name tags (CustomName, PersistenceRequired), used up outside creative; EntityAIMate: a pig in love finds the closest partner in love within 8 blocks, walks up to it and after 60 ticks within 3 blocks the child is born at its feet (Age -24000, facing south), the parents rest (Age 6000), hearts drawn from the parent's random, an experience orb of 1 to 7, the feeder's stat.animalsBred. Spawn eggs used on a pig of their kind (a child, named after the egg) are implemented but not covered; leads are missing"
 scenarios = ["play/mobs_breed"]
 
 [[feature]]
 id = "entity.mobs.riding"
 description = "Riding saddled pigs: a click on a saddled pig mounts the player (EntityPig.interact), who sits three quarters up it; EntityAIControlledByPlayer while he holds a carrot on a stick (it turns towards his look by up to 5 degrees a tick, speeds up towards 0.3 by 1% a tick, jumps where WalkNodeProcessor's box check finds a block ahead with room above, wears the stick by 1 with a 0.6% chance a tick outside creative, walks with moveEntityWithHeading on top of its own travel); the stick's right click boosts it (140 to 980 ticks, 7 uses, a worn-out stick becomes a fishing rod) and counts its use; the unmount input gets him off; the distance ridden (stat.pigOneCm); the pig saved in his data (Riding) and back when he joins; a pig that never walked has no move speed and cannot be steered. Not covered: the stick turning into a fishing rod, the rider drowning off a pig, the flyPig achievement (achievements are missing)"
 scenarios = ["play/mobs_riding"]
+
+[[feature]]
+id = "item.spawn_eggs"
+description = "Spawn eggs (ItemMonsterPlacer): onItemUse hatches the egg's mob in front of the clicked face (the half block lift on top of fences never applies: vanilla tests the block state with instanceof BlockFence), onItemRightClick aimed at a liquid hatches it in the liquid's block; spawnCreature: facing wrapAngleTo180(world rand nextFloat * 360) with head and body, onInitialSpawn (followRange 'Random spawn bonus', gaussian * 0.05, operation 1, saved), spawnEntityInWorld, playLivingSound; a named egg names the mob (shown in its spawn packets, which write the data watcher out late); used up outside creative, stat.useItem.383; /summon without a data tag runs onInitialSpawn; S0FPacketSpawnMob truncates its angles. Not yet: eggs of the other mobs, eggs on mob spawners, dispensers"
+scenarios = ["play/spawn_eggs"]
 
 [[feature]]
 id = "item.potions"

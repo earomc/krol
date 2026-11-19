@@ -341,6 +341,10 @@ struct Game {
     /// then on with this seed (plus its entity id).
     #[cfg_attr(not(feature = "parity"), allow(dead_code))]
     spawn_pin: Option<i64>,
+    /// Parity hook: `krolpin world` pins the world's randoms with this seed at the end
+    /// of each of this many more ticks.
+    #[cfg_attr(not(feature = "parity"), allow(dead_code))]
+    world_pin: Option<(i64, u32)>,
     /// `World.ambientTickCountdown`: ticks until the next cave mood sound check.
     ambient_countdown: i32,
     /// `World.skylightSubtracted`: how much time and weather darken the sky.
@@ -471,6 +475,7 @@ pub fn start(
         pin_stop_in: None,
         mob_pin: None,
         spawn_pin: None,
+        world_pin: None,
         skylight_subtracted: 0,
         ticks_this_tick: Vec::new(),
         moving_progress: Default::default(),
@@ -810,6 +815,11 @@ impl Game {
             self.pin_mobs(seed);
             self.mob_pin = (left > 1).then_some((seed, left - 1));
         }
+        #[cfg(feature = "parity")]
+        if let Some((seed, left)) = self.world_pin {
+            self.pin_world(seed);
+            self.world_pin = (left > 1).then_some((seed, left - 1));
+        }
         for line in commands {
             self.console_command(&line);
         }
@@ -845,6 +855,21 @@ impl Game {
             return;
         }
         #[cfg(feature = "parity")]
+        if let Some(args) = line.strip_prefix("krolpin world ") {
+            // Parity hook, like parity/vanilla-agent: `krolpin world <seed> <ticks>`
+            // pins the world's randoms (as `krolpin <seed>` does) now and at the end of
+            // each of the next ticks.
+            let args: Vec<&str> = args.split_whitespace().collect();
+            if let (Some(Ok(seed)), Some(Ok(ticks))) = (
+                args.first().map(|s| s.parse::<i64>()),
+                args.get(1).map(|s| s.parse::<u32>()),
+            ) {
+                self.pin_world(seed);
+                self.world_pin = (ticks > 0).then_some((seed, ticks));
+            }
+            return;
+        }
+        #[cfg(feature = "parity")]
         if let Some(args) = line.strip_prefix("krolpin ") {
             // Parity hook, like parity/vanilla-agent: `krolpin <seed> [speed] [ticks]
             // [-- <command>]` seeds World.rand, World.updateLCG and Math.random()
@@ -858,10 +883,7 @@ impl Game {
             };
             let args: Vec<&str> = args.split_whitespace().collect();
             if let Some(Ok(seed)) = args.first().map(|s| s.parse::<i64>()) {
-                self.world_rand = krol_java::JavaRandom::new(seed);
-                self.math_random = krol_java::JavaRandom::new(seed);
-                self.update_lcg = seed as i32;
-                self.ambient_countdown = random_ticks::PINNED_AMBIENT_COUNTDOWN;
+                self.pin_world(seed);
                 if let Some(speed) = args.get(1) {
                     self.set_game_rule("randomTickSpeed", speed);
                 }
@@ -878,6 +900,16 @@ impl Game {
         }
         self.execute_command(commands::Sender::Console, line);
         self.sb_apply_all_stats();
+    }
+
+    /// Parity hook: seeds World.rand, World.updateLCG and Math.random() (Random.setSeed
+    /// is the same as a new Random with that seed) and sets the cave mood countdown.
+    #[cfg(feature = "parity")]
+    fn pin_world(&mut self, seed: i64) {
+        self.world_rand = krol_java::JavaRandom::new(seed);
+        self.math_random = krol_java::JavaRandom::new(seed);
+        self.update_lcg = seed as i32;
+        self.ambient_countdown = random_ticks::PINNED_AMBIENT_COUNTDOWN;
     }
 
     /// Parity hook: seeds every mob's own random with `seed` plus its entity id.
@@ -2008,6 +2040,7 @@ impl Game {
             ids::item::GLASS_BOTTLE => self.fill_bottle(i, &held),
             ids::item::BOAT => self.use_boat(i),
             ids::item::CARROT_ON_A_STICK => self.use_carrot_on_a_stick(i, &held),
+            ids::item::SPAWN_EGG => self.use_spawn_egg(i, &held),
             ids::item::BOW => {
                 self.start_drawing_bow(i, &held);
                 buckets::UseResult::Kept
@@ -2124,6 +2157,10 @@ impl Game {
         }
         if stack.id == ids::item::ARMOR_STAND {
             self.place_armor_stand(i, pos, face as u8);
+            return;
+        }
+        if stack.id == ids::item::SPAWN_EGG {
+            self.place_spawn_egg(i, pos, face as u8);
             return;
         }
         if farming::is_hoe(stack.id) {

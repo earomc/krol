@@ -82,14 +82,18 @@ pub fn attribute_key(name: &str) -> Option<&'static str> {
         .find(|a| *a == name)
 }
 
-/// `ModifiableAttributeInstance.computeValue` (clamped like the ranged attributes:
-/// max health to 1..1024, speed to 0..1024).
+/// `ModifiableAttributeInstance.computeValue` of a player attribute.
 pub fn value(attribute: &str, modifiers: &[Modifier]) -> f64 {
-    let ms: Vec<&Modifier> = modifiers
-        .iter()
-        .filter(|m| m.attribute == attribute)
-        .collect();
-    let mut v = base(attribute);
+    compute(attribute, base(attribute), modifiers)
+}
+
+/// `ModifiableAttributeInstance.computeValue` from `base` with the modifiers of
+/// `attribute` among `modifiers` (in their hash order), clamped like the ranged
+/// attributes: max health and speed to 0..1024, knockback resistance to 0..1, the
+/// others (follow range, attack damage) to 0..2048.
+pub fn compute(attribute: &str, base: f64, modifiers: &[Modifier]) -> f64 {
+    let ms = modifiers_of(attribute, modifiers);
+    let mut v = base;
     for m in ms.iter().filter(|m| m.operation == 0) {
         v += m.amount;
     }
@@ -101,12 +105,49 @@ pub fn value(attribute: &str, modifiers: &[Modifier]) -> f64 {
         total *= 1.0 + m.amount;
     }
     let (lo, hi) = match attribute {
-        MAX_HEALTH => (0.0, 1024.0),
+        MAX_HEALTH | MOVEMENT_SPEED => (0.0, 1024.0),
         KNOCKBACK_RESISTANCE => (0.0, 1.0),
-        MOVEMENT_SPEED => (0.0, 1024.0),
         _ => (0.0, 2048.0),
     };
     total.clamp(lo, hi)
+}
+
+/// `MathHelper.getRandomUuid`: a version 4 UUID from two `nextLong`s.
+pub fn random_uuid(rand: &mut krol_java::JavaRandom) -> u128 {
+    let most = rand.next_long() & -61441 | 16384;
+    let least = rand.next_long() & 0x3fff_ffff_ffff_ffff | i64::MIN;
+    u128::from(most as u64) << 64 | u128::from(least as u64)
+}
+
+/// `SharedMonsterAttributes.readAttributeModifierFromNBT` for `attribute`.
+pub fn read_modifier(attribute: &'static str, m: &Compound) -> Modifier {
+    let uuid = (m.get_i64("UUIDMost") as u64 as u128) << 64 | m.get_i64("UUIDLeast") as u64 as u128;
+    Modifier {
+        attribute,
+        uuid,
+        name: m.get_str("Name").to_owned(),
+        amount: m.get_f64("Amount"),
+        operation: m.get_i32("Operation") as i8,
+        saved: true,
+    }
+}
+
+/// `SharedMonsterAttributes.writeAttributeModifierToNBT`.
+pub fn modifier_nbt(m: &Modifier) -> Compound {
+    let mut c = Compound::new();
+    c.insert("Name", Tag::String(m.name.clone()));
+    c.insert("Amount", Tag::Double(m.amount));
+    c.insert("Operation", Tag::Int(i32::from(m.operation)));
+    c.insert("UUIDMost", Tag::Long((m.uuid >> 64) as i64));
+    c.insert("UUIDLeast", Tag::Long(m.uuid as i64));
+    c
+}
+
+/// `applyModifier` as `applyModifiersToAttributeInstance` does it: a modifier with
+/// the same UUID is replaced.
+pub fn apply_modifier(modifiers: &mut Vec<Modifier>, m: Modifier) {
+    modifiers.retain(|o| !(o.attribute == m.attribute && o.uuid == m.uuid));
+    modifiers.push(m);
 }
 
 /// The `(key, base, modifiers)` entries of an Entity Properties packet.
@@ -142,16 +183,7 @@ pub fn read_modifiers(data: &Compound) -> Vec<Modifier> {
         };
         for m in ms.iter() {
             let Tag::Compound(m) = m else { continue };
-            let uuid = (m.get_i64("UUIDMost") as u64 as u128) << 64
-                | m.get_i64("UUIDLeast") as u64 as u128;
-            out.push(Modifier {
-                attribute,
-                uuid,
-                name: m.get_str("Name").to_owned(),
-                amount: m.get_f64("Amount"),
-                operation: m.get_i32("Operation") as i8,
-                saved: true,
-            });
+            out.push(read_modifier(attribute, m));
         }
     }
     out
@@ -169,12 +201,7 @@ pub fn write_attributes(data: &mut Compound, modifiers: &[Modifier]) {
         if !all.is_empty() {
             let mut ms = List::new();
             for m in all.into_iter().filter(|m| m.saved) {
-                let mut c = Compound::new();
-                c.insert("Name", Tag::String(m.name.clone()));
-                c.insert("Amount", Tag::Double(m.amount));
-                c.insert("Operation", Tag::Int(i32::from(m.operation)));
-                c.insert("UUIDMost", Tag::Long((m.uuid >> 64) as i64));
-                c.insert("UUIDLeast", Tag::Long(m.uuid as i64));
+                let c = modifier_nbt(m);
                 let _ = ms.push(Tag::Compound(c));
             }
             a.insert("Modifiers", Tag::List(ms));
@@ -202,5 +229,27 @@ mod tests {
         let v = value(MOVEMENT_SPEED, &[sprint]);
         assert!((v - 0.13).abs() < 1e-6);
         assert_eq!(value(MAX_HEALTH, &[]), 20.0);
+    }
+
+    /// Values from a JVM: `MathHelper.getRandomUuid(new Random(42))`, and the follow
+    /// range of a base 16 with `new Random(7).nextGaussian() * 0.05` as operation 1.
+    #[test]
+    fn random_uuid_and_spawn_bonus_match_java() {
+        let uuid = random_uuid(&mut krol_java::JavaRandom::new(42));
+        assert_eq!(uuid, 0xba419d35_0dfe_4af7_aee7_bbe10c45c028);
+        let amount = krol_java::JavaRandom::new(7).next_gaussian() * 0.05;
+        assert_eq!(amount, 0.042_260_303_285_249_24);
+        let bonus = Modifier {
+            attribute: "generic.followRange",
+            uuid,
+            name: "Random spawn bonus".into(),
+            amount,
+            operation: 1,
+            saved: true,
+        };
+        assert_eq!(
+            compute("generic.followRange", 16.0, &[bonus]),
+            16.676_164_852_563_99
+        );
     }
 }

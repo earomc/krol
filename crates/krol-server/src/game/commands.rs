@@ -1791,14 +1791,17 @@ impl Game {
             krol_nbt::Compound::new()
         };
         tag.insert("id", krol_nbt::Tag::String(kind.to_owned()));
-        if self.summon_entity_from_nbt(&tag, pos).is_none() {
+        if self
+            .summon_entity_from_nbt(&tag, pos, args.len() < 5)
+            .is_none()
+        {
             return Err(err("commands.summon.failed", vec![]));
         }
         // The mounts saved in `Riding`, each summoned at the same spot.
         // TODO(M5): mount each entity on the next (only players ride so far).
         let mut riding = tag.get_compound("Riding").cloned();
         while let Some(mount) = riding {
-            if self.summon_entity_from_nbt(&mount, pos).is_none() {
+            if self.summon_entity_from_nbt(&mount, pos, false).is_none() {
                 break;
             }
             riding = mount.get_compound("Riding").cloned();

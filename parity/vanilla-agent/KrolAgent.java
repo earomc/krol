@@ -17,7 +17,11 @@
 // same random state whichever tick it lands in. `krolpin spawns <seed>` pins the random
 // of every mob that joins a world from then on (World.spawnEntityInWorld adding it to
 // World.loadedEntityList, which the agent swaps for a list that seeds each mob added),
-// before its first update, so a child born during a scenario starts pinned. krol answers
+// before its first update, so a child born during a scenario starts pinned.
+// `krolpin world <seed> <ticks>` pins the worlds' randoms and Math.random() like
+// `krolpin <seed>`, now and again at the end of each of the next ticks, so that what a
+// bot does with the world random (a spawn egg's facing) meets the same state whichever
+// tick it lands in. krol answers
 // the same commands in builds with the `parity` feature.
 //
 // The server jar is obfuscated, so the agent works through reflection on the official
@@ -107,6 +111,15 @@ public final class KrolAgent {
         if (n.equals("a") && params == 2 && ((String[]) a[1]).length >= 2 && ((String[]) a[1])[0].equals("spawns")) {
             // krolpin spawns <seed>: pin every mob that joins a world from now on.
             pinSpawns(server, Long.parseLong(((String[]) a[1])[1]));
+            return null;
+        }
+        if (n.equals("a") && params == 2 && ((String[]) a[1]).length >= 3 && ((String[]) a[1])[0].equals("world")) {
+            // krolpin world <seed> <ticks>: pin the worlds' randoms now and at the end of
+            // each of the next ticks.
+            String[] args = (String[]) a[1];
+            long seed = Long.parseLong(args[1]);
+            pin(server, seed);
+            repinWorlds(server, seed, Integer.parseInt(args[2]));
             return null;
         }
         if (n.equals("a") && params == 2 && ((String[]) a[1]).length >= 3 && ((String[]) a[1])[0].equals("mobs")) {
@@ -259,6 +272,27 @@ public final class KrolAgent {
             if (method.getName().equals("c") && left[0] > 0) {
                 left[0]--;
                 pinMobs(server, seed);
+            }
+            if (method.getName().equals("hashCode")) {
+                return System.identityHashCode(proxy);
+            }
+            if (method.getName().equals("equals")) {
+                return proxy == a[0];
+            }
+            return null;
+        };
+        Object hook = Proxy.newProxyInstance(tickable.getClassLoader(), new Class<?>[] {tickable}, repin);
+        Class.forName("net.minecraft.server.MinecraftServer").getMethod("a", tickable).invoke(server, hook);
+    }
+
+    /** Pins the worlds' randoms at the end of each of the next `ticks` ticks. */
+    private static void repinWorlds(Object server, long seed, int ticks) throws Exception {
+        Class<?> tickable = Class.forName("km");
+        final int[] left = {ticks};
+        InvocationHandler repin = (proxy, method, a) -> {
+            if (method.getName().equals("c") && left[0] > 0) {
+                left[0]--;
+                pin(server, seed);
             }
             if (method.getName().equals("hashCode")) {
                 return System.identityHashCode(proxy);

@@ -1,0 +1,111 @@
+description = "Spawn eggs (ItemMonsterPlacer): used on a block a pig egg hatches a pig in front of the clicked face (on top of a fence too, vanilla's half block lift there never applies), facing a random way drawn from the world random (head and body too), with onInitialSpawn's random follow range bonus, its ambient sound, named after a named egg; aimed at water the right click hatches one in the water; the egg used up in survival (the slot emptied with the last), the use counted (stat.useItem.383); /summon without a data tag runs onInitialSpawn too; the pigs saved with their chunks"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, is switched to survival
+# and gets three pig eggs (hotbar slot 0) and one named "Wilbur" (slot 1) as /give drops
+# 1 and 2. There is an oak fence at (-474, 4, -434) and a pool of water at y = 3
+# (x = -471..-469, z = -439..-438). `krolpin spawns 13` pins every mob joining the world
+# (its own random, after onInitialSpawn drew the follow range bonus from it), and
+# `krolpin world 21 600` pins the world random at the end of every tick, so each
+# hatched pig faces the same way whichever tick the bot's click lands in. He hatches
+# pig 3 on the grass at (-468.5, 4, -433.5), pig 4 on top of the fence at
+# (-473.5, 5, -433.5) (inside its box: vanilla never lifts it), pig 5 "Wilbur" on the
+# grass at (-469.5, 4, -435.5), then looks into the pool and right-clicks his last plain egg: pig 6 hatches in the water at
+# (-470.5, 3.5, -437.5). Pig 7 is summoned without a data tag at (-344.5, 4, -440.5),
+# out of jeb_'s tracking range: it runs on the console's clock, so its packets would
+# interleave with the other pigs' differently every run; only its saved data is
+# compared. The pigs then wander (their randoms pinned) up to the stop.
+#
+# The follow range bonus is drawn before the pin and its modifier's UUID comes from
+# ThreadLocalRandom, so both are left out of the saved pigs.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -471 3 -439 -469 3 -438 water"
+
+[[steps]]
+action = "console"
+command = "setblock -474 4 -434 fence"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 22
+chat = [
+    "@5000 !hold 0",
+    "@5300 !place -469 3 -434 1",
+    "@5800 !place -474 4 -434 1",
+    "@6300 !hold 1",
+    "@6600 !place -470 3 -436 1",
+    "@7100 !hold 0",
+    "@7300 !look 200.6 26",
+    "@7600 !use",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ spawn_egg 3 90"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ spawn_egg 1 90 {display:{Name:\"Wilbur\"}}"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "krolpin spawns 13"
+wait_ms = 200
+
+[[steps]]
+action = "console"
+command = "krolpin world 21 600"
+wait_ms = 7000
+
+[[steps]]
+action = "console"
+command = "summon Pig -344.5 4 -440.5"
+wait_ms = 10000
+
+[observe]
+log = true
+entities = [[-31, -29], [-30, -29], [-29, -29], [-31, -28], [-30, -28], [-29, -28], [-31, -27], [-30, -27], [-29, -27], [-23, -28], [-22, -29], [-22, -28], [-22, -27], [-21, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    # The follow range bonus (see above).
+    "entities.-30,-28[0].Attributes[3].Modifiers",
+    "entities.-22,-28[0].Attributes[3].Modifiers",
+    "entities.-29,-28[0].Attributes[3].Modifiers",
+    "entities.-30,-27[0].Attributes[3].Modifiers",
+    "entities.-30,-27[1].Attributes[3].Modifiers",
+]

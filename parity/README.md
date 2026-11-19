@@ -77,7 +77,10 @@ next ticks, so the bot's action meets the same state whichever tick it lands in 
 ambient rolls then repeat the same value every tick: pick the seed so the sound comes at
 a quiet time). `krolpin spawns <seed>` pins the random of every mob that joins a world
 from then on (summoned, or born to breeding parents) with the seed plus its entity id,
-before its first update; chunk loads are left alone. Other entities' randoms (sound
+before its first update; chunk loads are left alone. `krolpin world <seed> <ticks>` pins the world
+random, the random tick generator and `Math.random()` like `krolpin <seed>`, now and at
+the end of each of the next ticks, so a bot's action that draws from the world random
+(a spawn egg's facing) meets the same state whichever tick it lands in. Other entities' randoms (sound
 pitches, knockback rolls of players, item pushes) are not pinned.
 
 ## Writing race-free scenarios
@@ -253,3 +256,11 @@ into server ticks. Rules learned from flaky scenarios:
   helper): let it panic first (`Fire` in its tag). Its AI still takes goals in 3-tick
   steps that a slower join shifts by one against the bot's clock, so leave out what
   depends on how many steps a goal ran (`play/mobs_riding`).
+- **Keep console-clock mobs out of the bot's sight**: mobs spawned by a bot's actions
+  run on the bot's clock and a summoned one on the console's, so their packets
+  interleave differently every run. Summon it more than 80 blocks (an animal's tracking
+  range) from the bot and compare only its saved data (`play/spawn_eggs`).
+- **Mobs made new draw unpinned values**: `onInitialSpawn` (spawn eggs, `/summon`
+  without a data tag) draws the follow range bonus from the mob's random before
+  `krolpin spawns` pins it, and the modifier's UUID comes from `ThreadLocalRandom`:
+  ignore the saved `Attributes[3].Modifiers` of each such mob.

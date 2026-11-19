@@ -729,9 +729,11 @@ impl Game {
                 x: fixed(v.pos.0),
                 y: fixed(v.pos.1),
                 z: fixed(v.pos.2),
-                yaw: angle(v.yaw) as i8,
-                pitch: angle(v.pitch) as i8,
-                head_pitch: angle(v.head) as i8,
+                // S0FPacketSpawnMob truncates its angles (toward zero), unlike the
+                // tracker's floored ones.
+                yaw: (v.yaw * 256.0 / 360.0) as i32 as i8,
+                pitch: (v.pitch * 256.0 / 360.0) as i32 as i8,
+                head_pitch: (v.head * 256.0 / 360.0) as i32 as i8,
                 velocity: (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2)),
                 metadata: m.metadata(),
             });
