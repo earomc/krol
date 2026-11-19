@@ -2,6 +2,8 @@
 /reference/
 /parity/report.json
 /parity/report-v5.json
+/parity/fuzz-report.json
+/parity/fuzz-report-v5.json
 *.swp
 .idea/
 .vscode/

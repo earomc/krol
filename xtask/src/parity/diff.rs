@@ -249,7 +249,7 @@ struct Ctx<'a> {
 }
 
 /// Whether `path` is `base` or lies below it.
-fn under(path: &str, base: &str) -> bool {
+pub fn under(path: &str, base: &str) -> bool {
     path == base
         || path
             .strip_prefix(base)

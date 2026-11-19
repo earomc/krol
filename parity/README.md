@@ -10,6 +10,38 @@ cargo xtask parity diff status/modern_ping  # one scenario's diffs from the last
 cargo xtask parity coverage                 # feature coverage (parity/coverage.toml)
 ```
 
+## Fuzzing
+
+```sh
+cargo xtask parity fuzz [--seed N] [--steps M] [--cases K] [--protocol 5] [--shrink-runs R]
+```
+
+Generates random bot sessions and runs each on live vanilla (`KROL_VANILLA_JAR`) and krol at
+once. A case is a creative player in the flat fixture world taking `M` steps (default 20):
+walking, looking, setting hotbar slots, selecting one, placing or using, digging, clicking
+in window 0 or 1, closing it, sneaking. Each step gets a second, and actions are sent while
+the player stands still, following the race-free rules below. Each case observes the bot's
+packets, every block, light level and tile entity in the area, the chunk's saved entities,
+the player file and the log. `--seed` defaults to the current time; `--cases K` runs seeds
+`N..N+K`.
+
+When the servers differ, vanilla runs the case a second time. Paths where the two vanilla
+runs disagree are ignored from then on (a whole list for a list element). If nothing else
+differs, the case is `noisy`: the generator or harness has to change, not krol. Otherwise
+it is `fail`: the case is shrunk by removing steps (ddmin, at most `R` runs of both servers,
+default 40), run once more to check that it still fails (`reproduced`), and written to
+`scenarios/fuzz/seed-N.toml` with its first differences in a header comment. Record it,
+fix krol, then rename the scenario after what it covers and keep it. The report goes to
+`parity/fuzz-report.json` (`fuzz-report-v5.json` with `--protocol 5`, where krol gets a
+1.7 client and both sides are reduced to the 1.7 view). One case of 20 steps takes about a
+minute; shrinking takes a minute per attempt.
+
+The generator leaves out items whose behavior draws from unseeded randoms or runs on its
+own clock (falling blocks, TNT, liquids, spawn eggs, throwables) and turns off tile drops
+and random block ticks. When a noisy path keeps coming up, fix it at the source (pin it,
+or extend the generator's fixed ignores) rather than letting every case pay for a second
+vanilla run.
+
 `--filter` keeps the scenarios whose name contains the text (a substring, not a glob:
 `--filter play/armor_stand` matches both armor stand scenarios; a `*` matches nothing).
 

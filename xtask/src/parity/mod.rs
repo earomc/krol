@@ -2,6 +2,7 @@
 
 mod agent;
 mod diff;
+mod fuzz;
 mod observe;
 mod play;
 mod scenario;
@@ -62,8 +63,9 @@ pub fn main(args: &[String]) -> Result<ExitCode> {
         }
         Some("diff") => show_diff(args.get(1).context("usage: parity diff <scenario>")?),
         Some("coverage") => coverage(),
+        Some("fuzz") => fuzz::main(&args[1..]),
         _ => bail!(
-            "usage: cargo xtask parity <run|record|diff|coverage> [--filter <substr>] [--protocol 5] [--jobs N]"
+            "usage: cargo xtask parity <run|record|diff|coverage|fuzz> [--filter <substr>] [--protocol 5] [--jobs N]"
         ),
     }
 }
@@ -381,32 +383,8 @@ fn run_one(
         retried_alone: false,
         parallel_diffs: Vec::new(),
     };
-    if let Some(mut expected) = expected {
-        let mut actual = actual;
-        diff::remap_random_uuids(&mut expected);
-        diff::remap_random_uuids(&mut actual);
-        for group in &sc.observe.unordered {
-            diff::canonicalize_unordered(&mut expected, group);
-            diff::canonicalize_unordered(&mut actual, group);
-        }
-        if !sc.observe.dedupe_runs.is_empty() {
-            diff::dedupe_runs(&mut expected, &sc.observe.dedupe_runs);
-            diff::dedupe_runs(&mut actual, &sc.observe.dedupe_runs);
-        }
-        if !sc.observe.collapse_repeats.is_empty() {
-            diff::collapse_repeats(&mut expected, &sc.observe.collapse_repeats);
-            diff::collapse_repeats(&mut actual, &sc.observe.collapse_repeats);
-        }
-        if !sc.observe.drop_repeated.is_empty() {
-            diff::drop_repeated(&mut expected, &sc.observe.drop_repeated);
-            diff::drop_repeated(&mut actual, &sc.observe.drop_repeated);
-        }
-        let diffs = diff::diff(
-            &expected,
-            &actual,
-            &sc.observe.ignore,
-            &sc.observe.tolerance,
-        );
+    if let Some(expected) = expected {
+        let diffs = compare(sc, expected, actual);
         report.status = if diffs.is_empty() { "pass" } else { "fail" }.into();
         report.first_divergence = diffs.first().map(|d| d.path.clone());
         report.diff_count = diffs.len();
@@ -417,6 +395,35 @@ fn run_one(
             .collect();
     }
     Ok(report)
+}
+
+/// Normalizes both sides the way the scenario asks (random UUIDs, unordered groups,
+/// repeated packets) and returns their differences.
+fn compare(sc: &scenario::Scenario, mut expected: Value, mut actual: Value) -> Vec<Difference> {
+    diff::remap_random_uuids(&mut expected);
+    diff::remap_random_uuids(&mut actual);
+    for group in &sc.observe.unordered {
+        diff::canonicalize_unordered(&mut expected, group);
+        diff::canonicalize_unordered(&mut actual, group);
+    }
+    if !sc.observe.dedupe_runs.is_empty() {
+        diff::dedupe_runs(&mut expected, &sc.observe.dedupe_runs);
+        diff::dedupe_runs(&mut actual, &sc.observe.dedupe_runs);
+    }
+    if !sc.observe.collapse_repeats.is_empty() {
+        diff::collapse_repeats(&mut expected, &sc.observe.collapse_repeats);
+        diff::collapse_repeats(&mut actual, &sc.observe.collapse_repeats);
+    }
+    if !sc.observe.drop_repeated.is_empty() {
+        diff::drop_repeated(&mut expected, &sc.observe.drop_repeated);
+        diff::drop_repeated(&mut actual, &sc.observe.drop_repeated);
+    }
+    diff::diff(
+        &expected,
+        &actual,
+        &sc.observe.ignore,
+        &sc.observe.tolerance,
+    )
 }
 
 fn record(filter: Option<&str>, rerecord: bool, jobs: usize) -> Result<ExitCode> {

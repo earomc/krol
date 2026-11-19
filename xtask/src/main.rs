@@ -6,6 +6,8 @@
 //! cargo xtask parity record   [--filter <substr>]   record vanilla observations (needs KROL_VANILLA_JAR)
 //! cargo xtask parity diff     <scenario>            show the diff for one scenario from the last report
 //! cargo xtask parity coverage                       feature coverage from parity/coverage.toml
+//! cargo xtask parity fuzz     [--seed N] [--steps M]  random bot sessions vs live vanilla, failures
+//!                             [--cases K] [--protocol 5] [--shrink-runs R]  shrunk into scenarios/fuzz/
 //! ```
 
 mod parity;
@@ -17,7 +19,7 @@ fn main() -> ExitCode {
     let result = match args.first().map(String::as_str) {
         Some("parity") => parity::main(&args[1..]),
         _ => {
-            eprintln!("usage: cargo xtask parity <run|record|diff|coverage> [options]");
+            eprintln!("usage: cargo xtask parity <run|record|diff|coverage|fuzz> [options]");
             return ExitCode::from(2);
         }
     };
