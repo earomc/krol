@@ -57,6 +57,11 @@ const PARENT_SEARCH: [f64; 3] = [8.0, 4.0, 8.0];
 const PARENT_NEAR_SQ: f64 = 9.0;
 const PARENT_FAR_SQ: f64 = 256.0;
 const PARENT_REPATH: i32 = 10;
+/// `EntityAIControlledByPlayer`: a steering rider's carrot on a stick wears down by
+/// one with this chance a tick; a boost lasts 140 to 980 ticks.
+const STICK_WEAR_CHANCE: f32 = 0.006;
+const BOOST_MIN: i32 = 140;
+const BOOST_SPREAD: i32 = 841;
 /// `EntityAIMate`: the child comes after this many ticks together, this close
 /// (squared).
 const MATE_DELAY: i32 = 60;
@@ -71,10 +76,14 @@ enum Goal {
     Swimming,
     /// `EntityAIPanic`: run to a random spot after being hurt or while burning.
     Panic { speed: f64, target: (f64, f64, f64) },
-    /// `EntityAIControlledByPlayer`.
-    ///
-    /// TODO(M5): riding pigs (it never starts without a rider).
-    ControlledByPlayer,
+    /// `EntityAIControlledByPlayer`: a rider holding a carrot on a stick steers.
+    ControlledByPlayer {
+        max_speed: f32,
+        speed: f32,
+        boosted: bool,
+        boost_time: i32,
+        max_boost_time: i32,
+    },
     /// `EntityAIMate`: walk up to a partner in love and breed after three seconds.
     Mate {
         speed: f64,
@@ -119,7 +128,7 @@ impl Goal {
         match self {
             Self::Swimming => 4,
             Self::Panic { .. } | Self::Wander { .. } => 1,
-            Self::ControlledByPlayer => 7,
+            Self::ControlledByPlayer { .. } => 7,
             Self::Mate { .. } | Self::Tempt { .. } | Self::LookIdle { .. } => 3,
             Self::FollowParent { .. } => 0,
             Self::WatchClosest { .. } => 2,
@@ -231,7 +240,16 @@ impl MobAi {
                     target: (0.0, 0.0, 0.0),
                 },
             ),
-            (2, Goal::ControlledByPlayer),
+            (
+                2,
+                Goal::ControlledByPlayer {
+                    max_speed: 0.3,
+                    speed: 0.0,
+                    boosted: false,
+                    boost_time: 0,
+                    max_boost_time: 0,
+                },
+            ),
             (
                 3,
                 Goal::Mate {
@@ -498,7 +516,14 @@ impl Game {
                     None => false,
                 }
             }
-            Goal::ControlledByPlayer => false,
+            Goal::ControlledByPlayer { boosted, .. } => {
+                m.alive()
+                    && m.rider
+                        .and_then(|r| self.players.iter().find(|p| p.entity_id == r))
+                        .is_some_and(|p| {
+                            *boosted || p.held().is_some_and(|h| h.id == item::CARROT_ON_A_STICK)
+                        })
+            }
             Goal::Mate { mate, .. } => {
                 if m.in_love <= 0 {
                     return false;
@@ -655,6 +680,7 @@ impl Game {
                 ai.nav.flags.avoids_water = false;
             }
             Goal::FollowParent { delay, .. } => *delay = 0,
+            Goal::ControlledByPlayer { speed, .. } => *speed = 0.0,
             Goal::WatchClosest { look_time, .. } => {
                 if let Some(m) = game.mobs.get_mut(&id) {
                     *look_time = 40 + m.rand.next_int_bounded(40);
@@ -692,6 +718,10 @@ impl Game {
                 *mate = None;
                 *delay = 0;
             }
+            Goal::ControlledByPlayer { speed, boosted, .. } => {
+                *boosted = false;
+                *speed = 0.0;
+            }
             _ => {}
         });
     }
@@ -725,6 +755,21 @@ impl Game {
                         game.nav_move_to_entity(id, ai, ppos, *speed);
                     }
                 }
+                Goal::ControlledByPlayer {
+                    max_speed,
+                    speed,
+                    boosted,
+                    boost_time,
+                    max_boost_time,
+                } => game.steer_mob(
+                    id,
+                    ai,
+                    *max_speed,
+                    speed,
+                    boosted,
+                    boost_time,
+                    *max_boost_time,
+                ),
                 Goal::Mate { speed, mate, delay } => {
                     let Some(other) = *mate else {
                         return;
@@ -1172,6 +1217,181 @@ impl Game {
 
     // The helpers.
 
+    /// `EntityAIControlledByPlayer.updateTask`: the mob turns towards where its rider
+    /// looks, speeds up towards its top speed (more while boosted), jumps up a block in
+    /// its way, wears down the rider's carrot on a stick now and then, and walks.
+    #[allow(clippy::too_many_arguments)]
+    fn steer_mob(
+        &mut self,
+        id: i32,
+        ai: &mut MobAi,
+        max_speed: f32,
+        speed: &mut f32,
+        boosted: &mut bool,
+        boost_time: &mut i32,
+        max_boost_time: i32,
+    ) {
+        let Some(rider) = self.mobs.get(&id).and_then(|m| m.rider) else {
+            return;
+        };
+        let Some(i) = self.players.iter().position(|p| p.entity_id == rider) else {
+            return;
+        };
+        let rider_yaw = self.players[i].rotation.0;
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
+        let turn = (wrap_degrees_f32(rider_yaw - m.base.yaw) * 0.5).clamp(-5.0, 5.0);
+        m.base.yaw = wrap_degrees_f32(m.base.yaw + turn);
+        if *speed < max_speed {
+            *speed += (max_speed - *speed) * 0.01;
+        }
+        if *speed > max_speed {
+            *speed = max_speed;
+        }
+        let pos = m.body.pos;
+        let on_ground = m.body.on_ground;
+        let (x, y, z) = (floor_f64(pos.0), floor_f64(pos.1), floor_f64(pos.2));
+        let mut forward = *speed;
+        if *boosted {
+            let before = *boost_time;
+            *boost_time += 1;
+            if before > max_boost_time {
+                *boosted = false;
+            }
+            forward += forward
+                * 1.15
+                * krol_java::math::sin(
+                    *boost_time as f32 / max_boost_time as f32 * std::f32::consts::PI,
+                );
+        }
+        let mut friction = 0.91f32;
+        if on_ground {
+            let below = self.level.overworld.block(x, y - 1, z) >> 4;
+            friction = crate::game::blocks::slipperiness(below) * 0.91;
+        }
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let acceleration = 0.162_771_36_f32 / (friction * friction * friction);
+        let yaw = m.base.yaw * std::f32::consts::PI / 180.0;
+        let (sin, cos) = (krol_java::math::sin(yaw), krol_java::math::cos(yaw));
+        let step = forward * (m.ai_move_speed * acceleration / forward.max(1.0));
+        let (mut dx, mut dz) = (-(step * sin), step * cos);
+        let half = m.body.width / 2.0;
+        if dx.abs() > dz.abs() {
+            if dx < 0.0 {
+                dx -= half;
+            }
+            if dx > 0.0 {
+                dx += half;
+            }
+            dz = 0.0;
+        } else {
+            dx = 0.0;
+            if dz < 0.0 {
+                dz -= half;
+            }
+            if dz > 0.0 {
+                dz += half;
+            }
+        }
+        let nx = floor_f64(pos.0 + f64::from(dx));
+        let nz = floor_f64(pos.2 + f64::from(dz));
+        // The rider is a player.
+        let rider_height = 1.8f32;
+        let size = (
+            krol_java::math::floor_f32(m.body.width + 1.0),
+            krol_java::math::floor_f32(m.body.height + rider_height + 1.0),
+            krol_java::math::floor_f32(m.body.width + 1.0),
+        );
+        if x != nx || z != nz {
+            let in_lava = self.mob_in_lava(id);
+            let world = &mut self.level.overworld;
+            let here = world.block(x, y, z) >> 4;
+            let under = world.block(x, y - 1, z) >> 4;
+            let climbable = !stairs_or_slab(here) && (here != block::AIR || !stairs_or_slab(under));
+            let flags = WalkFlags {
+                enter_doors: true,
+                break_doors: false,
+                avoids_water: false,
+                can_swim: false,
+            };
+            let mut contents =
+                |at| pathfinding::box_contents(world, at, size, (x, y, z), in_lava, flags);
+            if climbable
+                && contents((nx, y, nz)) == pathfinding::BLOCKED
+                && contents((x, y + 1, z)) == pathfinding::OPEN
+                && contents((nx, y + 1, nz)) == pathfinding::OPEN
+            {
+                ai.jump = true;
+            }
+        }
+        let creative = self.players[i].gamemode == crate::game::player::Player::CREATIVE;
+        if !creative && *speed >= max_speed * 0.5 {
+            let roll = self
+                .mobs
+                .get_mut(&id)
+                .is_some_and(|m| m.rand.next_float() < STICK_WEAR_CHANCE);
+            if roll
+                && !*boosted
+                && self.players[i]
+                    .held()
+                    .is_some_and(|h| h.id == item::CARROT_ON_A_STICK)
+            {
+                self.damage_held_item(i, 1);
+                self.stick_to_rod(i);
+            }
+        }
+        self.mob_travel(id, 0.0, forward);
+    }
+
+    /// `EntityAIControlledByPlayer.boostSpeed` through a carrot on a stick, if the mob
+    /// is steered (`isControlledByPlayer`: not boosted, above 30% of its top speed).
+    /// Returns whether it was boosted.
+    pub(in crate::game) fn boost_mob(&mut self, id: i32) -> bool {
+        let Some(mut ai) = self.mobs.get_mut(&id).and_then(|m| m.ai.take()) else {
+            return false;
+        };
+        let mut done = false;
+        for (_, goal) in &mut ai.goals {
+            if let Goal::ControlledByPlayer {
+                max_speed,
+                speed,
+                boosted,
+                boost_time,
+                max_boost_time,
+            } = goal
+                && !*boosted
+                && *speed > *max_speed * 0.3
+                && let Some(m) = self.mobs.get_mut(&id)
+            {
+                *boosted = true;
+                *boost_time = 0;
+                *max_boost_time = m.rand.next_int_bounded(BOOST_SPREAD) + BOOST_MIN;
+                done = true;
+            }
+        }
+        if let Some(m) = self.mobs.get_mut(&id) {
+            m.ai = Some(ai);
+        }
+        done
+    }
+
+    /// A carrot on a stick worn out (count 0) becomes a fishing rod with its tag.
+    pub(in crate::game) fn stick_to_rod(&mut self, i: usize) {
+        let slot = 36 + self.players[i].selected;
+        let p = &mut self.players[i];
+        if let Some(s) = p.inventory[slot].as_mut()
+            && s.id == item::CARROT_ON_A_STICK
+            && s.count == 0
+        {
+            s.id = item::FISHING_ROD;
+            s.count = 1;
+            s.damage = 0;
+        }
+    }
+
     /// `EntityMoveHelper.onUpdateMoveHelper`: turn towards the target and walk at the
     /// navigator's speed, jumping when it is higher and close.
     fn mover_update(&mut self, id: i32, ai: &mut MobAi) {
@@ -1274,6 +1494,20 @@ fn look_at(ai: &mut MobAi, pos: (f64, f64, f64), yaw_speed: f32) {
         looking: true,
         pos,
     };
+}
+
+/// `BlockStairs` or `BlockSlab` (single or double).
+fn stairs_or_slab(id: u16) -> bool {
+    crate::game::shapes::is_stairs(id)
+        || matches!(
+            id,
+            block::STONE_SLAB
+                | block::DOUBLE_STONE_SLAB
+                | block::WOODEN_SLAB
+                | block::DOUBLE_WOODEN_SLAB
+                | block::STONE_SLAB2
+                | block::DOUBLE_STONE_SLAB2
+        )
 }
 
 /// `EntityMoveHelper.limitAngle`: turn by at most `max`, kept within 0 to 360.

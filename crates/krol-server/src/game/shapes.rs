@@ -509,7 +509,7 @@ fn pane(id: u16, pos: (i32, i32, i32), neighbors: &mut Neighbors<'_>) -> Vec<Loc
     v
 }
 
-fn is_stairs(id: u16) -> bool {
+pub(super) fn is_stairs(id: u16) -> bool {
     matches!(
         id,
         53 | 67 | 108 | 109 | 114 | 128 | 134..=136 | 156 | 163 | 164 | 180

@@ -602,7 +602,10 @@ impl Game {
     /// `EntityList.createEntityFromNBT` (the legacy minecart id already resolved): the
     /// new entity's id and position, or `None` (with vanilla's warning) if vanilla does
     /// not know the saved id. Kinds krol does not simulate keep their NBT.
-    fn create_entity_from_nbt(&mut self, c: &Compound) -> Option<(i32, (f64, f64, f64))> {
+    pub(super) fn create_entity_from_nbt(
+        &mut self,
+        c: &Compound,
+    ) -> Option<(i32, (f64, f64, f64))> {
         let kind = c.get_str("id");
         if !KNOWN_IDS.contains(&kind) {
             warn!("Skipping Entity with id {kind}");
@@ -917,7 +920,7 @@ impl Game {
             }
             self.boat_nbt(b, uuid, &mut c);
         } else if let Some(m) = self.mobs.get(&id) {
-            if m.dead {
+            if m.dead || m.rider.is_some() {
                 return None;
             }
             c = self.mob_nbt(m, uuid);

@@ -19,7 +19,7 @@
 //! Players feed, saddle and name mobs, and animals in love breed ([`breeding`]).
 //!
 //! TODO(M5): `onInitialSpawn`, the other mob kinds than pigs, children growing up (the
-//! box moves by the change in width, like `Entity.setSize`), riding, leads, picking up
+//! box moves by the change in width, like `Entity.setSize`), horses, leads, picking up
 //! loot, status effects (`ActiveEffects` is kept as saved), jump boost, the combat
 //! tracker, pushing and being pushed by minecarts and boats, being hit by projectiles
 //! and explosions, arrows stuck in them, equipment changes.
@@ -326,6 +326,8 @@ pub struct Mob {
     revenge_target: Option<i32>,
     /// The AI (taken out while it runs).
     ai: Option<Box<ai::MobAi>>,
+    /// `riddenByEntity`: the entity id of the player riding it.
+    pub rider: Option<i32>,
 }
 
 fn chunk_of(pos: (f64, f64, f64)) -> (i32, i32) {
@@ -390,6 +392,7 @@ impl Mob {
             jump_ticks: 0,
             entity_age: 0,
             revenge_target: None,
+            rider: None,
             ai: Some(Box::new(match kind {
                 MobKind::Pig => ai::MobAi::pig(pos),
             })),
@@ -742,9 +745,16 @@ impl Game {
                 m.chunk = chunk_of(m.body.pos);
             }
             self.relocate_entity(id);
+            self.update_vehicle_rider(id);
         }
         if self.mobs.get(&id).is_some_and(|m| m.dead) {
-            self.mobs.remove(&id);
+            if let Some(m) = self.mobs.remove(&id)
+                && let Some(rider) = m.rider
+                && let Some(p) = self.players.iter_mut().find(|p| p.entity_id == rider)
+                && p.riding == Some(id)
+            {
+                p.riding = None;
+            }
             self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
         }
@@ -1258,6 +1268,8 @@ impl Game {
     /// `EntityLivingBase.fall`: the fall sound, the damage, then the landing sound of
     /// the block below.
     fn mob_fall_damage(&mut self, id: i32, distance: f32, multiplier: f32) {
+        // TODO(M5): EntityPig.fall gives a rider the flyPig achievement after a fall of
+        // more than 5 blocks (achievements are missing).
         let Some(m) = self.mobs.get(&id) else {
             return;
         };
@@ -1344,7 +1356,9 @@ impl Game {
             .expand([f64::from(0.2f32), 0.0, f64::from(0.2f32)]);
         let mut others: Vec<(i32, Option<usize>)> = Vec::new();
         for (i, p) in self.players.iter().enumerate() {
+            // applyEntityCollision: not with its own rider.
             if p.gamemode != SPECTATOR
+                && p.riding != Some(id)
                 && !p.dead_marked
                 && !p.removed
                 && physics::Aabb::at(p.pos, 0.6, 1.8).intersects(&area)
@@ -1398,6 +1412,10 @@ impl Game {
     /// A player overlapping the mob pushes it (`applyEntityCollision` of the mob with
     /// the player `i`).
     pub(super) fn player_pushes_mob(&mut self, i: usize, id: i32) {
+        // Not the mob it rides.
+        if self.players[i].riding == Some(id) {
+            return;
+        }
         let Some(at) = self.mobs.get(&id).map(|m| m.body.pos) else {
             return;
         };

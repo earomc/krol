@@ -59,6 +59,12 @@ pub mod block {
     pub const RED_MUSHROOM: u16 = 40;
     /// `stone_slab`.
     pub const STONE_SLAB: u16 = 44;
+    /// `double_stone_slab`.
+    pub const DOUBLE_STONE_SLAB: u16 = 43;
+    /// `double_wooden_slab`.
+    pub const DOUBLE_WOODEN_SLAB: u16 = 125;
+    /// `double_stone_slab2`.
+    pub const DOUBLE_STONE_SLAB2: u16 = 181;
     /// `carpet`.
     pub const CARPET: u16 = 171;
     /// `stone_slab2` (red sandstone).
@@ -354,6 +360,8 @@ pub mod item {
     pub const CARROT: i16 = 391;
     /// `carrot_on_a_stick`.
     pub const CARROT_ON_A_STICK: i16 = 398;
+    /// `fishing_rod`.
+    pub const FISHING_ROD: i16 = 346;
     /// `spawn_egg` (the damage is the entity type id).
     pub const SPAWN_EGG: i16 = 383;
     /// `name_tag`.

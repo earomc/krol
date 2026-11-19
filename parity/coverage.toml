@@ -564,6 +564,11 @@ description = "Players using items on mobs (EntityPlayer.interactWith): a carrot
 scenarios = ["play/mobs_breed"]
 
 [[feature]]
+id = "entity.mobs.riding"
+description = "Riding saddled pigs: a click on a saddled pig mounts the player (EntityPig.interact), who sits three quarters up it; EntityAIControlledByPlayer while he holds a carrot on a stick (it turns towards his look by up to 5 degrees a tick, speeds up towards 0.3 by 1% a tick, jumps where WalkNodeProcessor's box check finds a block ahead with room above, wears the stick by 1 with a 0.6% chance a tick outside creative, walks with moveEntityWithHeading on top of its own travel); the stick's right click boosts it (140 to 980 ticks, 7 uses, a worn-out stick becomes a fishing rod) and counts its use; the unmount input gets him off; the distance ridden (stat.pigOneCm); the pig saved in his data (Riding) and back when he joins; a pig that never walked has no move speed and cannot be steered. Not covered: the stick turning into a fishing rod, the rider drowning off a pig, the flyPig achievement (achievements are missing)"
+scenarios = ["play/mobs_riding"]
+
+[[feature]]
 id = "item.potions"
 description = "Potions: drinking (32 updates, drink sounds, status 9) with effects from PotionHelper.getPotionEffects (port checked against every damage value) or CustomPotionEffects, the empty bottle (in the slot or added elsewhere; none in creative), glass bottles filled at water (in creative too, the water bottle added or tossed). Not yet: splash potions, brewing"
 scenarios = ["play/potions"]

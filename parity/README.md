@@ -244,3 +244,12 @@ into server ticks. Rules learned from flaky scenarios:
   it by a tenth of its time left in whole seconds: pick its `Age` so the feeding tick
   lands mid-step. Mobs with AI look around up to the stop: ignore their final tracked
   `head`, and give ages a tolerance.
+- **Spawn a mob on the bot's clock when bot actions steer it**: a mob summoned from
+  the console runs on the console's clock, and its tracker sends velocities every third
+  tick counted from its spawn, so what a bot does to it lands at a different point of
+  that beat each run. A player saved riding a pig (`Riding` in a fixture player file)
+  gets it back when joining: it is created with him, and `krolpin spawns` pins it.
+  A pig that never walked cannot be steered (its move speed is only set by its move
+  helper): let it panic first (`Fire` in its tag). Its AI still takes goals in 3-tick
+  steps that a slower join shifts by one against the bot's clock, so leave out what
+  depends on how many steps a goal ran (`play/mobs_riding`).

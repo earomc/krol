@@ -23,6 +23,9 @@
 # - notch_thorns.dat: Notch in adventure mode at jeb_'s usual spawn spot, wearing an
 #   iron chestplate with Thorns XI (above level 10 thorns always strike back, for exactly
 #   level - 10 damage, so no unseeded roll decides anything).
+# - notch_pig_rider.dat: Notch in adventure mode at jeb_'s usual spawn spot, riding a
+#   saddled pig (Riding) that burns for a second, so it panics and learns a move speed
+#   before it is steered; a carrot on a stick in slot 0, an empty hand selected.
 #
 # Run: python tools/fixtures/players.py
 
@@ -71,9 +74,10 @@ def compound(n, *tags):
     return tag(10, n, compound_payload(*tags))
 
 
-def player(path, pos, inventory, extra=(), game_type=0):
+def player(path, pos, inventory, extra=(), game_type=0, selected=0):
     root = compound_payload(
         int_('playerGameType', game_type),
+        *([int_('SelectedItemSlot', selected)] if selected else []),
         int_('Dimension', 0),
         double_list('Pos', pos),
         float_list('Rotation', [0.0, 0.0]),
@@ -139,3 +143,13 @@ player(DIR + 'notch_thorns.dat', [-471.5, 4.0, -434.5], [
         compound_payload(short('id', 7), short('lvl', 11)),
     ]))),
 ], game_type=2)
+player(DIR + 'notch_pig_rider.dat', [-471.5, 4.0, -434.5], [
+    item(0, 'minecraft:carrot_on_a_stick', 1, 0),
+], (compound('Riding',
+             string('id', 'Pig'),
+             double_list('Pos', [-471.5, 4.0, -438.5]),
+             double_list('Motion', [0.0, 0.0, 0.0]),
+             float_list('Rotation', [0.0, 0.0]),
+             short('Fire', 20),
+             byte('Saddle', 1)),),
+       game_type=2, selected=1)

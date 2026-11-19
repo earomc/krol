@@ -97,9 +97,9 @@ pub struct WalkFlags {
 }
 
 /// `getVerticalOffset` results.
-const OPEN: i32 = 1;
+pub const OPEN: i32 = 1;
 const WATER_OR_TRAPDOOR: i32 = 2;
-const BLOCKED: i32 = 0;
+pub const BLOCKED: i32 = 0;
 const AVOIDED_WATER: i32 = -1;
 const LAVA: i32 = -2;
 const FENCE_OR_RAIL: i32 = -3;
@@ -326,56 +326,16 @@ impl Search<'_> {
         point
     }
 
-    /// `func_176170_a`: what the mob's box at `(x, y, z)` (rounded up to whole blocks)
-    /// runs into.
-    fn vertical_offset(&mut self, (x, y, z): (i32, i32, i32)) -> i32 {
-        let mut wet = false;
-        for i in x..x + self.size.0 {
-            for j in y..y + self.size.1 {
-                for k in z..z + self.size.2 {
-                    let state = self.world.block(i, j, k);
-                    let id = state >> 4;
-                    let mat = material(id);
-                    if mat == Material::Air {
-                        continue;
-                    }
-                    if is_trapdoor(id) {
-                        wet = true;
-                    } else if is_water(id) {
-                        if self.flags.avoids_water {
-                            return AVOIDED_WATER;
-                        }
-                        wet = true;
-                    } else if !self.flags.enter_doors && is_door(id) && mat == Material::Wood {
-                        return BLOCKED;
-                    }
-                    if is_rail(id) {
-                        let (bx, by, bz) = self.walker_block;
-                        if !is_rail(self.world.block(bx, by, bz) >> 4)
-                            && !is_rail(self.world.block(bx, by - 1, bz) >> 4)
-                        {
-                            return FENCE_OR_RAIL;
-                        }
-                    } else if !passable(self.world, (i, j, k), state)
-                        && !(self.flags.break_doors && is_door(id) && mat == Material::Wood)
-                    {
-                        if is_fence_gate_or_wall(id) {
-                            return FENCE_OR_RAIL;
-                        }
-                        if is_trapdoor(id) {
-                            return CLOSED_TRAPDOOR;
-                        }
-                        if mat != Material::Lava {
-                            return BLOCKED;
-                        }
-                        if !self.walker.in_lava {
-                            return LAVA;
-                        }
-                    }
-                }
-            }
-        }
-        if wet { WATER_OR_TRAPDOOR } else { OPEN }
+    /// `func_176170_a` for the walker: what its box at `(x, y, z)` runs into.
+    fn vertical_offset(&mut self, at: (i32, i32, i32)) -> i32 {
+        box_contents(
+            self.world,
+            at,
+            self.size,
+            self.walker_block,
+            self.walker.in_lava,
+            self.flags,
+        )
     }
 
     /// `addToPath`: the search from `start` towards `end`.
@@ -479,6 +439,66 @@ pub fn find_path(
         floor_f64(target.2 - half),
     ));
     search.search(start, end, range)
+}
+
+/// `WalkNodeProcessor.func_176170_a`: what a box of `size` whole blocks at `(x, y, z)`
+/// runs into, for an entity standing in `entity_block` (rails only count as open
+/// there): [`OPEN`], [`WATER_OR_TRAPDOOR`], [`BLOCKED`], or the negative kinds.
+pub fn box_contents(
+    world: &mut World,
+    (x, y, z): (i32, i32, i32),
+    size: (i32, i32, i32),
+    entity_block: (i32, i32, i32),
+    in_lava: bool,
+    flags: WalkFlags,
+) -> i32 {
+    let mut wet = false;
+    for i in x..x + size.0 {
+        for j in y..y + size.1 {
+            for k in z..z + size.2 {
+                let state = world.block(i, j, k);
+                let id = state >> 4;
+                let mat = material(id);
+                if mat == Material::Air {
+                    continue;
+                }
+                if is_trapdoor(id) {
+                    wet = true;
+                } else if is_water(id) {
+                    if flags.avoids_water {
+                        return AVOIDED_WATER;
+                    }
+                    wet = true;
+                } else if !flags.enter_doors && is_door(id) && mat == Material::Wood {
+                    return BLOCKED;
+                }
+                if is_rail(id) {
+                    let (bx, by, bz) = entity_block;
+                    if !is_rail(world.block(bx, by, bz) >> 4)
+                        && !is_rail(world.block(bx, by - 1, bz) >> 4)
+                    {
+                        return FENCE_OR_RAIL;
+                    }
+                } else if !passable(world, (i, j, k), state)
+                    && !(flags.break_doors && is_door(id) && mat == Material::Wood)
+                {
+                    if is_fence_gate_or_wall(id) {
+                        return FENCE_OR_RAIL;
+                    }
+                    if is_trapdoor(id) {
+                        return CLOSED_TRAPDOOR;
+                    }
+                    if mat != Material::Lava {
+                        return BLOCKED;
+                    }
+                    if !in_lava {
+                        return LAVA;
+                    }
+                }
+            }
+        }
+    }
+    if wet { WATER_OR_TRAPDOOR } else { OPEN }
 }
 
 /// `Block.isPassable` and its overrides: whether a mob may walk through the block.

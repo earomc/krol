@@ -335,10 +335,26 @@ impl Game {
             set_air(&mut self.players[i], MAX_AIR);
             return;
         }
-        let p = &mut self.players[i];
-        if matches!(p.gamemode, 1 | 3) {
-            return;
+        if !matches!(self.players[i].gamemode, 1 | 3) {
+            self.decrease_air(i);
         }
+        // Under water, a rider of a living mount gets off.
+        if let Some(v) = self.players[i].riding
+            && self.mobs.contains_key(&v)
+        {
+            self.dismount_player(i);
+        }
+    }
+
+    /// `decreaseAirSupply` and drowning: air runs out, then hurts every second.
+    fn decrease_air(&mut self, i: usize) {
+        let set_air = |p: &mut super::player::Player, air: i16| {
+            if p.data.get_i16("Air") != air {
+                p.data.insert("Air", Tag::Short(air));
+                p.dirty_metadata.insert(1);
+            }
+        };
+        let p = &mut self.players[i];
         // decreaseAirSupply: respiration can skip the decrease.
         let respiration =
             super::item_data::armor_enchantment(&p.inventory, super::item_data::RESPIRATION);

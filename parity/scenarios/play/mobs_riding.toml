@@ -1,0 +1,90 @@
+description = "Riding a saddled pig: a player saved riding a pig joins on it (the pig spawned at once, Attach Entity); it carries him around while it panics (burning); holding a carrot on a stick he steers it (EntityAIControlledByPlayer: it turns towards his look by up to 5 degrees a tick, speeds up towards 0.3, jumps where a block is in its way and there is room above, wears the stick down now and then) into a corner of a pen; a right click with the stick boosts it (7 uses, the use statistic); the unmount input gets him off (a free spot next to it), a right click on the saddled pig gets him back on (EntityPig.interact); the distance ridden (pigOneCm) and the pig saved in his data (Riding) at the end"
+subsystem = "entity"
+
+# Notch joins from fixture data (tools/fixtures/players.py, notch_pig_rider.dat) at the
+# spawn (-471.5, 4, -434.5) riding a saddled pig at (-471.5, 4, -438.5) that burns for a
+# second, with a carrot on a stick in slot 0 and an empty hand selected. A glass pen
+# (walls two blocks high at x = -478 and -466, z = -446 and -432) holds them. The pig is
+# created when he joins, so everything it does follows his clock (the tracker's beat
+# too); `krolpin spawns 11` pins its random as it joins. Burning, it panics (a random
+# spot 5 blocks around at 1.25), which also gives it a move speed: a pig that never
+# walked has none (landMovementFactor is only set by the move helper) and cannot be
+# steered. He then looks south-west and takes the stick: the pig turns and walks into
+# the pen's south-west corner, where it stays pressed. He boosts it, gets off, gets back
+# on and stays on to the end (entity ids: Notch 0, the pig 1).
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_pig_rider.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -446 -466 5 -446 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -432 -466 5 -432 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -445 -478 5 -433 glass"
+
+[[steps]]
+action = "console"
+command = "fill -466 4 -445 -466 5 -433 glass"
+
+[[steps]]
+action = "console"
+command = "krolpin 3"
+
+[[steps]]
+action = "console"
+command = "krolpin spawns 11"
+
+[[steps]]
+id = "player"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 32
+chat = [
+    "@5000 !look 45 0",
+    "@5300 !hold 0",
+    "@16000 !use",
+    "@20000 !steer 0 0 2",
+    "@21000 !interact 1",
+]
+
+[observe]
+log = true
+files = [
+    "world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat",
+    "world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json",
+]
+ignore = [
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.playOneMinute",
+    "file:world/stats/b50ad385-829d-3141-a216-7e7d7539ba7f.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.foodTickTimer",
+    # Unseeded: the player's enchanting seed (none in the fixture) and the pig's UUID
+    # (none in the saved Riding tag).
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.Riding.UUIDMost",
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.Riding.UUIDLeast",
+    # Once he is off, the pig turns its head to him (tempted by the stick) and its body
+    # slowly follows; when he is back on, the head turns back to the body and both
+    # stop. How far the body got depends on the AI's 3-tick goal steps against the
+    # bot's clock, which a slower join shifts (vanilla looks a step longer).
+    "player.entities.1.head",
+]

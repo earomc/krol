@@ -2007,6 +2007,7 @@ impl Game {
             }
             ids::item::GLASS_BOTTLE => self.fill_bottle(i, &held),
             ids::item::BOAT => self.use_boat(i),
+            ids::item::CARROT_ON_A_STICK => self.use_carrot_on_a_stick(i, &held),
             ids::item::BOW => {
                 self.start_drawing_bow(i, &held);
                 buckets::UseResult::Kept

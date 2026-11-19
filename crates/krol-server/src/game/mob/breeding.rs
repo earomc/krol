@@ -4,10 +4,9 @@
 //! of saddles and name tags, `EntityAIMate.spawnBaby`).
 //!
 //! TODO(M5): leads (`interactFirst` leashes a mob to a player holding one, and lets
-//! go of it for its player), riding saddled pigs (`EntityPig.interact` mounts the
-//! player; krol answers the click without mounting).
+//! go of it for its player).
 
-use krol_protocol::packets::play::ClientboundPlay;
+use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
 use super::{Mob, MobKind};
 use crate::game::Game;
@@ -27,6 +26,8 @@ const CHILD_AGE: i32 = -24000;
 const BIRTH_HEARTS: usize = 7;
 /// The experience orb of a birth is worth 1 to this many points.
 const BIRTH_XP: i32 = 7;
+/// A carrot on a stick boosts a pig for this many uses.
+const BOOST_USES: i32 = 7;
 /// The `animalsBred` statistic.
 const ANIMALS_BRED: &str = "stat.animalsBred";
 
@@ -165,9 +166,51 @@ impl Game {
         };
         match m.kind {
             // EntityPig.interact: a saddled pig takes a player in, unless someone else
-            // rides it. TODO(M5): riding pigs (the click is taken, nobody mounts).
-            MobKind::Pig => m.saddled,
+            // rides it.
+            MobKind::Pig => {
+                if !m.saddled || m.rider.is_some_and(|r| r != me) {
+                    return false;
+                }
+                self.mount_player(i, id);
+                true
+            }
         }
+    }
+
+    /// `ItemCarrotOnAStick.onItemRightClick`: riding a pig it steers, a stick with 7
+    /// uses left boosts it and loses them (a worn-out one becomes a fishing rod); the
+    /// use counts either way.
+    pub(in crate::game) fn use_carrot_on_a_stick(
+        &mut self,
+        i: usize,
+        held: &ItemStack,
+    ) -> crate::game::buckets::UseResult {
+        use crate::game::buckets::UseResult;
+        let mut result = UseResult::Unchanged;
+        let pig = self.players[i]
+            .riding
+            .filter(|v| self.mobs.get(v).is_some_and(|m| m.kind == MobKind::Pig));
+        let uses_left = i32::from(item_data::max_damage(held.id)) - i32::from(held.damage);
+        if let Some(pig) = pig
+            && uses_left >= BOOST_USES
+            && self.boost_mob(pig)
+        {
+            self.damage_held_item(i, BOOST_USES);
+            let slot = 36 + self.players[i].selected;
+            result = match self.players[i].inventory[slot].clone() {
+                Some(s) if s.count == 0 => UseResult::Replaced(Some(ItemStack {
+                    id: item::FISHING_ROD,
+                    count: 1,
+                    damage: 0,
+                    nbt: s.nbt,
+                })),
+                _ => UseResult::Resized,
+            };
+        }
+        if let Some(stat) = crate::game::digging::use_stat(held.id) {
+            self.add_stat(i, &stat, 1);
+        }
+        result
     }
 
     /// One of the held item used up (`stackSize--`, the slot emptied at 0), unless

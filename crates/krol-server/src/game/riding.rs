@@ -1,4 +1,4 @@
-//! Players riding minecarts and boats (vanilla: `Entity.mountEntity`, `updateRidden`,
+//! Players riding minecarts, boats and pigs (vanilla: `Entity.mountEntity`, `updateRidden`,
 //! `updateRiderPosition`, `EntityLivingBase.dismountEntity`, `EntityPlayerMP.mountEntity`,
 //! the riding branch of `NetHandlerPlayServer.processPlayer`, `processInput`, and the
 //! `Riding` tag of player data).
@@ -9,8 +9,8 @@
 //! a free spot next to the vehicle. A player who logs out in a vehicle takes it along:
 //! it is saved in the player's data and comes back when the player does.
 //!
-//! TODO(M5): mobs and armor stands riding (moving rideable carts pick them up), pigs and
-//! horses, the rider's own move while riding (block collisions under the vehicle).
+//! TODO(M5): mobs and armor stands riding (moving rideable carts pick them up), horses,
+//! the rider's own move while riding (block collisions under the vehicle).
 
 use krol_nbt::{Compound, Tag};
 use krol_protocol::packets::play::ClientboundPlay;
@@ -24,6 +24,8 @@ use super::saved_entities::EntityBase;
 const PLAYER_Y_OFFSET: f64 = -0.35;
 /// `EntityMinecart.getMountedYOffset`.
 const MINECART_MOUNT_OFFSET: f64 = 0.0;
+/// `Entity.getMountedYOffset` of mobs: this share of their height.
+const MOB_MOUNT_OFFSET: f64 = 0.75;
 /// The on-a-rail achievement needs this squared distance from where riding started.
 const ON_A_RAIL_DISTANCE_SQ: f64 = 1_000_000.0;
 /// `C0CPacketInput` flags.
@@ -40,7 +42,10 @@ impl Game {
     pub(super) fn vehicle_rider(&self, v: i32) -> Option<i32> {
         match self.minecarts.get(&v) {
             Some(m) => m.rider,
-            None => self.boats.get(&v).and_then(|b| b.rider),
+            None => match self.boats.get(&v) {
+                Some(b) => b.rider,
+                None => self.mobs.get(&v).and_then(|m| m.rider),
+            },
         }
     }
 
@@ -50,6 +55,8 @@ impl Game {
             m.rider = rider;
         } else if let Some(b) = self.boats.get_mut(&v) {
             b.rider = rider;
+        } else if let Some(m) = self.mobs.get_mut(&v) {
+            m.rider = rider;
         }
     }
 
@@ -57,7 +64,10 @@ impl Game {
     pub(super) fn vehicle_dead(&self, v: i32) -> bool {
         match self.minecarts.get(&v) {
             Some(m) => m.dead,
-            None => self.boats.get(&v).is_none_or(|b| b.dead),
+            None => match self.boats.get(&v) {
+                Some(b) => b.dead,
+                None => self.mobs.get(&v).is_none_or(|m| m.dead),
+            },
         }
     }
 
@@ -65,7 +75,10 @@ impl Game {
     pub(super) fn vehicle_state(&self, v: i32) -> Option<(&Body, &EntityBase)> {
         match self.minecarts.get(&v) {
             Some(m) => Some((&m.body, &m.base)),
-            None => self.boats.get(&v).map(|b| (&b.body, &b.base)),
+            None => match self.boats.get(&v) {
+                Some(b) => Some((&b.body, &b.base)),
+                None => self.mobs.get(&v).map(|m| (&m.body, &m.base)),
+            },
         }
     }
 
@@ -75,6 +88,8 @@ impl Game {
             m.airborne = true;
         } else if let Some(b) = self.boats.get_mut(&v) {
             b.airborne = true;
+        } else if let Some(m) = self.mobs.get_mut(&v) {
+            m.airborne = true;
         }
     }
 
@@ -82,6 +97,12 @@ impl Game {
     fn rider_spot(&self, v: i32) -> Option<(f64, f64, f64)> {
         if let Some(b) = self.boats.get(&v) {
             return Some(b.seat(PLAYER_Y_OFFSET));
+        }
+        if let Some(m) = self.mobs.get(&v) {
+            // Entity.getMountedYOffset: three quarters up.
+            let p = m.body.pos;
+            let top = f64::from(m.body.height) * MOB_MOUNT_OFFSET;
+            return Some((p.0, p.1 + top + PLAYER_Y_OFFSET, p.2));
         }
         let m = self.minecarts.get(&v)?;
         let p = m.body.pos;
@@ -370,6 +391,9 @@ impl Game {
             (krol_java::math::sqrt_f64(d.0 * d.0 + d.1 * d.1 + d.2 * d.2) * 100.0).round() as i32;
         if cm > 0 && self.boats.contains_key(&cart) {
             self.add_stat(i, "stat.boatOneCm", cm);
+        } else if cm > 0 && self.mobs.contains_key(&cart) {
+            // Only pigs can be ridden so far.
+            self.add_stat(i, "stat.pigOneCm", cm);
         } else if cm > 0 {
             self.add_stat(i, "stat.minecartOneCm", cm);
             let p = &mut self.players[i];
@@ -410,6 +434,9 @@ impl Game {
             self.boat_nbt(b, uuid, &mut c);
             return Some(c);
         }
+        if let Some(m) = self.mobs.get(&cart) {
+            return (!m.dead).then(|| self.mob_nbt(m, uuid));
+        }
         let m = self.minecarts.get(&cart).filter(|m| !m.dead)?;
         self.minecart_nbt(m, uuid, &mut c);
         Some(c)
@@ -435,7 +462,10 @@ impl Game {
         let Some(cart) = self.players[i].riding.take() else {
             return;
         };
-        if self.minecarts.remove(&cart).is_some() || self.boats.remove(&cart).is_some() {
+        if self.minecarts.remove(&cart).is_some()
+            || self.boats.remove(&cart).is_some()
+            || self.mobs.remove(&cart).is_some()
+        {
             self.remove_entity_from_chunk(cart);
             self.untrack_entity(cart);
         }
@@ -448,8 +478,22 @@ impl Game {
             return;
         };
         let saved_id = saved.get_str("id");
+        if super::mob::MobKind::from_saved_id(saved_id).is_some() {
+            // Entities saved in chunks loaded since are created first.
+            if self.level.overworld.has_loaded_entities() {
+                self.load_chunk_entities();
+            }
+            let Some((id, _)) = self.create_entity_from_nbt(&saved) else {
+                return;
+            };
+            self.force_spawn = Some(id);
+            self.spawn_entity_in_world(id);
+            self.mount_player(i, id);
+            self.force_spawn = None;
+            return;
+        }
         if saved_id != super::minecart::RIDEABLE_ID && saved_id != super::boat::SAVED_ID {
-            // TODO(M5): other vehicles (pigs, horses).
+            // TODO(M5): other vehicles (horses).
             return;
         }
         let id = self.next_entity_id();
