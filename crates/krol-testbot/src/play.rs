@@ -67,7 +67,8 @@ pub struct PlayObservation {
 /// `!click <window> <slot> <button> <action> <mode> [<id> <count> <damage>]`,
 /// `!confirm <window> <action> <accepted 0|1>`, `!close <window>`, `!enchant <window>
 /// <button>`, `!itemname [text]` (anvil name field), `!beacon <primary> <secondary>`
-/// (beacon powers).
+/// (beacon powers). Any entity id may be written `#<n>`: the n-th most recently
+/// spawned entity the bot saw (`#1` the latest).
 /// Optional
 /// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
 /// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1; `[]` sends nothing that
@@ -148,6 +149,8 @@ pub async fn play_session(
     let mut v5_eid: Option<i32> = (version == ProtocolVersion::V5).then_some(0);
     // The own entity id from Join Game (for Entity Action).
     let mut own_eid = 0;
+    // Entity ids from spawn packets, in arrival order (`#<n>` targets).
+    let mut spawned: Vec<i32> = Vec::new();
 
     let result: Result<(), BotError> = async { loop {
         tokio::select! {
@@ -169,7 +172,7 @@ pub async fn play_session(
                             .collect();
                         timed_chat.retain(|(ms, _)| *ms > elapsed);
                         for message in due {
-                            for packet in action_or_chat(&message, &held, here, own_eid) {
+                            for packet in action_or_chat(&message, &held, here, own_eid, &spawned) {
                                 if let ServerboundPlay::HeldItemChange { slot } = packet {
                                     held_slot = slot;
                                 }
@@ -221,6 +224,13 @@ pub async fn play_session(
                     (id, r.rest().to_vec(), ClientboundPlay::decode(&body, version)?)
                 };
                 match &decoded {
+                    Some(
+                        ClientboundPlay::SpawnObject { entity_id, .. }
+                        | ClientboundPlay::SpawnMob { entity_id, .. }
+                        | ClientboundPlay::SpawnPainting { entity_id, .. }
+                        | ClientboundPlay::SpawnExperienceOrb { entity_id, .. }
+                        | ClientboundPlay::SpawnPlayer { entity_id, .. },
+                    ) => spawned.push(*entity_id),
                     Some(ClientboundPlay::KeepAlive { id }) => {
                         send_play(&mut conn, v5_eid, &ServerboundPlay::KeepAlive { id: *id }).await?;
                     }
@@ -309,6 +319,7 @@ fn action_or_chat(
     held: &[Option<krol_protocol::packets::play::ItemStack>],
     here: (f64, f64, f64),
     own_eid: i32,
+    spawned: &[i32],
 ) -> Vec<ServerboundPlay> {
     let Some(action) = line.strip_prefix('!') else {
         return vec![ServerboundPlay::Chat {
@@ -316,11 +327,19 @@ fn action_or_chat(
         }];
     };
     let parts: Vec<&str> = action.split_whitespace().collect();
+    // A number, or `#<n>`: the id of the n-th most recently spawned entity (-1 if
+    // fewer were seen).
     let num = |i: usize| {
-        parts
-            .get(i)
-            .and_then(|p| p.parse::<i32>().ok())
-            .unwrap_or(0)
+        let part = parts.get(i).copied().unwrap_or("");
+        if let Some(back) = part.strip_prefix('#') {
+            let back = back.parse::<usize>().unwrap_or(0);
+            return spawned
+                .len()
+                .checked_sub(back)
+                .filter(|_| back > 0)
+                .map_or(-1, |k| spawned[k]);
+        }
+        part.parse::<i32>().unwrap_or(0)
     };
     match parts.first().copied() {
         Some("dig") => vec![ServerboundPlay::Digging {

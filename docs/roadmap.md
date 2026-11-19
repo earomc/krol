@@ -728,7 +728,7 @@ example plugin, `docs/bukkit-to-rust.md`.
 | Vanilla agent: pinning the world random and random tick LCG, timed random tick windows (`krolpin`) | ✅ | Mobs' own randoms: once (`krolpin`), every tick (`krolpin mobs`), at birth (`krolpin spawns`); the world random every tick (`krolpin world`) |
 | Pinning entity randoms and the clock | ❌ | |
 | `[observe.tolerance]` | ✅ | |
-| `parity fuzz` | 🟡 | Creative block and inventory actions of one player in the flat world, vanilla self-check for noise, ddmin shrinking into `scenarios/fuzz/`. Not yet: survival (digging timing, damage), mobs and entities, several players, console commands, malformed packets |
+| `parity fuzz` | 🟡 | One player in the flat world: creative and survival (switching with `/gamemode`; digging with finish and abort, fall damage, eating, armor, dropping items), block and inventory actions, armor stands, item frames and minecarts (placed, summoned, attacked, interacted with), vanilla self-check for noise, ddmin shrinking into `scenarios/fuzz/`. Not yet: mobs (their randoms are not pinned), several players, console commands, malformed packets |
 | `parity worldgen` | ❌ | M6 |
 | `parity plugins` | ❌ | M8 |
 | Testbot: protocol 47 and 5, movement, digging, placing, clicks, chat, item use, attacking (also critical hops), sprinting | ✅ | Interacting with entities ❌ |

@@ -1,8 +1,11 @@
 //! `parity fuzz`: random bot sessions run against vanilla and krol side by side.
 //!
-//! Each case is a creative-mode player in the flat fixture world doing a random sequence
-//! of steps (walk, look, set a hotbar slot, select a slot, place or use, dig, click in a
-//! window, close it, sneak). Steps get one second each and actions happen while the
+//! Each case is a player (an operator, starting in creative mode) in the flat fixture
+//! world doing a random sequence of steps: walk, look, set a hotbar slot, select a slot,
+//! place or use on a block, use in the air, dig (in survival: finishing or aborting after
+//! a while), drop items, click in a window, close it, sneak, switch between creative and
+//! survival, summon armor stands and minecarts, and attack or interact with recently
+//! spawned entities. Steps get one second each and actions happen while the
 //! player stands still, so the bot never races its own movement and each action's
 //! effects land before the next one (see `parity/README.md`, "Writing race-free
 //! scenarios"). Everything the case can change is observed: the bot's packets, every
@@ -40,12 +43,18 @@ const TARGET_Z: (i32, i32) = (-438, -434);
 const WALK_X: (f64, f64) = (-474.5, -468.5);
 const WALK_Z: (f64, f64) = (-437.5, -433.5);
 const WALK_Y: [f64; 3] = [4.0, 5.0, 6.0];
+/// Heights a survival player walks to: mostly the ground, sometimes up high to fall
+/// back down (4 blocks: one point of damage).
+const SURVIVAL_WALK_Y: [f64; 4] = [4.0, 4.0, 4.0, 8.0];
+/// The ground the player stands on.
+const GROUND_Y: f64 = 4.0;
 /// Observed blocks: the target area grown by one block (beds and doors reach out).
 const OBSERVE_X: (i32, i32) = (-476, -467);
 const OBSERVE_Y: (i32, i32) = (0, 7);
 const OBSERVE_Z: (i32, i32) = (-439, -433);
-/// The chunk whose saved entities are compared.
-const CHUNK: [i32; 2] = [-30, -28];
+/// The chunks whose saved entities are compared: the area's, and the one south of it
+/// (the area reaches its edge).
+const CHUNKS: [[i32; 2]; 2] = [[-30, -28], [-30, -27]];
 
 /// Bot ticks before the first step (the join settles first).
 const LEAD_TICKS: usize = 20;
@@ -53,6 +62,21 @@ const LEAD_TICKS: usize = 20;
 const STEP_TICKS: usize = 20;
 /// The tick within a step at which its action is sent (the player stands still).
 const ACTION_TICK: usize = 10;
+/// Ticks after a survival dig starts that it is finished: no block mined by hand needs
+/// within one tick of that (dirt needs 10, wool 16, logs 42), so the jitter between bot
+/// and server ticks never decides whether it breaks.
+const DIG_FINISH_TICKS: usize = 18;
+/// Ticks after a survival dig starts that an aborted one is aborted.
+const DIG_ABORT_TICKS: usize = 5;
+/// Player Digging statuses.
+const DIG_STATUS_ABORT: i8 = 1;
+const DIG_STATUS_FINISH: i8 = 2;
+const DIG_STATUS_DROP_STACK: i8 = 3;
+const DIG_STATUS_DROP_ITEM: i8 = 4;
+/// How far back `#<n>` entity references reach (the n-th most recently spawned entity).
+const ENTITY_BACK: u64 = 3;
+/// Entities the bot summons with `/summon`.
+const SUMMONED: &[&str] = &["ArmorStand", "MinecartRideable"];
 /// Longest walk, in ticks; a walk ends before the action tick of its step.
 const WALK_TICKS: usize = 8;
 /// Fastest walk, blocks per tick (a sprinting player covers about 0.28).
@@ -132,6 +156,14 @@ const ITEMS: &[(i16, i16)] = &[
     (120, 0), // end portal frame
     (290, 0), // wooden hoe
     (280, 0), // stick
+    (268, 0), // wooden sword
+    (416, 0), // armor stand
+    (389, 0), // item frame
+    (328, 0), // minecart
+    (322, 0), // golden apple
+    (335, 0), // milk bucket
+    (298, 0), // leather cap
+    (307, 0), // iron chestplate
 ];
 
 /// One step of a case. Positions are absolute.
@@ -160,6 +192,29 @@ enum FuzzStep {
     Dig {
         pos: [i32; 3],
         face: i8,
+        end: DigEnd,
+    },
+    /// Use the held item in the air (eat, drink, put on armor).
+    Use,
+    /// Q (one item) or Ctrl+Q (the stack).
+    Drop {
+        stack: bool,
+    },
+    /// `/gamemode` 0 or 1.
+    Gamemode(u8),
+    /// `/summon` an entity on top of a block.
+    Summon {
+        kind: &'static str,
+        pos: [i32; 3],
+    },
+    /// Left click on the `back`-th most recently spawned entity.
+    Attack {
+        back: u8,
+    },
+    /// Right click on it; with `at`, a 1.8 client's click at that point of it first.
+    Interact {
+        back: u8,
+        at: Option<[f32; 3]>,
     },
     Click {
         window: i8,
@@ -169,6 +224,17 @@ enum FuzzStep {
     },
     Close,
     Sneak(bool),
+}
+
+/// How a dig goes on after it started.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum DigEnd {
+    /// Nothing more: creative players break blocks at once.
+    None,
+    /// Survival: the finish packet, [`DIG_FINISH_TICKS`] later.
+    Finish,
+    /// Survival: the abort packet, [`DIG_ABORT_TICKS`] later.
+    Abort,
 }
 
 /// SplitMix64: a small, well-mixed generator; cases only need to be reproducible from
@@ -210,12 +276,15 @@ fn generate(seed: u64, count: usize) -> Vec<FuzzStep> {
     let mut rng = Rng(seed);
     let mut steps = Vec::with_capacity(count);
     let mut sneaking = false;
+    let mut survival = false;
+    let mut here = ORIGIN;
     // Start with something in hand, so placements mean something from the first step.
     if count > 0 {
         steps.push(creative(&mut rng, 0));
     }
-    // Weights: walk, look, creative, hold, place, dig, click, close, sneak.
-    const WEIGHTS: [u64; 9] = [3, 2, 3, 2, 7, 3, 2, 1, 1];
+    // Weights: walk, look, creative, hold, place, dig, click, close, sneak, gamemode,
+    // use, drop, summon, attack, interact.
+    const WEIGHTS: [u64; 15] = [3, 2, 3, 2, 7, 3, 2, 1, 1, 1, 1, 1, 1, 2, 2];
     let total: u64 = WEIGHTS.iter().sum();
     while steps.len() < count {
         let mut roll = rng.below(total);
@@ -231,13 +300,16 @@ fn generate(seed: u64, count: usize) -> Vec<FuzzStep> {
             })
             .unwrap_or(0);
         let step = match kind {
-            0 => FuzzStep::Walk {
-                to: [
+            0 => {
+                let ys: &[f64] = if survival { &SURVIVAL_WALK_Y } else { &WALK_Y };
+                let to = [
                     rng.grid(WALK_X.0, WALK_X.1),
-                    WALK_Y[rng.below(WALK_Y.len() as u64) as usize],
+                    ys[rng.below(ys.len() as u64) as usize],
                     rng.grid(WALK_Z.0, WALK_Z.1),
-                ],
-            },
+                ];
+                here = to;
+                FuzzStep::Walk { to }
+            }
             1 => FuzzStep::Look {
                 yaw: (rng.below(8) * 45) as f32 + rng.range(-20, 20) as f32,
                 pitch: rng.range(-30, 90) as f32,
@@ -261,6 +333,11 @@ fn generate(seed: u64, count: usize) -> Vec<FuzzStep> {
             5 => FuzzStep::Dig {
                 pos: target(&mut rng),
                 face: rng.below(6) as i8,
+                end: match (survival, rng.chance(75)) {
+                    (false, _) => DigEnd::None,
+                    (true, true) => DigEnd::Finish,
+                    (true, false) => DigEnd::Abort,
+                },
             },
             6 => {
                 let mode = [0, 0, 1, 2][rng.below(4) as usize];
@@ -276,10 +353,44 @@ fn generate(seed: u64, count: usize) -> Vec<FuzzStep> {
                 }
             }
             7 => FuzzStep::Close,
-            _ => {
+            8 => {
                 sneaking = !sneaking;
                 FuzzStep::Sneak(sneaking)
             }
+            9 => {
+                survival = !survival;
+                if survival && here[1] > GROUND_Y {
+                    // Down to the ground first, or the player floats (and gets kicked).
+                    here[1] = GROUND_Y;
+                    steps.push(FuzzStep::Walk { to: here });
+                    if steps.len() == count {
+                        break;
+                    }
+                }
+                FuzzStep::Gamemode(u8::from(!survival))
+            }
+            10 => FuzzStep::Use,
+            11 => FuzzStep::Drop {
+                stack: rng.chance(30),
+            },
+            12 => FuzzStep::Summon {
+                kind: SUMMONED[rng.below(SUMMONED.len() as u64) as usize],
+                pos: target(&mut rng),
+            },
+            13 => FuzzStep::Attack {
+                back: 1 + rng.below(ENTITY_BACK) as u8,
+            },
+            _ => FuzzStep::Interact {
+                back: 1 + rng.below(ENTITY_BACK) as u8,
+                // A point within an armor stand's box (0.5 wide, 1.975 high).
+                at: rng.chance(50).then(|| {
+                    [
+                        rng.range(-4, 4) as f32 / 16.0,
+                        rng.range(0, 31) as f32 / 16.0,
+                        rng.range(-4, 4) as f32 / 16.0,
+                    ]
+                }),
+            },
         };
         steps.push(step);
     }
@@ -319,6 +430,8 @@ fn render(steps: &[FuzzStep], header: &[String], noisy: &[String]) -> String {
     let mut moves: Vec<[f64; 3]> = Vec::new();
     let mut here = ORIGIN;
     let mut action_number = 0i16;
+    // Lines timed after their step's action (the end of a survival dig).
+    let mut later: Vec<(usize, String)> = Vec::new();
     for (i, step) in steps.iter().enumerate() {
         let start = LEAD_TICKS + i * STEP_TICKS;
         while moves.len() < start {
@@ -356,9 +469,42 @@ fn render(steps: &[FuzzStep], header: &[String], noisy: &[String]) -> String {
                 "!place {} {} {} {face} {} {} {}",
                 pos[0], pos[1], pos[2], cursor[0], cursor[1], cursor[2]
             )),
-            FuzzStep::Dig { pos, face } => {
+            FuzzStep::Dig { pos, face, end } => {
+                let ending = match end {
+                    DigEnd::None => None,
+                    DigEnd::Finish => Some((DIG_FINISH_TICKS, DIG_STATUS_FINISH)),
+                    DigEnd::Abort => Some((DIG_ABORT_TICKS, DIG_STATUS_ABORT)),
+                };
+                if let Some((ticks, status)) = ending {
+                    later.push((
+                        at + ticks * TICK_MS,
+                        format!("!dig {} {} {} {face} {status}", pos[0], pos[1], pos[2]),
+                    ));
+                }
                 Some(format!("!dig {} {} {} {face}", pos[0], pos[1], pos[2]))
             }
+            FuzzStep::Use => Some("!use".to_owned()),
+            FuzzStep::Drop { stack } => Some(format!(
+                "!dig 0 0 0 0 {}",
+                if *stack {
+                    DIG_STATUS_DROP_STACK
+                } else {
+                    DIG_STATUS_DROP_ITEM
+                }
+            )),
+            FuzzStep::Gamemode(mode) => Some(format!("/gamemode {mode}")),
+            FuzzStep::Summon { kind, pos } => Some(format!(
+                "/summon {kind} {} {} {}",
+                f64::from(pos[0]) + 0.5,
+                pos[1] + 1,
+                f64::from(pos[2]) + 0.5
+            )),
+            FuzzStep::Attack { back } => Some(format!("!attack #{back}")),
+            FuzzStep::Interact { back, at: None } => Some(format!("!interact #{back}")),
+            FuzzStep::Interact {
+                back,
+                at: Some([x, y, z]),
+            } => Some(format!("!interactat #{back} {x} {y} {z}")),
             FuzzStep::Click {
                 window,
                 slot,
@@ -376,6 +522,9 @@ fn render(steps: &[FuzzStep], header: &[String], noisy: &[String]) -> String {
         };
         if let Some(line) = line {
             chat.push(format!("@{at} {line}"));
+        }
+        for (ms, line) in later.drain(..) {
+            chat.push(format!("@{ms} {line}"));
         }
     }
     let end = LEAD_TICKS + steps.len() * STEP_TICKS;
@@ -395,7 +544,7 @@ fn render(steps: &[FuzzStep], header: &[String], noisy: &[String]) -> String {
     }
     let _ = writeln!(
         t,
-        "description = \"Fuzz case: {} random creative steps (cargo xtask parity fuzz)\"",
+        "description = \"Fuzz case: {} random steps (cargo xtask parity fuzz)\"",
         steps.len()
     );
     t.push_str(
@@ -413,6 +562,9 @@ properties = { online-mode = "false", level-type = "FLAT", generate-structures =
         t,
         "\"{PLAYER_FILE}\" = \"fixtures/playerdata/notch_creative.dat\""
     );
+    // An operator (by the offline UUID: `op Notch` would look the name up at Mojang), to
+    // switch game modes and summon entities.
+    t.push_str("\"ops.json\" = \"fixtures/ops_notch_offline.json\"\n");
     t.push_str(
         r#"
 # Random block ticks change grass at random; drops fly off with unseeded motion.
@@ -451,7 +603,11 @@ name = "Notch"
     }
     t.push_str("]\n\n[observe]\nlog = true\n");
     let _ = writeln!(t, "files = [\"{PLAYER_FILE}\"]");
-    let _ = writeln!(t, "entities = [[{}, {}]]", CHUNK[0], CHUNK[1]);
+    let chunks: Vec<String> = CHUNKS
+        .iter()
+        .map(|c| format!("[{}, {}]", c[0], c[1]))
+        .collect();
+    let _ = writeln!(t, "entities = [{}]", chunks.join(", "));
     let area = observed_area();
     for key in ["blocks", "light", "tile_entities"] {
         let _ = writeln!(t, "{key} = [{area}]");
@@ -465,11 +621,16 @@ name = "Notch"
         t,
         "    # A flying player's motion keeps changing with each server tick until it logs out.\n    \"file:{PLAYER_FILE}.Motion\","
     );
-    let entities = format!("entities.{},{}[*]", CHUNK[0], CHUNK[1]);
-    let _ = writeln!(
-        t,
-        "    # Tossed items: a random yaw (Math.random) and spread (the player's random).\n    \"{entities}.Motion\",\n    \"{entities}.Rotation\","
+    let entities: Vec<String> = CHUNKS
+        .iter()
+        .map(|c| format!("entities.{},{}[*]", c[0], c[1]))
+        .collect();
+    t.push_str(
+        "    # Tossed and dropped items: a random yaw (Math.random) and spread (the\n    # dropping entity's random).\n",
     );
+    for e in &entities {
+        let _ = writeln!(t, "    \"{e}.Motion\",\n    \"{e}.Rotation\",");
+    }
     if !noisy.is_empty() {
         t.push_str(
             "    # Two vanilla runs of this case disagreed here (unseeded randoms or timing).\n",
@@ -482,9 +643,11 @@ name = "Notch"
     // How far a tossed item's random spread carries it, and the tick or two the bot's
     // clock may drift against the server's between its drop and the save.
     t.push_str("\n[observe.tolerance]\n");
-    let _ = writeln!(t, "\"{entities}.Pos\" = 1.0");
-    let _ = writeln!(t, "\"{entities}.Age\" = 2");
-    let _ = writeln!(t, "\"{entities}.PickupDelay\" = 2");
+    for e in &entities {
+        let _ = writeln!(t, "\"{e}.Pos\" = 1.0");
+        let _ = writeln!(t, "\"{e}.Age\" = 2");
+        let _ = writeln!(t, "\"{e}.PickupDelay\" = 2");
+    }
     t
 }
 
@@ -891,8 +1054,13 @@ mod tests {
                 panic!("no play step");
             };
             assert_eq!(moves.len(), LEAD_TICKS + steps.len() * STEP_TICKS);
-            // One line per step at most, and the closing of the window after the last.
-            assert!(chat.len() <= steps.len() + 1);
+            // One line per step at most (two for a survival dig), and the closing of the
+            // window after the last.
+            let digs = steps
+                .iter()
+                .filter(|s| matches!(s, FuzzStep::Dig { end, .. } if *end != DigEnd::None))
+                .count();
+            assert!(chat.len() <= steps.len() + digs + 1);
         }
     }
 
@@ -904,6 +1072,33 @@ mod tests {
             if let FuzzStep::Walk { to } = s {
                 assert!((WALK_X.0..=WALK_X.1).contains(&to[0]));
                 assert!((WALK_Z.0..=WALK_Z.1).contains(&to[2]));
+            }
+        }
+    }
+
+    #[test]
+    fn survival_players_stay_grounded_and_dig_slowly() {
+        const { assert!(ACTION_TICK + DIG_FINISH_TICKS < STEP_TICKS + ACTION_TICK) };
+        for seed in 0..20 {
+            let mut survival = false;
+            let mut y = ORIGIN[1];
+            for s in generate(seed, 200) {
+                match s {
+                    FuzzStep::Gamemode(mode) => {
+                        survival = mode == 0;
+                        if survival {
+                            assert_eq!(y, GROUND_Y, "seed {seed}: switched in the air");
+                        }
+                    }
+                    FuzzStep::Walk { to } => {
+                        y = to[1];
+                        if survival {
+                            assert!(SURVIVAL_WALK_Y.contains(&y));
+                        }
+                    }
+                    FuzzStep::Dig { end, .. } => assert_eq!(end == DigEnd::None, !survival),
+                    _ => {}
+                }
             }
         }
     }

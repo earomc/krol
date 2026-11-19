@@ -17,9 +17,15 @@ cargo xtask parity fuzz [--seed N] [--steps M] [--cases K] [--protocol 5] [--shr
 ```
 
 Generates random bot sessions and runs each on live vanilla (`KROL_VANILLA_JAR`) and krol at
-once. A case is a creative player in the flat fixture world taking `M` steps (default 20):
-walking, looking, setting hotbar slots, selecting one, placing or using, digging, clicking
-in window 0 or 1, closing it, sneaking. Each step gets a second, and actions are sent while
+once. A case is a player (an operator, starting in creative) in the flat fixture world
+taking `M` steps (default 20): walking, looking, setting hotbar slots, selecting one,
+placing or using on a block, using in the air (golden apples, milk, armor), digging,
+dropping items, clicking in window 0 or 1, closing it, sneaking, switching between
+creative and survival (`/gamemode`), summoning armor stands and minecarts, and attacking
+or interacting with one of the three most recently spawned entities (the bot's `#<n>`
+targets). In survival, walks stay on the ground or go up 4 blocks to fall back down, and
+digs finish 18 ticks after they start (no block mined by hand needs within a tick of
+that) or are aborted after 5. Each step gets a second, and actions are sent while
 the player stands still, following the race-free rules below. After the last step the
 window is closed, so a stack left on the cursor drops before logout. Each case observes the bot's
 packets, every block, light level and tile entity in the area, the chunk's saved entities,
