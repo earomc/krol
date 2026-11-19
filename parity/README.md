@@ -25,7 +25,9 @@ creative and survival (`/gamemode`), summoning armor stands and minecarts, and a
 or interacting with one of the three most recently spawned entities (the bot's `#<n>`
 targets). In survival, walks stay on the ground or go up 4 blocks to fall back down, and
 digs finish 18 ticks after they start (no block mined by hand needs within a tick of
-that) or are aborted after 5. Each step gets a second, and actions are sent while
+that) or are aborted after 5. A walk is a single position packet (so a walk into a block gets exactly one
+correction, however the bot's packets interleave with the server's ticks). Each step
+gets a second, and actions are sent while
 the player stands still, following the race-free rules below. After the last step the
 window is closed, so a stack left on the cursor drops before logout. Each case observes the bot's
 packets, every block, light level and tile entity in the area, the chunk's saved entities,

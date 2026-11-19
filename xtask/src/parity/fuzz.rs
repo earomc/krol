@@ -77,10 +77,6 @@ const DIG_STATUS_DROP_ITEM: i8 = 4;
 const ENTITY_BACK: u64 = 3;
 /// Entities the bot summons with `/summon`.
 const SUMMONED: &[&str] = &["ArmorStand", "MinecartRideable"];
-/// Longest walk, in ticks; a walk ends before the action tick of its step.
-const WALK_TICKS: usize = 8;
-/// Fastest walk, blocks per tick (a sprinting player covers about 0.28).
-const WALK_SPEED: f64 = 0.2;
 /// Seconds the session runs on after the last step.
 const TAIL_SECONDS: u64 = 3;
 /// Milliseconds per tick.
@@ -427,34 +423,24 @@ fn target(rng: &mut Rng) -> [i32; 3] {
 /// `noisy` paths (where two vanilla runs disagreed) are ignored.
 fn render(steps: &[FuzzStep], header: &[String], noisy: &[String]) -> String {
     let mut chat = Vec::new();
-    let mut moves: Vec<[f64; 3]> = Vec::new();
-    let mut here = ORIGIN;
+    // A position for a walk's tick; `None` stands still (a Player packet without a
+    // position, so a corrected position stays corrected).
+    let mut moves: Vec<Option<[f64; 3]>> = Vec::new();
     let mut action_number = 0i16;
     // Lines timed after their step's action (the end of a survival dig).
     let mut later: Vec<(usize, String)> = Vec::new();
     for (i, step) in steps.iter().enumerate() {
         let start = LEAD_TICKS + i * STEP_TICKS;
         while moves.len() < start {
-            moves.push(here);
+            moves.push(None);
         }
         let at = (start + ACTION_TICK) * TICK_MS;
         let line = match step {
+            // One packet: a walk the server rejects (into a block) then gets exactly one
+            // correction. Several packets would race the correction, since the moves
+            // already on their way when it is sent hit the block again.
             FuzzStep::Walk { to } => {
-                let dist = ((to[0] - here[0]).powi(2)
-                    + (to[1] - here[1]).powi(2)
-                    + (to[2] - here[2]).powi(2))
-                .sqrt();
-                let ticks = ((dist / WALK_SPEED).ceil() as usize).clamp(1, WALK_TICKS);
-                let from = here;
-                for t in 1..=ticks {
-                    let f = t as f64 / ticks as f64;
-                    moves.push([
-                        from[0] + (to[0] - from[0]) * f,
-                        from[1] + (to[1] - from[1]) * f,
-                        from[2] + (to[2] - from[2]) * f,
-                    ]);
-                }
-                here = *to;
+                moves.push(Some(*to));
                 None
             }
             FuzzStep::Look { yaw, pitch } => Some(format!("!look {yaw} {pitch}")),
@@ -534,7 +520,7 @@ fn render(steps: &[FuzzStep], header: &[String], noisy: &[String]) -> String {
     // that).
     chat.push(format!("@{} !close 0", (end + ACTION_TICK) * TICK_MS));
     while moves.len() < end {
-        moves.push(here);
+        moves.push(None);
     }
     let seconds = (end * TICK_MS).div_ceil(1000) as u64 + TAIL_SECONDS;
 
@@ -593,13 +579,18 @@ name = "Notch"
     }
     t.push_str("]\nmoves = [\n");
     for m in &moves {
-        let _ = writeln!(
-            t,
-            "    [{}, {}, {}],",
-            num(m[0] - ORIGIN[0]),
-            num(m[1] - ORIGIN[1]),
-            num(m[2] - ORIGIN[2])
-        );
+        match m {
+            Some(m) => {
+                let _ = writeln!(
+                    t,
+                    "    [{}, {}, {}],",
+                    num(m[0] - ORIGIN[0]),
+                    num(m[1] - ORIGIN[1]),
+                    num(m[2] - ORIGIN[2])
+                );
+            }
+            None => t.push_str("    [1.0],\n"),
+        }
     }
     t.push_str("]\n\n[observe]\nlog = true\n");
     let _ = writeln!(t, "files = [\"{PLAYER_FILE}\"]");
@@ -626,10 +617,13 @@ name = "Notch"
         .map(|c| format!("entities.{},{}[*]", c[0], c[1]))
         .collect();
     t.push_str(
-        "    # Tossed and dropped items: a random yaw (Math.random) and spread (the\n    # dropping entity's random).\n",
+        "    # Tossed and dropped items: a random yaw (Math.random) and spread (the\n    # dropping entity's random). Placed armor stands: a random pose (the world's random).\n",
     );
     for e in &entities {
-        let _ = writeln!(t, "    \"{e}.Motion\",\n    \"{e}.Rotation\",");
+        let _ = writeln!(
+            t,
+            "    \"{e}.Motion\",\n    \"{e}.Rotation\",\n    \"{e}.Pose\","
+        );
     }
     if !noisy.is_empty() {
         t.push_str(
@@ -641,12 +635,15 @@ name = "Notch"
     }
     t.push_str("]\n");
     // How far a tossed item's random spread carries it, and the tick or two the bot's
-    // clock may drift against the server's between its drop and the save.
+    // clock may drift against the server's between its drop and the save (an item
+    // dropped right before it may have updated once more: Fire, FallDistance).
     t.push_str("\n[observe.tolerance]\n");
     for e in &entities {
         let _ = writeln!(t, "\"{e}.Pos\" = 1.0");
         let _ = writeln!(t, "\"{e}.Age\" = 2");
         let _ = writeln!(t, "\"{e}.PickupDelay\" = 2");
+        let _ = writeln!(t, "\"{e}.Fire\" = 1");
+        let _ = writeln!(t, "\"{e}.FallDistance\" = 1.0");
     }
     t
 }
@@ -1065,13 +1062,19 @@ mod tests {
     }
 
     #[test]
-    fn walks_stay_in_bounds_and_end_before_the_action_tick() {
-        const { assert!(WALK_TICKS < ACTION_TICK) };
+    fn walks_stay_in_bounds_and_within_one_packet() {
+        /// The longest walk, squared: one position packet may move up to 10 blocks before
+        /// "moved too quickly" (the walk area's diagonal with a 4 block drop is about 8.2).
+        const MAX_WALK_SQ: f64 = 100.0;
         let steps = generate(3, 200);
+        let mut here = ORIGIN;
         for s in &steps {
             if let FuzzStep::Walk { to } = s {
                 assert!((WALK_X.0..=WALK_X.1).contains(&to[0]));
                 assert!((WALK_Z.0..=WALK_Z.1).contains(&to[2]));
+                let d: f64 = (0..3).map(|k| (to[k] - here[k]).powi(2)).sum();
+                assert!(d < MAX_WALK_SQ);
+                here = *to;
             }
         }
     }

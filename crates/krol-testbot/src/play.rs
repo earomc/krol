@@ -72,7 +72,7 @@ pub struct PlayObservation {
 /// Optional
 /// `moves` (offsets `[dx, dy, dz]` from the first server-given position, optionally
 /// `[dx, dy, dz, on_ground]` with on_ground 0 or 1, default 1; `[]` sends nothing that
-/// tick) replace the idle Player
+/// tick; `[on_ground]` sends a Player packet without a position) replace the idle Player
 /// packet, one Position packet per tick, after which the bot idles again.
 ///
 /// # Errors
@@ -192,6 +192,14 @@ pub async fn play_session(
                     match (origin, moves.get(next_move)) {
                         // An empty move: send nothing this tick.
                         (Some(_), Some(m)) if m.is_empty() => next_move += 1,
+                        // `[on_ground]`: stand still, sending only a Player packet, so a
+                        // position the server corrected stays corrected.
+                        (Some(_), Some(m)) if m.len() == 1 => {
+                            next_move += 1;
+                            send_play(&mut conn, v5_eid, &ServerboundPlay::Player {
+                                on_ground: m[0] != 0.0,
+                            }).await?;
+                        }
                         (Some((ox, oy, oz)), Some(m)) => {
                             next_move += 1;
                             let at = |k: usize| m.get(k).copied().unwrap_or(0.0);
