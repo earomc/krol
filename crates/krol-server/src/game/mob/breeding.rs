@@ -43,7 +43,8 @@ impl MobKind {
 impl Mob {
     /// `EntityAgeable.func_175501_a`: the age moves on by `seconds` (children stop at 0;
     /// a forced growth also adds to `ForcedAge`, which becomes the age once it is 0).
-    fn add_growth(&mut self, seconds: i32, forced: bool) {
+    /// Returns the move a growing child makes ([`Mob::set_age`]).
+    fn add_growth(&mut self, seconds: i32, forced: bool) -> Option<f64> {
         let old = self.age;
         let mut age = old.wrapping_add(seconds.wrapping_mul(20));
         if age > 0 {
@@ -51,14 +52,16 @@ impl Mob {
             age = 0;
         }
         let grown = age.wrapping_sub(old);
-        self.set_age(age);
+        let growth = self.set_age(age);
         if forced {
             // The green particles' counter only runs on clients.
             self.forced_age = self.forced_age.wrapping_add(grown);
         }
         if self.age == 0 {
-            self.set_age(self.forced_age);
+            // An adult stays adult-sized: no second growth.
+            let _ = self.set_age(self.forced_age);
         }
+        growth
     }
 }
 
@@ -144,7 +147,9 @@ impl Game {
             }
             if m.child() {
                 let seconds = ((-m.age / 20) as f32 * 0.1) as i32;
-                m.add_growth(seconds, true);
+                if let Some(d) = m.add_growth(seconds, true) {
+                    self.move_mob_by(id, (d, 0.0, d));
+                }
                 self.use_held(i);
                 return true;
             }
@@ -239,7 +244,9 @@ impl Game {
         let head = self.new_stand_head();
         let seed = self.new_mob_seed();
         let mut child = Mob::new(kind, pos, head, seed);
-        child.set_age(CHILD_AGE);
+        // The age comes before setLocationAndAngles, which centers the small box.
+        let _ = child.set_age(CHILD_AGE);
+        child.body.set_position(pos);
         child.base.yaw = 0.0;
         child.base.pitch = 0.0;
         if name.is_some() {

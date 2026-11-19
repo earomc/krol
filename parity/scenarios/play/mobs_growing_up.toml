@@ -1,0 +1,80 @@
+description = "Piglets growing up: the box grows on its lower corner and the pig moves back by the growth on x and z (Entity.setSize), clipped by a wall next to it, standing still (NoAI) and while wandering"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) and stands still. The glass pen of
+# play/mobs_ai (walls two blocks high at x = -478 and -466, z = -446 and -437) keeps the
+# pigs in the chunk. Each pig is summoned under its own `krolpin`, which pins its random
+# once. The first piglet stands in a 2x2 glass nook in the pen's corner with its box
+# 0.275 from the walls at x = -478 and z = -446, so moving back by 0.45 when it grows up
+# stops at both walls; the nook keeps the wandering pig from pushing it (its motion would
+# still change when the server stops). The second grows up in the open; the third
+# wanders and grows up on the way.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -446 -466 5 -446 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -437 -466 5 -437 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -445 -478 5 -438 glass"
+
+[[steps]]
+action = "console"
+command = "fill -466 4 -445 -466 5 -438 glass"
+
+[[steps]]
+action = "console"
+command = "fill -477 4 -443 -475 5 -443 glass"
+
+[[steps]]
+action = "console"
+command = "fill -475 4 -445 -475 5 -444 glass"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 22
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "krolpin 5 -- summon Pig -476.5 4 -444.5 {NoAI:1b,Age:-40}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "krolpin 6 -- summon Pig -471.5 4 -441.5 {NoAI:1b,Age:-60}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "krolpin 7 -- summon Pig -472.5 4 -439.5 {Age:-200}"
+wait_ms = 16000
+
+[observe]
+log = true
+entities = [[-30, -28]]

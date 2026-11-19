@@ -25,9 +25,8 @@ when an item is done or priorities change.
 1. **M5 mobs**: pigs run with AI, are fed, saddled and named, breed and are ridden
    (`game/mob.rs`, `game/mob/ai.rs`, `game/mob/breeding.rs`, `game/pathfinding.rs`,
    `game/riding.rs`), hatch from spawn eggs (`game/mob/spawn_egg.rs`) and get
-   `onInitialSpawn`'s follow range bonus. Next: leads, children
-   growing up (`Entity.setSize` keeps the box's corner, so the mob moves by the change
-   in width; also for piglets loaded from a chunk), pushing minecarts and boats, then
+   `onInitialSpawn`'s follow range bonus, and children grow up (`play/mobs_growing_up`).
+   Next: leads, pushing minecarts and boats, then
    the other mobs, kind by kind (each new navigator: swimming, climbing). Share the living code with armor
    stands (`game/armor_stand.rs` has its own copy). Scenarios summon one pig per
    `krolpin` (its random pinned once); `/execute` or `/entitydata` would allow several.
@@ -56,6 +55,9 @@ when an item is done or priorities change.
    end-of-session timing under load. Fuzz seed 122 (2026-11-19) saved a golden apple's
    effect `Duration` one tick shorter than vanilla and did not reproduce: effects tick
    with the player's movement packets, so the last packets before logout race the tick.
+   `play/spawn_eggs` replayed as 1.7 clients failed 2 of 6 runs on its own (2026-11-19;
+   sounds and metadata of the hatched pigs a few places off in the packet order) and
+   passed on the retry.
    Fuzz seed 127 was noisy because one vanilla run did not start (`started` differed).
 5. **Widen `parity fuzz`**: creative and survival play with armor stands, item frames
    and minecarts are fuzzed; keep running seeds, then add several players, console
@@ -514,7 +516,8 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `EntityLivingBase`: health, hurt time, hurt resistance, `attackEntityFrom`, armor, absorption, effects, attributes, air, death update, knockback | 🟡 | Knockback from attacking entities ✅ (explosions); combat tracker death messages ✅ for implemented sources |
 | `EntityLiving` (mobs: AI tasks, equipment, despawning, leashes) | 🟡 | `game/mob.rs`: spawn packets (the watcher's `HashMap` order, attributes changed by the constructor resent), fire, lava, the void, water, drowning, suffocation, the ambient sound on the mob's own random, hurt and death (status, sounds, knockback), loot and experience after a player's hit, equipment drops by drop chance, `/kill`, saving (`Equipment`, `DropChances`, `NoAI`, `Leash` kept, ...), animals removed with `spawn-animals=false`. Mobs with AI: `updateEntityActionState` (idle time and the despawn roll, goals, navigation, move/look/jump helpers), the body helper, jumping and swimming up, `moveEntityWithHeading` (ground, air, water with depth strider, lava, ladders), falls with damage and dust, farmland and slime landings, step and swim sounds, fire contact, the revenge target, pushing and being pushed by players and mobs. Name tags (`play/mobs_breed`). `play/mobs_ai`, `play/mobs_follow_parent`, `play/mobs_tempt`, `play/mobs_no_ai`, `play/mobs_animals_off`. `onInitialSpawn` (the follow range bonus) and saved attribute modifiers applied to the values and sent with the watched ones (`play/spawn_eggs`). Modifiers from effects, leads, picking up loot, effects, jump boost, the combat tracker, pushing minecarts and boats, projectiles and explosions hitting mobs ❌ |
 | `EntityHanging` | ✅ | See `EntityItemFrame`, `EntityPainting` |
-| `EntityCreature`, `EntityAgeable`, `EntityFlying` | ❌ | |
+| `EntityAgeable` | 🟡 | `game/mob.rs`: the age counting towards 0, children at half size, growing up (`Entity.setSize` keeps the box's lower corner, then the mob moves back by the growth; a child loaded from NBT keeps its off-centre box until it first moves; `play/mobs_growing_up`), feeding children (`play/mobs_breed`). Children of the other kinds ❌ with those kinds |
+| `EntityCreature`, `EntityFlying` | ❌ | |
 | `EntityTracker`, `EntityTrackerEntry` | 🟡 | All implemented entity kinds; ranges/intervals for missing kinds |
 | `EntityList` (ids, names, NBT creation, spawn eggs) | ❌ | |
 | `SharedMonsterAttributes`, `ai.attributes` | ✅ | Players |

@@ -19,8 +19,7 @@
 //! Players feed, saddle and name mobs, and animals in love breed ([`breeding`]). Spawn
 //! eggs hatch mobs on blocks and in liquids ([`spawn_egg`]).
 //!
-//! TODO(M5): `onInitialSpawn` of the other mob kinds than pigs, children growing up (the
-//! box moves by the change in width, like `Entity.setSize`), horses, leads, picking up
+//! TODO(M5): `onInitialSpawn` of the other mob kinds than pigs, horses, leads, picking up
 //! loot, status effects (`ActiveEffects` is kept as saved), jump boost, the combat
 //! tracker, pushing and being pushed by minecarts and boats, being hit by projectiles
 //! and explosions, arrows stuck in them, equipment changes.
@@ -687,8 +686,11 @@ impl Mob {
     }
 
     /// `EntityAgeable.setGrowingAge` (the metadata holds the sign; children are half
-    /// the size).
-    fn set_age(&mut self, age: i32) {
+    /// the size). The box changes size on its lower corner (`Entity.setSize`); a mob
+    /// that grew after its first update then moves back by the growth on both
+    /// horizontal axes, which this returns for the caller to do with
+    /// [`Game::move_mob_by`].
+    fn set_age(&mut self, age: i32) -> Option<f64> {
         let old = self.age.clamp(-1, 1);
         self.age = age;
         if age.clamp(-1, 1) != old {
@@ -696,8 +698,9 @@ impl Mob {
         }
         let (width, height) = self.kind.size();
         let scale = if self.child() { 0.5 } else { 1.0 };
-        self.body.width = width * scale;
-        self.body.height = height * scale;
+        let (width, height) = (width * scale, height * scale);
+        let before = self.body.set_size(width, height);
+        (width > before && !self.first_update).then(|| f64::from(before - width))
     }
 
     fn set_saddled(&mut self, saddled: bool) {
@@ -1033,13 +1036,20 @@ impl Game {
         };
         // EntityAgeable: the age counts towards 0.
         if m.kind.ageable() {
+            let mut growth = None;
             if m.age < 0 {
                 let age = m.age + 1;
-                m.set_age(age);
+                growth = m.set_age(age);
             } else if m.age > 0 {
                 let age = m.age - 1;
-                m.set_age(age);
+                growth = m.set_age(age);
             }
+            if let Some(d) = growth {
+                self.move_mob_by(id, (d, 0.0, d));
+            }
+            let Some(m) = self.mobs.get_mut(&id) else {
+                return;
+            };
             // EntityAnimal: love ends for children and parents, and runs out.
             if m.age != 0 {
                 m.in_love = 0;
@@ -1202,12 +1212,20 @@ impl Game {
     /// steps, the fall (`EntityLivingBase.updateFallState`), the blocks touched, fire
     /// and water.
     fn move_mob(&mut self, id: i32) {
+        let Some(m) = self.mobs.get(&id) else {
+            return;
+        };
+        let v = m.body.motion;
+        self.move_mob_by(id, v);
+    }
+
+    /// `Entity.moveEntity` by `d` and what follows it, like [`Self::move_mob`].
+    pub(in crate::game) fn move_mob_by(&mut self, id: i32, d: (f64, f64, f64)) {
         let Some(m) = self.mobs.get_mut(&id) else {
             return;
         };
         let mut body = m.body.clone();
-        let v = body.motion;
-        let outcome = physics::move_entity(&mut self.level.overworld, &mut body, v.0, v.1, v.2);
+        let outcome = physics::move_entity(&mut self.level.overworld, &mut body, d.0, d.1, d.2);
         let Some(m) = self.mobs.get_mut(&id) else {
             return;
         };
@@ -2027,6 +2045,25 @@ mod tests {
         assert_eq!(order, [0, 16, 1, 2, 3, 4, 6, 7, 8, 9, 12, 15]);
         assert!(pig.metadata_changed);
         assert_eq!(pig.properties()[0].0, MOVEMENT_SPEED);
+    }
+
+    #[test]
+    fn growing_up_keeps_the_box_corner_and_moves_back() {
+        let mut pig = Mob::new(MobKind::Pig, (0.5, 64.0, 0.5), 0.0, 1);
+        // Loaded as a child: the box shrinks on its corner, the position stays.
+        assert_eq!(pig.set_age(-1), None);
+        let bb = pig.body.bb();
+        let corner = 0.5 - f64::from(0.45f32);
+        assert_eq!(bb.min, [corner, 64.0, corner]);
+        assert_eq!(bb.max[0], corner + f64::from(0.45f32));
+        assert_eq!(pig.body.pos, (0.5, 64.0, 0.5));
+        // After its first update, growing up asks for a move back by the growth.
+        pig.first_update = false;
+        assert_eq!(pig.set_age(0), Some(f64::from(0.45f32 - 0.9f32)));
+        assert_eq!(pig.body.bb().min, [corner, 64.0, corner]);
+        assert_eq!(pig.body.width, 0.9);
+        // Shrinking never moves.
+        assert_eq!(pig.set_age(-5), None);
     }
 
     #[test]

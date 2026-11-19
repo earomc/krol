@@ -423,7 +423,7 @@ impl Game {
             b.base.yaw = rotation.0;
             b.base.pitch = rotation.1;
         } else if let Some(m) = self.mobs.get_mut(&id) {
-            m.body.pos = pos;
+            m.body.set_position(pos);
             m.base.yaw = rotation.0;
             m.base.pitch = rotation.1;
         }

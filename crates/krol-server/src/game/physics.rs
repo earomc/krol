@@ -245,11 +245,7 @@ pub fn push_out_of_blocks(
 /// nothing else happens.
 pub fn move_no_clip(body: &mut Body, dx: f64, dy: f64, dz: f64) {
     let bb = body.bb().offset([dx, dy, dz]);
-    body.pos = (
-        (bb.min[0] + bb.max[0]) / 2.0,
-        bb.min[1],
-        (bb.min[2] + bb.max[2]) / 2.0,
-    );
+    body.follow_box(&bb);
 }
 
 /// A moving entity's physical state (the fields of vanilla `Entity` used by
@@ -286,6 +282,10 @@ pub struct Body {
     /// The motion was changed from outside (`velocityChanged`, `setBeenAttacked`): the
     /// tracker sends it at its next update.
     pub velocity_changed: bool,
+    /// A box that no longer sits centered on [`pos`](Self::pos): `Entity.setSize`
+    /// keeps the box's lower corner when an entity changes size, and the position only
+    /// follows the box at the next move. `None` while the box is the one at `pos`.
+    pub resized_box: Option<Aabb>,
 }
 
 impl Body {
@@ -306,6 +306,7 @@ impl Body {
             in_water: false,
             in_web: false,
             velocity_changed: false,
+            resized_box: None,
         }
     }
 
@@ -323,7 +324,44 @@ impl Body {
 
     /// The current bounding box.
     pub fn bb(&self) -> Aabb {
-        Aabb::at(self.pos, self.width, self.height)
+        self.resized_box
+            .unwrap_or_else(|| Aabb::at(self.pos, self.width, self.height))
+    }
+
+    /// `Entity.setPosition`: the box is the one at `pos` again.
+    pub fn set_position(&mut self, pos: (f64, f64, f64)) {
+        self.pos = pos;
+        self.resized_box = None;
+    }
+
+    /// `Entity.setSize`: a new width and height on the same lower box corner. Returns
+    /// the width before.
+    pub fn set_size(&mut self, width: f32, height: f32) -> f32 {
+        let old = self.width;
+        if width != self.width || height != self.height {
+            let min = self.bb().min;
+            self.width = width;
+            self.height = height;
+            self.resized_box = Some(Aabb::new(
+                min,
+                [
+                    min[0] + f64::from(width),
+                    min[1] + f64::from(height),
+                    min[2] + f64::from(width),
+                ],
+            ));
+        }
+        old
+    }
+
+    /// `resetPositionToBB`: the position follows the box `bb` (centered on it).
+    fn follow_box(&mut self, bb: &Aabb) {
+        self.pos = (
+            (bb.min[0] + bb.max[0]) / 2.0,
+            bb.min[1],
+            (bb.min[2] + bb.max[2]) / 2.0,
+        );
+        self.resized_box = None;
     }
 }
 
@@ -539,11 +577,7 @@ fn move_entity_inner(
         }
     }
 
-    body.pos = (
-        (bb.min[0] + bb.max[0]) / 2.0,
-        bb.min[1],
-        (bb.min[2] + bb.max[2]) / 2.0,
-    );
+    body.follow_box(&bb);
     body.collided_horizontally = x0 != x || z0 != z;
     body.collided_vertically = y0 != y;
     body.on_ground = body.collided_vertically && y0 < 0.0;
