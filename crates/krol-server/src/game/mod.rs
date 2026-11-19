@@ -21,6 +21,7 @@ mod brewing;
 mod buckets;
 mod cauldron;
 mod chest;
+mod chunk_unload;
 mod combat;
 pub mod commands;
 mod container;
@@ -310,12 +311,14 @@ struct Game {
     stopping: bool,
     /// `usercache.json`.
     user_cache: crate::usercache::UserCache,
-    /// Players disconnected by the server, removed (with logs) in the next network tick.
+    /// Players disconnected by the server, removed (with logs) in the next network phase.
     pending_removals: Vec<(u64, Component)>,
     /// Players whose client closed the connection, removed in this tick's network phase
     /// (vanilla `NetworkSystem.networkTick` notices closed channels after the worlds
     /// ticked).
     closed_connections: Vec<(u64, Component)>,
+    /// Ticks the world has had no players (`WorldServer.updateEntityTick`).
+    idle_ticks: u32,
     /// Logins waiting for the same profile's older session to leave (vanilla's
     /// `LoginState.DELAY_ACCEPT`), oldest first.
     delayed_joins: Vec<DelayedJoin>,
@@ -454,6 +457,7 @@ pub fn start(
         stopping: false,
         pending_removals: Vec::new(),
         closed_connections: Vec::new(),
+        idle_ticks: 0,
         delayed_joins: Vec::new(),
         tracker: Default::default(),
         items: Default::default(),
@@ -618,17 +622,11 @@ impl Game {
                 Err(TryRecvError::Empty) => break,
             }
         }
-        // Vanilla NetworkSystem.networkTick: connections closed by the server are
-        // handled after the packets.
-        for (conn_id, reason) in std::mem::take(&mut self.pending_removals) {
-            if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
-                self.remove_player(i, &reason);
-            }
-        }
-
         self.refresh_status();
         self.tick_weather();
         self.check_all_asleep();
+        // WorldServer.tick, "chunkSource".
+        self.unload_queued_chunks();
         self.update_skylight_subtracted();
         self.tick_time();
         self.tick_scheduled();
@@ -664,6 +662,20 @@ impl Game {
         order.extend(self.boats.keys().copied());
         order.extend(self.mobs.keys().copied());
         let mut newest = order.iter().copied().max().unwrap_or(i32::MIN);
+        // WorldServer.updateEntities: a world without players stops updating entities
+        // and tile entities after a while.
+        let idle = if self.players.is_empty() {
+            let idle = self.idle_ticks >= chunk_unload::IDLE_UPDATE_TICKS;
+            self.idle_ticks = self.idle_ticks.saturating_add(1);
+            idle
+        } else {
+            self.idle_ticks = 0;
+            false
+        };
+        if idle {
+            order.clear();
+            newest = i32::MAX;
+        }
         // A respawned player keeps its id but joined the list last; at equal places it
         // came before entities spawned after it.
         let players: std::collections::HashMap<i32, i32> = self
@@ -700,6 +712,14 @@ impl Game {
             }
             let id = order[next];
             next += 1;
+            // updateEntityWithOptionalForce: an entity whose surroundings are not all
+            // loaded skips its update; a dead one is still removed.
+            if let Some(pos) = self.entity_position(id)
+                && !self.entity_dead(id)
+                && !self.entity_area_loaded(pos)
+            {
+                continue;
+            }
             if self.items.contains_key(&id) {
                 self.update_item(id);
                 continue;
@@ -782,12 +802,15 @@ impl Game {
             }
         }
         // World.updateEntities: then the tile entities.
-        self.tick_chests();
-        self.tick_tile_entities();
-        self.tick_moving();
+        if !idle {
+            self.tick_chests();
+            self.tick_tile_entities();
+            self.tick_moving();
+        }
         self.update_tracked_entities();
         // NetworkSystem.networkTick: closed connections leave, and waiting logins are
         // older connections than the ones finishing their login this tick.
+        self.remove_kicked();
         self.remove_closed_connections();
         self.accept_delayed_joins();
         for event in late {
@@ -1292,6 +1315,18 @@ impl Game {
 
     /// Vanilla `NetHandlerLoginServer.update` in `DELAY_ACCEPT`: joins once no player
     /// with the profile's UUID is left.
+    /// `NetworkManager.checkDisconnected` in the network phase for connections the
+    /// server closed: `kickPlayerFromServer` closes the channel once the disconnect
+    /// packet is out, so a kick during this tick's packets is noticed now, one from the
+    /// network phase itself or a command in the next tick.
+    fn remove_kicked(&mut self) {
+        for (conn_id, reason) in std::mem::take(&mut self.pending_removals) {
+            if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
+                self.remove_player(i, &reason);
+            }
+        }
+    }
+
     /// `NetworkManager.checkDisconnected` for connections the client closed.
     fn remove_closed_connections(&mut self) {
         for (conn_id, reason) in std::mem::take(&mut self.closed_connections) {
@@ -1567,7 +1602,7 @@ impl Game {
         let player = &mut self.players[new_index];
         player.start_watching(radius);
         for (x, z) in self.players[new_index].take_new_watches() {
-            self.level.overworld.chunk(x, z);
+            self.level.overworld.load_watched(x, z);
         }
         let player = &mut self.players[new_index];
         let (pos, rot) = (player.pos, player.rotation);
@@ -2739,6 +2774,8 @@ impl Game {
         self.close_window(i);
         // World.removeEntity: viewers destroy the player entity.
         self.untrack_player(i);
+        // PlayerManager.removePlayer: chunks nobody else watches are dropped.
+        self.stop_watching_all(i);
         let player = self.players.remove(i);
         // World.removeEntity: the others may all be asleep now.
         self.update_sleeping_flag();

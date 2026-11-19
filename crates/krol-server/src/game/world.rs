@@ -130,8 +130,22 @@ pub struct World {
     /// Chunks loaded with saved entities the game has not created yet, in load order.
     loaded_entities: Vec<(i32, i32)>,
     chunks: HashMap<(i32, i32), LoadedChunk>,
+    /// The loaded chunks in the order they were loaded (`ChunkProviderServer.loadedChunks`).
+    load_order: Vec<(i32, i32)>,
+    /// Chunks waiting to be unloaded (`ChunkProviderServer.droppedChunksSet`, keyed by
+    /// `ChunkCoordIntPair.chunkXZ2Int`).
+    dropped: krol_java::JavaConcurrentLongSet,
     regions: HashMap<(i32, i32), RegionFile>,
 }
+
+/// `ChunkCoordIntPair.chunkXZ2Int`.
+fn chunk_key(cx: i32, cz: i32) -> i64 {
+    i64::from(cx as u32) | i64::from(cz as u32) << 32
+}
+
+/// Half the side of the square of chunks kept around the spawn point
+/// (`World.isSpawnChunk`, measured from the chunk's center).
+const SPAWN_CHUNK_RANGE: i32 = 128;
 
 #[derive(Debug)]
 struct LoadedChunk {
@@ -164,6 +178,8 @@ impl World {
             dir,
             has_sky: dimension == 0,
             chunks: HashMap::new(),
+            load_order: Vec::new(),
+            dropped: Default::default(),
             regions: HashMap::new(),
             pending_changes: HashMap::new(),
             pending_order: Vec::new(),
@@ -288,6 +304,9 @@ impl World {
                     }
                 });
             let from_disk = loaded.is_some();
+            // loadChunk: a chunk loaded again is no longer waiting to unload.
+            self.dropped.remove(chunk_key(cx, cz));
+            self.load_order.push((cx, cz));
             let mut chunk = loaded.unwrap_or_else(|| Chunk::empty(cx, cz));
             sort_tile_entities(&mut chunk.tile_entities);
             let mut random_counts = [0u16; 16];
@@ -644,6 +663,78 @@ impl World {
     /// Number of loaded chunks.
     pub fn loaded_chunks(&self) -> usize {
         self.chunks.len()
+    }
+
+    /// The loaded chunks in load order (`ChunkProviderServer.func_152380_a`).
+    pub fn loaded_in_order(&self) -> Vec<(i32, i32)> {
+        self.load_order.clone()
+    }
+
+    /// `ChunkProviderServer.dropChunk`: queues the chunk to unload, except, in a
+    /// dimension players respawn in, a chunk within 128 blocks of the spawn point.
+    pub fn drop_chunk(&mut self, cx: i32, cz: i32, spawn: (i32, i32)) {
+        // WorldProvider.canRespawnHere: false only for the nether and the end.
+        if self.dimension == 0 {
+            let dx = cx * 16 + 8 - spawn.0;
+            let dz = cz * 16 + 8 - spawn.1;
+            let range = -SPAWN_CHUNK_RANGE..=SPAWN_CHUNK_RANGE;
+            if range.contains(&dx) && range.contains(&dz) {
+                return;
+            }
+        }
+        self.dropped.insert(chunk_key(cx, cz));
+    }
+
+    /// `ChunkProviderServer.loadChunk` for a chunk players start watching: it loads and
+    /// is no longer waiting to unload.
+    pub fn load_watched(&mut self, cx: i32, cz: i32) {
+        self.dropped.remove(chunk_key(cx, cz));
+        self.chunk(cx, cz);
+    }
+
+    /// Takes the next chunk to unload (the first of `droppedChunksSet`).
+    pub fn next_dropped(&mut self) -> Option<(i32, i32)> {
+        let key = self.dropped.pop_first()?;
+        Some((key as i32, (key >> 32) as i32))
+    }
+
+    /// `ChunkProviderServer.unloadQueuedChunks` for one loaded chunk, after the game
+    /// took out its entities (`entities` is their saved list): its tile entities leave
+    /// the world's lists (`Chunk.onChunkUnload`), it is saved (`saveChunkData`, whether
+    /// modified or not) and forgotten. Its scheduled ticks are saved but stay
+    /// scheduled; they are dropped when due in an unloaded chunk.
+    pub fn unload_chunk(&mut self, cx: i32, cz: i32, entities: List, world_time: i64) {
+        let Some(mut c) = self.chunks.remove(&(cx, cz)) else {
+            return;
+        };
+        self.load_order.retain(|&k| k != (cx, cz));
+        let in_chunk = |p: &(i32, i32, i32)| (p.0 >> 4, p.2 >> 4) == (cx, cz);
+        self.tickables.retain(|p| !in_chunk(p));
+        self.moving.retain(|p| !in_chunk(p));
+        self.ender_chests.retain(|p, _| !in_chunk(p));
+        // TODO(M6): vanilla generated the chunks krol fills with air; save those only
+        // when something changed in them, as `save_chunks` does.
+        if !c.from_disk && !c.modified && entities.is_empty() {
+            return;
+        }
+        c.chunk.tile_ticks = self.scheduler.chunk_ticks(cx, cz, world_time);
+        c.chunk.entities = entities;
+        let root = c.chunk.to_nbt(world_time);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as u32);
+        if let Some(region) = self.region(cx, cz)
+            && let Err(e) = region.write_chunk(cx & 31, cz & 31, &root, now)
+        {
+            error!("Failed to save chunk ({cx}, {cz}): {e}");
+        }
+    }
+
+    /// Writes buffered region data to disk.
+    pub fn flush_regions(&mut self) {
+        for region in self.regions.values_mut() {
+            let _ = region.flush();
+        }
     }
 
     /// Whether chunks with saved entities were loaded since the last

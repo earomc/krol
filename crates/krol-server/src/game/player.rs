@@ -251,6 +251,21 @@ impl Player {
         std::mem::take(&mut self.new_watches)
     }
 
+    /// The watched chunks in the order `PlayerManager.removePlayer` visits them: the
+    /// square around the managed position, x outer, z inner.
+    pub fn watched_in_order(&self, radius: i32) -> Vec<(i32, i32)> {
+        let (cx, cz) = Self::managed_chunk(self.managed_pos.0, self.managed_pos.1);
+        let mut out = Vec::new();
+        for x in cx - radius..=cx + radius {
+            for z in cz - radius..=cz + radius {
+                if self.watching.contains(&(x, z)) {
+                    out.push((x, z));
+                }
+            }
+        }
+        out
+    }
+
     /// Vanilla `PlayerManager.addPlayer`: watch every chunk within `radius`.
     pub fn start_watching(&mut self, radius: i32) {
         let (cx, cz) = Self::managed_chunk(self.pos.0, self.pos.2);

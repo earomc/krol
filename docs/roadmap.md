@@ -49,6 +49,11 @@ when an item is done or priorities change.
    the tracker's beat). `play/splash_potions` replayed as 1.7 clients failed once in a
    parallel full run (2026-11-19: the other player's `destroy_entities` for the potion
    came before the splash's metadata and health update) and passed alone.
+   In the full run after chunk unloading (2026-11-19), `play/boats` (krol's player
+   picked up the broken boat's drop before the session ended: sound, collect, set_slot,
+   destroy) and `play/mobs_riding` (a carrot-on-a-stick `set_slot` before the latency
+   update) failed in parallel and passed alone, 10 and 16 times in a row: both are
+   end-of-session timing under load.
 5. **Widen `parity fuzz`**: run more seeds of the creative generator, then add survival
    (digging timing, damage), entities, several players, console commands and malformed
    packets (see `parity fuzz` under the parity harness).
@@ -103,6 +108,7 @@ The nether and the end are ❌ (see [world](#netminecraftworld)).
 | Legacy `0xFE` ping (beta, 1.4, 1.6 formats) | ✅ | |
 | `ServerConfigurationManager`: join/leave, player list, view distance, max players, the "joined the game" message | ✅ | |
 | Duplicate login (same UUID kicks the older connection) | ✅ | The new login waits for the old session to leave (`DELAY_ACCEPT`) |
+| Disconnect timing: kicked and closed connections leave in the network phase after the worlds ticked (a kick from a command or the network phase in the next tick) | ✅ | `play/chunk_unload`, `play/logout_cursor_drop` |
 | Whitelist, ops (levels, bypassesPlayerLimit), banned players/IPs, `usercache.json` | ✅ | |
 | Mojang profile lookup for unknown names (op/whitelist offline players) | ❌ | Only cached or online names resolve |
 | Online-mode authentication (session server `hasJoined`) | ✅ | No parity scenario (needs real accounts) |
@@ -254,7 +260,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | Anvil region files (`.mca`): read, write, sector allocation like vanilla | ✅ | `krol-world` |
 | Chunk NBT: sections, block ids + add, metadata, block/sky light, height map, biomes, entities, tile entities, `TileTicks`, `LightPopulated`, `TerrainPopulated`, `InhabitedTime`, `V` | ✅ | |
 | `InhabitedTime` accumulation | ✅ | |
-| Chunk lifecycle: loading on demand, unloading queue, ticked/terrain/light population rules | ✅ | |
+| Chunk lifecycle: loading on demand, unloading queue, ticked/terrain/light population rules | ✅ | Unloading: chunks dropped when their last watcher leaves (moving, logout, respawn) and at every save when unwatched, spawn chunks kept, 100 per tick in `droppedChunksSet` order (`krol_java::JavaConcurrentLongSet`), saved with their entities; entities frozen while a chunk within 32 blocks is unloaded; ticks due in unloaded chunks dropped; entities and tile entities stop 1200 ticks after the last player left (`play/chunk_unload`). Not yet: placeholder chunks for missing terrain (M6) are only saved when modified |
 | `playerdata/<uuid>.dat` read/write (all player fields) | ✅ | |
 | Legacy `players/<name>.dat` conversion | ❌ | Not needed for 1.8 worlds; vanilla 1.8 still converts |
 | `ChunkProviderServer` generating missing chunks | ❌ | M6. Without a world, players get "krol: no world is loaded" |
@@ -679,6 +685,7 @@ krol notice.
 |---|---|---|
 | `MathHelper` (sin table, floor, clamp, ...) | ✅ | JVM-verified (`krol-java`) |
 | `java.util.Random` | ✅ | JVM-verified |
+| `ConcurrentHashMap<Long>` key order (tree bins included) | ✅ | Verified against Java 8 (`krol-java/tools/ConcurrentVectors.java`) |
 | `DamageSource` | 🟡 | fall, drown, onFire, inFire, lava, magic, wither, cactus, inWall, outOfWorld, explosion, explosion.player (difficulty scaling, knockback from the igniter), anvil, fallingBlock (helmet wear), player, thorns, thrown, indirectMagic (splash potions of harming), arrow (knockback from the shooter, else the arrow), projectile protection, the `.item` death messages of indirect sources ✅; generic, starve, mob, lightningBolt ❌ |
 | `CombatTracker` (death messages) | 🟡 | For implemented sources; fall variants ✅ (vanilla quirk: the fatal hit clears the earlier entries, so a fatal fall is always an accident) |
 | `IChatComponent` JSON (text, translation, styles, click/hover events) | ✅ | |

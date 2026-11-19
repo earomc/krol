@@ -1132,8 +1132,9 @@ impl Game {
         let radius = self.config.view_distance;
         let unload = self.players[i].update_watching(radius);
         for (x, z) in self.players[i].take_new_watches() {
-            self.level.overworld.chunk(x, z);
+            self.level.overworld.load_watched(x, z);
         }
+        self.drop_unwatched(i, &unload);
         let sky = self.level.overworld.has_sky;
         for (ux, uz) in unload {
             let (_, data) = self.level.overworld.chunk(ux, uz).packet_data(true, 0, sky);

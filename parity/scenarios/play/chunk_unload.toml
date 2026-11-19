@@ -1,0 +1,94 @@
+description = "Chunks unloading after the last watcher leaves: a kicked player's chunks are dropped (x outer, z inner) except the spawn chunks (within 128 blocks of the spawn point), and unload 100 per tick in droppedChunksSet order (a ConcurrentHashMap key set); an entity stops updating once a chunk within 32 blocks of it is unloaded"
+subsystem = "world"
+
+# The spawn moves so that its chunks (x -34..-18, z -22..-6) cover a strip of the
+# kicked player's 21x21 watched chunks (x -40..-20, z -38..-18); the other 366 are
+# dropped and unload in four batches. A stone summoned in each spawn chunk of row z -21
+# never unloads, but stops aging as soon as one of the five dropped chunks within 32
+# blocks of it (row z -23) unloads: its Age (0 to 3) is that chunk's batch. The
+# summons and the kick run in the same tick (one burst of console lines), so nothing
+# here depends on timing.
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "1" }
+
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_creative.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+action = "console"
+command = "setworldspawn -408 4 -216"
+
+[[steps]]
+id = "bot"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 10
+background = true
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "summon Item -504 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -488 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -472 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -456 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -440 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -424 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -408 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -392 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -376 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -360 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+[[steps]]
+action = "console"
+command = "summon Item -344 4 -328 {Item:{id:\"minecraft:stone\",Count:1b}}"
+wait_ms = 0
+
+[[steps]]
+action = "console"
+command = "kick Notch"
+
+[[steps]]
+action = "wait"
+ms = 2000
+
+[observe]
+log = true
+entities = [[-32, -21], [-31, -21], [-30, -21], [-29, -21], [-28, -21], [-27, -21], [-26, -21], [-25, -21], [-24, -21], [-23, -21], [-22, -21]]

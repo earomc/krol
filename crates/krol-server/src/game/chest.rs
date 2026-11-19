@@ -36,7 +36,7 @@ const LID_VOLUME: f32 = 0.5;
 /// Tile entity state of a chest that is open or whose lid is still moving.
 #[derive(Debug, Clone)]
 pub struct ChestRuntime {
-    pos: (i32, i32, i32),
+    pub(super) pos: (i32, i32, i32),
     /// `numPlayersUsing`.
     viewers: i32,
     lid: f32,

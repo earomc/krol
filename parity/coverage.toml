@@ -114,6 +114,11 @@ description = "Logging out: EntityPlayer#setDead closes the containers, dropping
 scenarios = ["play/logout_cursor_drop"]
 
 [[feature]]
+id = "world.chunk_unload"
+description = "Chunk unloading: dropChunk when the last watcher leaves (spawn chunks kept), unloadQueuedChunks 100 per tick in droppedChunksSet order, entities frozen near unloaded chunks, kicked players leaving in the next network phase. Not yet in a scenario: drops at autosave, entities saved by an unload, respawn and movement drops"
+scenarios = ["play/chunk_unload"]
+
+[[feature]]
 id = "play.join"
 description = "Join Game sequence and initial chunks"
 scenarios = ["play/join_flat", "login/offline"]

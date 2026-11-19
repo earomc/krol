@@ -422,6 +422,14 @@ impl ChunkEntities {
         self.slots.insert(id, slot);
     }
 
+    /// The entities listed in a chunk, section by section in list order.
+    fn ids_in(&self, chunk: (i32, i32)) -> Vec<i32> {
+        self.lists
+            .get(&chunk)
+            .map(|lists| lists.iter().flatten().copied().collect())
+            .unwrap_or_default()
+    }
+
     fn remove(&mut self, id: i32) {
         if let Some((cx, cz, section)) = self.slots.remove(&id)
             && let Some(lists) = self.lists.get_mut(&(cx, cz))
@@ -529,6 +537,38 @@ impl Game {
             self.level.overworld.mark_has_entities(slot.0, slot.1);
             self.chunk_entities.add(id, slot);
         }
+    }
+
+    /// The entities of an unloading chunk as saved, in its list order
+    /// (`AnvilChunkLoader.writeChunkToNBT`).
+    pub(super) fn chunk_saved_entities(&self, chunk: (i32, i32)) -> (Vec<i32>, List) {
+        let ids = self.chunk_entities.ids_in(chunk);
+        let mut list = List::new();
+        for &id in &ids {
+            if let Some(c) = self.saved_entity_nbt(id) {
+                let _ = list.push(Tag::Compound(c));
+            }
+        }
+        (ids, list)
+    }
+
+    /// An entity of an unloaded chunk leaves the game (`World.unloadEntities`, then
+    /// `onEntityRemoved` at the start of the next entity update).
+    pub(super) fn forget_entity(&mut self, id: i32) {
+        self.items.remove(&id);
+        self.orbs.remove(&id);
+        self.falling.remove(&id);
+        self.tnt.remove(&id);
+        self.thrown.remove(&id);
+        self.arrows.remove(&id);
+        self.hanging.remove(&id);
+        self.armor_stands.remove(&id);
+        self.minecarts.remove(&id);
+        self.boats.remove(&id);
+        self.mobs.remove(&id);
+        self.chunk_entities.kept.remove(&id);
+        self.chunk_entities.remove(id);
+        self.untrack_entity(id);
     }
 
     /// A dead entity leaves its chunk (`Chunk.removeEntity` in `updateEntities`).
@@ -948,6 +988,7 @@ impl Game {
         } else {
             self.level.save_quietly(entities);
         }
+        self.drop_unwatched_chunks();
     }
 }
 

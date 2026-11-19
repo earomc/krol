@@ -494,6 +494,10 @@ impl Game {
         self.ticks_this_tick = self.level.overworld.scheduler.take_due(now);
         while !self.ticks_this_tick.is_empty() {
             let (pos, id) = self.ticks_this_tick.remove(0);
+            // A tick due in an unloaded chunk is dropped (it was saved with the chunk).
+            if !self.level.overworld.is_chunk_loaded(pos.0 >> 4, pos.2 >> 4) {
+                continue;
+            }
             let state = self.level.overworld.block(pos.0, pos.1, pos.2);
             let associated = super::redstone::associated;
             if state >> 4 != 0 && associated(state >> 4) == associated(id) {

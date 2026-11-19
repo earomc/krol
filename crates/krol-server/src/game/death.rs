@@ -387,8 +387,7 @@ impl Game {
         self.untrack_player(i);
         // PlayerManager.removePlayer: unload every watched chunk.
         let sky = self.level.overworld.has_sky;
-        let watched: Vec<(i32, i32)> = self.players[i].watching.drain().collect();
-        self.players[i].chunk_queue.clear();
+        let watched = self.stop_watching_all(i);
         for (x, z) in watched {
             let (_, data) = self.level.overworld.chunk(x, z).packet_data(true, 0, sky);
             self.players[i].send(ClientboundPlay::ChunkData {
@@ -518,7 +517,7 @@ impl Game {
         let radius = self.config.view_distance;
         self.players[i].start_watching(radius);
         for (x, z) in self.players[i].take_new_watches() {
-            self.level.overworld.chunk(x, z);
+            self.level.overworld.load_watched(x, z);
         }
         self.players[i].removed = false;
         self.players[i].dead_marked = false;
