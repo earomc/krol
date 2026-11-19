@@ -26,6 +26,7 @@
 
 mod ai;
 mod breeding;
+mod leash;
 mod spawn_egg;
 
 use std::collections::BTreeSet;
@@ -221,6 +222,13 @@ impl MobKind {
         }
     }
 
+    /// Not an `IMob` (`EntityLiving.allowLeashing`): it takes a lead.
+    fn leashable(self) -> bool {
+        match self {
+            Self::Pig => true,
+        }
+    }
+
     /// An `EntityAnimal` (or water mob): removed when `spawn-animals` is off.
     fn animal(self) -> bool {
         match self {
@@ -289,9 +297,20 @@ pub struct Mob {
     can_pick_up_loot: bool,
     /// `persistenceRequired`.
     persistence_required: bool,
-    /// `isLeashed` and the saved `Leash` tag.
+    /// `isLeashed`.
     leashed: bool,
+    /// `leashNBTTag`: the loaded `Leash` tag, until the first update finds its holder.
     leash: Option<Compound>,
+    /// `leashedToEntity`: the entity id of the player or leash knot holding the lead.
+    leash_holder: Option<i32>,
+    /// `EntityCreature.homePosition` and `maximumHomeDistance` while it has a home
+    /// (a leashed mob stays near its holder).
+    home: Option<((i32, i32, i32), f32)>,
+    /// `isMovementAITaskSet`: the leash's `EntityAIMoveTowardsRestriction` was added.
+    movement_task_set: bool,
+    /// The `Leash` tag of the holder (`UUIDMost`/`UUIDLeast` of a player, `X`/`Y`/`Z`
+    /// of a knot), kept up to date by the game while the mob is leashed.
+    pub saved_holder: Option<Compound>,
     /// `isAIDisabled` (metadata entry 15).
     pub no_ai: bool,
     /// `EntityAgeable.growingAge` (metadata entry 12 holds its sign) and
@@ -384,6 +403,10 @@ impl Mob {
             persistence_required: false,
             leashed: false,
             leash: None,
+            leash_holder: None,
+            home: None,
+            movement_task_set: false,
+            saved_holder: None,
             no_ai: false,
             age: 0,
             forced_age: 0,
@@ -569,8 +592,10 @@ impl Mob {
         }
         c.insert("DropChances", Tag::List(chances));
         c.insert("Leashed", Tag::Byte(i8::from(self.leashed)));
-        if let Some(leash) = &self.leash {
-            c.insert("Leash", Tag::Compound(leash.clone()));
+        // Vanilla quirk: only a found holder is saved, so a mob saved before its first
+        // update loses the loaded `Leash` tag (and drops the lead when loaded again).
+        if let Some(holder) = &self.saved_holder {
+            c.insert("Leash", Tag::Compound(holder.clone()));
         }
         if self.no_ai {
             c.insert("NoAI", Tag::Byte(1));
@@ -799,6 +824,8 @@ impl Game {
             self.mob_base_update(id);
             self.mob_living_update(id);
             self.mob_body_update(id);
+            // EntityLiving.onUpdate: the lead, after the living entity's update.
+            self.update_leashed_state(id);
             if let Some(m) = self.mobs.get_mut(&id) {
                 m.chunk = chunk_of(m.body.pos);
             }

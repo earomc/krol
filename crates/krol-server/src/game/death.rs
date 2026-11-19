@@ -367,6 +367,8 @@ impl Game {
         let entity_id = self.players[i].entity_id;
         // The old entity stays a dead viewer of the maps it saw.
         self.maps.player_entity_replaced(entity_id);
+        // Mobs it led hold on to the old, dead entity.
+        self.leash_holder_replaced(entity_id);
         // removePlayerFromTrackers: the player stops seeing everything (players are
         // destroyed on its client right away).
         let seen: Vec<i32> = self

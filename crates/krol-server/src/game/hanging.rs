@@ -1,5 +1,6 @@
-//! Paintings and item frames (vanilla: `EntityHanging` with `EntityPainting` and
-//! `EntityItemFrame`, placed by `ItemHangingEntity`).
+//! Paintings, item frames and leash knots (vanilla: `EntityHanging` with
+//! `EntityPainting` and `EntityItemFrame`, placed by `ItemHangingEntity`, and
+//! `EntityLeashKnot`, tied by leads; see [`super::mob`]).
 //!
 //! A hanging entity belongs to the block space in front of a wall (its hanging
 //! position) and faces away from the wall. It never moves: every 101 updates it checks
@@ -11,7 +12,11 @@
 //! A filled map in a frame is shown to every player by the tracker (see
 //! [`super::maps`]).
 //!
-//! TODO(M5): leash knots, hanging entities pushed by pistons.
+//! A leash knot sits in the middle of a fence block, has no facing and is never saved
+//! (mobs leashed to it remember the fence and tie a new one when loaded). It breaks
+//! when its fence is gone or it is hit, and drops nothing itself.
+//!
+//! TODO(M5): hanging entities pushed by pistons.
 
 use std::collections::BTreeSet;
 
@@ -30,6 +35,17 @@ pub const PAINTING_ID: &str = "Painting";
 pub const ITEM_FRAME_ID: &str = "ItemFrame";
 /// `S0EPacketSpawnObject` type of item frames.
 pub const ITEM_FRAME_OBJECT: i8 = 71;
+/// The `EntityList` name of leash knots (never saved, but `@e[type=...]` sees it).
+pub const LEASH_KNOT_ID: &str = "LeashKnot";
+/// `S0EPacketSpawnObject` type of leash knots.
+pub const LEASH_KNOT_OBJECT: i8 = 77;
+/// A leash knot's picture size in pixels (`getWidthPixels`, `getHeightPixels`).
+const KNOT_PIXELS: i32 = 9;
+/// A leash knot's box: this far out from the middle of the fence horizontally, and
+/// this far up and down from a point this much above the middle.
+const KNOT_HALF_WIDTH: f64 = 0.1875;
+const KNOT_HALF_HEIGHT: f64 = 0.25;
+const KNOT_RAISE: f64 = 0.125;
 /// `setSize(0.5F, 0.5F)`: the size that counts for the eye height.
 const SIZE: f32 = 0.5;
 /// The entity sits this far from the middle of its block space towards the wall.
@@ -95,6 +111,8 @@ pub enum Kind {
         /// `itemDropChance`.
         drop_chance: f32,
     },
+    /// A leash knot on a fence.
+    LeashKnot,
 }
 
 /// One painting or item frame.
@@ -175,6 +193,7 @@ impl Kind {
                 (w, h)
             }
             Self::ItemFrame { .. } => (FRAME_PIXELS, FRAME_PIXELS),
+            Self::LeashKnot => (KNOT_PIXELS, KNOT_PIXELS),
         }
     }
 
@@ -183,6 +202,7 @@ impl Kind {
         match self {
             Self::Painting { .. } => PAINTING_ID,
             Self::ItemFrame { .. } => ITEM_FRAME_ID,
+            Self::LeashKnot => LEASH_KNOT_ID,
         }
     }
 
@@ -191,6 +211,7 @@ impl Kind {
         match self {
             Self::Painting { .. } => "Painting",
             Self::ItemFrame { .. } => "entity.ItemFrame.name",
+            Self::LeashKnot => "entity.LeashKnot.name",
         }
     }
 }
@@ -221,6 +242,33 @@ impl Hanging {
         h
     }
 
+    /// `EntityLeashKnot`'s constructor: a knot in the middle of the fence at `tile`,
+    /// with its own box and no facing.
+    pub fn knot(tile: (i32, i32, i32)) -> Self {
+        let mut h = Self::new(Kind::LeashKnot, tile, 0);
+        let (x, y, z) = (
+            f64::from(tile.0) + 0.5,
+            f64::from(tile.1) + 0.5,
+            f64::from(tile.2) + 0.5,
+        );
+        h.body.pos = (x, y, z);
+        h.base.yaw = 0.0;
+        h.bb = Aabb::new(
+            [
+                x - KNOT_HALF_WIDTH,
+                y - KNOT_HALF_HEIGHT + KNOT_RAISE,
+                z - KNOT_HALF_WIDTH,
+            ],
+            [
+                x + KNOT_HALF_WIDTH,
+                y + KNOT_HALF_HEIGHT + KNOT_RAISE,
+                z + KNOT_HALF_WIDTH,
+            ],
+        );
+        h.chunk = (floor_f64(x) >> 4, floor_f64(z) >> 4);
+        h
+    }
+
     /// `DataWatcher.updateObject` / `setObjectWatched` of entry `index`.
     fn metadata_updated(&mut self, index: u8) {
         self.dirty_metadata.insert(index);
@@ -238,6 +286,10 @@ impl Hanging {
     /// `updateBoundingBox`: the middle of the picture, moved against the wall and
     /// shifted half a block for even sizes, and a box 1/32 thick.
     fn update_box(&mut self) {
+        // EntityLeashKnot has no facing: its box stays the one it was made with.
+        if self.kind == Kind::LeashKnot {
+            return;
+        }
         let (w, h) = self.kind.pixels();
         let (fx, fz) = front(self.facing);
         let (cx, cz) = front(ccw(self.facing));
@@ -286,7 +338,7 @@ impl Hanging {
             Kind::ItemFrame { rotation, .. } => {
                 Some(i32::from(*rotation) % i32::from(FRAME_ROTATIONS) + 1)
             }
-            Kind::Painting { .. } => None,
+            Kind::Painting { .. } | Kind::LeashKnot => None,
         }
     }
 
@@ -367,6 +419,8 @@ impl Hanging {
                     c.insert("ItemDropChance", Tag::Float(*drop_chance));
                 }
             }
+            // Never saved (writeToNBTOptional is false).
+            Kind::LeashKnot => {}
         }
         c.insert("Facing", Tag::Byte(self.facing as i8));
         c.insert("TileX", Tag::Int(self.tile.0));
@@ -385,6 +439,11 @@ impl Game {
     /// the wall behind it is solid (or a repeater), and no other hanging entity
     /// overlaps it.
     fn on_valid_surface(&mut self, h: &Hanging, me: Option<i32>) -> bool {
+        // EntityLeashKnot.onValidSurface: only that its fence is still there.
+        if h.kind == Kind::LeashKnot {
+            let id = self.level.overworld.block(h.tile.0, h.tile.1, h.tile.2) >> 4;
+            return super::blocks::is_fence(id);
+        }
         if !super::physics::colliding_boxes(&mut self.level.overworld, &h.bb).is_empty() {
             return false;
         }
@@ -543,6 +602,8 @@ impl Game {
                 }
             }
             Kind::ItemFrame { .. } => self.drop_frame_contents(id, by, true),
+            // The leads tied to it drop from their mobs once they see it gone.
+            Kind::LeashKnot => {}
         }
     }
 
@@ -615,6 +676,10 @@ impl Game {
         let Some(h) = self.hanging.get_mut(&id) else {
             return;
         };
+        if h.kind == Kind::LeashKnot {
+            self.interact_knot(i, id);
+            return;
+        }
         let Kind::ItemFrame { item, rotation, .. } = &mut h.kind else {
             return;
         };

@@ -2187,6 +2187,19 @@ impl Game {
         if !(player.sneaking && player.held().is_some()) && self.activate_block(i, pos) {
             return;
         }
+        // ItemLead.onItemUse on a fence ties the player's mobs to it (it never asks
+        // canPlayerEdit) and counts as a use, tied or not.
+        if self.players[i]
+            .held()
+            .is_some_and(|s| s.id == ids::item::LEAD)
+        {
+            let id = self.level.overworld.block(pos.0, pos.1, pos.2) >> 4;
+            if blocks::is_fence(id) {
+                self.attach_to_fence(i, pos);
+                self.count_item_use(i);
+            }
+            return;
+        }
         // ItemMinecart never asks canPlayerEdit: adventure players place minecarts too.
         if self.players[i]
             .held()

@@ -5,8 +5,11 @@
 //! The goals draw from the mob's own random in vanilla's order, so they all run, even
 //! those whose effects krol does not have yet (see the TODOs).
 //!
-//! TODO(M5): the target tasks (no mob kind has any yet), `EntitySenses`, homes and
-//! leashes (`EntityAIMoveTowardsRestriction`), sun avoidance.
+//! A leashed creature has a home around its holder (see [`super::leash`]): random
+//! targets keep to it, and `EntityAIMoveTowardsRestriction` walks back into it.
+//!
+//! TODO(M5): the target tasks (no mob kind has any yet), `EntitySenses`, homes of
+//! villagers and golems, sun avoidance.
 
 use krol_java::math::{atan2, floor_f64, sqrt_f64, wrap_degrees_f32};
 
@@ -71,7 +74,7 @@ const GRASS_WEIGHT: f32 = 10.0;
 
 /// One goal (`EntityAIBase` subclasses) with its state.
 #[derive(Debug, Clone)]
-enum Goal {
+pub(super) enum Goal {
     /// `EntityAISwimming`: jump to keep afloat.
     Swimming,
     /// `EntityAIPanic`: run to a random spot after being hurt or while burning.
@@ -120,6 +123,8 @@ enum Goal {
     },
     /// `EntityAILookIdle`: look around.
     LookIdle { look: (f64, f64), time: i32 },
+    /// `EntityAIMoveTowardsRestriction`: walk back towards the home when outside it.
+    MoveTowardsRestriction { speed: f64, target: (f64, f64, f64) },
 }
 
 impl Goal {
@@ -127,7 +132,7 @@ impl Goal {
     fn mutex(&self) -> u32 {
         match self {
             Self::Swimming => 4,
-            Self::Panic { .. } | Self::Wander { .. } => 1,
+            Self::Panic { .. } | Self::Wander { .. } | Self::MoveTowardsRestriction { .. } => 1,
             Self::ControlledByPlayer { .. } => 7,
             Self::Mate { .. } | Self::Tempt { .. } | Self::LookIdle { .. } => 3,
             Self::FollowParent { .. } => 0,
@@ -175,7 +180,7 @@ pub struct Navigator {
     last_pos_check: (f64, f64, f64),
     /// `heightRequirement`.
     height_requirement: f32,
-    flags: WalkFlags,
+    pub(super) flags: WalkFlags,
 }
 
 impl Navigator {
@@ -311,6 +316,48 @@ impl MobAi {
             jump: false,
             body: BodyHelper::default(),
             nav: Navigator::new(),
+        }
+    }
+}
+
+impl MobAi {
+    /// How many goals the mob has.
+    #[cfg(test)]
+    pub(super) fn goal_count(&self) -> usize {
+        self.goals.len()
+    }
+
+    /// The running goals, by index.
+    #[cfg(test)]
+    pub(super) fn executing(&self) -> &[usize] {
+        &self.executing
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_executing(&mut self, executing: Vec<usize>) {
+        self.executing = executing;
+    }
+
+    /// `EntityAITasks.addTask`: the goal joins the end of the list.
+    pub(super) fn add_goal(&mut self, priority: i32, goal: Goal) {
+        self.goals.push((priority, goal));
+    }
+
+    /// `EntityAITasks.removeTask` of the leash's `EntityAIMoveTowardsRestriction`
+    /// (its `resetTask` does nothing). It was added last, so no other index moves.
+    pub(super) fn remove_restriction_goal(&mut self) {
+        if let Some(k) = self
+            .goals
+            .iter()
+            .position(|(_, g)| matches!(g, Goal::MoveTowardsRestriction { .. }))
+        {
+            self.executing.retain(|&e| e != k);
+            for e in &mut self.executing {
+                if *e > k {
+                    *e -= 1;
+                }
+            }
+            self.goals.remove(k);
         }
     }
 }
@@ -623,13 +670,30 @@ impl Game {
                 };
                 m.rand.next_float() < LOOK_IDLE_CHANCE
             }
+            Goal::MoveTowardsRestriction { target, .. } => {
+                let feet = (floor_f64(pos.0), floor_f64(pos.1), floor_f64(pos.2));
+                let Some((home, _)) = m.home().filter(|_| !m.within_home(feet)) else {
+                    return false;
+                };
+                let home = (f64::from(home.0), f64::from(home.1), f64::from(home.2));
+                let towards = (home.0 - pos.0, home.1 - pos.1, home.2 - pos.2);
+                match self.random_target_block(id, 16, 7, Some(towards)) {
+                    Some(t) => {
+                        *target = t;
+                        true
+                    }
+                    None => false,
+                }
+            }
         }
     }
 
     /// `continueExecuting`.
     fn goal_continue(&mut self, id: i32, ai: &mut MobAi, k: usize) -> bool {
         self.with_goal(id, ai, k, |game, id, ai, goal| match goal {
-            Goal::Panic { .. } | Goal::Wander { .. } => !ai.nav.no_path(),
+            Goal::Panic { .. } | Goal::Wander { .. } | Goal::MoveTowardsRestriction { .. } => {
+                !ai.nav.no_path()
+            }
             Goal::FollowParent { parent, .. } => {
                 let Some(m) = game.mobs.get(&id) else {
                     return false;
@@ -672,7 +736,9 @@ impl Game {
     /// `startExecuting`.
     fn goal_start(&mut self, id: i32, ai: &mut MobAi, k: usize) {
         self.with_goal(id, ai, k, |game, id, ai, goal| match goal {
-            Goal::Panic { speed, target } | Goal::Wander { speed, target, .. } => {
+            Goal::Panic { speed, target }
+            | Goal::Wander { speed, target, .. }
+            | Goal::MoveTowardsRestriction { speed, target } => {
                 game.nav_move_to_pos(id, ai, *target, *speed);
             }
             Goal::Tempt { avoided_water, .. } => {
@@ -827,21 +893,59 @@ impl Game {
         });
     }
 
-    /// `RandomPositionGenerator.findRandomTarget` (no home): the best of ten random
-    /// blocks within `xz` and `y` of the mob by `getBlockPathWeight`.
+    /// `RandomPositionGenerator.findRandomTarget`: a random block within `xz` and `y`
+    /// of the mob.
     fn random_target(&mut self, id: i32, xz: i32, y: i32) -> Option<(f64, f64, f64)> {
+        self.random_target_block(id, xz, y, None)
+    }
+
+    /// `RandomPositionGenerator.findRandomTargetBlock`: the best of ten random blocks
+    /// within `xz` and `y` of the mob by `getBlockPathWeight`, only in the direction of
+    /// `towards` if given. A mob with a home leans towards it and, when the home is
+    /// within reach, only takes blocks inside it.
+    fn random_target_block(
+        &mut self,
+        id: i32,
+        xz: i32,
+        y: i32,
+        towards: Option<(f64, f64, f64)>,
+    ) -> Option<(f64, f64, f64)> {
+        let m = self.mobs.get(&id)?;
+        let home = m.home();
+        let p = m.body.pos;
+        let feet = (floor_f64(p.0), floor_f64(p.1), floor_f64(p.2));
+        let restricted = home.is_some_and(|(h, max)| {
+            let d = super::leash::block_dist_sq(h, feet) + 4.0;
+            let reach = f64::from(max + xz as f32);
+            d < reach * reach
+        });
         let mut best: Option<(f32, (i32, i32, i32))> = None;
         for _ in 0..10 {
             let m = self.mobs.get_mut(&id)?;
-            let dx = m.rand.next_int_bounded(2 * xz + 1) - xz;
+            let mut dx = m.rand.next_int_bounded(2 * xz + 1) - xz;
             let dy = m.rand.next_int_bounded(2 * y + 1) - y;
-            let dz = m.rand.next_int_bounded(2 * xz + 1) - xz;
-            let p = m.body.pos;
-            let at = (
-                dx + floor_f64(p.0),
-                dy + floor_f64(p.1),
-                dz + floor_f64(p.2),
-            );
+            let mut dz = m.rand.next_int_bounded(2 * xz + 1) - xz;
+            if towards.is_some_and(|v| f64::from(dx) * v.0 + f64::from(dz) * v.2 < 0.0) {
+                continue;
+            }
+            if let Some((h, _)) = home
+                && xz > 1
+            {
+                if p.0 > f64::from(h.0) {
+                    dx -= m.rand.next_int_bounded(xz / 2);
+                } else {
+                    dx += m.rand.next_int_bounded(xz / 2);
+                }
+                if p.2 > f64::from(h.2) {
+                    dz -= m.rand.next_int_bounded(xz / 2);
+                } else {
+                    dz += m.rand.next_int_bounded(xz / 2);
+                }
+            }
+            let at = (dx + feet.0, dy + feet.1, dz + feet.2);
+            if restricted && !m.within_home(at) {
+                continue;
+            }
             let weight = self.block_path_weight(at);
             if best.is_none_or(|(b, _)| weight > b) {
                 best = Some((weight, at));
@@ -922,7 +1026,7 @@ impl Game {
     }
 
     /// `tryMoveToEntityLiving`: a path to an entity's feet; no path keeps the old one.
-    fn nav_move_to_entity(
+    pub(super) fn nav_move_to_entity(
         &mut self,
         id: i32,
         ai: &mut MobAi,

@@ -430,6 +430,16 @@ impl ChunkEntities {
             .unwrap_or_default()
     }
 
+    /// Where an entity comes in `World.getEntitiesWithinAABB`'s walk: its chunk (x, then
+    /// z), section, and place in that section's list.
+    pub fn list_key(&self, id: i32) -> Option<(i32, i32, usize, usize)> {
+        let &(cx, cz, section) = self.slots.get(&id)?;
+        let place = self.lists.get(&(cx, cz))?[section]
+            .iter()
+            .position(|&e| e == id)?;
+        Some((cx, cz, section, place))
+    }
+
     fn remove(&mut self, id: i32) {
         if let Some((cx, cz, section)) = self.slots.remove(&id)
             && let Some(lists) = self.lists.get_mut(&(cx, cz))
@@ -940,7 +950,8 @@ impl Game {
             a.base.write(&a.body, uuid, &mut c);
             a.write(&mut c);
         } else if let Some(h) = self.hanging.get(&id) {
-            if h.dead {
+            // Leash knots are never saved (EntityLeashKnot.writeToNBTOptional).
+            if h.dead || h.kind == super::hanging::Kind::LeashKnot {
                 return None;
             }
             c.insert("id", Tag::String(h.kind.saved_id().into()));

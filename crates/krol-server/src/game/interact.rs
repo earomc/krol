@@ -127,6 +127,8 @@ impl Game {
             super::beds::BED => self.use_bed(i, pos, state),
             // BlockTNT.onBlockActivated: flint and steel lights it.
             super::tnt::TNT => self.light_tnt(i, pos),
+            // BlockFence.onBlockActivated: the player's leashed mobs are tied to it.
+            _ if super::blocks::is_fence(id) => self.attach_to_fence(i, pos),
             // BlockCake.onBlockActivated: always takes the click.
             super::farming::CAKE => {
                 self.eat_cake(i, pos);

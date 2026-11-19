@@ -3,8 +3,7 @@
 //! `EntityAnimal.interact`, `EntityAgeable.interact`, `Item.itemInteractionForEntity`
 //! of saddles and name tags, `EntityAIMate.spawnBaby`).
 //!
-//! TODO(M5): leads (`interactFirst` leashes a mob to a player holding one, and lets
-//! go of it for its player).
+//! Leads are in [`super::leash`].
 
 use krol_protocol::packets::play::{ClientboundPlay, ItemStack};
 
@@ -121,7 +120,9 @@ impl Game {
     /// `EntityLiving.interactFirst` and the mob's `interact`: whether the mob took the
     /// click.
     fn mob_interact(&mut self, i: usize, id: i32) -> bool {
-        // TODO(M5): leads (a leashed mob lets go of its player; a lead leashes it).
+        if self.leash_interact(i, id) {
+            return true;
+        }
         let held = self.players[i].held().cloned();
         let me = self.players[i].entity_id;
         let Some(m) = self.mobs.get_mut(&id) else {
@@ -220,7 +221,7 @@ impl Game {
 
     /// One of the held item used up (`stackSize--`, the slot emptied at 0), unless
     /// the player is in creative.
-    fn use_held(&mut self, i: usize) {
+    pub(super) fn use_held(&mut self, i: usize) {
         let p = &mut self.players[i];
         if p.gamemode == super::super::player::Player::CREATIVE {
             return;

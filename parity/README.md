@@ -299,6 +299,14 @@ into server ticks. Rules learned from flaky scenarios:
   it by a tenth of its time left in whole seconds: pick its `Age` so the feeding tick
   lands mid-step. Mobs with AI look around up to the stop: ignore their final tracked
   `head`, and give ages a tolerance.
+- **Leash knots hide inside their fence**: the fence blocks the line of sight to a knot,
+  so a bot reaches it only within 3 blocks (stand within 2 blocks of the fence). Clicking
+  a knot with a lead only ties the mobs the bot leads to it; it never hands them back
+  (`play/mobs_leads`).
+- **Make a leash break by distance with a mob that cannot follow**: a leashed mob is
+  pulled hard towards its holder, so a bot stepping away (up to 9.5 blocks in one
+  movement packet, under "moved too quickly") only breaks the lead of a mob in a glass
+  cell; a free one keeps up (`play/mobs_leads_break`).
 - **Spawn a mob on the bot's clock when bot actions steer it**: a mob summoned from
   the console runs on the console's clock, and its tracker sends velocities every third
   tick counted from its spawn, so what a bot does to it lands at a different point of

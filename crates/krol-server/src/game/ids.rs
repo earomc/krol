@@ -105,6 +105,14 @@ pub mod block {
     pub const IRON_DOOR: u16 = 71;
     /// `trapdoor` (wooden).
     pub const TRAPDOOR: u16 = 96;
+    /// `fence` (oak).
+    pub const OAK_FENCE: u16 = 85;
+    /// `nether_brick_fence`.
+    pub const NETHER_BRICK_FENCE: u16 = 113;
+    /// `spruce_fence`; birch, jungle, dark oak and acacia fences follow (188-192).
+    pub const SPRUCE_FENCE: u16 = 188;
+    /// `acacia_fence`.
+    pub const ACACIA_FENCE: u16 = 192;
     /// `fence_gate` (oak).
     pub const OAK_FENCE_GATE: u16 = 107;
     /// `iron_trapdoor`.
@@ -370,4 +378,6 @@ pub mod item {
     pub const SPAWN_EGG: i16 = 383;
     /// `name_tag`.
     pub const NAME_TAG: i16 = 421;
+    /// `lead`.
+    pub const LEAD: i16 = 420;
 }

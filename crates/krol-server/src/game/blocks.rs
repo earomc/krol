@@ -144,6 +144,15 @@ pub fn sound_type(id: u16) -> SoundType {
     }
 }
 
+/// A `BlockFence` (wooden and nether brick fences; not walls or gates).
+pub fn is_fence(id: u16) -> bool {
+    use super::ids::block::{ACACIA_FENCE, NETHER_BRICK_FENCE, OAK_FENCE, SPRUCE_FENCE};
+    matches!(
+        id,
+        OAK_FENCE | NETHER_BRICK_FENCE | SPRUCE_FENCE..=ACACIA_FENCE
+    )
+}
+
 /// Fences, walls and fence gates (`instanceof BlockFence/BlockWall/BlockFenceGate`).
 pub fn is_fence_like(id: u16) -> bool {
     matches!(id, 85 | 107 | 113 | 139 | 183..=192)

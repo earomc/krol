@@ -555,13 +555,18 @@ scenarios = ["play/mobs_animals_off"]
 
 [[feature]]
 id = "entity.mobs.ai"
-description = "Pigs with AI: the goal selector (EntityAITasks: tick rate 3, priorities, mutex bits, the executing order), wander (RandomPositionGenerator with EntityAnimal.getBlockPathWeight, idle limit), look idle, watch closest player, panic while burning, swimming; ground navigation (PathFinder heap and WalkNodeProcessor, path following with straight cuts, stuck checks), the move, look, jump and body helpers, moveEntityWithHeading (ground acceleration by slipperiness, air, water), falls (fall sounds, damage, dust), steps (mob.pig.step), fire contact, despawn idle time; vanilla's box normalization (small entities' water boxes turn inside out into real ones). Not yet: leads"
+description = "Pigs with AI: the goal selector (EntityAITasks: tick rate 3, priorities, mutex bits, the executing order), wander (RandomPositionGenerator with EntityAnimal.getBlockPathWeight, idle limit), look idle, watch closest player, panic while burning, swimming; ground navigation (PathFinder heap and WalkNodeProcessor, path following with straight cuts, stuck checks), the move, look, jump and body helpers, moveEntityWithHeading (ground acceleration by slipperiness, air, water), falls (fall sounds, damage, dust), steps (mob.pig.step), fire contact, despawn idle time; vanilla's box normalization (small entities' water boxes turn inside out into real ones)"
 scenarios = ["play/mobs_ai"]
 
 [[feature]]
 id = "entity.mobs.follow_parent"
 description = "EntityAIFollowParent: a piglet (half size, higher sounds, swimming out of a pool) follows the nearest adult of its kind within 8/4/8, a path every 10 ticks to its feet, the closest point when it cannot be reached"
 scenarios = ["play/mobs_follow_parent"]
+
+[[feature]]
+id = "entity.mobs.leads"
+description = "Leads (EntityLiving.interactFirst, ItemLead, BlockFence.onBlockActivated, EntityLeashKnot, EntityCreature.updateLeashedState): a lead leashes a pig to the player (attach packet, used up), a click lets the own pig go (the lead dropped), a fence click ties the player's pigs to a knot (spawned, attach packets in getEntitiesWithinAABB order), a knot click with a lead ties the player's other pigs to it, a click while leading nothing breaks it (its pigs drop their leads); leashed pigs keep to a home of radius 5 around the holder (RandomPositionGenerator with homes, EntityAIMoveTowardsRestriction), walk to it beyond 4 blocks, are pulled beyond 6 and break free beyond 10; a knot breaks when its fence is gone (101-tick surface check); saved with Leash X/Y/Z, knots never saved. Not covered: loading a leashed mob (recreateLeash), knots hit or broken by creative players"
+scenarios = ["play/mobs_leads", "play/mobs_leads_break"]
 
 [[feature]]
 id = "entity.mobs.growing_up"
@@ -575,7 +580,7 @@ scenarios = ["play/mobs_tempt"]
 
 [[feature]]
 id = "entity.mobs.breeding"
-description = "Players using items on mobs (EntityPlayer.interactWith): a carrot puts an adult pig in love (status 18, InLove 600, the feeder remembered) or makes a piglet grow by a tenth of its time (func_175501_a, ForcedAge), nothing on a pig in love; saddles (adult pigs only, mob.horse.leather) and named name tags (CustomName, PersistenceRequired), used up outside creative; EntityAIMate: a pig in love finds the closest partner in love within 8 blocks, walks up to it and after 60 ticks within 3 blocks the child is born at its feet (Age -24000, facing south), the parents rest (Age 6000), hearts drawn from the parent's random, an experience orb of 1 to 7, the feeder's stat.animalsBred. Spawn eggs used on a pig of their kind (a child, named after the egg) are implemented but not covered; leads are missing"
+description = "Players using items on mobs (EntityPlayer.interactWith): a carrot puts an adult pig in love (status 18, InLove 600, the feeder remembered) or makes a piglet grow by a tenth of its time (func_175501_a, ForcedAge), nothing on a pig in love; saddles (adult pigs only, mob.horse.leather) and named name tags (CustomName, PersistenceRequired), used up outside creative; EntityAIMate: a pig in love finds the closest partner in love within 8 blocks, walks up to it and after 60 ticks within 3 blocks the child is born at its feet (Age -24000, facing south), the parents rest (Age 6000), hearts drawn from the parent's random, an experience orb of 1 to 7, the feeder's stat.animalsBred. Spawn eggs used on a pig of their kind (a child, named after the egg) are implemented but not covered"
 scenarios = ["play/mobs_breed"]
 
 [[feature]]

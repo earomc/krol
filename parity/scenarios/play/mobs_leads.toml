@@ -1,0 +1,126 @@
+description = "Leads: leashing pigs (attach packets, the lead used up), letting one go (the lead dropped), leashed pigs staying near the player (a home of radius 5, EntityAIMoveTowardsRestriction, random targets kept to the home, paths to the holder beyond 4 blocks), tying them to a fence (a leash knot spawned, both moved over), clicking the knot while leading nothing (it breaks, the pigs drop their leads), tying a pig to another fence and clicking that knot with a lead while leading the other pig (moved onto the knot); the tied pigs saved with their fence and no knot"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode (no random spawn
+# offset), is switched to survival and gets two pig eggs (hotbar slot 0) and six leads
+# (slot 1) as /give drops 1 and 2. Fences stand east (F1, -470 4 -434) and west (F2,
+# -473 4 -434) of him: a knot sits inside its fence, which hides it, so he reaches it
+# only within 3 blocks. The pigs hatch from his eggs, so they run on the bot's clock
+# (see "Spawn a mob on the bot's clock" in the README): `krolpin spawns 13` pins their
+# randoms (after onInitialSpawn drew the follow range bonus) and `krolpin world 21 600`
+# the world random they face by. Pig A hatches 3 blocks south of him (-471.5, 4,
+# -431.5), pig B 3 blocks north (-471.5, 4, -437.5).
+#
+# Entity ids: jeb_ 0, the /give drops 1 and 2, A 3, B 4, the lead A drops when let go 5,
+# knot K1 6, the leads A and B drop when K1 breaks 7 and 8, knot K2 9.
+#
+# The follow range bonus is drawn before the pin and its modifier's UUID comes from
+# ThreadLocalRandom, so both are left out of the saved pigs.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -434 fence"
+
+[[steps]]
+action = "console"
+command = "setblock -473 4 -434 fence"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 28
+seconds_from_spawn = true
+chat = [
+    # Hatch A and B.
+    "@6000 !hold 0",
+    "@6300 !place -472 3 -432 1",
+    "@6800 !place -472 3 -438 1",
+    # Leash A and B, let go of A, leash it again.
+    "@7300 !hold 1",
+    "@7800 !interact 3",
+    "@8300 !interact 4",
+    "@9500 !interact 3",
+    "@10000 !interact 3",
+    # Both to a knot on F1, which breaks when clicked (he leads nothing now).
+    "@11500 !place -470 4 -434 1",
+    "@13500 !interact 6",
+    # A to a knot on F2, then B (leashed) onto that knot with a click holding a lead.
+    "@16000 !interact 3",
+    "@17500 !place -473 4 -434 1",
+    "@19000 !interact 4",
+    "@20500 !interact 9",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ spawn_egg 2 90"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ lead 6"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "krolpin spawns 13"
+wait_ms = 200
+
+[[steps]]
+action = "console"
+command = "krolpin world 21 600"
+wait_ms = 22000
+
+[observe]
+log = true
+files = ["world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat"]
+entities = [[-30, -28], [-30, -27]]
+ignore = [
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    # The follow range bonus (see above).
+    "entities.-30,-28[*].Attributes[3].Modifiers",
+    "entities.-30,-27[*].Attributes[3].Modifiers",
+    # The pigs look around and shuffle near their knot up to the stop, whose tick
+    # depends on timing.
+    "player.entities.3.head",
+    "player.entities.3.pitch",
+    "player.entities.4.head",
+    "player.entities.4.pitch",
+    "entities.-30,-28[*].Rotation",
+    "entities.-30,-27[*].Rotation",
+]
+
+# Dropped leads keep aging after the bot leaves, up to the console's stop, and the pigs
+# keep walking a little.
+[observe.tolerance]
+"entities.-30,-28[*].Age" = 2
+"entities.-30,-27[*].Age" = 2
+"entities.-30,-28[*].Pos" = 0.05
+"entities.-30,-27[*].Pos" = 0.05
+"entities.-30,-28[*].Motion" = 0.1
+"entities.-30,-27[*].Motion" = 0.1

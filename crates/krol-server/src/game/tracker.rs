@@ -715,6 +715,20 @@ impl Game {
                             .then(|| (speed(v.motion.0), speed(v.motion.1), speed(v.motion.2))),
                     });
                 }
+                super::hanging::Kind::LeashKnot => {
+                    // At the fence's corner; data 0 brings no velocity.
+                    packets.push(ClientboundPlay::SpawnObject {
+                        entity_id,
+                        kind: super::hanging::LEASH_KNOT_OBJECT,
+                        x: h.tile.0.wrapping_mul(32),
+                        y: h.tile.1.wrapping_mul(32),
+                        z: h.tile.2.wrapping_mul(32),
+                        pitch: angle(v.pitch) as i8,
+                        yaw: angle(v.yaw) as i8,
+                        data: 0,
+                        velocity: None,
+                    });
+                }
             }
             packets.push(ClientboundPlay::EntityMetadata {
                 entity_id,
@@ -745,6 +759,13 @@ impl Game {
                 entity_id,
                 properties: m.properties(),
             });
+            if let Some(holder) = m.leash_holder().filter(|_| m.leashed()) {
+                packets.push(ClientboundPlay::AttachEntity {
+                    entity_id,
+                    vehicle_id: holder,
+                    leash: true,
+                });
+            }
             for (slot, item) in m.equipment.iter().enumerate() {
                 if item.is_some() {
                     packets.push(ClientboundPlay::EntityEquipment {
@@ -1009,7 +1030,7 @@ impl Game {
                 tile: h.tile,
                 facing: h.facing,
             }),
-            super::hanging::Kind::Painting { .. } => None,
+            super::hanging::Kind::Painting { .. } | super::hanging::Kind::LeashKnot => None,
         });
         if let Some(frame) = frame
             && self
