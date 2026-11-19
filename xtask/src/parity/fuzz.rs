@@ -379,6 +379,11 @@ fn render(steps: &[FuzzStep], header: &[String], noisy: &[String]) -> String {
         }
     }
     let end = LEAD_TICKS + steps.len() * STEP_TICKS;
+    // Close the window in the tail: a stack left on the cursor (or in a crafting grid)
+    // drops now, on the bot's schedule, instead of at logout, where the item may or may
+    // not update once before the harness's `stop` (`play/logout_cursor_drop` covers
+    // that).
+    chat.push(format!("@{} !close 0", (end + ACTION_TICK) * TICK_MS));
     while moves.len() < end {
         moves.push(here);
     }
@@ -427,6 +432,9 @@ name = "Notch"
 "#,
     );
     let _ = writeln!(t, "seconds = {seconds}");
+    // The tail then lasts the same on both servers, however long each takes to place
+    // the player (vanilla is a few ticks slower), so items dropped in it age the same.
+    t.push_str("seconds_from_spawn = true\n");
     t.push_str("chat = [\n");
     for line in &chat {
         let _ = writeln!(t, "    \"{line}\",");
@@ -457,6 +465,11 @@ name = "Notch"
         t,
         "    # A flying player's motion keeps changing with each server tick until it logs out.\n    \"file:{PLAYER_FILE}.Motion\","
     );
+    let entities = format!("entities.{},{}[*]", CHUNK[0], CHUNK[1]);
+    let _ = writeln!(
+        t,
+        "    # Tossed items: a random yaw (Math.random) and spread (the player's random).\n    \"{entities}.Motion\",\n    \"{entities}.Rotation\","
+    );
     if !noisy.is_empty() {
         t.push_str(
             "    # Two vanilla runs of this case disagreed here (unseeded randoms or timing).\n",
@@ -466,6 +479,12 @@ name = "Notch"
         }
     }
     t.push_str("]\n");
+    // How far a tossed item's random spread carries it, and the tick or two the bot's
+    // clock may drift against the server's between its drop and the save.
+    t.push_str("\n[observe.tolerance]\n");
+    let _ = writeln!(t, "\"{entities}.Pos\" = 1.0");
+    let _ = writeln!(t, "\"{entities}.Age\" = 2");
+    let _ = writeln!(t, "\"{entities}.PickupDelay\" = 2");
     t
 }
 
@@ -872,7 +891,8 @@ mod tests {
                 panic!("no play step");
             };
             assert_eq!(moves.len(), LEAD_TICKS + steps.len() * STEP_TICKS);
-            assert!(chat.len() <= steps.len());
+            // One line per step at most, and the closing of the window after the last.
+            assert!(chat.len() <= steps.len() + 1);
         }
     }
 

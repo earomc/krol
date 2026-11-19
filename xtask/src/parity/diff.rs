@@ -250,10 +250,27 @@ struct Ctx<'a> {
 
 /// Whether `path` is `base` or lies below it.
 pub fn under(path: &str, base: &str) -> bool {
-    path == base
-        || path
-            .strip_prefix(base)
-            .is_some_and(|rest| rest.starts_with('.') || rest.starts_with('['))
+    let Some((head, tail)) = base.split_once("[*]") else {
+        return path == base
+            || path
+                .strip_prefix(base)
+                .is_some_and(|rest| rest.starts_with('.') || rest.starts_with('['));
+    };
+    // `[*]` stands for any list index (`[3]`, or `[+3]` for an inserted element).
+    let Some(rest) = path.strip_prefix(head).and_then(|r| r.strip_prefix('[')) else {
+        return false;
+    };
+    let Some((index, after)) = rest.split_once(']') else {
+        return false;
+    };
+    let digits = index.strip_prefix('+').unwrap_or(index);
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    if tail.is_empty() {
+        return true;
+    }
+    under(after, tail)
 }
 
 fn is_ignored(path: &str, ignore: &[String]) -> bool {
@@ -534,6 +551,16 @@ mod tests {
         let d = diff(&e, &a, &[], &Tolerances::new());
         assert_eq!(d.len(), 1);
         assert_eq!(d[0].path, "[+1]");
+    }
+
+    #[test]
+    fn wildcard_indices_match_any_element() {
+        assert!(under("e.c[0].Age", "e.c[*].Age"));
+        assert!(under("e.c[+12].Pos[1]", "e.c[*].Pos"));
+        assert!(under("e.c[3]", "e.c[*]"));
+        assert!(!under("e.c[3].Ages", "e.c[*].Age"));
+        assert!(!under("e.c.Age", "e.c[*].Age"));
+        assert!(!under("e.d[0].Age", "e.c[*].Age"));
     }
 
     #[test]

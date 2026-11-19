@@ -161,6 +161,7 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
             protocol,
             name,
             seconds,
+            seconds_from_spawn,
             chat,
             moves,
             ..
@@ -169,6 +170,7 @@ async fn run_step(step: &Step, addr: std::net::SocketAddr) -> Value {
             *protocol,
             name,
             std::time::Duration::from_secs(*seconds),
+            *seconds_from_spawn,
             chat,
             moves,
         )

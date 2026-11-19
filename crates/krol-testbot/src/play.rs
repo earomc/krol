@@ -35,7 +35,10 @@ pub struct PlayObservation {
 }
 
 /// Joins with `protocol` and `name`, then for `duration` behaves like an idle vanilla
-/// client and records every packet:
+/// client and records every packet. The session counts from the login's success, or,
+/// with `from_spawn`, from the first server-given position, like the `@<ms>` actions
+/// below, and then ends on one of the bot's 50 ms ticks (so how long the server takes
+/// to place the player does not change the time between an action and the logout):
 ///
 /// - after Join Game: sends Client Settings (`en_US`, view distance 10) and the
 ///   `MC|Brand` plugin message `vanilla`,
@@ -79,6 +82,7 @@ pub async fn play_session(
     protocol: i32,
     name: &str,
     duration: Duration,
+    from_spawn: bool,
     chat: &[String],
     moves: &[Vec<f64>],
 ) -> Result<PlayObservation, BotError> {
@@ -104,7 +108,17 @@ pub async fn play_session(
     }
 
     let start = Instant::now();
-    let deadline = start + duration;
+    // Until the position arrives, a session counted from it waits at most this long.
+    const SPAWN_WAIT: Duration = Duration::from_secs(30);
+    // How late the tick that ends such a session may come.
+    const TICK_SLACK: Duration = Duration::from_millis(100);
+    let mut deadline = start
+        + duration
+        + if from_spawn {
+            SPAWN_WAIT
+        } else {
+            Duration::ZERO
+        };
     let mut tick = tokio::time::interval(Duration::from_millis(50));
     let mut positioned = false;
     let mut origin: Option<(f64, f64, f64)> = None;
@@ -137,8 +151,12 @@ pub async fn play_session(
 
     let result: Result<(), BotError> = async { loop {
         tokio::select! {
-            () = tokio::time::sleep_until(deadline) => break,
+            () = tokio::time::sleep_until(deadline + if from_spawn { TICK_SLACK } else { Duration::ZERO }) => break,
             _ = tick.tick() => {
+                // Counted from the spawn, the session ends on a tick, like the actions.
+                if from_spawn && positioned && Instant::now() >= deadline {
+                    break;
+                }
                 if positioned {
                     // Scripted actions go out right before this tick's movement packet, so
                     // the server always handles both in the same tick.
@@ -236,6 +254,9 @@ pub async fn play_session(
                             on_ground: false,
                         }).await?;
                         positioned = true;
+                        if positioned_at.is_none() && from_spawn {
+                            deadline = Instant::now() + duration;
+                        }
                         positioned_at.get_or_insert_with(Instant::now);
                         origin.get_or_insert(here);
                         next_chat = Instant::now() + Duration::from_millis(500);

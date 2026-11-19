@@ -88,6 +88,11 @@ pub enum Step {
         name: String,
         #[serde(default = "three")]
         seconds: u64,
+        /// Count `seconds` from the first position instead of the login, like the
+        /// `@<ms>` chat timings: the time from the last action to the logout then does
+        /// not depend on how fast the server places the player.
+        #[serde(default)]
+        seconds_from_spawn: bool,
         #[serde(default)]
         chat: Vec<String>,
         /// Offsets from the spawn position, one Position packet per tick.

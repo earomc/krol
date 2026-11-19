@@ -20,7 +20,8 @@ Generates random bot sessions and runs each on live vanilla (`KROL_VANILLA_JAR`)
 once. A case is a creative player in the flat fixture world taking `M` steps (default 20):
 walking, looking, setting hotbar slots, selecting one, placing or using, digging, clicking
 in window 0 or 1, closing it, sneaking. Each step gets a second, and actions are sent while
-the player stands still, following the race-free rules below. Each case observes the bot's
+the player stands still, following the race-free rules below. After the last step the
+window is closed, so a stack left on the cursor drops before logout. Each case observes the bot's
 packets, every block, light level and tile entity in the area, the chunk's saved entities,
 the player file and the log. `--seed` defaults to the current time; `--cases K` runs seeds
 `N..N+K`.
@@ -38,7 +39,10 @@ minute; shrinking takes a minute per attempt.
 
 The generator leaves out items whose behavior draws from unseeded randoms or runs on its
 own clock (falling blocks, TNT, liquids, spawn eggs, throwables) and turns off tile drops
-and random block ticks. When a noisy path keeps coming up, fix it at the source (pin it,
+and random block ticks. Tossed items keep their random yaw and spread: their motion and
+rotation are ignored, and their position (1 block), `Age` and `PickupDelay` (2 ticks)
+compared with tolerances (an `[*]` in an ignore or tolerance path matches any list
+index). When a noisy path keeps coming up, fix it at the source (pin it,
 or extend the generator's fixed ignores) rather than letting every case pay for a second
 vanilla run.
 
@@ -232,6 +236,14 @@ into server ticks. Rules learned from flaky scenarios:
   flight (`play/splash_potions`). Console steps run about 3 seconds after the first
   background bot joins (each background `play` step waits 1.5 s), so time bot actions
   that need given items after that.
+- **A play session counts its `seconds` from the login, but `@<ms>` actions from the
+  first position**, and vanilla takes about 4 ticks longer to place the player: what
+  ages between an action and the logout (dropped items) differs by that much. Set
+  `seconds_from_spawn = true` to count the session from the position too; it then ends
+  on one of the bot's ticks, like the actions. The fuzzer always does.
+- **Console lines sent together run in one tick** (`wait_ms = 0` on all but the last),
+  which makes a burst of summons and a `kick` exact. A kicked player leaves in the next
+  tick's network phase (`play/chunk_unload`).
 - **Drops from paintings and item frames start half inside their wall**, and once the
   random start motion carries an item's middle into the wall block, `pushOutOfBlocks`
   shoots it back out at up to 0.3 blocks per tick: no distance is safe. Wall the drops
