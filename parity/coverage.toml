@@ -109,6 +109,11 @@ description = "Stored inventory, armor, item NBT and XP sent on join"
 scenarios = ["play/inventory_join"]
 
 [[feature]]
+id = "play.logout_drops"
+description = "Logging out: EntityPlayer#setDead closes the containers, dropping the cursor stack; closed connections leave in the network phase after the worlds ticked. Not yet in a scenario: the crafting grid dropped on logout"
+scenarios = ["play/logout_cursor_drop"]
+
+[[feature]]
 id = "play.join"
 description = "Join Game sequence and initial chunks"
 scenarios = ["play/join_flat", "login/offline"]

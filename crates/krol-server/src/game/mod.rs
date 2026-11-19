@@ -312,6 +312,10 @@ struct Game {
     user_cache: crate::usercache::UserCache,
     /// Players disconnected by the server, removed (with logs) in the next network tick.
     pending_removals: Vec<(u64, Component)>,
+    /// Players whose client closed the connection, removed in this tick's network phase
+    /// (vanilla `NetworkSystem.networkTick` notices closed channels after the worlds
+    /// ticked).
+    closed_connections: Vec<(u64, Component)>,
     /// Logins waiting for the same profile's older session to leave (vanilla's
     /// `LoginState.DELAY_ACCEPT`), oldest first.
     delayed_joins: Vec<DelayedJoin>,
@@ -449,6 +453,7 @@ pub fn start(
         last_status_refresh: None,
         stopping: false,
         pending_removals: Vec::new(),
+        closed_connections: Vec::new(),
         delayed_joins: Vec::new(),
         tracker: Default::default(),
         items: Default::default(),
@@ -781,12 +786,15 @@ impl Game {
         self.tick_tile_entities();
         self.tick_moving();
         self.update_tracked_entities();
-        // NetworkSystem.networkTick: waiting logins are older connections than the
-        // ones finishing their login this tick.
+        // NetworkSystem.networkTick: closed connections leave, and waiting logins are
+        // older connections than the ones finishing their login this tick.
+        self.remove_closed_connections();
         self.accept_delayed_joins();
         for event in late {
             self.handle_event(event);
         }
+        // A player that joined and left within this network phase.
+        self.remove_closed_connections();
         // ServerConfigurationManager.onTick: everyone's latency every 600 ticks.
         self.ping_index += 1;
         if self.ping_index > LATENCY_INTERVAL {
@@ -1109,8 +1117,10 @@ impl Game {
                 if self.pending_removals.iter().any(|(c, _)| *c == conn_id) {
                     return;
                 }
-                if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
-                    self.remove_player(i, &reason.component());
+                if self.players.iter().any(|p| p.conn_id == conn_id)
+                    && !self.closed_connections.iter().any(|(c, _)| *c == conn_id)
+                {
+                    self.closed_connections.push((conn_id, reason.component()));
                 }
             }
             GameEvent::Shutdown | GameEvent::Console(_) => {}
@@ -1282,6 +1292,19 @@ impl Game {
 
     /// Vanilla `NetHandlerLoginServer.update` in `DELAY_ACCEPT`: joins once no player
     /// with the profile's UUID is left.
+    /// `NetworkManager.checkDisconnected` for connections the client closed.
+    fn remove_closed_connections(&mut self) {
+        for (conn_id, reason) in std::mem::take(&mut self.closed_connections) {
+            // A kick in the meantime removes the player with the kick reason.
+            if self.pending_removals.iter().any(|(c, _)| *c == conn_id) {
+                continue;
+            }
+            if let Some(i) = self.players.iter().position(|p| p.conn_id == conn_id) {
+                self.remove_player(i, &reason);
+            }
+        }
+    }
+
     fn accept_delayed_joins(&mut self) {
         let mut i = 0;
         while i < self.delayed_joins.len() {
@@ -2710,6 +2733,10 @@ impl Game {
         self.save_player(i);
         // playerLoggedOut: the vehicle leaves with the player.
         self.remove_mount_of_leaving(i);
+        // World.removeEntity -> EntityPlayer.setDead: the player's own and the open
+        // container are closed, dropping the cursor stack and crafting grid (after the
+        // player file was written, so nothing is duplicated).
+        self.close_window(i);
         // World.removeEntity: viewers destroy the player entity.
         self.untrack_player(i);
         let player = self.players.remove(i);

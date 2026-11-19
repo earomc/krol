@@ -46,7 +46,12 @@ when an item is done or priorities change.
    passed alone; make its timing robust. `play/mobs_no_ai` failed once in a parallel
    run of the mob scenarios (2026-11-19; the diff was not kept) and passed alone and in
    three later parallel runs: find the race (likely the knockback velocities following
-   the tracker's beat).
+   the tracker's beat). `play/splash_potions` replayed as 1.7 clients failed once in a
+   parallel full run (2026-11-19: the other player's `destroy_entities` for the potion
+   came before the splash's metadata and health update) and passed alone.
+5. **Widen `parity fuzz`**: run more seeds of the creative generator, then add survival
+   (digging timing, damage), entities, several players, console commands and malformed
+   packets (see `parity fuzz` under the parity harness).
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
 The nether and the end are ❌ (see [world](#netminecraftworld)).
@@ -134,7 +139,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | Login: outdated client/server messages | ✅ | |
 | Play | 🟡 | See packet tables |
 | Keep-alive interval and timeout | ✅ | |
-| Malformed packets: vanilla disconnect behavior, never a panic | ✅ | Fuzzing (`parity fuzz`) not built yet |
+| Malformed packets: vanilla disconnect behavior, never a panic | ✅ | `parity fuzz` sends only well-formed packets so far |
 
 ### Play: clientbound (server → client)
 
@@ -716,7 +721,7 @@ example plugin, `docs/bukkit-to-rust.md`.
 | Vanilla agent: pinning the world random and random tick LCG, timed random tick windows (`krolpin`) | ✅ | Mobs' own randoms: once (`krolpin`), every tick (`krolpin mobs`), at birth (`krolpin spawns`); the world random every tick (`krolpin world`) |
 | Pinning entity randoms and the clock | ❌ | |
 | `[observe.tolerance]` | ✅ | |
-| `parity fuzz` | ❌ | |
+| `parity fuzz` | 🟡 | Creative block and inventory actions of one player in the flat world, vanilla self-check for noise, ddmin shrinking into `scenarios/fuzz/`. Not yet: survival (digging timing, damage), mobs and entities, several players, console commands, malformed packets |
 | `parity worldgen` | ❌ | M6 |
 | `parity plugins` | ❌ | M8 |
 | Testbot: protocol 47 and 5, movement, digging, placing, clicks, chat, item use, attacking (also critical hops), sprinting | ✅ | Interacting with entities ❌ |
