@@ -38,8 +38,8 @@ fix krol, then rename the scenario after what it covers and keep it. The report 
 minute; shrinking takes a minute per attempt.
 
 The generator leaves out items whose behavior draws from unseeded randoms or runs on its
-own clock (falling blocks, TNT, liquids, spawn eggs, throwables) and turns off tile drops
-and random block ticks. Tossed items keep their random yaw and spread: their motion and
+own clock (falling blocks, TNT, liquids, spawn eggs, throwables, bone meal) and turns
+off tile drops and random block ticks. Tossed items keep their random yaw and spread: their motion and
 rotation are ignored, and their position (1 block), `Age` and `PickupDelay` (2 ticks)
 compared with tolerances (an `[*]` in an ignore or tolerance path matches any list
 index). When a noisy path keeps coming up, fix it at the source (pin it,

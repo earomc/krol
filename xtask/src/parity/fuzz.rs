@@ -69,69 +69,69 @@ const PLAYER_WINDOW_SLOTS: i16 = 45;
 
 /// Items the bot takes from the creative inventory: id and damage. Left out on purpose:
 /// what draws from unseeded randoms or lives on its own clock (falling blocks, TNT,
-/// liquids, spawn eggs, throwables), which would make vanilla disagree with itself.
+/// liquids, spawn eggs, throwables, bone meal: its growth rolls on the world random),
+/// which would make vanilla disagree with itself.
 const ITEMS: &[(i16, i16)] = &[
-    (1, 0),    // stone
-    (1, 3),    // diorite
-    (3, 0),    // dirt
-    (4, 0),    // cobblestone
-    (5, 0),    // oak planks
-    (5, 2),    // birch planks
-    (17, 0),   // oak log
-    (17, 2),   // birch log
-    (20, 0),   // glass
-    (35, 14),  // red wool
-    (44, 0),   // stone slab
-    (44, 3),   // cobblestone slab
-    (126, 1),  // spruce slab
-    (53, 0),   // oak stairs
-    (67, 0),   // cobblestone stairs
-    (50, 0),   // torch
-    (76, 0),   // redstone torch
-    (69, 0),   // lever
-    (77, 0),   // stone button
-    (143, 0),  // wooden button
-    (70, 0),   // stone pressure plate
-    (324, 0),  // oak door
-    (330, 0),  // iron door
-    (96, 0),   // trapdoor
-    (107, 0),  // fence gate
-    (85, 0),   // fence
-    (139, 0),  // cobblestone wall
-    (101, 0),  // iron bars
-    (102, 0),  // glass pane
-    (65, 0),   // ladder
-    (106, 0),  // vine
-    (54, 0),   // chest
-    (146, 0),  // trapped chest
-    (61, 0),   // furnace
-    (58, 0),   // crafting table
-    (331, 0),  // redstone
-    (356, 0),  // repeater
-    (404, 0),  // comparator
-    (123, 0),  // redstone lamp
-    (152, 0),  // block of redstone
-    (33, 0),   // piston
-    (29, 0),   // sticky piston
-    (154, 0),  // hopper
-    (23, 0),   // dispenser
-    (158, 0),  // dropper
-    (25, 0),   // note block
-    (89, 0),   // glowstone
-    (66, 0),   // rail
-    (27, 0),   // powered rail
-    (355, 0),  // bed
-    (323, 0),  // sign
-    (390, 0),  // flower pot
-    (38, 0),   // poppy
-    (31, 1),   // tall grass
-    (78, 0),   // snow layer
-    (171, 4),  // yellow carpet
-    (397, 3),  // player head
-    (120, 0),  // end portal frame
-    (290, 0),  // wooden hoe
-    (351, 15), // bone meal
-    (280, 0),  // stick
+    (1, 0),   // stone
+    (1, 3),   // diorite
+    (3, 0),   // dirt
+    (4, 0),   // cobblestone
+    (5, 0),   // oak planks
+    (5, 2),   // birch planks
+    (17, 0),  // oak log
+    (17, 2),  // birch log
+    (20, 0),  // glass
+    (35, 14), // red wool
+    (44, 0),  // stone slab
+    (44, 3),  // cobblestone slab
+    (126, 1), // spruce slab
+    (53, 0),  // oak stairs
+    (67, 0),  // cobblestone stairs
+    (50, 0),  // torch
+    (76, 0),  // redstone torch
+    (69, 0),  // lever
+    (77, 0),  // stone button
+    (143, 0), // wooden button
+    (70, 0),  // stone pressure plate
+    (324, 0), // oak door
+    (330, 0), // iron door
+    (96, 0),  // trapdoor
+    (107, 0), // fence gate
+    (85, 0),  // fence
+    (139, 0), // cobblestone wall
+    (101, 0), // iron bars
+    (102, 0), // glass pane
+    (65, 0),  // ladder
+    (106, 0), // vine
+    (54, 0),  // chest
+    (146, 0), // trapped chest
+    (61, 0),  // furnace
+    (58, 0),  // crafting table
+    (331, 0), // redstone
+    (356, 0), // repeater
+    (404, 0), // comparator
+    (123, 0), // redstone lamp
+    (152, 0), // block of redstone
+    (33, 0),  // piston
+    (29, 0),  // sticky piston
+    (154, 0), // hopper
+    (23, 0),  // dispenser
+    (158, 0), // dropper
+    (25, 0),  // note block
+    (89, 0),  // glowstone
+    (66, 0),  // rail
+    (27, 0),  // powered rail
+    (355, 0), // bed
+    (323, 0), // sign
+    (390, 0), // flower pot
+    (38, 0),  // poppy
+    (31, 1),  // tall grass
+    (78, 0),  // snow layer
+    (171, 4), // yellow carpet
+    (397, 3), // player head
+    (120, 0), // end portal frame
+    (290, 0), // wooden hoe
+    (280, 0), // stick
 ];
 
 /// One step of a case. Positions are absolute.
