@@ -1,0 +1,58 @@
+# Found by `cargo xtask parity fuzz --seed 123 --steps 20` (shrunk to 3 steps): fence gates
+# need a solid material below (BlockFenceGate.canPlaceBlockAt), pumpkins and jack
+# o'lanterns a solid top surface (BlockPumpkin.canPlaceBlockAt). Placed in mid-air they are
+# refused and the client's prediction reverted; on the ground they are placed.
+description = "Fence gates and pumpkins need support below (found by parity fuzz)"
+subsystem = "placement"
+
+[setup]
+world = "fixtures/worlds/flat"
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "false", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "1" }
+
+# A fixed position (creative players get a random spawn offset otherwise).
+[setup.files]
+"world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat" = "fixtures/playerdata/notch_creative.dat"
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+[[steps]]
+id = "bot"
+action = "play"
+protocol = 47
+name = "Notch"
+seconds = 8
+seconds_from_spawn = true
+chat = [
+    "@1000 !creative 36 107 64 0",
+    "@1300 !creative 37 86 64 0",
+    "@1600 !creative 38 91 64 0",
+    "@1900 !creative 39 183 64 0",
+    "@2200 !hold 0",
+    "@2500 !place -470 6 -435 2",
+    "@2800 !hold 1",
+    "@3100 !place -469 6 -435 2",
+    "@3400 !hold 2",
+    "@3700 !place -468 6 -435 2",
+    "@4000 !hold 3",
+    "@4300 !place -467 6 -435 2",
+    "@4600 !hold 0",
+    "@4900 !place -470 3 -435 1",
+    "@5200 !hold 1",
+    "@5500 !place -469 3 -435 1",
+    "@5800 !hold 2",
+    "@6100 !place -468 3 -435 1",
+    "@6400 !hold 3",
+    "@6700 !place -467 3 -435 1",
+]
+
+[observe]
+files = ["world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat"]
+blocks = [[-471, 3, -436], [-471, 3, -435], [-471, 3, -434], [-471, 4, -436], [-471, 4, -435], [-471, 4, -434], [-471, 5, -436], [-471, 5, -435], [-471, 5, -434], [-471, 6, -436], [-471, 6, -435], [-471, 6, -434], [-471, 7, -436], [-471, 7, -435], [-471, 7, -434], [-470, 3, -436], [-470, 3, -435], [-470, 3, -434], [-470, 4, -436], [-470, 4, -435], [-470, 4, -434], [-470, 5, -436], [-470, 5, -435], [-470, 5, -434], [-470, 6, -436], [-470, 6, -435], [-470, 6, -434], [-470, 7, -436], [-470, 7, -435], [-470, 7, -434], [-469, 3, -436], [-469, 3, -435], [-469, 3, -434], [-469, 4, -436], [-469, 4, -435], [-469, 4, -434], [-469, 5, -436], [-469, 5, -435], [-469, 5, -434], [-469, 6, -436], [-469, 6, -435], [-469, 6, -434], [-469, 7, -436], [-469, 7, -435], [-469, 7, -434], [-468, 3, -436], [-468, 3, -435], [-468, 3, -434], [-468, 4, -436], [-468, 4, -435], [-468, 4, -434], [-468, 5, -436], [-468, 5, -435], [-468, 5, -434], [-468, 6, -436], [-468, 6, -435], [-468, 6, -434], [-468, 7, -436], [-468, 7, -435], [-468, 7, -434], [-467, 3, -436], [-467, 3, -435], [-467, 3, -434], [-467, 4, -436], [-467, 4, -435], [-467, 4, -434], [-467, 5, -436], [-467, 5, -435], [-467, 5, -434], [-467, 6, -436], [-467, 6, -435], [-467, 6, -434], [-467, 7, -436], [-467, 7, -435], [-467, 7, -434]]
+ignore = [
+    # Vanilla replaces a stored XpSeed of 0 with an unseeded random value on load.
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.XpSeed",
+    # A flying player's motion keeps changing with each server tick until it logs out.
+    "file:world/playerdata/b50ad385-829d-3141-a216-7e7d7539ba7f.dat.Motion",
+]

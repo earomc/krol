@@ -53,10 +53,13 @@ when an item is done or priorities change.
    picked up the broken boat's drop before the session ended: sound, collect, set_slot,
    destroy) and `play/mobs_riding` (a carrot-on-a-stick `set_slot` before the latency
    update) failed in parallel and passed alone, 10 and 16 times in a row: both are
-   end-of-session timing under load.
-5. **Widen `parity fuzz`**: run more seeds of the creative generator, then add survival
-   (digging timing, damage), entities, several players, console commands and malformed
-   packets (see `parity fuzz` under the parity harness).
+   end-of-session timing under load. Fuzz seed 122 (2026-11-19) saved a golden apple's
+   effect `Duration` one tick shorter than vanilla and did not reproduce: effects tick
+   with the player's movement packets, so the last packets before logout race the tick.
+   Fuzz seed 127 was noisy because one vanilla run did not start (`started` differed).
+5. **Widen `parity fuzz`**: creative and survival play with armor stands, item frames
+   and minecarts are fuzzed; keep running seeds, then add several players, console
+   commands and malformed packets (see `parity fuzz` under the parity harness).
 
 "Overworld only" applies to the whole game layer: krol loads and ticks only dimension 0.
 The nether and the end are ❌ (see [world](#netminecraftworld)).

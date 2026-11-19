@@ -309,8 +309,21 @@ pub fn placed_state(
             state(opposite(click.facing()))
         }
         61 | 130 => state(opposite(click.facing())),
-        86 | 91 => state(horizontal_index(opposite(click.facing()))),
-        107 | 183..=187 => state(horizontal_index(click.facing())),
+        // BlockPumpkin.canPlaceBlockAt: a solid top surface below.
+        ids::block::PUMPKIN | ids::block::LIT_PUMPKIN => {
+            if !solid_top(below) {
+                return None;
+            }
+            state(horizontal_index(opposite(click.facing())))
+        }
+        // BlockFenceGate.canPlaceBlockAt: a solid material below.
+        ids::block::OAK_FENCE_GATE
+        | ids::block::SPRUCE_FENCE_GATE..=ids::block::ACACIA_FENCE_GATE => {
+            if !super::block_data::material(below >> 4).is_solid() {
+                return None;
+            }
+            state(horizontal_index(click.facing()))
+        }
         145 => state(horizontal_index(rotate_y(click.facing())) | (((damage as u8) & 3) << 2)),
         23 | 158 | 29 | 33 => state(click.facing_3d(at)),
         154 => {

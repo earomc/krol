@@ -173,6 +173,8 @@ pub mod block {
     pub const REEDS: u16 = 83;
     /// `pumpkin`.
     pub const PUMPKIN: u16 = 86;
+    /// `lit_pumpkin` (jack o'lantern).
+    pub const LIT_PUMPKIN: u16 = 91;
     /// `soul_sand`.
     pub const SOUL_SAND: u16 = 88;
     /// `web` (cobweb).

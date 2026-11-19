@@ -295,8 +295,8 @@ scenarios = ["play/death_respawn"]
 
 [[feature]]
 id = "blocks.placement_orientation"
-description = "Block placement rules: logs/pillars by face, stairs and slabs by yaw and click height, slab merging, torches, ladders, furnaces, chests (neighbors), pumpkins, gates, anvils, pistons, hoppers, trapdoors, plant support"
-scenarios = ["play/place_oriented"]
+description = "Block placement rules: logs/pillars by face, stairs and slabs by yaw and click height, slab merging, torches, ladders, furnaces, chests (neighbors), pumpkins, gates, anvils, pistons, hoppers, trapdoors, plant support; fence gates and pumpkins refused without support below"
+scenarios = ["play/place_oriented", "play/placement_support"]
 
 [[feature]]
 id = "blocks.activation_doors"
