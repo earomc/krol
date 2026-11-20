@@ -1791,19 +1791,25 @@ impl Game {
             krol_nbt::Compound::new()
         };
         tag.insert("id", krol_nbt::Tag::String(kind.to_owned()));
-        if self
-            .summon_entity_from_nbt(&tag, pos, args.len() < 5)
-            .is_none()
-        {
+        let Some(mut rider) = self.summon_entity_from_nbt(&tag, pos, args.len() < 5) else {
             return Err(err("commands.summon.failed", vec![]));
-        }
-        // The mounts saved in `Riding`, each summoned at the same spot.
-        // TODO(M5): mount each entity on the next (only players ride so far).
+        };
+        // The mounts saved in `Riding`, each summoned at the same spot, the entity
+        // before mounting it. Mobs ride; other riders just stand on their mounts.
+        // TODO(M5): armor stands and the kinds kept as NBT riding.
         let mut riding = tag.get_compound("Riding").cloned();
         while let Some(mount) = riding {
-            if self.summon_entity_from_nbt(&mount, pos, false).is_none() {
+            let Some(id) = self.summon_entity_from_nbt(&mount, pos, false) else {
                 break;
+            };
+            if self.mobs.contains_key(&rider)
+                && (self.minecarts.contains_key(&id)
+                    || self.boats.contains_key(&id)
+                    || self.mobs.contains_key(&id))
+            {
+                self.mount_mob(rider, id);
             }
+            rider = id;
             riding = mount.get_compound("Riding").cloned();
         }
         self.notify(sender, "summon", false, "commands.summon.success", vec![]);

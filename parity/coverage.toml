@@ -540,7 +540,7 @@ scenarios = ["commands/entity_targets"]
 
 [[feature]]
 id = "commands.summon"
-description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Not yet: mobs other than pigs, Riding mounts, LightningBolt (onInitialSpawn of a tagless summon: play/spawn_eggs)"
+description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Riding mounts: play/mobs_riding_carts. Not yet: mobs other than pigs, LightningBolt (onInitialSpawn of a tagless summon: play/spawn_eggs)"
 scenarios = ["commands/summon"]
 
 [[feature]]
@@ -575,8 +575,13 @@ scenarios = ["play/mobs_growing_up"]
 
 [[feature]]
 id = "entity.mobs.push_vehicles"
-description = "Mobs and vehicles (EntityLivingBase.collideWithNearbyEntities, EntityMinecart.applyEntityCollision, Entity.applyEntityCollision, getCollisionBoundingBox/getCollisionBox): a mob pushes minecarts (the cart takes the push, the mob a quarter) and boats (both ways), boats are solid for walking mobs, mobs block moving carts and boats, a pig without AI pushes without moving. Not covered: moving rideable carts picking mobs up (not implemented), ridden mobs left unpushed"
+description = "Mobs and vehicles (EntityLivingBase.collideWithNearbyEntities, EntityMinecart.applyEntityCollision, Entity.applyEntityCollision, getCollisionBoundingBox/getCollisionBox): a mob pushes minecarts (the cart takes the push, the mob a quarter) and boats (both ways), boats are solid for walking mobs, mobs block moving carts and boats, a pig without AI pushes without moving. Not covered: ridden mobs left unpushed (moving rideable carts picking mobs up: entity.mobs.riding_carts)"
 scenarios = ["play/mobs_push_vehicles"]
+
+[[feature]]
+id = "entity.mobs.riding_carts"
+description = "Mobs riding minecarts (EntityMinecart.applyEntityCollision, Entity.mountEntity, updateRidden, updateRiderPosition, EntityLivingBase.dismountEntity, writeMountToNBT): a mob's collideWithNearbyEntities with a rideable cart moving faster than 0.1 sideways gets it in (neither riding), the attach packet from the tracker on the change and every 60 updates, the rider's own box stopping the cart (the getCollidingBoundingBoxes quirk), /summon with a Riding mount (spawned, then mounted; Motion read), the rider updating from rest right after its cart (a rider never lands, so pig AI cannot walk or push the cart), riders sending looks only, a powered activator rail throwing the mob out (truncated block coordinates, onto the track ahead), a dead rider let go, the rider saved with its cart in Riding and the cart not saved on its own. Not covered: carts broken under a mob, mobs riding boats or mobs, chunks loading a Riding stack, a mob rider's forward input pushing a resting cart"
+scenarios = ["play/mobs_riding_carts"]
 
 [[feature]]
 id = "entity.mobs.tempt"

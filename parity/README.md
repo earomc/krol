@@ -316,6 +316,13 @@ into server ticks. Rules learned from flaky scenarios:
   helper): let it panic first (`Fire` in its tag). Its AI still takes goals in 3-tick
   steps that a slower join shifts by one against the bot's clock, so leave out what
   depends on how many steps a goal ran (`play/mobs_riding`).
+- **Let a cart pick up a mob from close by**: carts collide with mobs' boxes, so a fast
+  cart coming from afar stops against the mob and is pushed back. It picks the mob up
+  only when the mob's update (before the cart's, by entity id) finds it within 0.2 and
+  still moving: summon it moving with its box 0.1 from the mob's. The mob's box, not yet
+  moved onto the cart, then stops the cart too (vanilla never skips a mover's rider);
+  for a cart that carries its mob along, summon the mob riding it, with `Motion` in the
+  `Riding` tag (`play/mobs_riding_carts`).
 - **Keep console-clock mobs out of the bot's sight**: mobs spawned by a bot's actions
   run on the bot's clock and a summoned one on the console's, so their packets
   interleave differently every run. Summon it more than 80 blocks (an animal's tracking

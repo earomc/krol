@@ -596,13 +596,34 @@ impl Game {
                 let Tag::Compound(saved) = tag else { continue };
                 let mut c = saved.clone();
                 resolve_legacy_id(&mut c);
-                if !self.create_saved_entity((cx, cz), &c, &mut created) {
+                let Some(mut rider) = self.create_saved_entity((cx, cz), &c, &mut created) else {
                     continue;
-                }
+                };
                 // Passengers' mounts are saved inside them (`Riding`); vanilla creates
-                // each mount as an entity of the chunk. krol keeps the whole stack in
-                // the rider's NBT, so the mounts only take their entity ids.
+                // each mount as an entity of the chunk and mounts the rider on it. A mob
+                // rides minecarts, boats and mobs; for other riders krol keeps the rest
+                // of the stack in the rider's NBT, so those mounts only take their
+                // entity ids.
                 let mut riding = c.get_compound("Riding");
+                while let Some(mount) = riding
+                    && self.mobs.contains_key(&rider)
+                {
+                    let mut m = mount.clone();
+                    resolve_legacy_id(&mut m);
+                    let kind = m.get_str("id");
+                    let vehicle = super::minecart::CartKind::from_saved_id(kind).is_some()
+                        || kind == super::boat::SAVED_ID
+                        || super::mob::MobKind::from_saved_id(kind).is_some();
+                    if !vehicle {
+                        break;
+                    }
+                    let Some(id) = self.create_saved_entity((cx, cz), &m, &mut created) else {
+                        break;
+                    };
+                    self.mount_mob(rider, id);
+                    rider = id;
+                    riding = mount.get_compound("Riding");
+                }
                 while let Some(mount) = riding {
                     let mut m = mount.clone();
                     resolve_legacy_id(&mut m);
@@ -625,16 +646,14 @@ impl Game {
     }
 
     /// `EntityList.createEntityFromNBT` + `Chunk.addEntity` for one entity saved in
-    /// `chunk`; `false` if vanilla does not know the saved id.
+    /// `chunk`: its id, or `None` if vanilla does not know the saved id.
     fn create_saved_entity(
         &mut self,
         chunk: (i32, i32),
         c: &Compound,
         created: &mut Vec<(usize, i32)>,
-    ) -> bool {
-        let Some((id, pos)) = self.create_entity_from_nbt(c) else {
-            return false;
-        };
+    ) -> Option<i32> {
+        let (id, pos) = self.create_entity_from_nbt(c)?;
         // Chunk.addEntity: an entity saved in the wrong chunk is set dead (it still
         // joins this chunk's list, and is not saved again).
         let (cx, cz) = (floor_f64(pos.0 / 16.0), floor_f64(pos.2 / 16.0));
@@ -646,7 +665,7 @@ impl Game {
         self.level.overworld.mark_has_entities(chunk.0, chunk.1);
         self.chunk_entities.add(id, (chunk.0, chunk.1, section));
         created.push((section, id));
-        true
+        Some(id)
     }
 
     /// `EntityList.createEntityFromNBT` (the legacy minecart id already resolved): the

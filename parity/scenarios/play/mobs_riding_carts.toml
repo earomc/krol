@@ -1,0 +1,156 @@
+description = "Mobs riding minecarts: a moving rideable cart picks up a mob it bumps into (EntityMinecart.applyEntityCollision from the mob's collideWithNearbyEntities: faster than 0.1 sideways, neither riding; Entity.mountEntity, the attach packet from the tracker), its own box still beside the cart stops it (the vanilla quirk of getCollidingBoundingBoxes: a mover's rider is not skipped); a pig summoned riding a moving cart (Riding with Motion) is carried along, updating right after its cart (updateRidden: from rest, put back on the cart, its look sent instead of moves), and a powered activator rail throws it out (EntityLivingBase.dismountEntity, its truncated block coordinates); a burning pig summoned with a Riding tag sits in its cart (its AI cannot walk: a rider starting from rest never lands on the ground, so it never pushes the cart) until it dies and the cart lets go of it; the riders and carts saved with the chunk"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) and stands still.
+# Track A runs east along z = -440 between glass blocks at x = -480 and -466: plain
+# rails from x = -479, a powered activator rail at x = -471 (a redstone block under it),
+# then unpowered powered rails at x = -469 to -467 that brake the cart to an exact stop.
+# A pig without AI stands on the track at x = -475.5 (summoned under `krolpin 6`, which
+# pins its own random once: its ambient sounds). A rideable cart is then summoned just
+# west of it, moving east at 0.4, its box 0.1 from the pig's: in the next tick the pig
+# (updating before the cart) finds the cart within its reach (0.2) and moving, so the
+# cart picks it up. (Coming from farther away, the cart would stop against the pig's
+# box, which carts collide with, and be pushed back without picking it up.) The pig's
+# box, not yet moved onto the cart, stops the cart too: vanilla's collision boxes do not
+# skip a mover's rider. The cart stays put with the pig in it.
+# Track C, along z = -437, is laid out like track A. A pig without AI is summoned riding
+# a cart moving east at 0.4 (`krolpin 7`): the cart carries it to the activator rail,
+# which throws it out onto the track one block ahead (dismountEntity), and the cart runs
+# on into it and stops on the brakes.
+# Track B runs along z = -444 between glass blocks at x = -480 and -470, all unpowered
+# powered rails. A burning pig (Fire:400s, its random pinned under `krolpin 5`) is
+# summoned in a rideable cart (its Riding tag) at x = -475.5. It panics while riding,
+# but its paths need the ground. The fire takes its 10 health about 10 seconds after
+# the summon; its cart then lets go of it.
+# Both pigs are summoned with a tag, which skips onInitialSpawn (its follow range bonus
+# would be drawn before the pin). No loot: doMobLoot is off.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "gamerule doMobLoot false"
+
+[[steps]]
+action = "console"
+command = "setblock -480 4 -440 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -440 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -471 3 -440 redstone_block"
+
+[[steps]]
+action = "console"
+command = "fill -479 4 -440 -472 4 -440 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -440 activator_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -440 rail"
+
+[[steps]]
+action = "console"
+command = "fill -469 4 -440 -467 4 -440 golden_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -480 4 -437 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -466 4 -437 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -471 3 -437 redstone_block"
+
+[[steps]]
+action = "console"
+command = "fill -479 4 -437 -472 4 -437 rail"
+
+[[steps]]
+action = "console"
+command = "setblock -471 4 -437 activator_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -437 rail"
+
+[[steps]]
+action = "console"
+command = "fill -469 4 -437 -467 4 -437 golden_rail"
+
+[[steps]]
+action = "console"
+command = "setblock -480 4 -444 glass"
+
+[[steps]]
+action = "console"
+command = "setblock -470 4 -444 glass"
+
+[[steps]]
+action = "console"
+command = "fill -479 4 -444 -471 4 -444 golden_rail"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 21
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "krolpin 6 -- summon Pig -475.5 4 -439.5 {NoAI:1b}"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "summon MinecartRideable -476.54 4 -439.5 {Motion:[0.4d,0.0d,0.0d]}"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "krolpin 5 -- summon Pig -475.5 4 -443.5 {Fire:400s,Riding:{id:MinecartRideable}}"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "krolpin 7 -- summon Pig -477.5 4 -436.5 {NoAI:1b,Riding:{id:MinecartRideable,Motion:[0.4d,0.0d,0.0d]}}"
+wait_ms = 13000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+# Watching the player at the end, the pitch would depend on whether a tick runs
+# between the bot leaving and the stop (see play/mobs_tempt).
+ignore = ["entities.-30,-28[*].Rotation"]
+
+# Motion decays towards zero until the stop, whose tick depends on timing: only the
+# leftover denormals differ.
+[observe.tolerance]
+"entities.-30,-28[*].Motion" = 1e-9

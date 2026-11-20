@@ -376,14 +376,16 @@ impl Game {
     }
 
     /// The boxes a moving boat collides with besides blocks (`getCollisionBox` returns
-    /// every other entity's box): everything near it but its rider and spectators.
+    /// every other entity's box): everything near it but spectators.
     fn boat_obstacles(&self, id: i32, area: &Aabb) -> Vec<Aabb> {
         let near = area.expand([0.25, 0.25, 0.25]);
-        let rider = self.boats.get(&id).and_then(|b| b.rider);
+        // Vanilla quirk: getCollidingBoundingBoxes means to skip the mover's rider, but
+        // compares it with the entity list instead of each entity, so the rider's box
+        // counts too (sitting in the boat, it overlaps it and does not clip it).
         let mut boxes: Vec<Aabb> = self
             .players
             .iter()
-            .filter(|p| !p.removed && p.gamemode != SPECTATOR && Some(p.entity_id) != rider)
+            .filter(|p| !p.removed && p.gamemode != SPECTATOR)
             .map(|p| Aabb::at(p.pos, 0.6, 1.8))
             .collect();
         boxes.extend(self.items.values().map(|it| it.body.bb()));
@@ -431,10 +433,8 @@ impl Game {
         if self.boats.get(&id).is_some_and(|b| b.dead) {
             if let Some(b) = self.boats.remove(&id)
                 && let Some(rider) = b.rider
-                && let Some(p) = self.players.iter_mut().find(|p| p.entity_id == rider)
-                && p.riding == Some(id)
             {
-                p.riding = None;
+                self.let_go_of_rider(id, rider);
             }
             self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
@@ -729,6 +729,10 @@ impl Game {
         let (Some(b), Some(m)) = (self.boats.get(&id), self.mobs.get(&mob)) else {
             return;
         };
+        // Entity.applyEntityCollision: not with its own rider.
+        if b.rider == Some(mob) || m.riding == Some(id) {
+            return;
+        }
         let Some((dx, dz)) = collision_push(b.body.pos, m.body.pos) else {
             return;
         };

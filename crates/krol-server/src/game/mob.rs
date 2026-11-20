@@ -346,7 +346,7 @@ pub struct Mob {
     /// `prevPosX/Y/Z`: where the mob was when its update began.
     prev_pos: (f64, f64, f64),
     /// `moveForward`, `moveStrafing`: the inputs of `moveEntityWithHeading`.
-    move_forward: f32,
+    pub(super) move_forward: f32,
     move_strafing: f32,
     /// `landMovementFactor` (`getAIMoveSpeed`).
     ai_move_speed: f32,
@@ -361,6 +361,9 @@ pub struct Mob {
     ai: Option<Box<ai::MobAi>>,
     /// `riddenByEntity`: the entity id of the player riding it.
     pub rider: Option<i32>,
+    /// `ridingEntity`: the entity id of the vehicle it rides (a minecart that picked
+    /// it up, or a mount loaded or summoned with it).
+    pub riding: Option<i32>,
 }
 
 fn chunk_of(pos: (f64, f64, f64)) -> (i32, i32) {
@@ -431,6 +434,7 @@ impl Mob {
             entity_age: 0,
             revenge_target: None,
             rider: None,
+            riding: None,
             ai: Some(Box::new(match kind {
                 MobKind::Pig => ai::MobAi::pig(pos),
             })),
@@ -807,41 +811,91 @@ impl Game {
         self.entity_rand.next_long()
     }
 
-    /// One mob's turn in the entity loop (`World.updateEntityWithOptionalForce`): its
-    /// update unless dead, then its removal if dead.
+    /// One mob's turn in the entity loop (`World.updateEntities`): a rider waits for
+    /// its vehicle (one whose vehicle is gone or has let go of it gets off silently);
+    /// otherwise its update unless dead, then its removal if dead.
     pub(super) fn update_mob(&mut self, id: i32) {
-        if self.mobs.get(&id).is_some_and(|m| !m.dead) {
-            // WorldServer: animals go when the server does not spawn them, after one
-            // more update.
-            let spawn_animals = self.config.spawn_animals;
-            if let Some(m) = self.mobs.get_mut(&id) {
-                if !spawn_animals && m.kind.animal() {
-                    m.dead = true;
-                }
-                m.ticks_existed += 1;
+        if let Some(vehicle) = self.mobs.get(&id).and_then(|m| m.riding) {
+            if !self.vehicle_dead(vehicle) && self.vehicle_rider(vehicle) == Some(id) {
+                return;
             }
-            // The update runs to its end even if the mob dies on the way.
-            self.mob_base_update(id);
-            self.mob_living_update(id);
-            self.mob_body_update(id);
-            // EntityLiving.onUpdate: the lead, after the living entity's update.
-            self.update_leashed_state(id);
-            if let Some(m) = self.mobs.get_mut(&id) {
-                m.chunk = chunk_of(m.body.pos);
+            if self.vehicle_rider(vehicle) == Some(id) {
+                self.set_vehicle_rider(vehicle, None);
             }
-            self.relocate_entity(id);
-            self.update_vehicle_rider(id);
+            if let Some(m) = self.mobs.get_mut(&id) {
+                m.riding = None;
+            }
         }
+        self.update_mob_entity(id);
         if self.mobs.get(&id).is_some_and(|m| m.dead) {
             if let Some(m) = self.mobs.remove(&id)
                 && let Some(rider) = m.rider
-                && let Some(p) = self.players.iter_mut().find(|p| p.entity_id == rider)
-                && p.riding == Some(id)
             {
-                p.riding = None;
+                self.let_go_of_rider(id, rider);
             }
             self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
+        }
+    }
+
+    /// `World.updateEntityWithOptionalForce` for a mob that is alive: its update
+    /// (`updateRidden` while it rides), its chunk, then its own rider. A rider runs
+    /// this right after its vehicle.
+    pub(super) fn update_mob_entity(&mut self, id: i32) {
+        if !self.mobs.get(&id).is_some_and(|m| !m.dead) {
+            return;
+        }
+        // WorldServer: animals go when the server does not spawn them, after one more
+        // update.
+        let spawn_animals = self.config.spawn_animals;
+        let mut riding = None;
+        if let Some(m) = self.mobs.get_mut(&id) {
+            if !spawn_animals && m.kind.animal() {
+                m.dead = true;
+            }
+            m.ticks_existed += 1;
+            riding = m.riding;
+        }
+        match riding {
+            Some(vehicle) => self.update_ridden_mob(id, vehicle),
+            None => self.mob_on_update(id),
+        }
+        if let Some(m) = self.mobs.get_mut(&id) {
+            m.chunk = chunk_of(m.body.pos);
+        }
+        self.relocate_entity(id);
+        self.update_vehicle_rider(id);
+    }
+
+    /// `EntityLiving.onUpdate`. The update runs to its end even if the mob dies on
+    /// the way.
+    fn mob_on_update(&mut self, id: i32) {
+        self.mob_base_update(id);
+        self.mob_living_update(id);
+        self.mob_body_update(id);
+        // EntityLiving.onUpdate: the lead, after the living entity's update.
+        self.update_leashed_state(id);
+    }
+
+    /// `EntityLivingBase.updateRidden`: a dead vehicle is let go (no update this
+    /// tick); otherwise the mob updates from rest, sits on its vehicle again and
+    /// forgets its fall.
+    fn update_ridden_mob(&mut self, id: i32, vehicle: i32) {
+        if self.vehicle_dead(vehicle) {
+            if let Some(m) = self.mobs.get_mut(&id) {
+                m.riding = None;
+            }
+            return;
+        }
+        if let Some(m) = self.mobs.get_mut(&id) {
+            m.body.motion = (0.0, 0.0, 0.0);
+        }
+        self.mob_on_update(id);
+        if let Some(vehicle) = self.mobs.get(&id).and_then(|m| m.riding) {
+            self.update_rider_position(vehicle);
+        }
+        if let Some(m) = self.mobs.get_mut(&id) {
+            m.base.fall_distance = 0.0;
         }
     }
 
@@ -1252,10 +1306,16 @@ impl Game {
             return;
         };
         let mut body = m.body.clone();
-        // Boats are solid (getCollisionBoundingBox).
+        let riding = m.riding;
+        // Boats are solid (getCollisionBoundingBox), its own one too (the vanilla quirk
+        // in Game::cart_obstacles).
         let boats = self.boat_boxes(&body.bb().add_coord([d.0, d.1, d.2]), None);
-        let outcome =
-            physics::move_entity_walking_among(&mut self.level.overworld, &mut body, d, &boats);
+        // A rider does not walk: no steps, no block walked on.
+        let outcome = if riding.is_some() {
+            physics::move_entity_among(&mut self.level.overworld, &mut body, d, &boats)
+        } else {
+            physics::move_entity_walking_among(&mut self.level.overworld, &mut body, d, &boats)
+        };
         let Some(m) = self.mobs.get_mut(&id) else {
             return;
         };
@@ -1469,8 +1529,15 @@ impl Game {
                 others.push((p.entity_id, Pushed::Player(i)));
             }
         }
+        // Entity.applyEntityCollision: not between a rider and its vehicle.
+        let (rider, riding) = (m.rider, m.riding);
         for (&other, o) in &self.mobs {
-            if other != id && !o.dead && o.body.bb().intersects(&area) {
+            if other != id
+                && !o.dead
+                && Some(other) != rider
+                && Some(other) != riding
+                && o.body.bb().intersects(&area)
+            {
                 others.push((other, Pushed::Mob));
             }
         }
@@ -2041,6 +2108,10 @@ impl Game {
         c.insert("id", Tag::String(m.kind.saved_id().into()));
         m.base.write_entity(&m.body, uuid, &mut c);
         m.write(&mut c);
+        // Entity.writeToNBT: the vehicle it rides, if alive (writeMountToNBT).
+        if let Some(mount) = m.riding.and_then(|v| self.mount_nbt(v)) {
+            c.insert("Riding", Tag::Compound(mount));
+        }
         c
     }
 }

@@ -104,6 +104,8 @@ const RIDDEN_SHARE: f64 = 0.75;
 /// `RIDER_START_SPEED_SQ`.
 const RIDER_PUSH: f64 = 0.1;
 const RIDER_START_SPEED_SQ: f64 = 0.01;
+/// A rideable cart faster than this (squared, sideways) picks up a mob it bumps into.
+const PICK_UP_SPEED_SQ: f64 = 0.01;
 /// Height differences along the rail change the speed by this share.
 const SLOPE_SPEED: f64 = 0.05;
 /// The rail line sits this high above the rail block.
@@ -723,10 +725,8 @@ impl Game {
         if self.minecarts.get(&id).is_some_and(|m| m.dead) {
             if let Some(m) = self.minecarts.remove(&id)
                 && let Some(rider) = m.rider
-                && let Some(p) = self.players.iter_mut().find(|p| p.entity_id == rider)
-                && p.riding == Some(id)
             {
-                p.riding = None;
+                self.let_go_of_rider(id, rider);
             }
             self.remove_entity_from_chunk(id);
             self.untrack_entity(id);
@@ -837,10 +837,13 @@ impl Game {
         let golden = state >> 4 == block::GOLDEN_RAIL;
         let boost = golden && state & rails::POWERED_BIT != 0;
         let mut brake = golden && !boost;
+        // A living rider's forward input and yaw (players and mobs alike).
         let rider = m
             .rider
-            .and_then(|r| self.players.iter().find(|p| p.entity_id == r))
-            .map(|p| (p.move_forward, p.rotation.0));
+            .and_then(|r| match self.players.iter().find(|p| p.entity_id == r) {
+                Some(p) => Some((p.move_forward, p.rotation.0)),
+                None => self.mobs.get(&r).map(|o| (o.move_forward, o.base.yaw)),
+            });
         let shape = rails::shape(state);
         match shape {
             rails::ASCENDING_EAST => {
@@ -1075,17 +1078,14 @@ impl Game {
     /// near it (players but spectators, other minecarts, mobs).
     fn cart_obstacles(&self, id: i32, area: &Aabb) -> Vec<Aabb> {
         let near = area.expand([0.25, 0.25, 0.25]);
-        // Not its own rider.
-        let rider = self.minecarts.get(&id).and_then(|m| m.rider);
+        // Vanilla quirk: getCollidingBoundingBoxes means to skip the mover's rider and
+        // vehicle, but compares them with the entity list instead of each entity, so
+        // its own rider blocks the cart too (one sitting in it overlaps it and does not
+        // clip it; one just picked up and still beside it stops the cart).
         let mut boxes: Vec<Aabb> = self
             .players
             .iter()
-            .filter(|p| {
-                !p.removed
-                    && p.gamemode != SPECTATOR
-                    && p.health() > 0.0
-                    && Some(p.entity_id) != rider
-            })
+            .filter(|p| !p.removed && p.gamemode != SPECTATOR && p.health() > 0.0)
             .map(|p| Aabb::at(p.pos, 0.6, 1.8))
             .filter(|b| b.intersects(&near))
             .collect();
@@ -1254,17 +1254,32 @@ impl Game {
                 Some(s) => s.body.pos,
                 None => return,
             },
-            CartPusher::Mob(o) => match self.mobs.get(&o) {
-                Some(o) => o.body.pos,
-                None => return,
-            },
+            CartPusher::Mob(o) => {
+                let Some(mob) = self.mobs.get(&o) else {
+                    return;
+                };
+                // Not by its own rider.
+                if m.rider == Some(o) {
+                    return;
+                }
+                // A moving rideable cart picks up a mob that rides nothing.
+                let speed_sq = cart_motion.0 * cart_motion.0 + cart_motion.2 * cart_motion.2;
+                let pick_up = m.kind == CartKind::Rideable
+                    && speed_sq > PICK_UP_SPEED_SQ
+                    && m.rider.is_none()
+                    && mob.riding.is_none();
+                let pos = mob.body.pos;
+                if pick_up {
+                    self.mount_mob(o, id);
+                }
+                pos
+            }
             CartPusher::Minecart(o) => match self.minecarts.get(&o) {
                 Some(o) => o.body.pos,
                 None => return,
             },
         };
-        // TODO(M5): moving rideable carts pick up mobs (and armor stands) they hit
-        // (mountEntity when its speed squared is over 0.01 and neither rides).
+        // TODO(M5): moving rideable carts pick up armor stands they hit too.
         let (mut dx, mut dz) = (other_pos.0 - cart_pos.0, other_pos.2 - cart_pos.2);
         let mut d = dx * dx + dz * dz;
         if d < f64::from(1.0e-4f32) {

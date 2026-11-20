@@ -759,6 +759,13 @@ impl Game {
                 entity_id,
                 properties: m.properties(),
             });
+            if let Some(vehicle_id) = m.riding {
+                packets.push(ClientboundPlay::AttachEntity {
+                    entity_id,
+                    vehicle_id,
+                    leash: false,
+                });
+            }
             if let Some(holder) = m.leash_holder().filter(|_| m.leashed()) {
                 packets.push(ClientboundPlay::AttachEntity {
                     entity_id,
@@ -1008,7 +1015,7 @@ impl Game {
 
         // The vehicle goes to the viewers when it changes, and every 60 updates while
         // riding.
-        let vehicle = v.player.and_then(|i| self.players[i].riding);
+        let vehicle = self.entity_vehicle(entity_id);
         if let Some(entry) = self.tracker.get_mut(&entity_id)
             && (entry.last_vehicle != vehicle
                 || (vehicle.is_some() && entry.update_counter % 60 == 0))
@@ -1081,9 +1088,7 @@ impl Game {
             if let Some(packet) = head_packet {
                 self.send_to_tracking(entity_id, &packet);
             }
-            if let Some(i) = v.player {
-                self.players[i].airborne = false;
-            }
+            self.clear_airborne(entity_id, &v);
         } else if due {
             entry.ticks_since_teleport += 1;
             let (x, y, z) = (fixed(v.pos.0), fixed(v.pos.1), fixed(v.pos.2));
@@ -1194,17 +1199,7 @@ impl Game {
             if let Some(packet) = head_packet {
                 self.send_to_tracking(entity_id, &packet);
             }
-            if let Some(i) = v.player {
-                self.players[i].airborne = false;
-            } else if let Some(h) = self.hanging.get_mut(&entity_id) {
-                h.airborne = false;
-            } else if let Some(m) = self.minecarts.get_mut(&entity_id) {
-                m.airborne = false;
-            } else if let Some(b) = self.boats.get_mut(&entity_id) {
-                b.airborne = false;
-            } else if let Some(m) = self.mobs.get_mut(&entity_id) {
-                m.airborne = false;
-            }
+            self.clear_airborne(entity_id, &v);
         }
         if let Some(entry) = self.tracker.get_mut(&entity_id) {
             entry.update_counter += 1;
@@ -1233,6 +1228,21 @@ impl Game {
             self.send_to_tracking(entity_id, &packet);
         }
         rechecked
+    }
+
+    /// `isAirBorne = false` once the tracker has sent the entity's move.
+    fn clear_airborne(&mut self, entity_id: i32, v: &View) {
+        if let Some(i) = v.player {
+            self.players[i].airborne = false;
+        } else if let Some(h) = self.hanging.get_mut(&entity_id) {
+            h.airborne = false;
+        } else if let Some(m) = self.minecarts.get_mut(&entity_id) {
+            m.airborne = false;
+        } else if let Some(b) = self.boats.get_mut(&entity_id) {
+            b.airborne = false;
+        } else if let Some(m) = self.mobs.get_mut(&entity_id) {
+            m.airborne = false;
+        }
     }
 
     /// Clears a non-player entity's `velocityChanged` and returns its motion if it was

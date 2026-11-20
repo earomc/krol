@@ -9,8 +9,13 @@
 //! a free spot next to the vehicle. A player who logs out in a vehicle takes it along:
 //! it is saved in the player's data and comes back when the player does.
 //!
-//! TODO(M5): mobs and armor stands riding (moving rideable carts pick them up), horses,
-//! the rider's own move while riding (block collisions under the vehicle).
+//! Mobs ride too: a moving rideable minecart picks up a mob it bumps into, and mobs
+//! loaded or summoned with a `Riding` tag sit on their mount. A riding mob runs its whole
+//! update (AI included) from rest, then sits on its vehicle again; it is saved with its
+//! vehicle in its `Riding` tag, and the vehicle is not saved on its own.
+//!
+//! TODO(M5): armor stands riding, horses, the rider's own move while riding (block
+//! collisions under the vehicle), a player's pig that rides a cart coming back with it.
 
 use krol_nbt::{Compound, Tag};
 use krol_protocol::packets::play::ClientboundPlay;
@@ -22,6 +27,8 @@ use super::saved_entities::EntityBase;
 
 /// `EntityPlayer.getYOffset`: a riding player sits this far below the mount point.
 const PLAYER_Y_OFFSET: f64 = -0.35;
+/// `Entity.getYOffset` of mobs: they sit on the mount point.
+const MOB_Y_OFFSET: f64 = 0.0;
 /// `EntityMinecart.getMountedYOffset`.
 const MINECART_MOUNT_OFFSET: f64 = 0.0;
 /// `Entity.getMountedYOffset` of mobs: this share of their height.
@@ -93,20 +100,21 @@ impl Game {
         }
     }
 
-    /// Where a rider of the vehicle `v` sits (`updateRiderPosition`).
-    fn rider_spot(&self, v: i32) -> Option<(f64, f64, f64)> {
+    /// Where a rider of the vehicle `v` sits (`updateRiderPosition`), `y_offset` being
+    /// the rider's `getYOffset`.
+    fn rider_spot(&self, v: i32, y_offset: f64) -> Option<(f64, f64, f64)> {
         if let Some(b) = self.boats.get(&v) {
-            return Some(b.seat(PLAYER_Y_OFFSET));
+            return Some(b.seat(y_offset));
         }
         if let Some(m) = self.mobs.get(&v) {
             // Entity.getMountedYOffset: three quarters up.
             let p = m.body.pos;
             let top = f64::from(m.body.height) * MOB_MOUNT_OFFSET;
-            return Some((p.0, p.1 + top + PLAYER_Y_OFFSET, p.2));
+            return Some((p.0, p.1 + top + y_offset, p.2));
         }
         let m = self.minecarts.get(&v)?;
         let p = m.body.pos;
-        Some((p.0, p.1 + MINECART_MOUNT_OFFSET + PLAYER_Y_OFFSET, p.2))
+        Some((p.0, p.1 + MINECART_MOUNT_OFFSET + y_offset, p.2))
     }
 
     /// `updateRiderPosition`: the vehicle's rider sits on it.
@@ -114,11 +122,83 @@ impl Game {
         let Some(rider) = self.vehicle_rider(cart) else {
             return;
         };
-        let Some(spot) = self.rider_spot(cart) else {
+        if let Some(i) = self.players.iter().position(|p| p.entity_id == rider) {
+            if let Some(spot) = self.rider_spot(cart, PLAYER_Y_OFFSET) {
+                self.players[i].pos = spot;
+            }
+        } else if self.mobs.contains_key(&rider) {
+            // Mobs sit on the mount point (getYOffset 0).
+            if let Some(spot) = self.rider_spot(cart, MOB_Y_OFFSET)
+                && let Some(m) = self.mobs.get_mut(&rider)
+            {
+                m.body.pos = spot;
+            }
+        }
+    }
+
+    /// `Entity.mountEntity(vehicle)` for a mob (a moving rideable cart picking it
+    /// up); the tracker tells the viewers.
+    pub(super) fn mount_mob(&mut self, mob: i32, vehicle: i32) {
+        // Not onto a vehicle that rides it, however deep.
+        let mut v = Some(vehicle);
+        while let Some(at) = v {
+            if at == mob {
+                return;
+            }
+            v = self.mobs.get(&at).and_then(|m| m.riding);
+        }
+        if let Some(old) = self.mobs.get(&mob).and_then(|m| m.riding) {
+            self.set_vehicle_rider(old, None);
+        }
+        if let Some(m) = self.mobs.get_mut(&mob) {
+            m.riding = Some(vehicle);
+        }
+        self.set_vehicle_rider(vehicle, Some(mob));
+    }
+
+    /// `EntityLivingBase.mountEntity(null)` for a mob: it gets off onto a free spot
+    /// next to its vehicle (`dismountEntity`); the tracker tells the viewers.
+    fn dismount_mob(&mut self, mob: i32) {
+        let Some(vehicle) = self.mobs.get(&mob).and_then(|m| m.riding) else {
             return;
         };
-        if let Some(p) = self.players.iter_mut().find(|p| p.entity_id == rider) {
-            p.pos = spot;
+        if let Some((body, _)) = self.vehicle_state(vehicle)
+            && let Some(m) = self.mobs.get(&mob)
+        {
+            let (vpos, vbb, vheight) = (body.pos, body.bb(), body.height);
+            let (pos, bb) = (m.body.pos, m.body.bb());
+            let spot = self.dismount_spot(pos, &bb, vpos, vbb.min[1] + f64::from(vheight));
+            // setPositionAndUpdate: setLocationAndAngles with its own rotation.
+            let rotation = self.mobs.get(&mob).map(|m| (m.base.yaw, m.base.pitch));
+            if let Some(rotation) = rotation {
+                self.set_location_and_angles(mob, spot, rotation);
+            }
+        }
+        self.set_vehicle_rider(vehicle, None);
+        if let Some(m) = self.mobs.get_mut(&mob) {
+            m.riding = None;
+        }
+    }
+
+    /// A vehicle leaving the world lets go of its rider (whose vehicle it still is).
+    pub(super) fn let_go_of_rider(&mut self, vehicle: i32, rider: i32) {
+        if let Some(p) = self.players.iter_mut().find(|p| p.entity_id == rider)
+            && p.riding == Some(vehicle)
+        {
+            p.riding = None;
+        }
+        if let Some(m) = self.mobs.get_mut(&rider)
+            && m.riding == Some(vehicle)
+        {
+            m.riding = None;
+        }
+    }
+
+    /// The vehicle a player or mob rides, if any (`ridingEntity`).
+    pub(super) fn entity_vehicle(&self, id: i32) -> Option<i32> {
+        match self.players.iter().find(|p| p.entity_id == id) {
+            Some(p) => p.riding,
+            None => self.mobs.get(&id).and_then(|m| m.riding),
         }
     }
 
@@ -188,7 +268,9 @@ impl Game {
         };
         if let Some((body, _)) = self.vehicle_state(cart) {
             let (vpos, vbb, vheight) = (body.pos, body.bb(), body.height);
-            let spot = self.dismount_spot(i, vpos, vbb.min[1] + f64::from(vheight));
+            let pos = self.players[i].pos;
+            let bb = Aabb::at(pos, 0.6, 1.8);
+            let spot = self.dismount_spot(pos, &bb, vpos, vbb.min[1] + f64::from(vheight));
             let p = &mut self.players[i];
             let rot = p.rotation;
             // setPositionAndUpdate.
@@ -215,16 +297,27 @@ impl Game {
         };
         match self.players.iter().position(|p| p.entity_id == rider) {
             Some(i) if self.players[i].riding == Some(cart) => self.dismount_player(i),
+            _ if self
+                .mobs
+                .get(&rider)
+                .is_some_and(|m| m.riding == Some(cart)) =>
+            {
+                self.dismount_mob(rider);
+            }
             _ => self.set_vehicle_rider(cart, None),
         }
     }
 
-    /// `EntityLivingBase.dismountEntity`: the first block space next to the player (one
-    /// up) free of blocks over a solid top, else the last one over something solid or
-    /// water, else the top of the vehicle.
-    fn dismount_spot(&mut self, i: usize, vehicle: (f64, f64, f64), top: f64) -> (f64, f64, f64) {
-        let pos = self.players[i].pos;
-        let bb = Aabb::at(pos, 0.6, 1.8);
+    /// `EntityLivingBase.dismountEntity` for a rider at `pos` with the box `bb`: the
+    /// first block space next to it (one up) free of blocks over a solid top, else the
+    /// last one over something solid or water, else the top of the vehicle.
+    fn dismount_spot(
+        &mut self,
+        pos: (f64, f64, f64),
+        bb: &Aabb,
+        vehicle: (f64, f64, f64),
+        top: f64,
+    ) -> (f64, f64, f64) {
         let mut spot = (vehicle.0, top, vehicle.2);
         for dx in -1i32..=1 {
             for dz in -1i32..1 {
@@ -355,7 +448,21 @@ impl Game {
             p.entity_id == rider && !p.removed && !p.dead_marked && p.riding == Some(cart)
         });
         let Some(i) = i else {
+            // A mob rider (World.updateEntity(riddenByEntity)).
+            if self
+                .mobs
+                .get(&rider)
+                .is_some_and(|m| !m.dead && m.riding == Some(cart))
+            {
+                self.update_mob_entity(rider);
+                return;
+            }
             self.set_vehicle_rider(cart, None);
+            if let Some(m) = self.mobs.get_mut(&rider)
+                && m.riding == Some(cart)
+            {
+                m.riding = None;
+            }
             return;
         };
         if self.vehicle_dead(cart) {
@@ -424,7 +531,11 @@ impl Game {
     /// The vehicle's NBT as the player's `Riding` tag (`writeMountToNBT`), if it rides
     /// one that is alive.
     fn riding_nbt(&self, i: usize) -> Option<Compound> {
-        let cart = self.players[i].riding?;
+        self.mount_nbt(self.players[i].riding?)
+    }
+
+    /// `writeMountToNBT` of the vehicle `cart`: its NBT with its id, if it is alive.
+    pub(super) fn mount_nbt(&self, cart: i32) -> Option<Compound> {
         let uuid = self.entity_uuids.get(&cart).copied().unwrap_or_default();
         let mut c = Compound::new();
         if let Some(b) = self.boats.get(&cart) {
