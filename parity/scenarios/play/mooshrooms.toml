@@ -1,0 +1,114 @@
+description = "Mooshrooms: a survival-style player tries a bowl on a mooshroom calf (nothing), fills two bowls from an adult (the stew goes into the inventory, then the last bowl becomes the stew), milks it with a bucket, tries shears on the calf (nothing) and shears the adult with worn-out shears: the mooshroom turns into a cow with its position, rotation, health and name (not the name's visibility), five red mushrooms drop from its top, the shears break (random.break, stat.breakItem) and mob.sheep.shear plays; the calf and the cow saved with the chunk, the stew, milk and stats with the player"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode (milking only skips
+# creative players) and stands still. He gets two bowls, shears with one use left and
+# a bucket (hotbar slots 0 to 2; /give's fake items are entities 1 to 3). A silent
+# mooshroom calf (Age -1300, entity 4) stands 2 blocks south of him, mooshroom A
+# (entity 5, named, CustomNameVisible, 7 health) 3 blocks east, out of his pickup
+# reach. From then on Math.random() (`krolpin world`) and every mob's random
+# (`krolpin mobs`) are pinned at the end of every tick, so the cow that replaces A
+# turns its head and the mushrooms fly the same way in both servers; the cow's own
+# random is pinned as it joins the world (`krolpin spawns`), as it has AI. The
+# mushrooms are killed before the end.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 16
+chat = [
+    "@4500 !hold 0",
+    "@5000 !interact 4",
+    "@5500 !interact 5",
+    "@6000 !interact 5",
+    "@6500 !hold 2",
+    "@7000 !interact 5",
+    "@7500 !hold 1",
+    "@8000 !interact 4",
+    "@8500 !interact 5",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "give jeb_ bowl 2"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ shears 1 238"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ bucket"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "summon MushroomCow -471.5 4 -432.5 {NoAI:1b,Silent:1b,Age:-1300}"
+wait_ms = 200
+
+[[steps]]
+action = "console"
+command = "summon MushroomCow -468.5 4 -434.5 {NoAI:1b,Health:7s,CustomName:\"Bessie\",CustomNameVisible:1b,Rotation:[30f,10f]}"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "krolpin spawns 57"
+wait_ms = 50
+
+[[steps]]
+action = "console"
+command = "krolpin world 31 400"
+wait_ms = 50
+
+[[steps]]
+action = "console"
+command = "krolpin mobs 103 400"
+wait_ms = 8900
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin).
+log_ignore_prefixes = ["Killed item."]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
+
+[observe.tolerance]
+# The calf grows every tick up to the stop, whose tick depends on timing.
+"entities.-30,-28[0].Age" = 20

@@ -19,10 +19,10 @@
 //! Players feed, saddle and name mobs, and animals in love breed ([`breeding`]). Spawn
 //! eggs hatch mobs on blocks and in liquids ([`spawn_egg`]).
 //!
-//! TODO(M5): the other mob kinds (and their `onInitialSpawn`), horses, picking up
-//! loot, status effects (`ActiveEffects` is kept as saved), jump boost, the combat
-//! tracker, being hit by projectiles and explosions, arrows stuck in them, equipment
-//! changes.
+//! TODO(M5): the other mob kinds (and their `onInitialSpawn`), mooshrooms spawning on
+//! mycelium, horses, picking up loot, status effects (`ActiveEffects` is kept as
+//! saved), jump boost, the combat tracker, being hit by projectiles and explosions,
+//! arrows stuck in them, equipment changes.
 
 mod ai;
 mod breeding;
@@ -151,6 +151,8 @@ pub enum MobKind {
     Pig,
     /// `EntityCow`.
     Cow,
+    /// `EntityMooshroom`: a cow that also fills bowls and can be sheared.
+    Mooshroom,
 }
 
 impl MobKind {
@@ -159,13 +161,14 @@ impl MobKind {
         match id {
             "Pig" => Some(Self::Pig),
             "Cow" => Some(Self::Cow),
+            "MushroomCow" => Some(Self::Mooshroom),
             _ => None,
         }
     }
 
     /// The kind with `EntityList` id `id` (a spawn egg's damage).
     pub fn from_type_id(id: i32) -> Option<Self> {
-        [Self::Pig, Self::Cow]
+        [Self::Pig, Self::Cow, Self::Mooshroom]
             .into_iter()
             .find(|k| i32::from(k.type_id()) == id)
     }
@@ -175,6 +178,7 @@ impl MobKind {
         match self {
             Self::Pig => "Pig",
             Self::Cow => "Cow",
+            Self::Mooshroom => "MushroomCow",
         }
     }
 
@@ -183,6 +187,7 @@ impl MobKind {
         match self {
             Self::Pig => 90,
             Self::Cow => 92,
+            Self::Mooshroom => 96,
         }
     }
 
@@ -191,6 +196,7 @@ impl MobKind {
         match self {
             Self::Pig => "Pig",
             Self::Cow => "Cow",
+            Self::Mooshroom => "Mooshroom",
         }
     }
 
@@ -198,7 +204,7 @@ impl MobKind {
     fn size(self) -> (f32, f32) {
         match self {
             Self::Pig => (0.9, 0.9),
-            Self::Cow => (0.9, 1.3),
+            Self::Cow | Self::Mooshroom => (0.9, 1.3),
         }
     }
 
@@ -212,7 +218,7 @@ impl MobKind {
                 (MOVEMENT_SPEED, 0.25),
                 (FOLLOW_RANGE, 16.0),
             ],
-            Self::Cow => [
+            Self::Cow | Self::Mooshroom => [
                 (MAX_HEALTH, 10.0),
                 (KNOCKBACK_RESISTANCE, 0.0),
                 // Set from a float.
@@ -226,7 +232,7 @@ impl MobKind {
     fn sounds(self) -> (&'static str, &'static str, &'static str) {
         match self {
             Self::Pig => ("mob.pig.say", "mob.pig.say", "mob.pig.death"),
-            Self::Cow => ("mob.cow.say", "mob.cow.hurt", "mob.cow.hurt"),
+            Self::Cow | Self::Mooshroom => ("mob.cow.say", "mob.cow.hurt", "mob.cow.hurt"),
         }
     }
 
@@ -234,7 +240,7 @@ impl MobKind {
     fn sound_volume(self) -> f32 {
         match self {
             Self::Pig => 1.0,
-            Self::Cow => 0.4,
+            Self::Cow | Self::Mooshroom => 0.4,
         }
     }
 
@@ -242,35 +248,35 @@ impl MobKind {
     fn step_sound(self) -> (&'static str, f32) {
         match self {
             Self::Pig => ("mob.pig.step", 0.15),
-            Self::Cow => ("mob.cow.step", 0.15),
+            Self::Cow | Self::Mooshroom => ("mob.cow.step", 0.15),
         }
     }
 
     /// `getTalkInterval`: animals talk less often than other mobs.
     fn talk_interval(self) -> i32 {
         match self {
-            Self::Pig | Self::Cow => 120,
+            Self::Pig | Self::Cow | Self::Mooshroom => 120,
         }
     }
 
     /// Not an `IMob` (`EntityLiving.allowLeashing`): it takes a lead.
     fn leashable(self) -> bool {
         match self {
-            Self::Pig | Self::Cow => true,
+            Self::Pig | Self::Cow | Self::Mooshroom => true,
         }
     }
 
     /// An `EntityAnimal` (or water mob): removed when `spawn-animals` is off.
     fn animal(self) -> bool {
         match self {
-            Self::Pig | Self::Cow => true,
+            Self::Pig | Self::Cow | Self::Mooshroom => true,
         }
     }
 
     /// An `EntityAgeable` (an age entry in its metadata, children).
     fn ageable(self) -> bool {
         match self {
-            Self::Pig | Self::Cow => true,
+            Self::Pig | Self::Cow | Self::Mooshroom => true,
         }
     }
 }
@@ -468,7 +474,8 @@ impl Mob {
             riding: None,
             ai: Some(Box::new(match kind {
                 MobKind::Pig => ai::MobAi::pig(pos),
-                MobKind::Cow => ai::MobAi::cow(pos),
+                // EntityMooshroom adds nothing to the cow's goals.
+                MobKind::Cow | MobKind::Mooshroom => ai::MobAi::cow(pos),
             })),
         };
         m.dirty_metadata = m.metadata().iter().map(|e| e.index).collect();
@@ -571,7 +578,7 @@ impl Mob {
         }
         match kind {
             MobKind::Pig => m.set_saddled(c.get_bool("Saddle")),
-            MobKind::Cow => {}
+            MobKind::Cow | MobKind::Mooshroom => {}
         }
         m.chunk = chunk_of(m.body.pos);
         m
@@ -647,7 +654,7 @@ impl Mob {
             MobKind::Pig => {
                 c.insert("Saddle", Tag::Byte(i8::from(self.saddled)));
             }
-            MobKind::Cow => {}
+            MobKind::Cow | MobKind::Mooshroom => {}
         }
     }
 
@@ -678,7 +685,7 @@ impl Mob {
     pub fn eye_height(&self) -> f32 {
         match self.kind {
             MobKind::Pig => self.body.height * 0.85,
-            MobKind::Cow => self.body.height,
+            MobKind::Cow | MobKind::Mooshroom => self.body.height,
         }
     }
 
@@ -822,7 +829,7 @@ impl Mob {
             MobKind::Pig => {
                 out.insert(1, md(SADDLE_INDEX, Byte(i8::from(self.saddled))));
             }
-            MobKind::Cow => {}
+            MobKind::Cow | MobKind::Mooshroom => {}
         }
         out
     }
@@ -2008,7 +2015,7 @@ impl Game {
                 && let Some(m) = self.mobs.get_mut(&id)
                 && m.rand.next_float() < RARE_DROP_CHANCE + looting as f32 * RARE_DROP_LOOTING
             {
-                // addRandomDrop: pigs and cows have none.
+                // addRandomDrop: pigs and cows (mooshrooms too) have none.
             }
         }
         self.send_to_tracking(
@@ -2040,7 +2047,7 @@ impl Game {
                     drops.push(item::SADDLE);
                 }
             }
-            MobKind::Cow => {
+            MobKind::Cow | MobKind::Mooshroom => {
                 let n = m.rand.next_int_bounded(3) + m.rand.next_int_bounded(1 + looting);
                 drops.extend(std::iter::repeat_n(item::LEATHER, n.max(0) as usize));
                 let n = m.rand.next_int_bounded(3) + 1 + m.rand.next_int_bounded(1 + looting);
@@ -2241,6 +2248,19 @@ mod tests {
         assert_eq!(cow.properties()[0].1, 0.20000000298023224);
         assert_eq!(MobKind::from_type_id(92), Some(MobKind::Cow));
         assert_eq!(MobKind::from_saved_id("Cow"), Some(MobKind::Cow));
+    }
+
+    #[test]
+    fn mooshrooms_are_cows_under_their_own_ids() {
+        let m = Mob::new(MobKind::Mooshroom, (0.0, 64.0, 0.0), 0.0, 1);
+        assert_eq!((m.body.width, m.body.height), (0.9, 1.3));
+        assert_eq!(m.eye_height(), 1.3);
+        assert_eq!(MobKind::from_type_id(96), Some(MobKind::Mooshroom));
+        assert_eq!(
+            MobKind::from_saved_id("MushroomCow"),
+            Some(MobKind::Mooshroom)
+        );
+        assert_eq!(MobKind::Mooshroom.name(), "Mooshroom");
     }
 
     #[test]

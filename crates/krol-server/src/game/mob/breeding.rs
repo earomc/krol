@@ -29,13 +29,15 @@ const BIRTH_XP: i32 = 7;
 const BOOST_USES: i32 = 7;
 /// The `animalsBred` statistic.
 const ANIMALS_BRED: &str = "stat.animalsBred";
+/// Red mushrooms a sheared mooshroom drops.
+const SHEARED_MUSHROOMS: usize = 5;
 
 impl MobKind {
     /// `EntityAnimal.isBreedingItem`.
     fn breeding_item(self) -> i16 {
         match self {
             Self::Pig => item::CARROT,
-            Self::Cow => item::WHEAT,
+            Self::Cow | Self::Mooshroom => item::WHEAT,
         }
     }
 }
@@ -124,6 +126,9 @@ impl Game {
         if self.leash_interact(i, id) {
             return true;
         }
+        if self.mooshroom_interact(i, id) {
+            return true;
+        }
         if self.milk_cow(i, id) {
             return true;
         }
@@ -184,7 +189,7 @@ impl Game {
                 self.mount_player(i, id);
                 true
             }
-            MobKind::Cow => false,
+            MobKind::Cow | MobKind::Mooshroom => false,
         }
     }
 
@@ -235,7 +240,7 @@ impl Game {
             || !self
                 .mobs
                 .get(&id)
-                .is_some_and(|m| m.kind == MobKind::Cow && !m.child())
+                .is_some_and(|m| matches!(m.kind, MobKind::Cow | MobKind::Mooshroom) && !m.child())
         {
             return false;
         }
@@ -260,6 +265,113 @@ impl Game {
             }
         }
         true
+    }
+
+    /// `EntityMooshroom.interact`, before the cow's: an adult mooshroom fills a bowl
+    /// (the last one of the stack becomes the stew, even in creative; otherwise the
+    /// stew goes into the inventory and a bowl is used up, while a creative player
+    /// keeps the bowls and the click goes on to the cow), and shears turn it into a
+    /// cow. Returns whether the mooshroom took the click.
+    fn mooshroom_interact(&mut self, i: usize, id: i32) -> bool {
+        if !self
+            .mobs
+            .get(&id)
+            .is_some_and(|m| m.kind == MobKind::Mooshroom && !m.child())
+        {
+            return false;
+        }
+        let Some(held) = self.players[i].held().cloned() else {
+            return false;
+        };
+        let stew = || ItemStack {
+            id: item::MUSHROOM_STEW,
+            count: 1,
+            damage: 0,
+            nbt: None,
+        };
+        let p = &mut self.players[i];
+        let slot = 36 + p.selected;
+        let creative = p.gamemode == super::super::player::Player::CREATIVE;
+        if held.id == item::BOWL {
+            if held.count == 1 {
+                p.inventory[slot] = Some(stew());
+                return true;
+            }
+            let added =
+                crate::game::item_entity::add_to_inventory(&mut p.inventory, &mut stew(), creative);
+            if added && !creative {
+                if let Some(s) = p.inventory[slot].as_mut() {
+                    s.count -= 1;
+                }
+                return true;
+            }
+        }
+        if held.id != item::SHEARS {
+            return false;
+        }
+        self.shear_mooshroom(id);
+        self.damage_held_item(i, 1);
+        // EntityPlayer.interactWith: shears worn out by the cut are gone.
+        let p = &mut self.players[i];
+        if p.gamemode != super::super::player::Player::CREATIVE
+            && p.inventory[slot].as_ref().is_some_and(|s| s.count <= 0)
+        {
+            p.inventory[slot] = None;
+        }
+        if let Some(m) = self.mobs.get(&id)
+            && !m.base.silent
+        {
+            let pos = m.body.pos;
+            self.play_sound_near_except(None, "mob.sheep.shear", pos, 1.0, 1.0);
+        }
+        true
+    }
+
+    /// The cut of [`Self::mooshroom_interact`]: the mooshroom is gone (its explosion
+    /// particles are client-side) and a cow takes its place, with its position,
+    /// rotation, body yaw, health and custom name, under five red mushrooms dropped
+    /// from the top of the mooshroom.
+    fn shear_mooshroom(&mut self, id: i32) {
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
+        m.dead = true;
+        let (pos, yaw, pitch, health, body_yaw, height) = (
+            m.body.pos,
+            m.base.yaw,
+            m.base.pitch,
+            m.health,
+            m.body_yaw,
+            m.body.height,
+        );
+        let name = m.base.custom_name.clone().filter(|n| !n.is_empty());
+        let cow_id = self.next_entity_id();
+        // The living constructor turns the head at random (Math.random).
+        let head = self.new_stand_head();
+        let seed = self.new_mob_seed();
+        let mut cow = Mob::new(MobKind::Cow, pos, head, seed);
+        cow.body.set_position(pos);
+        cow.base.yaw = yaw;
+        cow.base.pitch = pitch;
+        cow.set_health(health);
+        cow.body_yaw = body_yaw;
+        if name.is_some() {
+            cow.base.custom_name = name;
+        }
+        cow.dirty_metadata = cow.metadata().iter().map(|e| e.index).collect();
+        self.mobs.insert(cow_id, cow);
+        self.spawn_entity_in_world(cow_id);
+        let top = (pos.0, pos.1 + f64::from(height), pos.2);
+        for _ in 0..SHEARED_MUSHROOMS {
+            let mushroom = ItemStack {
+                id: crate::game::ids::block::RED_MUSHROOM as i16,
+                count: 1,
+                damage: 0,
+                nbt: None,
+            };
+            // A new EntityItem has no pickup delay.
+            self.spawn_item(top, mushroom, 0);
+        }
     }
 
     /// One of the held item used up (`stackSize--`, the slot emptied at 0), unless
