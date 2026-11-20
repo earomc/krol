@@ -523,7 +523,8 @@ impl Game {
         if let Some(pos) = self.entity_position(id) {
             self.add_entity_to_chunk(id, pos);
         }
-        // Parity hook: `krolpin spawns` pins a new mob's random as it joins the world.
+        // Parity hook: `krolpin spawns` pins a new mob's random as it joins the world
+        // (a thrown entity's is pinned as it is thrown, see `spawn_thrown`).
         #[cfg(feature = "parity")]
         if let (Some(seed), Some(m)) = (self.spawn_pin, self.mobs.get_mut(&id)) {
             m.rand.set_seed(seed.wrapping_add(i64::from(id)));
@@ -791,7 +792,8 @@ impl Game {
                     let (base, uuid) = EntityBase::read(c, &mut body);
                     self.set_saved_uuid(id, uuid);
                     let pos = body.pos;
-                    let t = super::throwable::Throwable::load(thrown_kind, body, base, c);
+                    let mut t = super::throwable::Throwable::load(thrown_kind, body, base, c);
+                    t.rand = krol_java::JavaRandom::new(self.new_mob_seed());
                     self.thrown.insert(id, t);
                     pos
                 }

@@ -124,6 +124,13 @@ const TRAMPLE_OFFSET: f32 = 0.5;
 const REVENGE_TICKS: i32 = 100;
 /// `S2APacketParticles` id of `BLOCK_DUST`.
 const BLOCK_DUST: i32 = 38;
+/// A chicken's next egg comes 6000 to 11999 ticks after the last.
+const EGG_LAY_MIN: i32 = 6000;
+const EGG_LAY_SPREAD: i32 = 6000;
+/// Falling chickens keep this much of their downward motion each tick.
+const CHICKEN_FALL_DRAG: f64 = 0.6;
+/// The experience of a chicken jockey's chicken.
+const JOCKEY_XP: i32 = 10;
 const MOB_GRIEFING: &str = "mobGriefing";
 
 /// `S19PacketEntityStatus` statuses.
@@ -153,6 +160,8 @@ pub enum MobKind {
     Cow,
     /// `EntityMooshroom`: a cow that also fills bowls and can be sheared.
     Mooshroom,
+    /// `EntityChicken`.
+    Chicken,
 }
 
 impl MobKind {
@@ -162,13 +171,14 @@ impl MobKind {
             "Pig" => Some(Self::Pig),
             "Cow" => Some(Self::Cow),
             "MushroomCow" => Some(Self::Mooshroom),
+            "Chicken" => Some(Self::Chicken),
             _ => None,
         }
     }
 
     /// The kind with `EntityList` id `id` (a spawn egg's damage).
     pub fn from_type_id(id: i32) -> Option<Self> {
-        [Self::Pig, Self::Cow, Self::Mooshroom]
+        [Self::Pig, Self::Cow, Self::Mooshroom, Self::Chicken]
             .into_iter()
             .find(|k| i32::from(k.type_id()) == id)
     }
@@ -179,6 +189,7 @@ impl MobKind {
             Self::Pig => "Pig",
             Self::Cow => "Cow",
             Self::Mooshroom => "MushroomCow",
+            Self::Chicken => "Chicken",
         }
     }
 
@@ -188,6 +199,7 @@ impl MobKind {
             Self::Pig => 90,
             Self::Cow => 92,
             Self::Mooshroom => 96,
+            Self::Chicken => 93,
         }
     }
 
@@ -197,6 +209,7 @@ impl MobKind {
             Self::Pig => "Pig",
             Self::Cow => "Cow",
             Self::Mooshroom => "Mooshroom",
+            Self::Chicken => "Chicken",
         }
     }
 
@@ -205,6 +218,7 @@ impl MobKind {
         match self {
             Self::Pig => (0.9, 0.9),
             Self::Cow | Self::Mooshroom => (0.9, 1.3),
+            Self::Chicken => (0.4, 0.7),
         }
     }
 
@@ -225,6 +239,12 @@ impl MobKind {
                 (MOVEMENT_SPEED, 0.2f32 as f64),
                 (FOLLOW_RANGE, 16.0),
             ],
+            Self::Chicken => [
+                (MAX_HEALTH, 4.0),
+                (KNOCKBACK_RESISTANCE, 0.0),
+                (MOVEMENT_SPEED, 0.25),
+                (FOLLOW_RANGE, 16.0),
+            ],
         }
     }
 
@@ -233,13 +253,14 @@ impl MobKind {
         match self {
             Self::Pig => ("mob.pig.say", "mob.pig.say", "mob.pig.death"),
             Self::Cow | Self::Mooshroom => ("mob.cow.say", "mob.cow.hurt", "mob.cow.hurt"),
+            Self::Chicken => ("mob.chicken.say", "mob.chicken.hurt", "mob.chicken.hurt"),
         }
     }
 
     /// `getSoundVolume`.
     fn sound_volume(self) -> f32 {
         match self {
-            Self::Pig => 1.0,
+            Self::Pig | Self::Chicken => 1.0,
             Self::Cow | Self::Mooshroom => 0.4,
         }
     }
@@ -249,34 +270,35 @@ impl MobKind {
         match self {
             Self::Pig => ("mob.pig.step", 0.15),
             Self::Cow | Self::Mooshroom => ("mob.cow.step", 0.15),
+            Self::Chicken => ("mob.chicken.step", 0.15),
         }
     }
 
     /// `getTalkInterval`: animals talk less often than other mobs.
     fn talk_interval(self) -> i32 {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom => 120,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => 120,
         }
     }
 
     /// Not an `IMob` (`EntityLiving.allowLeashing`): it takes a lead.
     fn leashable(self) -> bool {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom => true,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => true,
         }
     }
 
     /// An `EntityAnimal` (or water mob): removed when `spawn-animals` is off.
     fn animal(self) -> bool {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom => true,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => true,
         }
     }
 
     /// An `EntityAgeable` (an age entry in its metadata, children).
     fn ageable(self) -> bool {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom => true,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => true,
         }
     }
 }
@@ -360,6 +382,12 @@ pub struct Mob {
     player_in_love: Option<i32>,
     /// `EntityPig` saddle (metadata entry 16).
     saddled: bool,
+    /// `EntityChicken.timeUntilNextEgg` (`EggLayTime`).
+    egg_lay_time: i32,
+    /// `EntityChicken.chickenJockey` (`IsChickenJockey`). TODO(M5): jockeys despawn
+    /// without a rider (no mob despawns yet) and carry their rider lower
+    /// (`updateRiderPosition`; mobs only ride vehicles so far).
+    chicken_jockey: bool,
     /// The burning flag as last set in the metadata.
     burning_flag: bool,
     /// `firstUpdate`.
@@ -453,6 +481,8 @@ impl Mob {
             in_love: 0,
             player_in_love: None,
             saddled: false,
+            egg_lay_time: 0,
+            chicken_jockey: false,
             burning_flag: false,
             first_update: true,
             dirty_metadata: BTreeSet::new(),
@@ -476,8 +506,13 @@ impl Mob {
                 MobKind::Pig => ai::MobAi::pig(pos),
                 // EntityMooshroom adds nothing to the cow's goals.
                 MobKind::Cow | MobKind::Mooshroom => ai::MobAi::cow(pos),
+                MobKind::Chicken => ai::MobAi::chicken(pos),
             })),
         };
+        if kind == MobKind::Chicken {
+            // The chicken's constructor, from its own random.
+            m.egg_lay_time = m.rand.next_int_bounded(EGG_LAY_SPREAD) + EGG_LAY_MIN;
+        }
         m.dirty_metadata = m.metadata().iter().map(|e| e.index).collect();
         m
     }
@@ -579,6 +614,12 @@ impl Mob {
         match kind {
             MobKind::Pig => m.set_saddled(c.get_bool("Saddle")),
             MobKind::Cow | MobKind::Mooshroom => {}
+            MobKind::Chicken => {
+                m.chicken_jockey = c.get_bool("IsChickenJockey");
+                if c.contains_key_of("EggLayTime", None) {
+                    m.egg_lay_time = c.get_i32("EggLayTime");
+                }
+            }
         }
         m.chunk = chunk_of(m.body.pos);
         m
@@ -655,6 +696,10 @@ impl Mob {
                 c.insert("Saddle", Tag::Byte(i8::from(self.saddled)));
             }
             MobKind::Cow | MobKind::Mooshroom => {}
+            MobKind::Chicken => {
+                c.insert("IsChickenJockey", Tag::Byte(i8::from(self.chicken_jockey)));
+                c.insert("EggLayTime", Tag::Int(self.egg_lay_time));
+            }
         }
     }
 
@@ -685,7 +730,7 @@ impl Mob {
     pub fn eye_height(&self) -> f32 {
         match self.kind {
             MobKind::Pig => self.body.height * 0.85,
-            MobKind::Cow | MobKind::Mooshroom => self.body.height,
+            MobKind::Cow | MobKind::Mooshroom | MobKind::Chicken => self.body.height,
         }
     }
 
@@ -829,7 +874,7 @@ impl Mob {
             MobKind::Pig => {
                 out.insert(1, md(SADDLE_INDEX, Byte(i8::from(self.saddled))));
             }
-            MobKind::Cow | MobKind::Mooshroom => {}
+            MobKind::Cow | MobKind::Mooshroom | MobKind::Chicken => {}
         }
         out
     }
@@ -851,7 +896,8 @@ impl Mob {
 }
 
 impl Game {
-    /// A new mob's own random, unseeded in vanilla (`new Random()`).
+    /// The seed of a new mob's or throwable's own random, unseeded in vanilla
+    /// (`new Random()`).
     pub(super) fn new_mob_seed(&mut self) -> i64 {
         self.entity_rand.next_long()
     }
@@ -1085,8 +1131,14 @@ impl Game {
         }
         let (pos, recently_hit, child) = (m.body.pos, m.recently_hit > 0, m.child());
         if recently_hit && !child && self.level.data.game_rule("doMobLoot") != Some("false") {
-            // EntityAnimal.getExperiencePoints: from the world's random.
-            let xp = 1 + self.world_rand.next_int_bounded(3);
+            // EntityAnimal.getExperiencePoints: from the world's random; a chicken
+            // jockey gives a fixed amount.
+            let jockey = self.mobs.get(&id).is_some_and(|m| m.chicken_jockey);
+            let xp = if jockey {
+                JOCKEY_XP
+            } else {
+                1 + self.world_rand.next_int_bounded(3)
+            };
             self.spawn_orbs(pos, xp);
         }
         // The smoke is client-side; the mob is gone, so its random no longer matters.
@@ -1192,6 +1244,41 @@ impl Game {
                     }
                 }
             }
+        }
+        if self
+            .mobs
+            .get(&id)
+            .is_some_and(|m| m.kind == MobKind::Chicken)
+        {
+            self.chicken_living_update(id);
+        }
+    }
+
+    /// `EntityChicken.onLivingUpdate` after the animal's: falling slowly (the wings
+    /// flap on clients), and an adult that is not a jockey lays an egg when its timer
+    /// runs out, with a plop at a pitch from its random.
+    fn chicken_living_update(&mut self, id: i32) {
+        let Some(m) = self.mobs.get_mut(&id) else {
+            return;
+        };
+        if !m.body.on_ground && m.body.motion.1 < 0.0 {
+            m.body.motion.1 *= CHICKEN_FALL_DRAG;
+        }
+        if m.child() || m.chicken_jockey {
+            return;
+        }
+        m.egg_lay_time -= 1;
+        if m.egg_lay_time > 0 {
+            return;
+        }
+        let pitch = (m.rand.next_float() - m.rand.next_float()) * 0.2 + 1.0;
+        let (pos, silent) = (m.body.pos, m.base.silent);
+        if !silent {
+            self.play_sound_near_except(None, "mob.chicken.plop", pos, 1.0, pitch);
+        }
+        self.mob_drop_item(pos, single(item::EGG));
+        if let Some(m) = self.mobs.get_mut(&id) {
+            m.egg_lay_time = m.rand.next_int_bounded(EGG_LAY_SPREAD) + EGG_LAY_MIN;
         }
     }
 
@@ -1479,6 +1566,10 @@ impl Game {
         let Some(m) = self.mobs.get(&id) else {
             return;
         };
+        // EntityChicken.fall does nothing: no sounds, no damage.
+        if m.kind == MobKind::Chicken {
+            return;
+        }
         let damage = ceil_f32((distance - SAFE_FALL) * multiplier);
         if damage <= 0 {
             return;
@@ -2015,7 +2106,7 @@ impl Game {
                 && let Some(m) = self.mobs.get_mut(&id)
                 && m.rand.next_float() < RARE_DROP_CHANCE + looting as f32 * RARE_DROP_LOOTING
             {
-                // addRandomDrop: pigs and cows (mooshrooms too) have none.
+                // addRandomDrop: pigs, cows (mooshrooms too) and chickens have none.
             }
         }
         self.send_to_tracking(
@@ -2046,6 +2137,15 @@ impl Game {
                 if m.saddled {
                     drops.push(item::SADDLE);
                 }
+            }
+            MobKind::Chicken => {
+                let n = m.rand.next_int_bounded(3) + m.rand.next_int_bounded(1 + looting);
+                drops.extend(std::iter::repeat_n(item::FEATHER, n.max(0) as usize));
+                drops.push(if m.burning() {
+                    item::COOKED_CHICKEN
+                } else {
+                    item::CHICKEN
+                });
             }
             MobKind::Cow | MobKind::Mooshroom => {
                 let n = m.rand.next_int_bounded(3) + m.rand.next_int_bounded(1 + looting);
@@ -2248,6 +2348,33 @@ mod tests {
         assert_eq!(cow.properties()[0].1, 0.20000000298023224);
         assert_eq!(MobKind::from_type_id(92), Some(MobKind::Cow));
         assert_eq!(MobKind::from_saved_id("Cow"), Some(MobKind::Cow));
+    }
+
+    #[test]
+    fn chickens_roll_their_egg_timer_and_save_it() {
+        let hen = Mob::new(MobKind::Chicken, (0.0, 64.0, 0.0), 0.0, 1);
+        assert_eq!((hen.body.width, hen.body.height), (0.4, 0.7));
+        assert_eq!(hen.eye_height(), 0.7);
+        assert_eq!(MobKind::from_type_id(93), Some(MobKind::Chicken));
+        // new Random(1).nextInt(6000) + 6000.
+        let mut r = JavaRandom::new(1);
+        assert_eq!(hen.egg_lay_time, r.next_int_bounded(6000) + 6000);
+        let mut c = Compound::new();
+        hen.write(&mut c);
+        assert_eq!(c.get_i32("EggLayTime"), hen.egg_lay_time);
+        assert!(!c.get_bool("IsChickenJockey"));
+        let mut tag = Compound::new();
+        tag.insert("EggLayTime", Tag::Int(40));
+        tag.insert("IsChickenJockey", Tag::Byte(1));
+        let loaded = Mob::load(
+            MobKind::Chicken,
+            hen.body.clone(),
+            hen.base.clone(),
+            &tag,
+            0.0,
+            1,
+        );
+        assert_eq!((loaded.egg_lay_time, loaded.chicken_jockey), (40, true));
     }
 
     #[test]

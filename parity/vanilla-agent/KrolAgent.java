@@ -15,9 +15,13 @@
 // `krolpin mobs <seed> <ticks>` pins only the mobs' randoms, now and again at the end of
 // each of the next ticks (through a tickable), so that what a bot does to a mob meets the
 // same random state whichever tick it lands in. `krolpin spawns <seed>` pins the random
-// of every mob that joins a world from then on (World.spawnEntityInWorld adding it to
-// World.loadedEntityList, which the agent swaps for a list that seeds each mob added),
-// before its first update, so a child born during a scenario starts pinned.
+// of every mob and throwable that joins a world from then on (World.spawnEntityInWorld
+// adding it to World.loadedEntityList, which the agent swaps for a list that seeds each
+// one added), before its first update, so a child born during a scenario starts pinned
+// and a thrown egg rolls the same chicks. A throwable with a thrower also gets the
+// heading of its constructor again from the pinned random (EntityThrowable(World,
+// EntityLivingBase): the thrower's look, then setThrowableHeading with its velocity and
+// an inaccuracy of 1), before its spawn packet goes out, so its flight is pinned too.
 // `krolpin world <seed> <ticks>` pins the worlds' randoms and Math.random() like
 // `krolpin <seed>`, now and again at the end of each of the next ticks, so that what a
 // bot does with the world random (a spawn egg's facing) meets the same state whichever
@@ -37,6 +41,11 @@
 //   MinecraftServer.a(km), km.c()              registerTickable(ITickable), ITickable.update
 //   adm.f / pk / ps                            World.loadedEntityList / Entity / EntityLiving
 //   pk.V / pk.F()                              Entity.rand / Entity.getEntityId
+//   wy / wy.g                                  EntityThrowable / thrower
+//   wy.c(DDDFF) / wy.j() / wy.l()              setThrowableHeading / getVelocity /
+//                                              getInaccuracy
+//   pk.y / pk.z                                Entity.rotationYaw / rotationPitch
+//   ns.a(F) / ns.b(F)                          MathHelper.sin / MathHelper.cos
 //
 // Built by `cargo xtask parity` (javac --release 8) and loaded with -javaagent only for
 // scenarios that set `pin_random`.
@@ -109,7 +118,8 @@ public final class KrolAgent {
             return true; // canCommandSenderUseCommand
         }
         if (n.equals("a") && params == 2 && ((String[]) a[1]).length >= 2 && ((String[]) a[1])[0].equals("spawns")) {
-            // krolpin spawns <seed>: pin every mob that joins a world from now on.
+            // krolpin spawns <seed>: pin every mob and throwable that joins a world from
+            // now on.
             pinSpawns(server, Long.parseLong(((String[]) a[1])[1]));
             return null;
         }
@@ -227,7 +237,7 @@ public final class KrolAgent {
 
     /**
      * Swaps every world's loadedEntityList for a copy that seeds the random of each mob
-     * added to it (World.spawnEntityInWorld; chunk loads add with addAll) with the seed
+     * and throwable added to it (World.spawnEntityInWorld; chunk loads add with addAll) with the seed
      * plus its entity id.
      */
     private static void pinSpawns(Object server, long seed) throws Exception {
@@ -239,6 +249,22 @@ public final class KrolAgent {
         modifiers.setInt(loaded, loaded.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
         Class<?> entity = Class.forName("pk");
         Class<?> mob = Class.forName("ps");
+        Class<?> throwable = Class.forName("wy");
+        Field thrower = throwable.getDeclaredField("g");
+        thrower.setAccessible(true);
+        Method heading = throwable.getMethod("c", double.class, double.class, double.class,
+                float.class, float.class);
+        Method velocity = throwable.getDeclaredMethod("j");
+        velocity.setAccessible(true);
+        Method inaccuracy = throwable.getDeclaredMethod("l");
+        inaccuracy.setAccessible(true);
+        Field yawField = entity.getDeclaredField("y");
+        yawField.setAccessible(true);
+        Field pitchField = entity.getDeclaredField("z");
+        pitchField.setAccessible(true);
+        Class<?> math = Class.forName("ns");
+        Method sin = math.getMethod("a", float.class);
+        Method cos = math.getMethod("b", float.class);
         Field rand = entity.getDeclaredField("V");
         rand.setAccessible(true);
         Method entityId = entity.getMethod("F");
@@ -250,9 +276,25 @@ public final class KrolAgent {
             java.util.ArrayList<Object> pinning = new java.util.ArrayList<Object>(old) {
                 @Override
                 public boolean add(Object e) {
-                    if (mob.isInstance(e)) {
+                    if (mob.isInstance(e) || throwable.isInstance(e)) {
                         try {
                             ((Random) rand.get(e)).setSeed(seed + (int) entityId.invoke(e));
+                            Object by = throwable.isInstance(e) ? thrower.get(e) : null;
+                            if (by != null) {
+                                // The constructor's aim in floats, 0.4 long, then the
+                                // spread from the now pinned random.
+                                float pi = (float) Math.PI;
+                                float yaw = yawField.getFloat(by) / 180.0F * pi;
+                                float look = pitchField.getFloat(by);
+                                float up = (look + (float) inaccuracy.invoke(e)) / 180.0F * pi;
+                                float pitch = look / 180.0F * pi;
+                                float sy = (float) sin.invoke(null, yaw);
+                                float cy = (float) cos.invoke(null, yaw);
+                                float cp = (float) cos.invoke(null, pitch);
+                                float su = (float) sin.invoke(null, up);
+                                heading.invoke(e, (double) (-sy * cp * 0.4F), (double) (-su * 0.4F),
+                                        (double) (cy * cp * 0.4F), (float) velocity.invoke(e), 1.0F);
+                            }
                         } catch (Exception x) {
                             throw new IllegalStateException(x);
                         }

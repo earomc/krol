@@ -7,8 +7,8 @@
 //! (`onImpact`), then moves without any collision and slows down by drag and gravity.
 //! None of these entity kinds survive their impact.
 //!
-//! TODO(M5): eggs hatching chickens and ender pearls spawning endermites (both roll
-//! their chance already; the mobs are missing), splash potions affecting mobs,
+//! TODO(M5): ender pearls spawning endermites (the chance is rolled already; the mob
+//! is missing), splash potions affecting mobs,
 //! throwables entering nether portals, catching fire in lava, dispensers firing them.
 
 use krol_java::math::{atan2, cos, floor_f64, sin, sqrt_f64};
@@ -223,6 +223,8 @@ pub struct Throwable {
     /// A splash potion's item (`potionDamage`). Vanilla keeps the thrown stack itself,
     /// so a survival throw leaves it with a count of 0, which is also saved.
     pub potion: Option<ItemStack>,
+    /// `Entity.rand`: the throwable's own random (unseeded in vanilla).
+    pub rand: krol_java::JavaRandom,
 }
 
 impl Throwable {
@@ -273,6 +275,8 @@ impl Throwable {
             dead,
             chunk: (floor_f64(p.0) >> 4, floor_f64(p.2) >> 4),
             potion: potion.flatten(),
+            // Seeded by the game as the entity is added ([`Game::new_mob_seed`]).
+            rand: krol_java::JavaRandom::new(0),
         }
     }
 
@@ -413,7 +417,15 @@ impl Game {
         // setThrowableHeading: normalize, add the spread, scale to the speed (the
         // entity's own random, unseeded in vanilla).
         let length = f64::from(sqrt_f64(aim.0 * aim.0 + aim.1 * aim.1 + aim.2 * aim.2));
-        let r = &mut self.entity_rand;
+        let mut rand = krol_java::JavaRandom::new(self.new_mob_seed());
+        // Parity hook: `krolpin spawns` pins a thrown entity's random as it joins the
+        // world and has it draw its heading again (the vanilla agent redoes the
+        // constructor's), the same as drawing it from the pinned random here.
+        #[cfg(feature = "parity")]
+        if let Some(seed) = self.spawn_pin {
+            rand.set_seed(seed.wrapping_add(i64::from(entity_id)));
+        }
+        let r = &mut rand;
         let spread = f64::from(SPREAD) * f64::from(HEADING_INACCURACY);
         let speed = f64::from(kind.velocity());
         let mut axis = |v: f64| (v / length + r.next_gaussian() * spread) * speed;
@@ -445,6 +457,7 @@ impl Game {
                 dead: false,
                 chunk: (floor_f64(pos.0) >> 4, floor_f64(pos.2) >> 4),
                 potion,
+                rand,
             },
         );
         self.spawn_entity_in_world(entity_id);
@@ -525,7 +538,7 @@ impl Game {
                 return;
             }
             t.in_ground = false;
-            let r = &mut self.entity_rand;
+            let r = &mut t.rand;
             t.body.motion.0 *= f64::from(r.next_float() * 0.2);
             t.body.motion.1 *= f64::from(r.next_float() * 0.2);
             t.body.motion.2 *= f64::from(r.next_float() * 0.2);
@@ -705,7 +718,7 @@ impl Game {
         let Some(t) = self.thrown.get(&id) else {
             return;
         };
-        let (kind, pos, launched_by) = (t.kind, t.body.pos, t.launched_by);
+        let (kind, pos, launched_by, yaw) = (t.kind, t.body.pos, t.launched_by, t.base.yaw);
         let (bb, potion, potion_damage) = (t.body.bb(), t.potion.clone(), t.potion_damage());
         let source = DamageSource::Thrown(thrower);
         let entity_hit = match hit {
@@ -723,18 +736,24 @@ impl Game {
                 if let Some((_, target)) = entity_hit {
                     let _ = self.attack_target(target, source, 0.0);
                 }
-                let r = &mut self.entity_rand;
-                if r.next_int_bounded(EGG_HATCH_CHANCE) == 0 {
-                    let _chicks = if r.next_int_bounded(EGG_QUADRUPLETS_CHANCE) == 0 {
+                let mut chicks = 0;
+                if let Some(t) = self.thrown.get_mut(&id)
+                    && t.rand.next_int_bounded(EGG_HATCH_CHANCE) == 0
+                {
+                    chicks = if t.rand.next_int_bounded(EGG_QUADRUPLETS_CHANCE) == 0 {
                         4
                     } else {
                         1
                     };
-                    // TODO(M5): spawn the chicks (baby chickens facing the egg's yaw).
+                }
+                for _ in 0..chicks {
+                    let _ = self.spawn_baby(super::mob::MobKind::Chicken, pos, yaw, None);
                 }
                 // The crack particles are client-side but draw their speeds.
-                for _ in 0..EGG_PARTICLES * 3 {
-                    let _ = r.next_float();
+                if let Some(t) = self.thrown.get_mut(&id) {
+                    for _ in 0..EGG_PARTICLES * 3 {
+                        let _ = t.rand.next_float();
+                    }
                 }
             }
             Kind::EnderPearl => {
@@ -745,11 +764,15 @@ impl Game {
                     }
                     let _ = self.attack_target(target, source, 0.0);
                 }
-                let r = &mut self.entity_rand;
-                for _ in 0..PEARL_PARTICLES {
-                    let _ = (r.next_double(), r.next_gaussian(), r.next_gaussian());
+                let mut endermite_roll = 0.0;
+                if let Some(t) = self.thrown.get_mut(&id) {
+                    let r = &mut t.rand;
+                    for _ in 0..PEARL_PARTICLES {
+                        let _ = (r.next_double(), r.next_gaussian(), r.next_gaussian());
+                    }
+                    endermite_roll = r.next_float();
                 }
-                self.pearl_teleport(thrower, pos);
+                self.pearl_teleport(thrower, pos, endermite_roll);
             }
             Kind::ExpBottle => {
                 self.block_effect_data(
@@ -855,7 +878,7 @@ impl Game {
 
     /// `EntityEnderPearl.onImpact` on the server: a thrower who is still online, in this
     /// world and awake is teleported to the pearl and takes 5 fall damage.
-    fn pearl_teleport(&mut self, thrower: Option<i32>, pos: (f64, f64, f64)) {
+    fn pearl_teleport(&mut self, thrower: Option<i32>, pos: (f64, f64, f64), roll: f32) {
         let Some(i) = thrower.and_then(|id| {
             self.players
                 .iter()
@@ -866,7 +889,6 @@ impl Game {
         if self.players[i].sleeping {
             return;
         }
-        let roll = self.entity_rand.next_float();
         if roll < ENDERMITE_CHANCE && self.level.data.game_rule("doMobSpawning") != Some("false") {
             // TODO(M5): an endermite (spawned by a player) at the thrower's old place.
         }

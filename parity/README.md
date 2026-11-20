@@ -119,9 +119,15 @@ a bot does to a mob at some wall-clock moment would meet an unknown state;
 `krolpin mobs <seed> <ticks>` seeds every mob's random again at the end of each of the
 next ticks, so the bot's action meets the same state whichever tick it lands in (mob
 ambient rolls then repeat the same value every tick: pick the seed so the sound comes at
-a quiet time). `krolpin spawns <seed>` pins the random of every mob that joins a world
-from then on (summoned, or born to breeding parents) with the seed plus its entity id,
-before its first update; chunk loads are left alone. `krolpin world <seed> <ticks>` pins the world
+a quiet time). `krolpin spawns <seed>` pins the random of every mob and throwable that
+joins a world from then on (summoned, born to breeding parents, hatched or thrown) with
+the seed plus its entity id, before its first update; chunk loads are left alone. A
+throwable with a thrower also draws the heading of its constructor again from the
+pinned random, so its flight and its rolls (an egg's chicks) are pinned too
+(`play/chickens`). Mind that adjacent seeds give nearly the same first outputs of
+`java.util.Random`, so with the seed plus the entity id a roll comes out the same for a
+run of consecutive ids: pick the seed with a script that replays the draws (the
+heading's three Gaussians come first). `krolpin world <seed> <ticks>` pins the world
 random, the random tick generator and `Math.random()` like `krolpin <seed>`, now and at
 the end of each of the next ticks, so a bot's action that draws from the world random
 (a spawn egg's facing) meets the same state whichever tick it lands in. Other entities' randoms (sound
@@ -236,8 +242,16 @@ into server ticks. Rules learned from flaky scenarios:
   second entry at its 1.7 index (`play/throwables`).
 - Thrown projectiles take their spread from the entity's own unseeded random: aim at
   something whose hit tick is far from a tick boundary, and leave out anything whose
-  outcome is a roll on that random (eggs hatching chicks, endermites from pearls: turn
-  off `doMobSpawning`).
+  outcome is a roll on that random (endermites from pearls: turn off `doMobSpawning`),
+  or pin it with `krolpin spawns` (eggs hatching chicks, `play/chickens`).
+- **Keep what the console starts apart from what the bot starts**: a mob summoned from
+  the console lands, lays or dies on ticks counted from its summon, while a bot's
+  action lands at a wall-clock moment, so their packets interleave differently from run
+  to run. Let the console's events finish before the bot acts, and make the bot's
+  last action the one that starts the moving part (only the last thrown egg hatches in
+  `play/chickens`). Keep hatched or newborn mobs out of reach of adults (follow range 8
+  blocks): a pile of pushing mobs drifts apart, and a pushed mob sends velocities on
+  its own tracker beat.
 - Projectiles hitting a player directly are exact when the outcome does not depend on
   where the hit lands (splash potions give a direct hit the full effect): place the
   target so its box edge (grown by 0.3) falls mid-step, not at a tick boundary of the

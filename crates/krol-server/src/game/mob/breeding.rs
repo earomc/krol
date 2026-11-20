@@ -38,6 +38,7 @@ impl MobKind {
         match self {
             Self::Pig => item::CARROT,
             Self::Cow | Self::Mooshroom => item::WHEAT,
+            Self::Chicken => item::WHEAT_SEEDS,
         }
     }
 }
@@ -189,7 +190,7 @@ impl Game {
                 self.mount_player(i, id);
                 true
             }
-            MobKind::Cow | MobKind::Mooshroom => false,
+            MobKind::Cow | MobKind::Mooshroom | MobKind::Chicken => false,
         }
     }
 
@@ -395,6 +396,19 @@ impl Game {
     /// named after a named spawn egg. Returns its entity id.
     fn spawn_child(&mut self, parent: i32, name: Option<String>) -> Option<i32> {
         let (kind, pos) = self.mobs.get(&parent).map(|m| (m.kind, m.body.pos))?;
+        Some(self.spawn_baby(kind, pos, 0.0, name))
+    }
+
+    /// A new child of `kind` (`setGrowingAge(-24000)`, then `setLocationAndAngles` at
+    /// `pos` with `yaw` and no pitch) added to the world, named `name` if given. A
+    /// thrown egg hatches its chicks with this. Returns its entity id.
+    pub(in crate::game) fn spawn_baby(
+        &mut self,
+        kind: MobKind,
+        pos: (f64, f64, f64),
+        yaw: f32,
+        name: Option<String>,
+    ) -> i32 {
         let id = self.next_entity_id();
         // The living constructor turns the head at random (Math.random).
         let head = self.new_stand_head();
@@ -403,7 +417,7 @@ impl Game {
         // The age comes before setLocationAndAngles, which centers the small box.
         let _ = child.set_age(CHILD_AGE);
         child.body.set_position(pos);
-        child.base.yaw = 0.0;
+        child.base.yaw = yaw;
         child.base.pitch = 0.0;
         if name.is_some() {
             child.base.custom_name = name;
@@ -411,7 +425,7 @@ impl Game {
         child.dirty_metadata = child.metadata().iter().map(|e| e.index).collect();
         self.mobs.insert(id, child);
         self.spawn_entity_in_world(id);
-        Some(id)
+        id
     }
 
     /// `EntityAIMate.getNearbyMate`: the closest mob of the same kind within 8 blocks

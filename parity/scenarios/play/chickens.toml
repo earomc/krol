@@ -1,0 +1,153 @@
+description = "Chickens: size 0.4 x 0.7, wheat seeds feeding a chick (it grows), a hen laying an egg when its EggLayTime runs out (mob.chicken.plop at a pitch from its random, the egg dropped with a pickup delay, the next time rolled from its random), a hen with AI falling slowly from 8 blocks up without fall damage, /kill dropping feathers and raw chicken, thrown eggs hatching chicks (one in 8, four in one of 32) facing the egg's flight; the chickens saved with their chunks (IsChickenJockey, EggLayTime), the seeds and eggs with the player"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode and stands still. He
+# gets two wheat seeds and twelve eggs (hotbar slots 0 and 1; /give's fake items are
+# entities 1 and 2). A silent chick without AI (Age -1300, entity 3) stands 2 blocks
+# south of him and hen A without AI (entity 4, EggLayTime 40) 3 blocks east, out of his
+# pickup reach (it is dead before any chick hatches). Hen B with AI (entity 5) is
+# summoned 8 blocks above the ground 21 blocks north (in chunk -30, -29), far out of
+# the chicks' follow range, so that they do not walk into it: a hen pushed by chicks
+# sends velocities on its own tracker beat, which the bot's timing shifts against the
+# chicks'.
+#
+# Every mob and throwable joining the world from before the first summon has its
+# random pinned (`krolpin spawns`; a thrown egg also draws its heading again from it),
+# so each egg flies and rolls its chicks the same way in both servers. Math.random()
+# (`krolpin world`, the laid egg's motion) and, from after the summons, every mob's
+# random (`krolpin mobs`) are pinned at the end of every tick. Chickens roll their
+# EggLayTime in their constructor, before the pin, so the summoned ones get theirs from
+# the data tag and the chicks' are compared loosely.
+#
+# Hen A lays its egg (entity 6) about 2 seconds after it was summoned, /kill finishes
+# it under `krolpin 9` (its drops are entities 7 and 8) well after hen B has landed,
+# and the items are killed, all before jeb_ feeds the chick and throws the eggs (entities 9 to 20) at a
+# stone wall 1 block west of him, so that what the console starts does not race what
+# the bot starts. The seed is picked so that only the last egg hatches, as
+# quadruplets: the chicks' movement cannot race a later throw, and no egg hits a chick
+# (projectiles do not hit mobs in krol yet). The four chicks share one spot, where they
+# do not push each other, and have a few seconds to settle before the session ends.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 22
+chat = [
+    "@10500 !hold 0",
+    "@11000 !interact 3",
+    "@11300 !hold 1",
+    "@11400 !look 79.45 0",
+    "@11500 !use",
+    "@11750 !use",
+    "@12000 !use",
+    "@12250 !use",
+    "@12500 !use",
+    "@12750 !use",
+    "@13000 !use",
+    "@13250 !use",
+    "@13500 !use",
+    "@13750 !use",
+    "@14000 !use",
+    "@14250 !use",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "fill -473 4 -437 -473 6 -432 stone"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "give jeb_ wheat_seeds 2"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ egg 12"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "krolpin spawns 760262925482"
+wait_ms = 50
+
+[[steps]]
+action = "console"
+command = "krolpin world 31 600"
+wait_ms = 50
+
+[[steps]]
+action = "console"
+command = "summon Chicken -471.5 4 -432.5 {NoAI:1b,Silent:1b,Age:-1300,EggLayTime:5000}"
+wait_ms = 200
+
+[[steps]]
+action = "console"
+command = "summon Chicken -468.5 4 -434.5 {NoAI:1b,EggLayTime:40}"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "summon Chicken -466.5 12 -455.5 {EggLayTime:20000}"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "krolpin mobs 103 800"
+wait_ms = 3800
+
+[[steps]]
+action = "console"
+command = "krolpin 9 -- kill @e[type=Chicken,x=-469,y=4,z=-435,r=1]"
+wait_ms = 1500
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 12500
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin).
+log_ignore_prefixes = ["Killed item."]
+entities = [[-30, -28], [-30, -27], [-30, -29]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
+
+[observe.tolerance]
+# The chicks grow every tick up to the stop, whose tick depends on timing.
+"entities.-30,-28[*].Age" = 20
+"entities.-30,-27[*].Age" = 20
+# Hen B's timer counts down every tick up to the stop.
+"entities.-30,-29[0].EggLayTime" = 20
+# Hatched chicks roll it in their constructor, before the pin: 6000 to 11999.
+"entities.-30,-28[*].EggLayTime" = 6000
+"entities.-30,-27[*].EggLayTime" = 6000

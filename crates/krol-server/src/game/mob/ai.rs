@@ -273,6 +273,24 @@ impl MobAi {
         ai
     }
 
+    /// The AI of a chicken (`EntityChicken`'s constructor).
+    pub fn chicken(pos: (f64, f64, f64)) -> Self {
+        // Unlike pigs and cows, chickens leave the navigator's water avoidance off.
+        let mut ai = Self::empty(pos);
+        ai.nav.flags.can_swim = true;
+        ai.goals = vec![
+            (0, Goal::Swimming),
+            (1, panic(1.4)),
+            (2, mate(1.0)),
+            (3, tempt(1.0, item::WHEAT_SEEDS)),
+            (4, follow_parent(1.1)),
+            (5, wander(1.0)),
+            (6, watch_closest_player()),
+            (7, look_idle()),
+        ];
+        ai
+    }
+
     /// The navigator of the land animals: it avoids water, and `EntityAISwimming`'s
     /// constructor lets it swim.
     fn animal(pos: (f64, f64, f64)) -> Self {

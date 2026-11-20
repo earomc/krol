@@ -368,6 +368,12 @@ pub mod item {
     pub const COOKED_PORKCHOP: i16 = 320;
     /// `saddle`.
     pub const SADDLE: i16 = 329;
+    /// `feather`.
+    pub const FEATHER: i16 = 288;
+    /// `chicken` (raw).
+    pub const CHICKEN: i16 = 365;
+    /// `cooked_chicken`.
+    pub const COOKED_CHICKEN: i16 = 366;
     /// `bowl`.
     pub const BOWL: i16 = 281;
     /// `mushroom_stew`.
