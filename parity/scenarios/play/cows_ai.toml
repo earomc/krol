@@ -1,0 +1,70 @@
+description = "A cow with AI: summoned in the air and burning, it falls (fall sounds, damage and dust), panics while burning (fire damage every second, mob.cow.hurt at volume 0.4, a random target 5 blocks around, run at 2.0), then wanders on its own (random targets weighted by grass and light, paths around a pool it avoids), looks around and at the player when near (look and body helpers), with step sounds and ambient sounds; saved with its chunk at the end"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) and stands still. A glass pen (walls two
+# blocks high at x = -478 and -466, z = -446 and -437) keeps the cow in the chunk, with
+# a pool (water at y = 3, x = -470..-469, z = -443..-442) inside. The cow is summoned
+# 6 blocks up at (-472.5, 10, -440.5) under `krolpin 5`, which pins its own random
+# once: from then on everything it does is decided by that random, the world and the
+# bot standing still, so a whole minute of wandering compares exactly. It lands and
+# burns for 3 seconds (Fire:60s), panicking (burning sets no revenge target) until the
+# fire goes out, then wanders.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -446 -466 5 -446 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -437 -466 5 -437 glass"
+
+[[steps]]
+action = "console"
+command = "fill -478 4 -445 -478 5 -438 glass"
+
+[[steps]]
+action = "console"
+command = "fill -466 4 -445 -466 5 -438 glass"
+
+[[steps]]
+action = "console"
+command = "fill -470 3 -443 -469 3 -442 water"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 40
+
+[[steps]]
+action = "wait"
+ms = 3000
+
+[[steps]]
+action = "console"
+command = "krolpin 5 -- summon Cow -472.5 10 -440.5 {Fire:60s}"
+wait_ms = 30000
+
+[observe]
+log = true
+entities = [[-30, -28]]
+# Watching the player at the end, the pitch would depend on whether a tick runs
+# between the bot leaving and the stop (see play/mobs_tempt; the yaw still compares
+# through the tracked entity).
+ignore = ["entities.-30,-28[0].Rotation"]

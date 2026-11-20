@@ -540,13 +540,18 @@ scenarios = ["commands/entity_targets"]
 
 [[feature]]
 id = "commands.summon"
-description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Riding mounts: play/mobs_riding_carts. Not yet: mobs other than pigs, LightningBolt (onInitialSpawn of a tagless summon: play/spawn_eggs)"
+description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Riding mounts: play/mobs_riding_carts. Not yet: mobs other than pigs and cows, LightningBolt (onInitialSpawn of a tagless summon: play/spawn_eggs)"
 scenarios = ["commands/summon"]
 
 [[feature]]
 id = "entity.mobs.no_ai"
 description = "Mobs without AI (pigs with NoAI): spawn mob packet with the watcher's HashMap order, metadata and attributes resent at the first update, the ambient sound on the mob's own random, a player's hit (hurt status and sound, sword wear, health metadata, recentlyHit), knockback resistance from the Attributes tag, /kill (death sound and status, raw porkchops, experience 20 ticks later from the world random, stat.mobKills), death by burning (fire damage, burning flag, cooked porkchops, no experience), custom names, Saddle, Silent and NoAI saved with the chunk. Not yet: knockback velocities (their tracker phase depends on timing), looting, equipment drops"
 scenarios = ["play/mobs_no_ai"]
+
+[[feature]]
+id = "entity.mobs.cow"
+description = "Cows (EntityCow): size 0.9 x 1.3 with eyes at the top, movement speed 0.2 (from a float), mob.cow.say/hurt at volume 0.4 and mob.cow.step; milking (EntityCow.interact before the animal's: adults only, not in creative; the last bucket of the stack becomes the milk bucket, otherwise the milk goes into the inventory or is tossed), wheat as the breeding item, a hit ending the love, leather (0 to 2) and raw or cooked beef (1 to 3) dropped; the AI goals (panic at 2.0, tempt with wheat at 1.25, follow parent at 1.25) wandering, falling and panicking while burning. Not covered: tempting and breeding cows with AI, a full inventory tossing the milk, looting"
+scenarios = ["play/cows", "play/cows_ai"]
 
 [[feature]]
 id = "entity.mobs.spawn_animals_off"

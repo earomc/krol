@@ -19,10 +19,10 @@
 //! Players feed, saddle and name mobs, and animals in love breed ([`breeding`]). Spawn
 //! eggs hatch mobs on blocks and in liquids ([`spawn_egg`]).
 //!
-//! TODO(M5): `onInitialSpawn` of the other mob kinds than pigs, horses, leads, picking up
+//! TODO(M5): the other mob kinds (and their `onInitialSpawn`), horses, picking up
 //! loot, status effects (`ActiveEffects` is kept as saved), jump boost, the combat
-//! tracker, pushing and being pushed by minecarts and boats, being hit by projectiles
-//! and explosions, arrows stuck in them, equipment changes.
+//! tracker, being hit by projectiles and explosions, arrows stuck in them, equipment
+//! changes.
 
 mod ai;
 mod breeding;
@@ -149,6 +149,8 @@ const BURNING_BIT: i8 = 1;
 pub enum MobKind {
     /// `EntityPig`.
     Pig,
+    /// `EntityCow`.
+    Cow,
 }
 
 impl MobKind {
@@ -156,13 +158,14 @@ impl MobKind {
     pub fn from_saved_id(id: &str) -> Option<Self> {
         match id {
             "Pig" => Some(Self::Pig),
+            "Cow" => Some(Self::Cow),
             _ => None,
         }
     }
 
     /// The kind with `EntityList` id `id` (a spawn egg's damage).
     pub fn from_type_id(id: i32) -> Option<Self> {
-        [Self::Pig]
+        [Self::Pig, Self::Cow]
             .into_iter()
             .find(|k| i32::from(k.type_id()) == id)
     }
@@ -171,6 +174,7 @@ impl MobKind {
     pub fn saved_id(self) -> &'static str {
         match self {
             Self::Pig => "Pig",
+            Self::Cow => "Cow",
         }
     }
 
@@ -178,6 +182,7 @@ impl MobKind {
     pub fn type_id(self) -> u8 {
         match self {
             Self::Pig => 90,
+            Self::Cow => 92,
         }
     }
 
@@ -185,6 +190,7 @@ impl MobKind {
     pub fn name(self) -> &'static str {
         match self {
             Self::Pig => "Pig",
+            Self::Cow => "Cow",
         }
     }
 
@@ -192,6 +198,7 @@ impl MobKind {
     fn size(self) -> (f32, f32) {
         match self {
             Self::Pig => (0.9, 0.9),
+            Self::Cow => (0.9, 1.3),
         }
     }
 
@@ -205,6 +212,13 @@ impl MobKind {
                 (MOVEMENT_SPEED, 0.25),
                 (FOLLOW_RANGE, 16.0),
             ],
+            Self::Cow => [
+                (MAX_HEALTH, 10.0),
+                (KNOCKBACK_RESISTANCE, 0.0),
+                // Set from a float.
+                (MOVEMENT_SPEED, 0.2f32 as f64),
+                (FOLLOW_RANGE, 16.0),
+            ],
         }
     }
 
@@ -212,34 +226,51 @@ impl MobKind {
     fn sounds(self) -> (&'static str, &'static str, &'static str) {
         match self {
             Self::Pig => ("mob.pig.say", "mob.pig.say", "mob.pig.death"),
+            Self::Cow => ("mob.cow.say", "mob.cow.hurt", "mob.cow.hurt"),
+        }
+    }
+
+    /// `getSoundVolume`.
+    fn sound_volume(self) -> f32 {
+        match self {
+            Self::Pig => 1.0,
+            Self::Cow => 0.4,
+        }
+    }
+
+    /// `playStepSound`: the sound and its volume.
+    fn step_sound(self) -> (&'static str, f32) {
+        match self {
+            Self::Pig => ("mob.pig.step", 0.15),
+            Self::Cow => ("mob.cow.step", 0.15),
         }
     }
 
     /// `getTalkInterval`: animals talk less often than other mobs.
     fn talk_interval(self) -> i32 {
         match self {
-            Self::Pig => 120,
+            Self::Pig | Self::Cow => 120,
         }
     }
 
     /// Not an `IMob` (`EntityLiving.allowLeashing`): it takes a lead.
     fn leashable(self) -> bool {
         match self {
-            Self::Pig => true,
+            Self::Pig | Self::Cow => true,
         }
     }
 
     /// An `EntityAnimal` (or water mob): removed when `spawn-animals` is off.
     fn animal(self) -> bool {
         match self {
-            Self::Pig => true,
+            Self::Pig | Self::Cow => true,
         }
     }
 
     /// An `EntityAgeable` (an age entry in its metadata, children).
     fn ageable(self) -> bool {
         match self {
-            Self::Pig => true,
+            Self::Pig | Self::Cow => true,
         }
     }
 }
@@ -437,6 +468,7 @@ impl Mob {
             riding: None,
             ai: Some(Box::new(match kind {
                 MobKind::Pig => ai::MobAi::pig(pos),
+                MobKind::Cow => ai::MobAi::cow(pos),
             })),
         };
         m.dirty_metadata = m.metadata().iter().map(|e| e.index).collect();
@@ -539,6 +571,7 @@ impl Mob {
         }
         match kind {
             MobKind::Pig => m.set_saddled(c.get_bool("Saddle")),
+            MobKind::Cow => {}
         }
         m.chunk = chunk_of(m.body.pos);
         m
@@ -614,6 +647,7 @@ impl Mob {
             MobKind::Pig => {
                 c.insert("Saddle", Tag::Byte(i8::from(self.saddled)));
             }
+            MobKind::Cow => {}
         }
     }
 
@@ -642,7 +676,10 @@ impl Mob {
 
     /// `getEyeHeight`.
     pub fn eye_height(&self) -> f32 {
-        self.body.height * 0.85
+        match self.kind {
+            MobKind::Pig => self.body.height * 0.85,
+            MobKind::Cow => self.body.height,
+        }
     }
 
     /// The value of attribute `k` (in [`MobKind::attribute_bases`] order) with its
@@ -785,6 +822,7 @@ impl Mob {
             MobKind::Pig => {
                 out.insert(1, md(SADDLE_INDEX, Byte(i8::from(self.saddled))));
             }
+            MobKind::Cow => {}
         }
         out
     }
@@ -1361,9 +1399,7 @@ impl Game {
             return;
         };
         let (pos, silent) = (m.body.pos, m.base.silent);
-        let (sound, volume) = match m.kind {
-            MobKind::Pig => ("mob.pig.step", 0.15),
-        };
+        let (sound, volume) = m.kind.step_sound();
         if !silent {
             self.play_sound_near_except(None, sound, pos, volume, 1.0);
         }
@@ -1720,15 +1756,16 @@ impl Game {
         false
     }
 
-    /// `Entity.playSound` of a mob at full volume (`getSoundVolume`), unless silent.
+    /// `Entity.playSound` of a mob at its kind's volume (`getSoundVolume`), unless
+    /// silent.
     fn mob_sound(&mut self, id: i32, sound: &str) {
         let Some(m) = self.mobs.get_mut(&id) else {
             return;
         };
         let pitch = m.sound_pitch();
-        let (pos, silent) = (m.body.pos, m.base.silent);
+        let (pos, silent, volume) = (m.body.pos, m.base.silent, m.kind.sound_volume());
         if !silent {
-            self.play_sound_near_except(None, sound, pos, 1.0, pitch);
+            self.play_sound_near_except(None, sound, pos, volume, pitch);
         }
     }
 
@@ -1971,7 +2008,7 @@ impl Game {
                 && let Some(m) = self.mobs.get_mut(&id)
                 && m.rand.next_float() < RARE_DROP_CHANCE + looting as f32 * RARE_DROP_LOOTING
             {
-                // addRandomDrop: pigs have none.
+                // addRandomDrop: pigs and cows have none.
             }
         }
         self.send_to_tracking(
@@ -2002,6 +2039,17 @@ impl Game {
                 if m.saddled {
                     drops.push(item::SADDLE);
                 }
+            }
+            MobKind::Cow => {
+                let n = m.rand.next_int_bounded(3) + m.rand.next_int_bounded(1 + looting);
+                drops.extend(std::iter::repeat_n(item::LEATHER, n.max(0) as usize));
+                let n = m.rand.next_int_bounded(3) + 1 + m.rand.next_int_bounded(1 + looting);
+                let meat = if m.burning() {
+                    item::COOKED_BEEF
+                } else {
+                    item::BEEF
+                };
+                drops.extend(std::iter::repeat_n(meat, n.max(0) as usize));
             }
         }
         for id in drops {
@@ -2181,6 +2229,18 @@ mod tests {
         assert_eq!(order, [0, 16, 1, 2, 3, 4, 6, 7, 8, 9, 12, 15]);
         assert!(pig.metadata_changed);
         assert_eq!(pig.properties()[0].0, MOVEMENT_SPEED);
+    }
+
+    #[test]
+    fn cows_have_their_own_size_speed_and_eyes() {
+        let cow = Mob::new(MobKind::Cow, (0.0, 64.0, 0.0), 0.0, 1);
+        let order: Vec<u8> = cow.metadata().iter().map(|m| m.index).collect();
+        assert_eq!(order, [0, 1, 2, 3, 4, 6, 7, 8, 9, 12, 15]);
+        assert_eq!((cow.body.width, cow.body.height), (0.9, 1.3));
+        assert_eq!(cow.eye_height(), 1.3);
+        assert_eq!(cow.properties()[0].1, 0.20000000298023224);
+        assert_eq!(MobKind::from_type_id(92), Some(MobKind::Cow));
+        assert_eq!(MobKind::from_saved_id("Cow"), Some(MobKind::Cow));
     }
 
     #[test]

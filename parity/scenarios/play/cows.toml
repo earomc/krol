@@ -1,0 +1,118 @@
+description = "Cows without AI: a survival-style player milks an adult cow with a stack of three buckets (the milk goes into the inventory twice, then the last bucket becomes the milk bucket) but not a calf, wheat puts the cow in love, a sword hit (hurt sound mob.cow.hurt at volume 0.4) ends the love, /kill drops leather and raw beef and its experience, a burning cow drops cooked beef; the calf saved with the chunk, the buckets with the player"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode (milking only skips
+# creative players) and stands still. He gets three buckets, a wheat and a diamond
+# sword (hotbar slots 0 to 2; /give's fake items are entities 1 to 3). A silent calf
+# (Age -1300, entity 4) stands 2 blocks south of him, cow A (entity 5) 2 blocks east,
+# summoned under `krolpin 1` with full knockback resistance so that the hit does not
+# move it (see play/mobs_no_ai). From then on every mob's random is pinned at the end
+# of every tick (`krolpin mobs`), so ambient sounds and the drops meet the same random
+# in whichever tick they land. He tries the bucket on the calf (nothing), milks cow A
+# three times (milk into hotbar slots 3 and 4, then slot 0 turns into milk), feeds it
+# the wheat (hearts), hits it with the sword and /kill finishes it under `krolpin 9`
+# (the world random picks its experience 20 ticks later). Cow B is summoned burning
+# with 3 health and burns to death. The dropped items are killed before the end; the
+# experience orbs fly to jeb_.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 20
+chat = [
+    "@4500 !hold 0",
+    "@5000 !interact 4",
+    "@5500 !interact 5",
+    "@6000 !interact 5",
+    "@6500 !interact 5",
+    "@7000 !hold 1",
+    "@7500 !interact 5",
+    "@8000 !hold 2",
+    "@8200 !look 270 0",
+    "@8500 !attack 5",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "give jeb_ bucket 3"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ wheat"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ diamond_sword"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "summon Cow -471.5 4 -432.5 {NoAI:1b,Silent:1b,Age:-1300}"
+wait_ms = 200
+
+[[steps]]
+action = "console"
+command = "krolpin 1 -- summon Cow -469.5 4 -434.5 {NoAI:1b,Attributes:[{Name:\"generic.knockbackResistance\",Base:1.0d}]}"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "krolpin mobs 103 400"
+wait_ms = 6300
+
+[[steps]]
+action = "console"
+command = "krolpin 9 -- kill @e[type=Cow,x=-469,y=4,z=-434,r=2]"
+wait_ms = 2500
+
+[[steps]]
+action = "console"
+command = "krolpin 6 -- summon Cow -468.5 4 -438.5 {NoAI:1b,Fire:100s,Health:3s}"
+wait_ms = 4000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1000
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin).
+log_ignore_prefixes = ["Killed item."]
+entities = [[-30, -28]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+]
+
+[observe.tolerance]
+# The calf grows every tick up to the stop, whose tick depends on timing.
+"entities.-30,-28[0].Age" = 20

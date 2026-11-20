@@ -35,6 +35,7 @@ impl MobKind {
     fn breeding_item(self) -> i16 {
         match self {
             Self::Pig => item::CARROT,
+            Self::Cow => item::WHEAT,
         }
     }
 }
@@ -123,6 +124,9 @@ impl Game {
         if self.leash_interact(i, id) {
             return true;
         }
+        if self.milk_cow(i, id) {
+            return true;
+        }
         let held = self.players[i].held().cloned();
         let me = self.players[i].entity_id;
         let Some(m) = self.mobs.get_mut(&id) else {
@@ -180,6 +184,7 @@ impl Game {
                 self.mount_player(i, id);
                 true
             }
+            MobKind::Cow => false,
         }
     }
 
@@ -217,6 +222,44 @@ impl Game {
             self.add_stat(i, &stat, 1);
         }
         result
+    }
+
+    /// `EntityCow.interact`, before the animal's own: an adult cow fills a survival or
+    /// adventure player's bucket. The last bucket of the stack becomes the milk
+    /// bucket; otherwise the milk goes into the inventory, or is tossed if it does
+    /// not fit. Returns whether the cow took the click.
+    fn milk_cow(&mut self, i: usize, id: i32) -> bool {
+        let p = &self.players[i];
+        if p.gamemode == super::super::player::Player::CREATIVE
+            || p.held().is_none_or(|h| h.id != item::BUCKET)
+            || !self
+                .mobs
+                .get(&id)
+                .is_some_and(|m| m.kind == MobKind::Cow && !m.child())
+        {
+            return false;
+        }
+        let milk = || ItemStack {
+            id: item::MILK_BUCKET,
+            count: 1,
+            damage: 0,
+            nbt: None,
+        };
+        let p = &mut self.players[i];
+        let slot = 36 + p.selected;
+        let Some(s) = p.inventory[slot].as_mut() else {
+            return false;
+        };
+        s.count -= 1;
+        if s.count == 0 {
+            p.inventory[slot] = Some(milk());
+        } else {
+            let mut new = milk();
+            if !crate::game::item_entity::add_to_inventory(&mut p.inventory, &mut new, false) {
+                self.toss(i, milk(), false);
+            }
+        }
+        true
     }
 
     /// One of the held item used up (`stackSize--`, the slot emptied at 0), unless

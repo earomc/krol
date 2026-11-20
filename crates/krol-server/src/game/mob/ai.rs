@@ -232,19 +232,10 @@ pub struct MobAi {
 impl MobAi {
     /// The AI of a pig (`EntityPig`'s constructor).
     pub fn pig(pos: (f64, f64, f64)) -> Self {
-        let mut ai = Self::empty(pos);
-        ai.nav.flags.avoids_water = true;
-        // EntityAISwimming's constructor lets the navigator swim.
-        ai.nav.flags.can_swim = true;
+        let mut ai = Self::animal(pos);
         ai.goals = vec![
             (0, Goal::Swimming),
-            (
-                1,
-                Goal::Panic {
-                    speed: 1.25,
-                    target: (0.0, 0.0, 0.0),
-                },
-            ),
+            (1, panic(1.25)),
             (
                 2,
                 Goal::ControlledByPlayer {
@@ -255,50 +246,39 @@ impl MobAi {
                     max_boost_time: 0,
                 },
             ),
-            (
-                3,
-                Goal::Mate {
-                    speed: 1.0,
-                    mate: None,
-                    delay: 0,
-                },
-            ),
+            (3, mate(1.0)),
             (4, tempt(1.2, item::CARROT_ON_A_STICK)),
             (4, tempt(1.2, item::CARROT)),
-            (
-                5,
-                Goal::FollowParent {
-                    speed: 1.1,
-                    parent: None,
-                    delay: 0,
-                },
-            ),
-            (
-                6,
-                Goal::Wander {
-                    speed: 1.0,
-                    chance: WANDER_CHANCE,
-                    target: (0.0, 0.0, 0.0),
-                    must_update: false,
-                },
-            ),
-            (
-                7,
-                Goal::WatchClosest {
-                    range: 6.0,
-                    chance: WATCH_CHANCE,
-                    target: None,
-                    look_time: 0,
-                },
-            ),
-            (
-                8,
-                Goal::LookIdle {
-                    look: (0.0, 0.0),
-                    time: 0,
-                },
-            ),
+            (5, follow_parent(1.1)),
+            (6, wander(1.0)),
+            (7, watch_closest_player()),
+            (8, look_idle()),
         ];
+        ai
+    }
+
+    /// The AI of a cow (`EntityCow`'s constructor).
+    pub fn cow(pos: (f64, f64, f64)) -> Self {
+        let mut ai = Self::animal(pos);
+        ai.goals = vec![
+            (0, Goal::Swimming),
+            (1, panic(2.0)),
+            (2, mate(1.0)),
+            (3, tempt(1.25, item::WHEAT)),
+            (4, follow_parent(1.25)),
+            (5, wander(1.0)),
+            (6, watch_closest_player()),
+            (7, look_idle()),
+        ];
+        ai
+    }
+
+    /// The navigator of the land animals: it avoids water, and `EntityAISwimming`'s
+    /// constructor lets it swim.
+    fn animal(pos: (f64, f64, f64)) -> Self {
+        let mut ai = Self::empty(pos);
+        ai.nav.flags.avoids_water = true;
+        ai.nav.flags.can_swim = true;
         ai
     }
 
@@ -359,6 +339,55 @@ impl MobAi {
             }
             self.goals.remove(k);
         }
+    }
+}
+
+fn panic(speed: f64) -> Goal {
+    Goal::Panic {
+        speed,
+        target: (0.0, 0.0, 0.0),
+    }
+}
+
+fn mate(speed: f64) -> Goal {
+    Goal::Mate {
+        speed,
+        mate: None,
+        delay: 0,
+    }
+}
+
+fn follow_parent(speed: f64) -> Goal {
+    Goal::FollowParent {
+        speed,
+        parent: None,
+        delay: 0,
+    }
+}
+
+fn wander(speed: f64) -> Goal {
+    Goal::Wander {
+        speed,
+        chance: WANDER_CHANCE,
+        target: (0.0, 0.0, 0.0),
+        must_update: false,
+    }
+}
+
+/// `EntityAIWatchClosest` looking at players within 6 blocks.
+fn watch_closest_player() -> Goal {
+    Goal::WatchClosest {
+        range: 6.0,
+        chance: WATCH_CHANCE,
+        target: None,
+        look_time: 0,
+    }
+}
+
+fn look_idle() -> Goal {
+    Goal::LookIdle {
+        look: (0.0, 0.0),
+        time: 0,
     }
 }
 
