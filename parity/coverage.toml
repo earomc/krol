@@ -540,7 +540,7 @@ scenarios = ["commands/entity_targets"]
 
 [[feature]]
 id = "commands.summon"
-description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Riding mounts: play/mobs_riding_carts. Not yet: mobs other than pigs, cows, mooshrooms and chickens, LightningBolt (onInitialSpawn of a tagless summon: play/spawn_eggs)"
+description = "/summon: usage, outOfWorld (unloaded chunk, outside the build height), unknown ids (failed, 'Skipping Entity' warning), tagError, coordinates centered on the block, the legacy Minecart id with its Type, entities built from data tags (Air and Health read as 0 when missing; the watcher re-sent once) and spawned at once (tracked in the chunk they join, saved with it). Riding mounts: play/mobs_riding_carts. Not yet: mobs other than pigs, cows, mooshrooms, chickens and sheep, LightningBolt (onInitialSpawn of a tagless summon: play/spawn_eggs)"
 scenarios = ["commands/summon"]
 
 [[feature]]
@@ -562,6 +562,11 @@ scenarios = ["play/mooshrooms"]
 id = "entity.mobs.chicken"
 description = "Chickens (EntityChicken): size 0.4 x 0.7 with eyes at the top, max health 4, speed 0.25, mob.chicken.say/hurt and mob.chicken.step; slow falling (motionY * 0.6) without fall damage (fall does nothing; the landing dust still shows), wheat seeds as the breeding item (a chick grows), laying an egg when EggLayTime runs out (mob.chicken.plop with a pitch from its random, the egg dropped with a pickup delay, the next time 6000 to 11999 from its random), IsChickenJockey and EggLayTime saved, feathers (0 to 2) and raw or cooked chicken dropped; the AI goals (panic 1.4, tempt with seeds 1.0, follow parent 1.1; the navigator does not avoid water); EntityEgg hatching chicks (1 in 8, 4 in 1 of 32) at the egg, facing its heading. Not covered: chicken jockeys (despawning, 10 experience, rider offset), tempting and breeding chickens with AI, looting, burning chickens"
 scenarios = ["play/chickens"]
+
+[[feature]]
+id = "entity.mobs.sheep"
+description = "Sheep (EntitySheep): size 0.9 x 1.3 with eyes at 0.95 of the height, max health 8, speed 0.23, mob.sheep.say and mob.sheep.step; the fleece byte (metadata 16: color and sheared bit) with Sheared and Color saved; shears on an adult (1 to 3 wool of its color from 1 block up with motion from its random, the shears worn, the click not taken: worn-out shears stay as an empty stack); rose red dye on a lamb and an adult (used up), on a sheared sheep (taken, nothing used); a spawn egg's sheep colored from the world random (onInitialSpawn); /kill dropping wool unless sheared and 1 or 2 mutton; EntityAIEatGrass (one in 50 task ticks for lambs, status 10, tall grass broken, a grass block turned into dirt, the wool back and a lamb a minute older). Not covered: mob.sheep.shear (the sheared sheep is silent), lambs' colors mixed from their parents (unit-tested), adults grazing, mobGriefing off, wheat tempting and breeding sheep with AI, looting, burning sheep"
+scenarios = ["play/sheep"]
 
 [[feature]]
 id = "entity.mobs.spawn_animals_off"

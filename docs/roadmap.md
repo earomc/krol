@@ -6,7 +6,7 @@ non-vanilla parts (protocol 5, plugin layers, parity harness). It is a map of th
 territory, **not** an implementation order: the milestones in [AGENTS.md §12](../AGENTS.md#12-roadmap)
 set the order. Parity coverage per feature lives in [`parity/coverage.toml`](../parity/coverage.toml).
 
-Status as of 2026-11-20 (commit `server: chickens`).
+Status as of 2026-11-20 (commit `server: sheep`).
 
 **Legend**
 
@@ -32,7 +32,9 @@ when an item is done or priorities change.
    Cows share the animal code (milking, wheat, leather and beef; `play/cows`,
    `play/cows_ai`), and mooshrooms the cow's (bowls, shearing into a cow;
    `play/mooshrooms`), and chickens lay eggs, fall slowly and hatch from thrown eggs
-   (`play/chickens`). Next: the other mobs, kind by kind (sheep next) (each new navigator: swimming, climbing). Share the living code with armor
+   (`play/chickens`), and sheep are dyed and sheared, graze and regrow their wool
+   (`play/sheep`). Next: the other mobs, kind by kind (each new navigator: swimming,
+   climbing). Share the living code with armor
    stands (`game/armor_stand.rs` has its own copy). Scenarios summon one pig per
    `krolpin` (its random pinned once); `/execute` or `/entitydata` would allow several.
    `krolpin spawns` pins mobs born later (`play/mobs_breed`) and throwables with their
@@ -181,7 +183,7 @@ Protocol 47 is krol's internal model. Codecs live in `krol-protocol`, handlers i
 | 0x0C Spawn Player | ✅ | |
 | 0x0D Collect Item | ✅ | Items and XP orbs |
 | 0x0E Spawn Object | 🟡 | Items, falling blocks, primed TNT, snowballs, eggs, ender pearls, experience bottles, splash potions, arrows, item frames, armor stands, rideable, chest, hopper, furnace and TNT minecarts, boats. Leash knots (`play/mobs_leads`). Missing: spawner and command block minecarts, fireballs, fishing hooks, ... |
-| 0x0F Spawn Mob | ✅ | Pigs, cows, mooshrooms and chickens (`play/mobs_no_ai`, `play/cows`, `play/mooshrooms`, `play/chickens`); 1.7: the 1.8-only entries dropped, the age as an int. Custom names of mobs for 1.7 ❌ |
+| 0x0F Spawn Mob | ✅ | Pigs, cows, mooshrooms, chickens and sheep (`play/mobs_no_ai`, `play/cows`, `play/mooshrooms`, `play/chickens`, `play/sheep`); 1.7: the 1.8-only entries dropped, the age as an int. Custom names of mobs for 1.7 ❌ |
 | 0x10 Spawn Painting | ✅ | |
 | 0x11 Spawn Experience Orb | ✅ | |
 | 0x12 Entity Velocity · 0x13 Destroy Entities · 0x15 Entity Relative Move · 0x16 Entity Look · 0x17 Entity Look And Relative Move · 0x18 Entity Teleport · 0x19 Entity Head Look | ✅ | |
@@ -441,12 +443,12 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | `ItemLilyPad` | ❌ | |
 | `ItemTool`, `ItemPickaxe`, `ItemAxe`, `ItemSpade`, `ItemSword` | ✅ | Mining speed, wear. Sword blocking ❌, attack damage ❌ (no attacking) |
 | `ItemHoe` | ✅ | |
-| `ItemShears` | ✅ | Shearing mooshrooms (`play/mooshrooms`) ✅; shearing sheep ❌ |
+| `ItemShears` | ✅ | Shearing mooshrooms (`play/mooshrooms`) and sheep (`play/sheep`) ✅ |
 | `ItemFlintAndSteel` | 🟡 | Fire, lighting TNT ✅; portals, creepers ❌ |
 | `ItemBucket` | 🟡 | Water and lava in survival, milking cows and mooshrooms (`play/cows`, `play/mooshrooms`) ✅; creative use ❌ |
 | `ItemBucketMilk` | ✅ | |
 | `ItemFood`, `ItemAppleGold`, `ItemSoup`, `ItemFishFood` | ✅ | |
-| `ItemDye` | ✅ | Bone meal, cocoa beans. Dyeing sheep ❌ |
+| `ItemDye` | ✅ | Bone meal, cocoa beans, dyeing sheep (`play/sheep`) |
 | `ItemArmor` | 🟡 | Equipping, protection, wear ✅; leather dye ✅ (crafting); dispensing armor ❌ |
 | `ItemPotion`, `ItemGlassBottle` | 🟡 | Drinking (effects from the damage value via a port of `PotionHelper`, checked against all 32768 values, or `CustomPotionEffects`), filling bottles at water, throwing splash potions (`play/splash_potions`), display names ("Splash Potion of Harming", "Thin Potion"; checked against vanilla's names of damage values 1-255) ✅ |
 | `ItemExpBottle` | ❌ | |
@@ -599,12 +601,12 @@ for all ordinary blocks. Listed here: what a class does beyond the basics.
 | Group | Status | Notes |
 |---|---|---|
 | `entity.ai` (task system, targeting, pathfinding navigation, look/move helpers, villager/animal behaviors) | 🟡 | `game/mob/ai.rs`: the goal selector (`EntityAITasks`), the move, look, jump and body helpers, `PathNavigateGround`, `RandomPositionGenerator` (no homes), goals swimming, panic, mate, tempt, follow parent, wander, watch closest (players), look idle (`play/mobs_ai`, `play/mobs_follow_parent`, `play/mobs_tempt`, `play/mobs_breed`). `EntityAIControlledByPlayer` (`play/mobs_riding`); target tasks, `EntitySenses`, homes and `EntityAIMoveTowardsRestriction`, sun avoidance, the other goals ❌. Look idle's `Math.cos`/`Math.sin` use Rust's libm (vanilla's may differ in the last bit) |
-| Passive: pig (🟡 AI, sounds, steps, loot, cooked when burning, feeding, breeding, saddles, riding), cow (🟡 AI, sounds, steps, milking, wheat, leather and beef; `play/cows`, `play/cows_ai`), mooshroom (🟡 the cow's, bowls of stew, shearing into a cow with five red mushrooms; `play/mooshrooms`; spawning on mycelium ❌), chicken (🟡 AI, sounds, steps, slow falling, no fall damage, laying eggs, seeds, feathers and chicken, hatching from eggs; `play/chickens`; jockeys' despawning and rider offset ❌), sheep (wool, shearing, dye), chicken (eggs), squid, wolf, ocelot, horse (all variants, inventory), rabbit, bat, villager (trading, professions), iron golem, snow golem | ❌ | |
+| Passive: pig (🟡 AI, sounds, steps, loot, cooked when burning, feeding, breeding, saddles, riding), cow (🟡 AI, sounds, steps, milking, wheat, leather and beef; `play/cows`, `play/cows_ai`), mooshroom (🟡 the cow's, bowls of stew, shearing into a cow with five red mushrooms; `play/mooshrooms`; spawning on mycelium ❌), chicken (🟡 AI, sounds, steps, slow falling, no fall damage, laying eggs, seeds, feathers and chicken, hatching from eggs; `play/chickens`; jockeys' despawning and rider offset ❌), sheep (🟡 AI with grazing, sounds, steps, fleece color and shearing, dyeing, wool and mutton, random colors from spawn eggs, lambs' colors mixed like dyes; `play/sheep`; breeding colors only unit-tested, natural spawning ❌), squid, wolf, ocelot, horse (all variants, inventory), rabbit, bat, villager (trading, professions), iron golem, snow golem | ❌ | |
 | Monsters: zombie (villagers, sieges, reinforcements), skeleton (wither skeleton), creeper, spider, cave spider, enderman, slime, magma cube, ghast, blaze, zombie pigman, silverfish, endermite, witch, guardian (elder) | ❌ | |
 | Boss: ender dragon, wither | ❌ | |
 | `entity.effect`: lightning bolt | ❌ | |
 | Breeding, taming, leashing, name tags, saddles | 🟡 | `game/mob/breeding.rs`: pigs fed (love, piglets growing), breeding (`EntityAIMate.spawnBaby`), saddles, name tags (`play/mobs_breed`); leashing (`game/mob/leash.rs`; `play/mobs_leads`, `play/mobs_leads_break`); taming ❌ (no tameable mobs yet; sitting tamed mobs only break free beyond 10 blocks) |
-| Mob drops, XP, looting | 🟡 | Pigs: porkchops (cooked when burning, looting), saddles; cows and mooshrooms: leather and beef (`play/cows`); chickens: feathers and chicken (`play/chickens`); equipment by drop chance, the rare drop roll, experience from the world random 20 ticks after death (`play/mobs_no_ai`); the other mobs ❌ |
+| Mob drops, XP, looting | 🟡 | Pigs: porkchops (cooked when burning, looting), saddles; cows and mooshrooms: leather and beef (`play/cows`); chickens: feathers and chicken (`play/chickens`); sheep: wool of their color unless sheared, mutton (`play/sheep`); equipment by drop chance, the rare drop roll, experience from the world random 20 ticks after death (`play/mobs_no_ai`); the other mobs ❌ |
 | Natural spawning, spawners, spawn eggs | 🟡 | Pig spawn eggs (`play/spawn_eggs`); `/summon` creates the non-mob entities and pigs (see [commands](#netminecraftcommand)); natural spawning and spawners ❌ |
 
 ## net.minecraft.potion
@@ -665,7 +667,7 @@ krol notice.
 | `tp` | ✅ | Every form, on players (relative flags) and other entities; the head yaw of players is not set |
 | `kill` · `spawnpoint` | ✅ | |
 | `clear` | ✅ | |
-| `summon` | 🟡 | Every entity kind krol simulates, data tags, `onInitialSpawn` without one (`play/spawn_eggs`), the legacy `Minecart` id, all errors ✅; mobs other than pigs, cows, mooshrooms and chickens are only kept as NBT (not ticked or shown), `LightningBolt` only reports success ❌ (M5) |
+| `summon` | 🟡 | Every entity kind krol simulates, data tags, `onInitialSpawn` without one (`play/spawn_eggs`), the legacy `Minecart` id, all errors ✅; mobs other than pigs, cows, mooshrooms, chickens and sheep are only kept as NBT (not ticked or shown), `LightningBolt` only reports success ❌ (M5) |
 | `achievement` · `blockdata` · `clone` · `debug` · `entitydata` · `execute` · `particle` · `playsound` · `replaceitem` · `spreadplayers` · `stats` · `testfor` · `testforblock` · `testforblocks` · `tellraw` · `title` · `worldborder` | ❌ | |
 | `scoreboard` · `trigger` | ✅ | `players set` data tags for other entities than players ❌ |
 | `publish` | ➖ | LAN only |

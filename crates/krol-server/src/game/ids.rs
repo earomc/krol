@@ -75,6 +75,8 @@ pub mod block {
     pub const LEAVES: u16 = 18;
     /// `lapis_ore`.
     pub const LAPIS_ORE: u16 = 21;
+    /// `wool` (the color in the metadata).
+    pub const WOOL: u16 = 35;
     /// `tallgrass`.
     pub const TALLGRASS: u16 = 31;
     /// `deadbush`.
@@ -292,6 +294,14 @@ pub mod item {
     pub const SPONGE: i16 = super::block::SPONGE as i16;
     /// `shears`.
     pub const SHEARS: i16 = 359;
+    /// `dye` (the color's dye damage in the damage).
+    pub const DYE: i16 = 351;
+    /// `wool` (the block item).
+    pub const WOOL: i16 = super::block::WOOL as i16;
+    /// `mutton` (raw).
+    pub const MUTTON: i16 = 423;
+    /// `cooked_mutton`.
+    pub const COOKED_MUTTON: i16 = 424;
     /// `flint_and_steel`.
     pub const FLINT_AND_STEEL: i16 = 259;
     /// `coal` (and charcoal, damage 1).

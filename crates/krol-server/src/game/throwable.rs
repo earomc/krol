@@ -747,7 +747,7 @@ impl Game {
                     };
                 }
                 for _ in 0..chicks {
-                    let _ = self.spawn_baby(super::mob::MobKind::Chicken, pos, yaw, None);
+                    let _ = self.spawn_baby(super::mob::MobKind::Chicken, pos, yaw, None, None);
                 }
                 // The crack particles are client-side but draw their speeds.
                 if let Some(t) = self.thrown.get_mut(&id) {

@@ -1,0 +1,179 @@
+description = "Sheep: rose red dye colors a lime lamb and a white adult (used up) but not a sheared sheep (the click is still taken, nothing used up); shears do nothing to a lamb and cut an adult's wool (1 to 3 red wool thrown from 1 block up with motion from its random), wearing the shears out (random.break, stat.breakItem; vanilla leaves the empty stack in the hand); a spawn egg hatches a sheep whose color comes from the world random (onInitialSpawn); /kill drops a blue sheep's wool and 1 or 2 mutton; sheared lambs eat the grass under them (status 10, the grass block turned into dirt, tall grass broken) and grow their wool back and a minute older; the sheep saved with their chunks (Sheared, Color), the blocks, the items and stats with the player"
+subsystem = "entity"
+
+# jeb_ joins at the spawn (-471.5, 4, -434.5) in adventure mode, is switched to survival
+# (adventure players use no items on blocks) and stands still. He gets three rose red dyes, shears with one use left and a sheep spawn egg (hotbar
+# slots 0 to 2; /give's fake items are entities 1 to 3). Then, in one tick: lamb C1
+# (entity 4) and lamb C2 (entity 7), both sheared with AI (Age -6000), each in a glass
+# cell of its own 120 blocks east, out of jeb_'s tracking range (they run on the
+# console's clock, so only their saved data and blocks are compared); C2's cell has
+# tall grass in it. A white adult A without AI (entity 5) 3 blocks east of jeb_, a lime
+# lamb B (Age -1300, entity 6) 2 blocks south and a blue adult E (entity 8) 3 blocks
+# west, all silent and without AI.
+#
+# `krolpin spawns` pins every mob joining the world, `krolpin world` the world random
+# and Math.random() (the hatched sheep's facing and color, the drops' motion) and
+# `krolpin mobs` every mob's random at the end of every tick up to the stop, so the
+# shears' rolls meet the same state whichever tick the bot's click lands in. The mob
+# seed is picked so that both lambs' first eating roll (one in 50 for children, right
+# after the ambient sound roll) comes out 0: each eats at its first goal tick, and
+# again whenever there is grass left under it (C1 once, C2 the tall grass, then the
+# grass block). Their ambient rolls (981 and 875) keep them quiet.
+#
+# /kill finishes E (its wool and mutton are entities 9 on) and its drops are killed
+# before jeb_ acts. jeb_ dyes B and A red, tries the shears on B (nothing) and shears
+# A (the shears break), tries the dye on the sheared A (nothing) and hatches sheep D
+# 2 blocks north of him with the egg, the last action, as D has AI. The wool is
+# killed before the end.
+
+[setup]
+world = "fixtures/worlds/flat"
+pin_random = true
+properties = { online-mode = "false", level-type = "FLAT", generate-structures = "false", spawn-animals = "true", spawn-monsters = "false", spawn-npcs = "false", allow-nether = "false", gamemode = "2" }
+
+[[steps]]
+action = "console"
+command = "gamerule randomTickSpeed 0"
+
+# Animals are only kept with spawn-animals on; natural spawning stays off.
+[[steps]]
+action = "console"
+command = "gamerule doMobSpawning false"
+
+[[steps]]
+action = "console"
+command = "fill -353 4 -442 -348 5 -440 glass"
+
+[[steps]]
+action = "console"
+command = "fill -352 4 -441 -352 5 -441 air"
+
+[[steps]]
+action = "console"
+command = "fill -349 4 -441 -349 5 -441 air"
+
+[[steps]]
+action = "console"
+command = "setblock -349 4 -441 tallgrass 1"
+
+[[steps]]
+id = "player"
+action = "play"
+background = true
+protocol = 47
+name = "jeb_"
+seconds = 18
+chat = [
+    "@7000 !hold 0",
+    "@7500 !interact 6",
+    "@8000 !interact 5",
+    "@8500 !hold 1",
+    "@9000 !interact 6",
+    "@9500 !interact 5",
+    "@10000 !hold 0",
+    "@10500 !interact 5",
+    "@11000 !hold 2",
+    "@11500 !place -471 3 -437 1",
+]
+
+[[steps]]
+action = "wait"
+ms = 2500
+
+[[steps]]
+action = "console"
+command = "gamemode 0 jeb_"
+
+[[steps]]
+action = "console"
+command = "give jeb_ dye 3 1"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ shears 1 238"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "give jeb_ spawn_egg 1 91"
+wait_ms = 300
+
+[[steps]]
+action = "console"
+command = "krolpin spawns 57"
+wait_ms = 50
+
+[[steps]]
+action = "console"
+command = "krolpin world 48 600"
+wait_ms = 50
+
+[[steps]]
+action = "console"
+command = "summon Sheep -351.5 4 -440.5 {Sheared:1b,Age:-6000}"
+wait_ms = 0
+
+[[steps]]
+action = "console"
+command = "summon Sheep -468.5 4 -434.5 {NoAI:1b,Silent:1b,Color:0b}"
+wait_ms = 0
+
+[[steps]]
+action = "console"
+command = "summon Sheep -471.5 4 -432.5 {NoAI:1b,Silent:1b,Age:-1300,Color:5b}"
+wait_ms = 0
+
+[[steps]]
+action = "console"
+command = "summon Sheep -348.5 4 -440.5 {Sheared:1b,Age:-6000}"
+wait_ms = 0
+
+[[steps]]
+action = "console"
+command = "summon Sheep -474.5 4 -434.5 {NoAI:1b,Silent:1b,Color:11b}"
+wait_ms = 100
+
+[[steps]]
+action = "console"
+command = "krolpin mobs 124857 400"
+wait_ms = 500
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Sheep,x=-475,y=4,z=-435,r=1]"
+wait_ms = 1000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 10000
+
+[[steps]]
+action = "console"
+command = "kill @e[type=Item]"
+wait_ms = 1500
+
+[observe]
+log = true
+# /kill lists the items it kills by their distance from the console (the origin).
+log_ignore_prefixes = ["Killed item."]
+entities = [[-31, -29], [-30, -29], [-29, -29], [-31, -28], [-30, -28], [-29, -28], [-31, -27], [-30, -27], [-29, -27], [-22, -28]]
+blocks = [[-352, 3, -441], [-349, 3, -441], [-349, 4, -441]]
+files = [
+    "world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat",
+    "world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json",
+]
+ignore = [
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.playOneMinute",
+    "file:world/stats/a762f560-4fce-3236-812a-b80efff0b62b.json.value.stat.timeSinceDeath",
+    "file:world/playerdata/a762f560-4fce-3236-812a-b80efff0b62b.dat.foodTickTimer",
+    # The hatched sheep's follow range bonus, drawn before the pin with a modifier
+    # UUID from ThreadLocalRandom.
+    "entities.-30,-28[2].Attributes[3].Modifiers",
+]
+
+[observe.tolerance]
+# Ages count the ticks up to the stop, whose tick depends on timing.
+"entities.-30,-28[*].Age" = 20
+"entities.-22,-28[*].Age" = 20

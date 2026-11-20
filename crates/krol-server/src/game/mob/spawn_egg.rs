@@ -104,7 +104,7 @@ impl Game {
         m.base.pitch = 0.0;
         m.head_yaw = yaw;
         m.body_yaw = yaw;
-        m.initial_spawn(&mut self.entity_rand);
+        m.initial_spawn(&mut self.entity_rand, &mut self.world_rand);
         // The name is set after the mob joined the world, but the spawn packets hold
         // the data watcher itself and are written out later, so they show it too: set
         // it before, flagged as a change.

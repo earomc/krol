@@ -347,6 +347,13 @@ into server ticks. Rules learned from flaky scenarios:
   ignore the saved `Attributes[3].Modifiers` of each such mob. The bonus also sets how far
   the mob's paths reach, so a wandering mob drifts apart from vanilla: summon those with
   any data tag (`{Age:0}`), which skips `onInitialSpawn` (`play/mobs_push_vehicles`).
+- **Force a rare mob roll with `krolpin mobs`**: re-pinned every tick, a mob draws the
+  same values every tick, so a roll that comes out right once comes out right at every
+  goal tick: pick the seed with a script replaying the draws (the ambient roll comes
+  first) and a lamb grazes at its first chance, again while grass is left under it.
+  Consecutive entity ids rarely share a rare outcome (their rolls are correlated):
+  space such mobs' ids apart (`play/sheep`). Adventure players use no items on blocks:
+  switch the bot to survival for spawn eggs.
 - **End a busy mob at a fixed tick**: a mob still bumping into things when the bot
   leaves gives a final state that depends on the stop's tick. Make it stop at a tick
   counted from its summon instead, e.g. let it burn to death (`{Fire:400s}` takes a

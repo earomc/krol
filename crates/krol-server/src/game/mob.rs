@@ -27,6 +27,7 @@
 mod ai;
 mod breeding;
 mod leash;
+mod sheep;
 mod spawn_egg;
 
 use std::collections::BTreeSet;
@@ -148,6 +149,8 @@ const ARROWS_INDEX: u8 = 9;
 const AGE_INDEX: u8 = 12;
 const NO_AI_INDEX: u8 = 15;
 const SADDLE_INDEX: u8 = 16;
+/// `EntitySheep`'s fleece: the color in the low four bits, the sheared bit above.
+const FLEECE_INDEX: u8 = 16;
 /// The burning bit of the flags.
 const BURNING_BIT: i8 = 1;
 
@@ -162,6 +165,8 @@ pub enum MobKind {
     Mooshroom,
     /// `EntityChicken`.
     Chicken,
+    /// `EntitySheep`.
+    Sheep,
 }
 
 impl MobKind {
@@ -172,15 +177,22 @@ impl MobKind {
             "Cow" => Some(Self::Cow),
             "MushroomCow" => Some(Self::Mooshroom),
             "Chicken" => Some(Self::Chicken),
+            "Sheep" => Some(Self::Sheep),
             _ => None,
         }
     }
 
     /// The kind with `EntityList` id `id` (a spawn egg's damage).
     pub fn from_type_id(id: i32) -> Option<Self> {
-        [Self::Pig, Self::Cow, Self::Mooshroom, Self::Chicken]
-            .into_iter()
-            .find(|k| i32::from(k.type_id()) == id)
+        [
+            Self::Pig,
+            Self::Cow,
+            Self::Mooshroom,
+            Self::Chicken,
+            Self::Sheep,
+        ]
+        .into_iter()
+        .find(|k| i32::from(k.type_id()) == id)
     }
 
     /// The saved id (`EntityList` name).
@@ -190,6 +202,7 @@ impl MobKind {
             Self::Cow => "Cow",
             Self::Mooshroom => "MushroomCow",
             Self::Chicken => "Chicken",
+            Self::Sheep => "Sheep",
         }
     }
 
@@ -200,6 +213,7 @@ impl MobKind {
             Self::Cow => 92,
             Self::Mooshroom => 96,
             Self::Chicken => 93,
+            Self::Sheep => 91,
         }
     }
 
@@ -210,6 +224,7 @@ impl MobKind {
             Self::Cow => "Cow",
             Self::Mooshroom => "Mooshroom",
             Self::Chicken => "Chicken",
+            Self::Sheep => "Sheep",
         }
     }
 
@@ -217,7 +232,7 @@ impl MobKind {
     fn size(self) -> (f32, f32) {
         match self {
             Self::Pig => (0.9, 0.9),
-            Self::Cow | Self::Mooshroom => (0.9, 1.3),
+            Self::Cow | Self::Mooshroom | Self::Sheep => (0.9, 1.3),
             Self::Chicken => (0.4, 0.7),
         }
     }
@@ -245,6 +260,13 @@ impl MobKind {
                 (MOVEMENT_SPEED, 0.25),
                 (FOLLOW_RANGE, 16.0),
             ],
+            Self::Sheep => [
+                (MAX_HEALTH, 8.0),
+                (KNOCKBACK_RESISTANCE, 0.0),
+                // Set from a float.
+                (MOVEMENT_SPEED, 0.23f32 as f64),
+                (FOLLOW_RANGE, 16.0),
+            ],
         }
     }
 
@@ -254,13 +276,14 @@ impl MobKind {
             Self::Pig => ("mob.pig.say", "mob.pig.say", "mob.pig.death"),
             Self::Cow | Self::Mooshroom => ("mob.cow.say", "mob.cow.hurt", "mob.cow.hurt"),
             Self::Chicken => ("mob.chicken.say", "mob.chicken.hurt", "mob.chicken.hurt"),
+            Self::Sheep => ("mob.sheep.say", "mob.sheep.say", "mob.sheep.say"),
         }
     }
 
     /// `getSoundVolume`.
     fn sound_volume(self) -> f32 {
         match self {
-            Self::Pig | Self::Chicken => 1.0,
+            Self::Pig | Self::Chicken | Self::Sheep => 1.0,
             Self::Cow | Self::Mooshroom => 0.4,
         }
     }
@@ -271,34 +294,35 @@ impl MobKind {
             Self::Pig => ("mob.pig.step", 0.15),
             Self::Cow | Self::Mooshroom => ("mob.cow.step", 0.15),
             Self::Chicken => ("mob.chicken.step", 0.15),
+            Self::Sheep => ("mob.sheep.step", 0.15),
         }
     }
 
     /// `getTalkInterval`: animals talk less often than other mobs.
     fn talk_interval(self) -> i32 {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => 120,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken | Self::Sheep => 120,
         }
     }
 
     /// Not an `IMob` (`EntityLiving.allowLeashing`): it takes a lead.
     fn leashable(self) -> bool {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => true,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken | Self::Sheep => true,
         }
     }
 
     /// An `EntityAnimal` (or water mob): removed when `spawn-animals` is off.
     fn animal(self) -> bool {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => true,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken | Self::Sheep => true,
         }
     }
 
     /// An `EntityAgeable` (an age entry in its metadata, children).
     fn ageable(self) -> bool {
         match self {
-            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken => true,
+            Self::Pig | Self::Cow | Self::Mooshroom | Self::Chicken | Self::Sheep => true,
         }
     }
 }
@@ -388,6 +412,8 @@ pub struct Mob {
     /// without a rider (no mob despawns yet) and carry their rider lower
     /// (`updateRiderPosition`; mobs only ride vehicles so far).
     chicken_jockey: bool,
+    /// `EntitySheep`'s fleece byte (metadata entry 16): color and sheared bit.
+    fleece: i8,
     /// The burning flag as last set in the metadata.
     burning_flag: bool,
     /// `firstUpdate`.
@@ -483,6 +509,7 @@ impl Mob {
             saddled: false,
             egg_lay_time: 0,
             chicken_jockey: false,
+            fleece: 0,
             burning_flag: false,
             first_update: true,
             dirty_metadata: BTreeSet::new(),
@@ -507,6 +534,7 @@ impl Mob {
                 // EntityMooshroom adds nothing to the cow's goals.
                 MobKind::Cow | MobKind::Mooshroom => ai::MobAi::cow(pos),
                 MobKind::Chicken => ai::MobAi::chicken(pos),
+                MobKind::Sheep => ai::MobAi::sheep(pos),
             })),
         };
         if kind == MobKind::Chicken {
@@ -620,6 +648,10 @@ impl Mob {
                     m.egg_lay_time = c.get_i32("EggLayTime");
                 }
             }
+            MobKind::Sheep => {
+                m.set_sheared(c.get_bool("Sheared"));
+                m.set_fleece_color(sheep::color_by_meta(i32::from(c.get_i8("Color"))));
+            }
         }
         m.chunk = chunk_of(m.body.pos);
         m
@@ -700,6 +732,10 @@ impl Mob {
                 c.insert("IsChickenJockey", Tag::Byte(i8::from(self.chicken_jockey)));
                 c.insert("EggLayTime", Tag::Int(self.egg_lay_time));
             }
+            MobKind::Sheep => {
+                c.insert("Sheared", Tag::Byte(i8::from(self.sheared())));
+                c.insert("Color", Tag::Byte(self.fleece_color()));
+            }
         }
     }
 
@@ -731,6 +767,7 @@ impl Mob {
         match self.kind {
             MobKind::Pig => self.body.height * 0.85,
             MobKind::Cow | MobKind::Mooshroom | MobKind::Chicken => self.body.height,
+            MobKind::Sheep => 0.95 * self.body.height,
         }
     }
 
@@ -759,8 +796,13 @@ impl Mob {
 
     /// `EntityLiving.onInitialSpawn`: a mob spawned anew (not from saved data) gets a
     /// random follow range bonus, drawn from its own random. The modifier's UUID comes
-    /// from `uuid_rand` (vanilla: `ThreadLocalRandom`).
-    pub(super) fn initial_spawn(&mut self, uuid_rand: &mut JavaRandom) {
+    /// from `uuid_rand` (vanilla: `ThreadLocalRandom`). Then the mob's own part: a
+    /// sheep's fleece color from the world's random.
+    pub(super) fn initial_spawn(
+        &mut self,
+        uuid_rand: &mut JavaRandom,
+        world_rand: &mut JavaRandom,
+    ) {
         let amount = self.rand.next_gaussian() * SPAWN_BONUS_SPREAD;
         let uuid = super::attributes::random_uuid(uuid_rand);
         let modifier = Modifier {
@@ -772,6 +814,9 @@ impl Mob {
             saved: true,
         };
         super::attributes::apply_modifier(&mut self.modifiers, modifier);
+        if self.kind == MobKind::Sheep {
+            self.set_fleece_color(sheep::random_color(world_rand));
+        }
     }
 
     /// `DataWatcher.updateObject` of entry `index` with a changed value.
@@ -873,6 +918,9 @@ impl Mob {
         match self.kind {
             MobKind::Pig => {
                 out.insert(1, md(SADDLE_INDEX, Byte(i8::from(self.saddled))));
+            }
+            MobKind::Sheep => {
+                out.insert(1, md(FLEECE_INDEX, Byte(self.fleece)));
             }
             MobKind::Cow | MobKind::Mooshroom | MobKind::Chicken => {}
         }
@@ -2106,7 +2154,7 @@ impl Game {
                 && let Some(m) = self.mobs.get_mut(&id)
                 && m.rand.next_float() < RARE_DROP_CHANCE + looting as f32 * RARE_DROP_LOOTING
             {
-                // addRandomDrop: pigs, cows (mooshrooms too) and chickens have none.
+                // addRandomDrop: pigs, cows (mooshrooms too), chickens and sheep have none.
             }
         }
         self.send_to_tracking(
@@ -2124,7 +2172,7 @@ impl Game {
             return;
         };
         let pos = m.body.pos;
-        let mut drops = Vec::new();
+        let mut drops: Vec<ItemStack> = Vec::new();
         match m.kind {
             MobKind::Pig => {
                 let n = m.rand.next_int_bounded(3) + 1 + m.rand.next_int_bounded(1 + looting);
@@ -2133,34 +2181,52 @@ impl Game {
                 } else {
                     item::PORKCHOP
                 };
-                drops.extend(std::iter::repeat_n(meat, n.max(0) as usize));
+                drops.extend(std::iter::repeat_n(single(meat), n.max(0) as usize));
                 if m.saddled {
-                    drops.push(item::SADDLE);
+                    drops.push(single(item::SADDLE));
                 }
             }
             MobKind::Chicken => {
                 let n = m.rand.next_int_bounded(3) + m.rand.next_int_bounded(1 + looting);
-                drops.extend(std::iter::repeat_n(item::FEATHER, n.max(0) as usize));
-                drops.push(if m.burning() {
+                drops.extend(std::iter::repeat_n(
+                    single(item::FEATHER),
+                    n.max(0) as usize,
+                ));
+                drops.push(single(if m.burning() {
                     item::COOKED_CHICKEN
                 } else {
                     item::CHICKEN
-                });
+                }));
             }
             MobKind::Cow | MobKind::Mooshroom => {
                 let n = m.rand.next_int_bounded(3) + m.rand.next_int_bounded(1 + looting);
-                drops.extend(std::iter::repeat_n(item::LEATHER, n.max(0) as usize));
+                drops.extend(std::iter::repeat_n(
+                    single(item::LEATHER),
+                    n.max(0) as usize,
+                ));
                 let n = m.rand.next_int_bounded(3) + 1 + m.rand.next_int_bounded(1 + looting);
                 let meat = if m.burning() {
                     item::COOKED_BEEF
                 } else {
                     item::BEEF
                 };
-                drops.extend(std::iter::repeat_n(meat, n.max(0) as usize));
+                drops.extend(std::iter::repeat_n(single(meat), n.max(0) as usize));
+            }
+            MobKind::Sheep => {
+                if !m.sheared() {
+                    drops.push(sheep::wool(m.fleece_color()));
+                }
+                let n = m.rand.next_int_bounded(2) + 1 + m.rand.next_int_bounded(1 + looting);
+                let meat = if m.burning() {
+                    item::COOKED_MUTTON
+                } else {
+                    item::MUTTON
+                };
+                drops.extend(std::iter::repeat_n(single(meat), n.max(0) as usize));
             }
         }
-        for id in drops {
-            self.mob_drop_item(pos, single(id));
+        for stack in drops {
+            self.mob_drop_item(pos, stack);
         }
     }
 

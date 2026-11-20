@@ -832,7 +832,7 @@ impl Game {
         let rotation = self.entity_rotation(id);
         self.set_location_and_angles(id, pos, rotation);
         if initial_spawn && let Some(m) = self.mobs.get_mut(&id) {
-            m.initial_spawn(&mut self.entity_rand);
+            m.initial_spawn(&mut self.entity_rand, &mut self.world_rand);
         }
         self.spawn_entity_in_world(id);
         Some(id)

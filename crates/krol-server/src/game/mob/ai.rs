@@ -125,6 +125,8 @@ pub(super) enum Goal {
     LookIdle { look: (f64, f64), time: i32 },
     /// `EntityAIMoveTowardsRestriction`: walk back towards the home when outside it.
     MoveTowardsRestriction { speed: f64, target: (f64, f64, f64) },
+    /// `EntityAIEatGrass`: now and then eat the grass underfoot.
+    EatGrass { timer: i32 },
 }
 
 impl Goal {
@@ -133,7 +135,7 @@ impl Goal {
         match self {
             Self::Swimming => 4,
             Self::Panic { .. } | Self::Wander { .. } | Self::MoveTowardsRestriction { .. } => 1,
-            Self::ControlledByPlayer { .. } => 7,
+            Self::ControlledByPlayer { .. } | Self::EatGrass { .. } => 7,
             Self::Mate { .. } | Self::Tempt { .. } | Self::LookIdle { .. } => 3,
             Self::FollowParent { .. } => 0,
             Self::WatchClosest { .. } => 2,
@@ -287,6 +289,23 @@ impl MobAi {
             (5, wander(1.0)),
             (6, watch_closest_player()),
             (7, look_idle()),
+        ];
+        ai
+    }
+
+    /// The AI of a sheep (`EntitySheep`'s constructor).
+    pub fn sheep(pos: (f64, f64, f64)) -> Self {
+        let mut ai = Self::animal(pos);
+        ai.goals = vec![
+            (0, Goal::Swimming),
+            (1, panic(1.25)),
+            (2, mate(1.0)),
+            (3, tempt(1.1, item::WHEAT)),
+            (4, follow_parent(1.1)),
+            (5, Goal::EatGrass { timer: 0 }),
+            (6, wander(1.0)),
+            (7, watch_closest_player()),
+            (8, look_idle()),
         ];
         ai
     }
@@ -732,6 +751,7 @@ impl Game {
                     None => false,
                 }
             }
+            Goal::EatGrass { .. } => self.grass_to_eat(id),
         }
     }
 
@@ -770,6 +790,7 @@ impl Game {
                 dist_sq(m.body.pos, game.players[p].pos) <= r && *look_time > 0
             }
             Goal::LookIdle { time, .. } => *time >= 0,
+            Goal::EatGrass { timer } => *timer > 0,
             Goal::Mate { mate, delay, .. } => {
                 *delay < MATE_DELAY
                     && mate
@@ -794,6 +815,11 @@ impl Game {
             }
             Goal::FollowParent { delay, .. } => *delay = 0,
             Goal::ControlledByPlayer { speed, .. } => *speed = 0.0,
+            Goal::EatGrass { timer } => {
+                *timer = super::sheep::EAT_TICKS;
+                game.start_eating_grass(id);
+                ai.nav.clear();
+            }
             Goal::WatchClosest { look_time, .. } => {
                 if let Some(m) = game.mobs.get_mut(&id) {
                     *look_time = 40 + m.rand.next_int_bounded(40);
@@ -827,6 +853,7 @@ impl Game {
             }
             Goal::FollowParent { parent, .. } => *parent = None,
             Goal::WatchClosest { target, .. } => *target = None,
+            Goal::EatGrass { timer } => *timer = 0,
             Goal::Mate { mate, delay, .. } => {
                 *mate = None;
                 *delay = 0;
@@ -926,6 +953,12 @@ impl Game {
                         look_at(ai, (ppos.0, ppos.1 + f64::from(peye), ppos.2), 10.0);
                     }
                     *look_time -= 1;
+                }
+                Goal::EatGrass { timer } => {
+                    *timer = (*timer - 1).max(0);
+                    if *timer == super::sheep::EAT_AT {
+                        game.eat_grass(id);
+                    }
                 }
                 Goal::LookIdle { look, time } => {
                     *time -= 1;

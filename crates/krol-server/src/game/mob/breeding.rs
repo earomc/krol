@@ -37,7 +37,7 @@ impl MobKind {
     fn breeding_item(self) -> i16 {
         match self {
             Self::Pig => item::CARROT,
-            Self::Cow | Self::Mooshroom => item::WHEAT,
+            Self::Cow | Self::Mooshroom | Self::Sheep => item::WHEAT,
             Self::Chicken => item::WHEAT_SEEDS,
         }
     }
@@ -47,7 +47,7 @@ impl Mob {
     /// `EntityAgeable.func_175501_a`: the age moves on by `seconds` (children stop at 0;
     /// a forced growth also adds to `ForcedAge`, which becomes the age once it is 0).
     /// Returns the move a growing child makes ([`Mob::set_age`]).
-    fn add_growth(&mut self, seconds: i32, forced: bool) -> Option<f64> {
+    pub(super) fn add_growth(&mut self, seconds: i32, forced: bool) -> Option<f64> {
         let old = self.age;
         let mut age = old.wrapping_add(seconds.wrapping_mul(20));
         if age > 0 {
@@ -104,6 +104,9 @@ impl Game {
                     self.use_held(i);
                 }
             }
+            item::DYE => {
+                let _ = self.dye_sheep(i, id, &held);
+            }
             // ItemNameTag: a named tag names the mob, which no longer despawns.
             item::NAME_TAG => {
                 let Some(name) = item_data::custom_name(&held).map(str::to_owned) else {
@@ -133,6 +136,7 @@ impl Game {
         if self.milk_cow(i, id) {
             return true;
         }
+        self.shear_sheep(i, id);
         let held = self.players[i].held().cloned();
         let me = self.players[i].entity_id;
         let Some(m) = self.mobs.get_mut(&id) else {
@@ -172,7 +176,7 @@ impl Game {
         {
             if held.damage == i16::from(m.kind.type_id()) {
                 let name = item_data::custom_name(held).map(str::to_owned);
-                self.spawn_child(id, name);
+                self.spawn_child(id, id, name);
                 self.use_held(i);
             }
             return true;
@@ -190,7 +194,7 @@ impl Game {
                 self.mount_player(i, id);
                 true
             }
-            MobKind::Cow | MobKind::Mooshroom | MobKind::Chicken => false,
+            MobKind::Cow | MobKind::Mooshroom | MobKind::Chicken | MobKind::Sheep => false,
         }
     }
 
@@ -391,29 +395,39 @@ impl Game {
         }
     }
 
-    /// `createChild`, then the child set up like `EntityAIMate.spawnBaby` and
-    /// `EntityAgeable.interact` do: a child at the parent's position facing south,
-    /// named after a named spawn egg. Returns its entity id.
-    fn spawn_child(&mut self, parent: i32, name: Option<String>) -> Option<i32> {
+    /// `createChild` of `parent` with `mate` (itself for a spawn egg), then the child
+    /// set up like `EntityAIMate.spawnBaby` and `EntityAgeable.interact` do: a child at
+    /// the parent's position facing south, named after a named spawn egg. Returns its
+    /// entity id.
+    fn spawn_child(&mut self, parent: i32, mate: i32, name: Option<String>) -> Option<i32> {
         let (kind, pos) = self.mobs.get(&parent).map(|m| (m.kind, m.body.pos))?;
-        Some(self.spawn_baby(kind, pos, 0.0, name))
+        let fleece = match kind {
+            MobKind::Sheep => self.child_fleece(parent, mate),
+            _ => None,
+        };
+        Some(self.spawn_baby(kind, pos, 0.0, name, fleece))
     }
 
     /// A new child of `kind` (`setGrowingAge(-24000)`, then `setLocationAndAngles` at
-    /// `pos` with `yaw` and no pitch) added to the world, named `name` if given. A
-    /// thrown egg hatches its chicks with this. Returns its entity id.
+    /// `pos` with `yaw` and no pitch) added to the world, named `name` if given, a
+    /// lamb of fleece color `fleece`. A thrown egg hatches its chicks with this.
+    /// Returns its entity id.
     pub(in crate::game) fn spawn_baby(
         &mut self,
         kind: MobKind,
         pos: (f64, f64, f64),
         yaw: f32,
         name: Option<String>,
+        fleece: Option<i8>,
     ) -> i32 {
         let id = self.next_entity_id();
         // The living constructor turns the head at random (Math.random).
         let head = self.new_stand_head();
         let seed = self.new_mob_seed();
         let mut child = Mob::new(kind, pos, head, seed);
+        if let Some(color) = fleece {
+            child.set_fleece_color(color);
+        }
         // The age comes before setLocationAndAngles, which centers the small box.
         let _ = child.set_age(CHILD_AGE);
         child.body.set_position(pos);
@@ -476,7 +490,7 @@ impl Game {
                 m.in_love = 0;
             }
         }
-        if self.spawn_child(id, None).is_none() {
+        if self.spawn_child(id, mate, None).is_none() {
             return;
         }
         let Some(m) = self.mobs.get_mut(&id) else {
